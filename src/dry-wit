@@ -744,6 +744,8 @@ function _internalLogStuff() {
 
   local _categoryNamespace="${LOG_CATEGORY_NAMESPACE}";
   local _category="${LOG_CATEGORY}";
+  local _timestamp="$(date '+%Y/%m/%d %H:%M:%S')";
+
   if    [ "x${_categoryNamespace}" == "x" ] \
      && [ "${SCRIPT_NAME}" != "" ]; then
     _categoryNamespace="$(basename ${SCRIPT_NAME} .sh)";
@@ -763,12 +765,12 @@ function _internalLogStuff() {
       if [ ${_warning} == 0 ]; then
         evalConstant "${WARNING_COLOR}" "${UNDEFINED_COLOR}";
         local _color=${RESULT};
-        _message="${BLUE}[${_color}${_category}${BLUE}]${NO_COLOR} ";
+        _message="${BLUE}[${GREEN}${_timestamp} ${_color}${_category}${BLUE}]${NO_COLOR} ";
       else
-        _message="${BLUE}[${CYAN}${_category}${BLUE}]${NO_COLOR} ";
+        _message="${BLUE}[${GREEN}${_timestamp} ${CYAN}${_category}${BLUE}]${NO_COLOR} ";
       fi
     else
-      _message="[${_category}] ";
+      _message="[${_timestamp} ${_category}] ";
     fi
   fi
 

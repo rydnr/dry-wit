@@ -374,9 +374,6 @@ function defineErrors() {
 # Checking input
 function checkInput() {
  
-  logInfo -n "tput cols";
-  logInfoResult SUCCESS "$(tput cols)";
-
   local _flags=$(extractFlags $@);
   local _flagCount;
   local _currentCount;
