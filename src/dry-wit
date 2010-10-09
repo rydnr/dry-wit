@@ -454,11 +454,16 @@ function date2jds() {
   export RESULT=${_result};
 }
 
-# Logging functions
-
+# Retrieves the width of the term.
+# Exports the value, since values greater
+# than 255 are not allowed as return codes.
 function getTermWidth() {
-  return $(tput cols);
+  local -i _result=$(tput cols);
+
+  export RESULT=${_result};
 }
+
+# Logging functions
 
 function setLogCategoryNamespace() {
   export LOG_CATEGORY_NAMESPACE="$1";
@@ -784,8 +789,8 @@ function _internalLogStuff() {
 
   if [ ${_printingResults} == 1 ]; then
     getTermWidth;
-    local _termWidth=$?;
-    local _index=0;
+    local -i _termWidth=$RESULT;
+    local -i _index=0;
     if [ ${_allowsColors} == 0 ]; then
       _offset=$((_offset+2));
     fi
