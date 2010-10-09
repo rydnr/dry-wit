@@ -292,7 +292,7 @@ function printErrorMessage() {
   if [ ${_result} == 1 ]; then
     _error="${_error}. Finishing..";
   fi
-  if isTraceEnabled; then
+  if isDebugEnabled; then
     _printUsage $SCRIPT_NAME;
   fi
   _printError "${_error}";
@@ -315,7 +315,7 @@ function _printError() {
 
 function _printEnvironment() {
   if [ "x${ENV_VARIABLES[*]}" != "x" ] \
-     && isInfoEnabled; then
+     && isTraceEnabled; then
     cat <<EOF
 Environment variables:
 EOF
