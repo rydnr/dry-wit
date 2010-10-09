@@ -66,12 +66,12 @@ export UNDEFINED=255;
 
 function _defineDefaultEnvVariables() {
   export DEFAULT_ENV_VARIABLES=(\
-    `for i in ${ENV_VARIABLES[*]}; do \
+    $(for i in ${ENV_VARIABLES[*]}; do \
        echo $i \
        | awk -v dollar="$" \
          '{printf("echo %s{%s_DEFAULT}\n", dollar, $0);}' \
        | sh;\
-     done`);
+     done));
 }
 
 # AUXILIARY GENERAL-PURPOSE FUNCTIONS
@@ -79,7 +79,8 @@ function _defineDefaultEnvVariables() {
 function cleanup() {
   setLogCategory "post-process";
 
-  if [ "${#_CLEANUP_FILES}" != "0" -a "x${LOG_V}" != "x" ]; then
+  if [ "${#_CLEANUP_FILES}" != "0" ] \
+     && isDebugEnabled; then
     logTrace "Cleaning up temporary files";
   fi
   for i in ${_CLEANUP_FILES[*]}; do
@@ -96,18 +97,18 @@ function checkReq() {
 }
 
 function createTempFile() {
-  local _prefix="`echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}'`";
-  local _dirname="`dirname \"${SCRIPT_NAME}\"`";
+  local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}')";
+  local _dirname="$(dirname \"${SCRIPT_NAME}\")";
   if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
     _dirname="$PWD/${_dirname#\.}";
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  local result="`mktemp -p \"${_dirname}\"  -t \".${_prefix}.XXXXXXXXXX\"`";
+  local result="$(mktemp -p \"${_dirname}\"  -t \".${_prefix}.XXXXXXXXXX\")";
   local _aux=$?;
   rm -f $result > /dev/null
   if [ $_aux -ne 0 ]; then
-     result="`mktemp -t \".${_prefix}.XXXXXXXXXX\"`";
+     result="$(mktemp -t \".${_prefix}.XXXXXXXXXX\")";
      _aux=$?;
   fi
   if [ $_aux -ne 0 ]; then
@@ -115,7 +116,7 @@ function createTempFile() {
   fi
 #  logTrace "Appending ${result} to _CLEANUP_FILES";
   _CLEANUP_FILES=(\
-    `for i in ${_CLEANUP_FILES[*]}; do echo $i; done` \
+    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
     "${result}" \
   );
 
@@ -123,17 +124,17 @@ function createTempFile() {
 }
 
 function createTempFolder() {
-  local _prefix="`echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}'`";
-  local _dirname="`dirname ${SCRIPT_NAME}`";
+  local _prefix="$(echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}')";
+  local _dirname="$(dirname ${SCRIPT_NAME})";
   if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
     _dirname="$PWD/${_dirname#\.}";
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  local result=`mktemp -p ${_dirname} -d -t ".${_prefix}.XXXXXXXXXX"`;
+  local result=$(mktemp -p ${_dirname} -d -t ".${_prefix}.XXXXXXXXXX");
   local _aux=$?;
   if [ $_aux -ne 0 ]; then
-    result=`mktemp -d -t ".${_prefix}.XXXXXXXXXX"`;
+    result=$(mktemp -d -t ".${_prefix}.XXXXXXXXXX");
     _aux=$?;
   fi
   if [ $_aux -ne 0 ]; then
@@ -141,7 +142,7 @@ function createTempFolder() {
   fi
 #  logTrace "Appending ${result} to _CLEANUP_FILES";
   _CLEANUP_FILES=(\
-    `for i in ${_CLEANUP_FILES[*]}; do echo $i; done` \
+    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
     "${result}" \
   );
 
@@ -182,7 +183,7 @@ function logFlag() {
 
 function findInPath() {
   local _result="";
-  local _paths="`echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}'`";
+  local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
   for _path in $_paths; do
     if [ -f "${_path}/$1" ]; then
       _result="${_path}/$1";
@@ -200,8 +201,8 @@ function isSuccessKeyword() {
      && [  ${SUCCESS_KEYWORDS[*]} != "" ]; then
     for i in ${SUCCESS_KEYWORDS[*]}; do
       if    [ "x${i}" == "x${_keyword}" ] \
-         || [   "x`echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null`" \
-             == "x`echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null`" ]; then
+         || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+             == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
         _result=0;
         break;
       fi;
@@ -211,8 +212,8 @@ function isSuccessKeyword() {
   if [ ${_result} == 1 ]; then
     for i in ${BUILTIN_SUCCESS_KEYWORDS[*]}; do
       if [ "x${i}" == "x${1}" ] \
-          || [   "x`echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null`" \
-              == "x`echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null`" ]; then
+          || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+              == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
         _result=0;
         break;
       fi;
@@ -228,8 +229,8 @@ function isFailureKeyword() {
 
   for i in ${FAILURE_KEYWORDS[*]}; do
     if    [ "x${i}" == "x${1}" ] \
-       || [   "x`echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null`" \
-           == "x`echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null`" ]; then
+       || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+           == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
       _result=0;
       break;
     fi;
@@ -238,8 +239,8 @@ function isFailureKeyword() {
   if [ ${_result} != 0 ]; then
     for i in ${BUILTIN_FAILURE_KEYWORDS[*]}; do
       if [ "x${i}" == "x${1}" ] \
-        || [   "x`echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null`" \
-            == "x`echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null`" ]; then
+        || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+            == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
         _result=0;
         break;
       fi;
@@ -280,8 +281,8 @@ function printErrorMessage() {
     shift;
   else
     shift;
-    _error="`echo ${_message} \
-  | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh`";
+    _error="$(echo ${_message} \
+  | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
   fi
 
   if [ ${#@} -gt 0 ]; then
@@ -291,7 +292,7 @@ function printErrorMessage() {
   if [ ${_result} == 1 ]; then
     _error="${_error}. Finishing..";
   fi
-  if [ "x${LOG_VV}" != "x" ]; then
+  if isTraceEnabled; then
     _printUsage $SCRIPT_NAME;
   fi
   _printError "${_error}";
@@ -313,7 +314,8 @@ function _printError() {
 }
 
 function _printEnvironment() {
-  if [ "x${LOG_V}" != "x" -a "x${ENV_VARIABLES[*]}" != "x" ]; then
+  if [ "x${ENV_VARIABLES[*]}" != "x" ] \
+     && isInfoEnabled; then
     cat <<EOF
 Environment variables:
 EOF
@@ -326,19 +328,19 @@ EOF
 function _printExitValues() {
   local i;
   local j;
-  if [ "x${LOG_VV}" != "x" ]; then
+  if isTraceEnabled; then
     cat <<EOF
 Exit values:
   0: No error.
 EOF
     if [ "x${BUILTIN_ERRORS[*]}" != "x" ]; then
       for ((i = 0; i < ${#BUILTIN_ERRORS[*]}; i++)); do
-        echo "  $((i+1)): `echo ${BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh`.";
+        echo "  $((i+1)): $(echo ${BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
       done
     fi
     if [ "x${ERROR_MESSAGES[*]}" != "x" ]; then
       for ((j = 0; j < ${#ERROR_MESSAGES[*]}; j++)); do
-        echo "  $((j+i+1)): `echo ${ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh`.";
+        echo "  $((j+i+1)): $(echo ${ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
       done
     fi
   fi
@@ -418,9 +420,9 @@ function jds2date() {
   local _jd=$1;
   jd2date $((_jd/86400));
   local _date_in_days="${RESULT}";
-  _year="`echo ${_date_in_days} | cut -d ' ' -f 1`";
-  _month="`echo ${_date_in_days} | cut -d ' ' -f 2`";
-  _day="`echo ${_date_in_days} | cut -d ' ' -f 3`";
+  _year="$(echo ${_date_in_days} | cut -d ' ' -f 1)";
+  _month="$(echo ${_date_in_days} | cut -d ' ' -f 2)";
+  _day="$(echo ${_date_in_days} | cut -d ' ' -f 3)";
 
   local _temp=$((_jd%86400));
   _hour=$((_temp/3600))
@@ -455,7 +457,7 @@ function date2jds() {
 # Logging functions
 
 function getTermWidth() {
-  return `tput cols`;
+  return $(tput cols);
 }
 
 function setLogCategoryNamespace() {
@@ -505,7 +507,7 @@ function allowsColors() {
 function evalConstant() {
   local _constant="${1}";
 
-  local _result=`echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null`;
+  local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
 
   if [ "x${_result}" == "x" ]; then
     _aux="${2}";
@@ -570,22 +572,31 @@ function resolveVerbosity() {
   local _result="";
 
   if isTraceEnabled; then
-    _result="-vvv";
-  elif isDebugEnabled; then
     _result="-vv";
-  elif isInfoEnabled; then
+  elif isDebugEnabled; then
     _result="-v";
+  elif isInfoEnabled; then
+    _result="";
   fi;
 
   export RESULT="${_result}";
 }
 
 function isTraceEnabled() {
-  if [ "x${LOG_VVV}" != "x" ]; then
-    return 0;
-  else
-    return 1;
+  local _rescode=1;
+
+  if isDebugEnabled; then
+    if [ "x${LOG_VV}" != "x" ]; then
+      _rescode=0;
+    fi
   fi
+
+  return ${_rescode};
+}
+
+function setTraceEnabled() {
+  LOG_VV=1;
+  setDebugEnabled;
 }
 
 function logTrace() {
@@ -607,11 +618,20 @@ function logTraceFile() {
 }
 
 function isDebugEnabled() {
-  if [ "x${LOG_VV}" != "x" ]; then
-    return 0;
-  else
-    return 1;
+  local _rescode=1;
+
+  if isInfoEnabled; then
+    if [ "x${LOG_V}" != "x" ]; then
+      _rescode=0;
+    fi
   fi
+
+  return ${_rescode};
+}
+
+function setDebugEnabled() {
+  LOG_V=1;
+  setInfoEnabled;
 }
 
 function logDebugFile() {
@@ -641,11 +661,15 @@ function isLowerThanInfoEnabled() {
 }
 
 function isInfoEnabled() {
-  if [ "x${LOG_V}" != "x" ]; then
-    return 0;
-  else
+  if [ "x${LOG_QUIET}" != "x" ]; then
     return 1;
+  else
+    return 0;
   fi
+}
+
+function setInfoEnabled() {
+  LOG_QUIET=;
 }
 
 function logInfoFile() {
@@ -664,6 +688,10 @@ function logInfoResult() {
   if isInfoEnabled; then
     _logStuffResult $@;
   fi
+}
+
+function setQuietMode() [
+  LOG_QUIET=1;
 }
 
 function log() {
@@ -713,7 +741,7 @@ function _internalLogStuff() {
   local _category="${LOG_CATEGORY}";
   if    [ "x${_categoryNamespace}" == "x" ] \
      && [ "${SCRIPT_NAME}" != "" ]; then
-    _categoryNamespace="`basename ${SCRIPT_NAME} .sh`";
+    _categoryNamespace="$(basename ${SCRIPT_NAME} .sh)";
   fi
 
   if [ "x${_categoryNamespace}" != "x" ]; then
@@ -949,7 +977,7 @@ function findRelativePathBetweenFolders() {
   # 4.
   replaceNLeftmostTokens "${_pathA}" ".." ${_d} "/";
   _p="${RESULT}";
-  local _aux=`echo ${_pathA} | awk -F"/" '{print NF;};'`;
+  local _aux=$(echo ${_pathA} | awk -F"/" '{print NF;};');
   replaceNRightmostTokens "${_p}" "" $((_aux-_d-1)) "/";
   _p="${RESULT}";
 
@@ -964,8 +992,8 @@ function findGreatestCommonParentFolder() {
   local _pathB="$2";
   local _result="";
 
-  local _maxA=`echo "${_pathA}" | awk -F"/" '{print NF;}'`;
-  local _maxB=`echo "${_pathB}" | awk -F"/" '{print NF;}'`;
+  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
+  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
   local _max=$((_maxA));
   if [ $((_max)) -lt $((_maxB)) ]; then
     _max=$((_maxB));
@@ -976,8 +1004,8 @@ function findGreatestCommonParentFolder() {
   local _auxB;
 
   while [ $((_index)) -le $((_max)) ]; do
-    _auxA=`echo "${_pathA}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}'`;
-    _auxB=`echo "${_pathB}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}'`;
+    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
+    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
     _index=$((_index+1));
     if [ "${_auxA}" == "${_auxB}" ]; then
       _result="${_result}/${_auxA}";
@@ -986,7 +1014,7 @@ function findGreatestCommonParentFolder() {
     fi
   done
 
-  _result=`echo "${_result}" | sed 's ^/  g'`;
+  _result=$(echo "${_result}" | sed 's ^/  g');
 
   export RESULT="${_result}";
 }
@@ -996,8 +1024,8 @@ function findFolderDistance() {
   local _pathB="$2";
   local _result=-1;
 
-  local _maxA=`echo "${_pathA}" | awk -F"/" '{print NF;}'`;
-  local _maxB=`echo "${_pathB}" | awk -F"/" '{print NF;}'`;
+  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
+  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
   local _max=$((_maxA));
   if [ $((_max)) -lt $((_maxB)) ]; then
     _max=$((_maxB));
@@ -1017,8 +1045,8 @@ function findFolderDistance() {
       _result=$((_max-_index));
       break;
     fi
-    _auxA=`echo "${_pathA}" | awk -F"/" -vindx=${_indexA} '{printf("%s", $indx);}'`;
-    _auxB=`echo "${_pathB}" | awk -F"/" -vindx=${_indexB} '{printf("%s", $indx);}'`;
+    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_indexA} '{printf("%s", $indx);}');
+    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_indexB} '{printf("%s", $indx);}');
     _index=$((_index-1));
     if [ "${_auxA}" != "${_auxB}" ]; then
       _result=0;
@@ -1040,7 +1068,7 @@ function replaceNLeftmostTokens() {
   local _newToken="$2";
   local _number=$(($3));
   local _separator="$4";
-  local _result=`echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g"`;
+  local _result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
   export RESULT="${_result}";
 }
 
@@ -1049,7 +1077,7 @@ function replaceNRightmostTokens() {
   local _newToken="$2";
   local _number=$(($3));
   local _separator="$4";
-  local _result=`echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g"`;
+  local _result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
   export RESULT="${_result}";
 }
 
@@ -1101,7 +1129,7 @@ function uncompress() {
 
 function removeExtension() {
   local _file="$1";
-  local _result="`basename ${_file}`";
+  local _result="$(basename ${_file}$)";
   _result="${_result%.*}";
 
   export RESULT="${_result}";
@@ -1113,18 +1141,64 @@ function remoteSshCommand() {
   local _user="$1";
   local _server="$2";
   local _command="$3";
-  local _error=$4;
 
-  _result=`ssh \"${_user}@${_server}\" \"${_command}\" 2> /dev/null`;
+  _result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
   _resultCode=$?;
-  if [ ${_resultCode} != 0 ]; then
-    _printError \
-      $_error \
-      "ssh \"${_user}@${_server}\" \"${_command}\"";
-    return ${_resultCode};
+  if [ ${_resultCode} == 0 ]; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_resultCode};
+}
+
+# Retrieves the disk space available in the filesystem containing
+# given folder. Prints the available space in bytes. Returns 0 if
+# the space could be calculated.
+# - folder: the folder.
+function retrieveFreeDiskSpaceUnderFolder() {
+  local _result;
+  local _resultCode=1;
+  local _folder="$1";
+  local _aux="${_folder}";
+
+  if [ -d "${_folder}" ]; then
+    while [ "x${_aux}" != "x" -a "x${_aux}" != "x/" ] && \
+          ! mountpoint -q "${_aux}"; do
+      _aux="${_aux%/*}";
+    done;
+
+    mountpoint -q "${_aux}";
+    _resultCode=$?;
+
+    if [ ${_resultCode} -eq 0 ]; then
+      _result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
+      _resultCode=$?;
+    fi
   fi
 
   export RESULT="${_result}";
+
+  return ${_resultCode};
+}
+
+function remoteSshCommandPipe() {
+  local _result;
+  local _resultCode=0;
+  local _user="$1";
+  local _server="$2";
+  local _command="$3";
+  shift;
+  shift;
+  shift;
+  local _previousPipe="$@";
+
+  echo "_previousPipe=${_previousPipe}";
+  echo "_command=${_command}";
+  _result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
+  _resultCode=$?;
+  if [ ${_resultCode} == 0 ]; then
+    export RESULT="${_result}";
+  fi
 
   return ${_resultCode};
 }
@@ -1135,7 +1209,7 @@ function remoteSshCommand() {
 # Parameters:
 # - Command: The command to run.
 function runCommand() {
-  local _command="`echo $@ | sed 's_\n_ _g'`";
+  local _command="$(echo $@ | sed 's_\n_ _g')";
   local _result;
   local _resultCode;
 
@@ -1144,7 +1218,7 @@ function runCommand() {
   setLogCategory "${_previousLogCategory}:($1)";
 
   logDebug "${_command}";
-  _result=`$@ 2>&1`;
+  _result=$($@ 2>&1);
   _resultCode=$?;
 
   export RESULT="${_result}";
@@ -1158,7 +1232,7 @@ function runCommand() {
 # Parameters:
 # - Command: The command to run.
 function runCommandLongOutput() {
-  local _command="`echo $@ | sed 's_\n_ _g'`";
+  local _command="$(echo $@ | sed 's_\n_ _g')";
   local _result;
   local _resultCode;
 
@@ -1196,7 +1270,9 @@ function _checkCommonInput() {
 
   local _help=0;
 
-  local _flags=`extractFlags $@`;
+  setInfoEnabled;
+
+  local _flags=$(extractFlags $@);
   local _flagCount;
   for _flag in ${_flags}; do
     _flagCount=$((_flagCount+1));
@@ -1205,16 +1281,13 @@ function _checkCommonInput() {
          _help=1;
          ;;
       -v)
-         LOG_V=1;
+         setDebugEnabled;
          ;;
       -vv)
-         LOG_V=1;
-         LOG_VV=1;
+         setTraceEnabled;
          ;;
-      -vvv)
-         LOG_V=1;
-         LOG_VV=1;
-         LOG_VVV=1;
+      -q)
+         setQuietMode;
          ;;
     esac
   done
@@ -1263,7 +1336,7 @@ function _setup() {
 }
 
 if [ "$1" != "" ]; then
-  export SCRIPT_NAME="`basename \"$1\"`";
+  export SCRIPT_NAME="$(basename $1)";
 else
   export SCRIPT_NAME="$0";
 fi
