@@ -122,7 +122,6 @@ function checkInput() {
       fi
     fi
   fi
-
 }
 
 function processFolder() {
@@ -156,7 +155,7 @@ function processFolder() {
   logDebugResult SUCCESS "${_result}";
 
   # extracting the last part if necessary
-  if [ ${_count} -gt -1 ] 2> /dev/null ; then
+  if [ "x${_count}" == "x" ] 2> /dev/null ; then
     _baseFolderName="${_folder}";
   fi
   _finalName="${_baseFolderName}-${_result}";
@@ -169,6 +168,8 @@ function processFolder() {
   else
     mv "${_folder}" "${_finalName}";
   fi
+
+  export RENAMED_FOLDER="${_finalName}";
 
   export RESULT="${_result}";
 }
@@ -200,12 +201,16 @@ function createReportFile() {
 }
 
 function main() {
-  processFolder "${INPUT_FOLDER}";
-  logInfo -n "Found ${RESULT} media files in ${INPUT_FOLDER}";
+  local _inputFolder="${INPUT_FOLDER}";
+
+  processFolder "${_inputFolder}";
+  _inputFolder="${RENAMED_FOLDER}";
+
+  logInfo -n "Found ${RESULT} media files in ${_inputFolder}";
   if [ "x${DRY_RUN}" != "x" ]; then
-    logInfoResult SUCCESS "touch ${INPUT_FOLDER%/}/Total-${RESULT}";
+    logInfoResult SUCCESS "touch ${_inputFolder%/}/Total-${RESULT}";
   else
-    touch "${INPUT_FOLDER%/}"/"Total-${RESULT}"
+    touch "${_inputFolder%/}"/"Total-${RESULT}"
     if [ $? == 0 ]; then
       logInfoResult SUCCESS "done";
     else
@@ -213,5 +218,5 @@ function main() {
     fi
   fi
 
-  createReportFile "${INPUT_FOLDER}";
+  createReportFile "${_inputFolder}";
 }
