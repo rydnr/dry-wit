@@ -454,13 +454,44 @@ function date2jds() {
   export RESULT=${_result};
 }
 
+function retrieveTERM() {
+    local _result="${TERM}";
+
+    if [ "x${_result}" == "x" ]; then
+      _result="dumb";
+    fi
+
+    case ${_result} in
+      
+      dumb) _result="$(uname | tr '[:upper:]' '[:lower:]')";
+            ;;
+      *) ;;
+    esac
+
+    export RESULT="${_result}";
+}
+
 # Retrieves the width of the term.
 # Exports the value, since values greater
 # than 255 are not allowed as return codes.
 function getTermWidth() {
-  local -i _result=$(tput cols);
 
-  export RESULT=${_result};
+  retrieveTERM;
+  local _term="${RESULT}";
+
+  if [ "x${_term}" == "x" ]; then
+    _term="$(uname | tr '[:upper:]' '[:lower:]')";
+  fi
+
+  $(tput -T ${_term} cols &> /dev/null) 2>&1 > /dev/null
+  local -i _rescode=$?;
+
+  if [ ${_rescode} -eq 0 ]; then
+    local _result=$(tput -T ${_term} cols &> /dev/null);
+    export RESULT=${_result};
+  fi
+
+  return ${_rescode};
 }
 
 # Logging functions
@@ -484,19 +515,22 @@ function getLogCategory() {
 function allowsColors() {
   local _result;
 
-  case $TERM in
+  retrieveTERM;
+  local _term="${RESULT}";
+
+  case ${_term} in
     xterm*|rxvt*)
       env | grep -e '^_=' | grep env 2>&1 > /dev/null;
       if [ $? == 0 ]; then
         _result=0;
-        export GREEN="$(tput setaf 2 ; tput bold)";
-        export RED="$(tput setaf 1 ; tput bold)";
-        export BLUE="$(tput setaf 4 ; tput bold)";
-        export WHITE="$(tput setaf 7 ; tput bold)";
-        export YELLOW="$(tput bold; tput setaf 3)";
-        export CYAN="$(tput setaf 6)";
-        export ORANGE="$(tput bold; tput setaf 1)";
-        export NO_COLOR="$(tput sgr0)";
+        export GREEN="$(tput -T ${_term} setaf 2 2>&1 > /dev/null; tput -T ${_term} bold 2>&1 > /dev/null)";
+        export RED="$(tput -T ${_term} setaf 1 2>&1 > /dev/null ; tput -T ${_term} bold 2>&1 > /dev/null)";
+        export BLUE="$(tput -T ${_term} setaf 4 2>&1 > /dev/null ; tput -T ${_term} bold 2>&1 > /dev/null)";
+        export WHITE="$(tput -T ${_term} setaf 7 2>&1 > /dev/null ; tput -T ${_term} bold 2>&1 > /dev/null)";
+        export YELLOW="$(tput -T ${_term} bold 2>&1 > /dev/null ; tput -T ${_term} setaf 3 2>&1 > /dev/null)";
+        export CYAN="$(tput -T ${_term} setaf 6 2>&1 > /dev/null)";
+        export ORANGE="$(tput -T ${_term} bold 2>&1 > /dev/null ; tput -T ${_term} setaf 1 2>&1 > /dev/null)";
+        export NO_COLOR="$(tput -T ${_term} sgr0 2>&1 > /dev/null)";
       else
         result=1;
       fi
@@ -505,6 +539,11 @@ function allowsColors() {
       _result=1;
       ;;
   esac;
+
+  tput -T ${_term} cols 2>&1 > /dev/null;
+  if [ $? -ne 0 ]; then
+    _result=1;
+  fi
 
   return ${_result};
 }
@@ -791,22 +830,28 @@ function _internalLogStuff() {
 
   if [ ${_printingResults} == 1 ]; then
     getTermWidth;
-    local -i _termWidth=$RESULT;
-    local -i _index=0;
-    if [ ${_allowsColors} == 0 ]; then
-      _offset=$((_offset+2));
-    fi
-    local _end=$((${_offset}+${_termWidth}-${_LOG_LINE_MESSAGE}%_termWidth-${#_message}));
-    while [ $((_end)) -lt 0 ]; do
-#      echo "${_offset}+${_termWidth}-${#_message}";
-      echo "";
-      _end=$((-${_end}+${_offset}+${_termWidth}-${#_message}));
-    done
-    while [ $((_end-_index+1)) != 0 ]; do
-      _index=$((_index+1));
-      echo -n " ";
-    done
-  fi    
+    if [ $? -eq 0 ]; then
+      local _termWidth=$RESULT;
+      if [ "x${_termWidth}" == "x" ] \
+	 || [ $((_termWidth)) -le 0 ]; then
+	 _termWidth=80;
+      fi
+      local -i _index=0;
+      if [ ${_allowsColors} == 0 ]; then
+        _offset=$((_offset+2));
+      fi
+      local _end=$((${_offset}+${_termWidth}-${_LOG_LINE_MESSAGE}%_termWidth-${#_message}));
+      while [ $((_end)) -lt 0 ]; do
+#        echo "${_offset}+${_termWidth}-${#_message}";
+        echo "";
+        _end=$((-${_end}+${_offset}+${_termWidth}-${#_message}));
+      done
+      while [ $((_end-_index+1)) != 0 ]; do
+        _index=$((_index+1));
+        echo -n " ";
+      done
+    fi    
+  fi
   if [ ${_flag} == 1 ]; then
     export _LOG_LINE_OPEN="1";
   else
