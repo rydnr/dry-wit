@@ -1,5 +1,5 @@
 #!/bin/bash dry-wit
-# Copyright 2009 Automated Computing Machinery S.L.
+# Copyright 2009-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
 function usage() {
@@ -27,7 +27,7 @@ EOF
  
 # Requirements
 function checkRequirements() {
-  checkReq mplayer MPLAYER_NOT_INSTALLED;
+  checkReq ${MPLAYER_COMMAND} MPLAYER_NOT_INSTALLED;
   checkReq mencoder MENCODER_NOT_INSTALLED;
   checkReq lsdvd LSDVD_NOT_INSTALLED;
   checkReq avimerge AVIMERGE_NOT_INSTALLED;
@@ -37,10 +37,18 @@ function checkRequirements() {
   checkReq pgm2txt PGM2TXT_NOT_INSTALLED;
   checkReq srttool SRTTOOL_NOT_INSTALLED;
   checkReq ispell ISPELL_NOT_INSTALLED;
+  checkReq bc BC_NOT_INSTALLED;
 }
  
 # Environment
 function defineEnv() {
+  export MPLAYER_COMMAND_DEFAULT="$(which mplayer 2> /dev/null)";
+  export MPLAYER_COMMAND_DESCRIPTION="The mplayer executable";
+  if    [ "${MPLAYER_COMMAND+1}" != "1" ] \
+     || [ "x${MPLAYER_COMMAND}" == "x" ]; then
+    export MPLAYER_COMMAND="${MPLAYER_COMMAND_DEFAULT}";
+  fi
+
   export CONTENT_TYPE_DEFAULT="movie";
   export CONTENT_TYPE_DESCRIPTION="The media type: either 'movie' or 'cartoon'";
   if    [ "${CONTENT_TYPE+1}" != "1" ] \
@@ -54,13 +62,13 @@ function defineEnv() {
     export DVD_DEVICE="${DVD_DEVICE_DEFAULT}";
   fi
 
-  export AUDIO_LANG_DEFAULT="`echo $LANG | cut -d '_' -f 1`";
+  export AUDIO_LANG_DEFAULT="$(echo $LANG | cut -d '_' -f 1)";
   export AUDIO_LANG_DESCRIPTION="The audio language (in two-digits ISO format: en, es, fr...)";
   if [ "${AUDIO_LANG+1}" != "1" ]; then
     export AUDIO_LANG="${AUDIO_LANG_DEFAULT}";
   fi
   
-  export SUBTITLE_LANG_DEFAULT="`echo $LANG | cut -d '_' -f 1`";
+  export SUBTITLE_LANG_DEFAULT="$(echo $LANG | cut -d '_' -f 1)";
   export SUBTITLE_LANG_DESCRIPTION="The subtitle language (in two-digits ISO format: en, es, fr...)";
   if [ "${SUBTITLE_LANG+1}" != "1" ]; then
     export SUBTITLE_LANG="${SUBTITLE_LANG_DEFAULT}";
@@ -168,7 +176,7 @@ function defineEnv() {
     export VIDEO_OPTS_H264_FIRST_PASS="${VIDEO_OPTS_H264_FIRST_PASS_DEFAULT}";
   fi
 
-  export VIDEO_CODEC_DEFAULT="XviD";
+  export VIDEO_CODEC_DEFAULT="xvid";
   export VIDEO_CODEC_DESCRIPTION="The video codec to use";
   if    [ "${VIDEO_CODEC+1}" != "1" ] \
      || [ "x${VIDEO_CODEC}" == "x" ]; then
@@ -212,12 +220,12 @@ function defineEnv() {
     export VIDEO_OPTS_H264_SECOND_PASS="${VIDEO_OPTS_H264_SECOND_PASS_DEFAULT}";
   fi
 
-  case "`echo ${VIDEO_CODEC}-${CONTENT_TYPE} | tr [:upper:] [:lower:]`" in
+  case "$(echo ${VIDEO_CODEC}-${CONTENT_TYPE} | tr [:upper:] [:lower:])" in
     "xvid-movie") export VIDEO_OPTS_FIRST_PASS="${VIDEO_OPTS_XVID_LAVC_FIRST_PASS_DEFAULT}";
                   export VIDEO_OPTS_SECOND_PASS="${VIDEO_OPTS_XVID_LAVC_SECOND_PASS_DEFAULT}";
                   ;;
-    "xvid-cartoon") export VIDEO_OPTS_FIRST_PASS="`echo ${VIDEO_OPTS_XVID_XVIDENC_FIRST_PASS_DEFAULT} | sed 's_opts _opts cartoon:_g'`";
-                    export VIDEO_OPTS_SECOND_PASS="`echo ${VIDEO_OPTS_XVID_XVIDENC_SECOND_PASS_DEFAULT} | sed 's_opts _opts cartoon:_g'`";
+    "xvid-cartoon") export VIDEO_OPTS_FIRST_PASS="$(echo ${VIDEO_OPTS_XVID_XVIDENC_FIRST_PASS_DEFAULT} | sed 's_opts _opts cartoon:_g')";
+                    export VIDEO_OPTS_SECOND_PASS="$(echo ${VIDEO_OPTS_XVID_XVIDENC_SECOND_PASS_DEFAULT} | sed 's_opts _opts cartoon:_g')";
                     ;;
     "mpeg4-movie") export VIDEO_OPTS_FIRST_PASS="${VIDEO_OPTS_MPEG4_FIRST_PASS_DEFAULT}";
                    export VIDEO_OPTS_SECOND_PASS="${VIDEO_OPTS_H264_SECOND_PASS_DEFAULT}";
@@ -282,6 +290,7 @@ function defineEnv() {
   fi
 
   ENV_VARIABLES=(\
+    MPLAYER_COMMAND \
     DVD_DEVICE \
     AUDIO_LANG \
     SUBTITLE_LANG \
@@ -321,10 +330,11 @@ function defineErrors() {
   export AVIMERGE_NOT_INSTALLED="avimerge not installed. Install transcode";
   export TCCAT_NOT_INSTALLED="tccat not installed";
   export TCEXTRACT_NOT_INSTALLED="tcextract not installed";
-  export SUBTITLE2PGM_NOT_INSTALLED="subtitle2pgm not installed";
+  export SUBTITLE2PGM_NOT_INSTALLED="subtitle2pgm not installed. Install subtitleripper";
   export PGM2TXT_NOT_INSTALLED="pgm2txt not installed";
   export SRTTOOL_NOT_INSTALLED="srttool not installed";
   export ISPELL_NOT_INSTALLED="ispell not installed";
+  export BC_NOT_INSTALLED="bc not installed";
   export DVD_TRACK_OR_INPUT_FILE_ARE_MANDATORY="Either dvd-track or input file are mandatory";
   export INPUT_FILE_DOES_NOT_EXIST="input-file does not exist";
   export OUTPUT_FILE_IS_MANDATORY="output-file is mandatory";
@@ -352,6 +362,7 @@ function defineErrors() {
     PGM2TXT_NOT_INSTALLED \
     SRTTOOL_NOT_INSTALLED \
     ISPELL_NOT_INSTALLED \
+    BC_NOT_INSTALLED \
     DVD_TRACK_OR_INPUT_FILE_ARE_MANDATORY \
     INPUT_FILE_DOES_NOT_EXIST \
     OUTPUT_FILE_IS_MANDATORY \
@@ -437,7 +448,7 @@ function checkInput() {
   fi
   
   if [ ! -f "${OUTPUT_FILE}" ]; then
-    if [ "x`basename ${OUTPUT_FILE} .avi`" == "x${OUTPUT_FILE}" ]; then
+    if [ "x$(basename ${OUTPUT_FILE} .avi)" == "x${OUTPUT_FILE}" ]; then
       OUTPUT_FILE="${OUTPUT_FILE}.avi";
     fi
   fi
@@ -450,7 +461,7 @@ function checkInput() {
       exitWithErrorCode OUTPUT_FILE_ALREADY_EXISTS;
     fi
   else
-    if [ ! -x "`dirname \"${OUTPUT_FILE}\"`" ]; then
+    if [ ! -x "$(dirname "${OUTPUT_FILE}")" ]; then
       if [ "x${DRY_RUN}" != "x" ]; then
         logInfoResult WARN "fail";
       else
@@ -464,9 +475,9 @@ function checkInput() {
     fi
   fi
 
-  if    [ "x`echo ${VIDEO_CODEC} | tr [:upper:] [:lower:]`" != "xxvid" ] \
-    &&  [ "x`echo ${VIDEO_CODEC} | tr [:upper:] [:lower:]`" != "xmpeg4" ] \
-    &&  [ "x`echo ${VIDEO_CODEC} | tr [:upper:] [:lower:]`" != "xh264" ]; then
+  if    [ "x$(echo ${VIDEO_CODEC} | tr [:upper:] [:lower:])" != "xxvid" ] \
+    &&  [ "x$(echo ${VIDEO_CODEC} | tr [:upper:] [:lower:])" != "xmpeg4" ] \
+    &&  [ "x$(echo ${VIDEO_CODEC} | tr [:upper:] [:lower:])" != "xh264" ]; then
      logInfoResult FAILURE "fail";
      exitWithErrorCode UNSUPPORTED_VIDEO_CODEC;
   fi
@@ -481,7 +492,7 @@ function retrieve_audio_id_from_audio_lang() {
 
 #  if [ "x${AUDIO_CHANNELS}" != "x" ]; then
 #    logInfo -n "Finding out audio id from specified channels, locale preferences or environment explicit ${_envVariable} variable (${_audioLang})";
-#    _result=`lsdvd -t ${_track} -a ${DVD_DEVICE} 2> /dev/null | grep "Language: ${_audioLang}" | grep "Channels: ${AUDIO_CHANNELS}" | head -n 1 | cut -d ':' -f 2 | cut -d ',' -f 1 | xargs echo "127+" | bc 2> /dev/null`;
+#    _result=$(lsdvd -t ${_track} -a ${DVD_DEVICE} 2> /dev/null | grep "Language: ${_audioLang}" | grep "Channels: ${AUDIO_CHANNELS}" | head -n 1 | cut -d ':' -f 2 | cut -d ',' -f 1 | xargs echo "127+" | bc 2> /dev/null);
 #    if [ "x${_result}" == "x" ]; then
 #      logInfoResult FAILURE "unavailable";
 #    else
@@ -490,9 +501,9 @@ function retrieve_audio_id_from_audio_lang() {
 #  fi
   if [ "x${_result}" == "x" ]; then
     logInfo -n "Finding out audio id from locale preferences, or explicit ${_envVariable} variable (${_audioLang})";
-    _aux=`lsdvd -a ${DVD_DEVICE} 2> /dev/null | grep -C 10 "Title: ${_track}" | grep "Language: ${_audioLang}"`;
+    _aux=$(lsdvd -a ${DVD_DEVICE} 2> /dev/null | grep -C 10 "Title: ${_track}" | grep "Language: ${_audioLang}");
     if [ "x${_aux}" != "x" ]; then
-      _result=`echo ${_aux} | head -n 1 | cut -d ':' -f 2 | cut -d ',' -f 1 | xargs echo "127+" | bc`;
+      _result=$(echo ${_aux} | head -n 1 | cut -d ':' -f 2 | cut -d ',' -f 1 | xargs echo "127+" | bc);
     fi
     if [ "x${_result}" == "x" ]; then
       logInfoResult WARN "unavailable";
@@ -511,7 +522,7 @@ function retrieve_subtitle_id_from_subtitle_lang() {
   local _result;
 
   logInfo -n "Finding out subtitle id for ${_subtitleLang} language";
-  _result=`lsdvd -s ${DVD_DEVICE} 2> /dev/null | grep -C 10 "Title: ${_track}" | grep "Language: ${_subtitleLang}" | head -n 1 | cut -d ':' -f 2 | cut -d ',' -f 1 2> /dev/null`;
+  _result=$(lsdvd -s ${DVD_DEVICE} 2> /dev/null | grep -C 10 "Title: ${_track}" | grep "Language: ${_subtitleLang}" | head -n 1 | cut -d ':' -f 2 | cut -d ',' -f 1 2> /dev/null);
   if [ "x${_result}" == "x" ]; then
     logInfoResult FAILURE "unavailable";
   else
@@ -524,7 +535,14 @@ function retrieve_sub_language() {
   local _track="${1}";
   local _sid="${2}";
 
-  local _result="`lsdvd -s -t ${_track} | grep \"Subtitle: ${_sid}\" | awk '{print $4;}'`";
+  local _result="$(lsdvd -s ${DVD_DEVICE} -t ${_track} 2> dev/null | grep \"Subtitle: ${_sid}\" | awk '{print $4;}')";
+
+  export RESULT="${_result}";
+}
+
+# Retrieves an undefined subtitle id
+function retrieve_invalid_subtitle_id() {
+  local _result="$(lsdvd -s ${DVD_DEVICE} 2> /dev/null | grep Subtitle | tail -n 1 | cut -d ' ' -f 2 | cut -d ',' -f 1)";
 
   export RESULT="${_result}";
 }
@@ -548,7 +566,7 @@ function main() {
     local _track="${INPUT##dvd:\/\/}";
     if [ "x${_track}" == "x" ]; then
       logInfo -n "Finding out longest track since none was specified";
-      _track=`lsdvd ${DVD_DEVICE} 2> /dev/null | tail -n 2 | head -n 1 | cut -d ':' -f 2 | tr -d '[:space:]'`;
+      _track=$(lsdvd ${DVD_DEVICE} 2> /dev/null | tail -n 2 | head -n 1 | cut -d ':' -f 2 | tr -d '[:space:]');
       if [ "x${_track}" == "x" ]; then
         logInfoResult FAILURE "fail";
         exitWithErrorCode CANNOT_GUESS_CANDIDATE_DVD_TRACK;
@@ -594,18 +612,18 @@ function main() {
       logInfo "Using already existing ${new_input}";
     else
       if [ "x${DRY_RUN}" != "x" ]; then
-        logInfo mplayer ${DVD_COPY_EXTRA_OPTS} -dumpstream -dumpfile ${new_input} ${INPUT};
+        logInfo ${MPLAYER_COMMAND} ${DVD_COPY_EXTRA_OPTS} -dumpstream -dumpfile ${new_input} ${INPUT};
       else
         logInfo -n "Copying ${INPUT} to ${new_input}";
         runCommandLongOutput \
-          mplayer ${_dvdDevice} ${DVD_COPY_EXTRA_OPTS} -dumpstream -dumpfile ${new_input} ${INPUT};
+          ${MPLAYER_COMMAND} ${_dvdDevice} ${DVD_COPY_EXTRA_OPTS} -dumpstream -dumpfile ${new_input} ${INPUT};
         logInfoResult SUCCESS "done";
       fi
     fi
 
     local _squote="'";
     if [ "x${DISABLE_SUBTITLE_PROCESSING}" == "x" ]; then
-      for s in `echo ${SUBTITLE_ID} | sed 's| |\n|g' | sort | uniq`; do
+      for s in $(echo ${SUBTITLE_ID} | sed 's| |\n|g' | sort | uniq); do
         retrieve_sub_language ${_track} ${s};
         _slang="${RESULT}";
         if    [ "x${_slang}" != "xen" ] \
@@ -761,19 +779,19 @@ function main() {
     _audioChannels="-channels ${AUDIO_CHANNELS}";
   fi
 
-  local _twoPassFile="`dirname \"{OUTPUT_FILE}\"`/${OUTPUT_FILE}.log";
+  local _twoPassFile="$(dirname "{OUTPUT_FILE}")/${OUTPUT_FILE}.log";
 
   if [ "x${SKIP_CROP_DETECTION}" == "x" ]; then
 
     runCommandLongOutput \
-      mplayer \
+      ${MPLAYER_COMMAND} \
         ${_dvdDevice} -ss ${CROP_DETECTION_START} -endpos ${CROP_DETECTION_DURATION} -vf cropdetect \
         "${INPUT}";
     local _resultCode=$?;
     logInfo -n "Detecting crop window...";
-    local _cropOpts=`grep "\[CROP\]" "${RESULT}" 2> /dev/null | tail -n 1 | sed 's/.*(\(.*\)).*/\1/g'`;
+    local _cropOpts=$(grep "\[CROP\]" "${RESULT}" 2> /dev/null | tail -n 1 | sed 's/.*(\(.*\)).*/\1/g');
     if [ ${_resultCode} == 0 ]; then
-      local _fields=`echo "${_cropOpts##*=}" | awk -F":" '{print NF;}'`;
+      local _fields=$(echo "${_cropOpts##*=}" | awk -F":" '{print NF;}');
       if [ "${_fields}" == "4" ]; then
         logInfoResult SUCCESS "${_cropOpts##*=}";
       else
@@ -789,7 +807,7 @@ function main() {
   local _aid;
   local _defaultAid;
   if [ "x${AUDIO_ID}" != "x" ]; then
-    _defaultAid="`echo ${AUDIO_ID} | cut -d ' ' -f 1`";
+    _defaultAid="$(echo ${AUDIO_ID} | cut -d ' ' -f 1)";
     _aid="-aid ${_defaultAid}";
   fi
 
@@ -803,9 +821,9 @@ function main() {
   local _defaultSid;
   local _defaultSLang;
   if [ "x${SUBTITLE_ID}" != "x" ]; then
-    _defaultSid="`echo ${SUBTITLE_ID} | cut -d ' ' -f 1`";
-    _defaultSLang="`echo ${_subtitleLangs} | cut -d ' ' -f 1`";
-    _sid="-vobsubout `basename ${OUTPUT_FILE} .avi`.${_defaultSLang}.sub -vobsuboutindex 0 -sid ${_defaultSid}";
+    _defaultSid="$(echo ${SUBTITLE_ID} | cut -d ' ' -f 1)";
+    _defaultSLang="$(echo ${_subtitleLangs} | cut -d ' ' -f 1)";
+    _sid="-vobsubout $(basename ${OUTPUT_FILE} .avi).${_defaultSLang}.sub -vobsuboutindex 0 -sid ${_defaultSid}";
   fi
 
   local _videoOptsFirstPass="${VIDEO_OPTS_FIRST_PASS}";
@@ -865,6 +883,10 @@ function main() {
   fi
 
   local _videoOptsSecondPass="${VIDEO_OPTS_SECOND_PASS}";
+
+  retrieve_invalid_subtitle_id;
+  local _undefinedSubtitleId="${RESULT}";
+
   if [ "x${DRY_RUN}" != "x" ]; then
     logInfo \
       mencoder "${INPUT}" \
@@ -876,6 +898,7 @@ function main() {
       ${_audioChannels} \
       ${_alang} \
       ${_aid} \
+      -sid ${_undefinedSubtitleId} \
       -o "$OUTPUT_FILE";
 #      ${_sid} \
   else
@@ -889,6 +912,7 @@ function main() {
       ${_audioChannels} \
       ${_alang} \
       ${_aid} \
+      -sid ${_undefinedSubtitleId} \
       -o "$OUTPUT_FILE";
 #      ${_sid} \
   fi
@@ -905,19 +929,19 @@ function main() {
   fi
 #fi
 
-  local _totalAids=`echo ${AUDIO_ID} | awk '{print NF}'`;
+  local _totalAids=$(echo ${AUDIO_ID} | awk '{print NF}');
   local _index;
   if [ ${_totalAids} -gt 1 ]; then
     _index=2;
     while [ ${_index} -le ${_totalAids} ]; do
-      _aid="-aid `echo ${AUDIO_ID} | awk -v i=${_index} '{print $i;}'`";
-      _slang="`echo ${_subtitleLangs} | awk -v i=${_index} '{print $i;}'`";
+      _aid="-aid $(echo ${AUDIO_ID} | awk -v i=${_index} '{print $i;}')";
+      _slang="$(echo ${_subtitleLangs} | awk -v i=${_index} '{print $i;}')";
       if [ "x${_slang}" == "x" ]; then
         _slang="en";
       fi
-      _afile="`basename ${OUTPUT_FILE} .avi`.${_slang}";
+      _afile="$(basename ${OUTPUT_FILE} .avi).${_slang}";
       _sfile="${_afile}.sub";
-      _sid="-vobsubout ${_sfile} -vobsuboutindex 1 -sid `echo ${SUBTITLE_ID} | awk -v i=${_index} '{print $i;}'`";
+      _sid="-vobsubout ${_sfile} -vobsuboutindex 1 -sid $(echo ${SUBTITLE_ID} | awk -v i=${_index} '{print $i;}')";
       _index=$((_index+1));
 
       if [ "x${DRY_RUN}" != "x" ]; then
@@ -1011,15 +1035,15 @@ function main() {
 }
 
 function deprecated_extract_subs() {
-  local _totalSubs=`echo ${SUBTITLE_ID} | awk '{print NF;}'`;
+  local _totalSubs=$(echo ${SUBTITLE_ID} | awk '{print NF;}');
   if [ ${_totalSubs} -gt 1 ]; then
     _aid="-aid ${_defaultAid}";
     _sid="fake";
     _index=1;
-    _slang="`echo ${_subtitleLangs} | awk -v i=${_index} '{print $i;}'`";
-    _afile="`basename ${OUTPUT_FILE} .avi`.${_slang}";
+    _slang="$(echo ${_subtitleLangs} | awk -v i=${_index} '{print $i;}')";
+    _afile="$(basename ${OUTPUT_FILE} .avi).${_slang}";
     _sfile="${_afile}.sub";
-    _sid="`echo ${SUBTITLE_ID} | awk -v i=${_index} '{print $i;}'`";
+    _sid="$(echo ${SUBTITLE_ID} | awk -v i=${_index} '{print $i;}')";
     if [ "x${_sid}" != "" ]; then
       _sid="-sid ${_sid}";
       _index=$((_index+1));
@@ -1069,15 +1093,15 @@ function deprecated_extract_subs() {
       fi
 
       if [ "x${DRY_RUN}" != "x" ]; then
-        logInfo sub2srt "${_sfile}" "`basename ${_sfile} .sub`.srt";
+        logInfo sub2srt "${_sfile}" "$(basename ${_sfile} .sub).srt";
       else
         if isLowerThanInfoEnabled; then
-          logInfo "Converting ${_sfile} to `basename ${_sfile} .sub`.srt...";
+          logInfo "Converting ${_sfile} to $(basename ${_sfile} .sub).srt...";
         else
-          logInfo -n "Converting ${_sfile} to `basename ${_sfile} .sub`.srt...";
+          logInfo -n "Converting ${_sfile} to $(basename ${_sfile} .sub).srt...";
         fi
 
-        sub2srt "${_sfile}" "`basename ${_sfile} .sub`.srt";
+        sub2srt "${_sfile}" "$(basename ${_sfile} .sub).srt";
         if [ $? == 0 ]; then
           if isLowerThanInfoEnabled; then
             logInfoResult SUCCESS "done";
