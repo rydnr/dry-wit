@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.3.7: http://docutils.sourceforge.net/" />
+<title>bitrate.py Manual</title>
+<meta name="author" content="Marc 'BlackJack' Rintsch" />
+<meta name="date" content="2005-01-15" />
+<meta name="copyright" content="This document has been placed in the public domain." />
+<meta content="Manual for the bitrate.py script." name="description" />
+<meta content="video, bitrate, calculator, XviD, Matroska, AVI, Python" name="keywords" />
+<link rel="stylesheet" href="default.css" type="text/css" />
+</head>
+<body>
+<div class="document" id="bitrate-py-manual">
+<h1 class="title">bitrate.py Manual</h1>
+<h2 class="subtitle" id="yet-another-bitrate-calculator">Yet another bitrate calculator</h2>
+<table class="docinfo" frame="void" rules="none">
+<col class="docinfo-name" />
+<col class="docinfo-content" />
+<tbody valign="top">
+<tr><th class="docinfo-name">Author:</th>
+<td>Marc 'BlackJack' Rintsch</td></tr>
+<tr><th class="docinfo-name">Contact:</th>
+<td><a class="first last reference" href="mailto:marc&#64;rintsch.de">marc&#64;rintsch.de</a></td></tr>
+<tr><th class="docinfo-name">Date:</th>
+<td>2005-01-15</td></tr>
+<tr><th class="docinfo-name">Version:</th>
+<td>0.3</td></tr>
+<tr><th class="docinfo-name">Copyright:</th>
+<td>This document has been placed in the public domain.</td></tr>
+</tbody>
+</table>
+<div class="contents topic" id="contents">
+<p class="topic-title first"><a name="contents">Contents</a></p>
+<ul class="auto-toc simple">
+<li><a class="reference" href="#name" id="id5" name="id5">1&nbsp;&nbsp;&nbsp;Name</a></li>
+<li><a class="reference" href="#synopsis" id="id6" name="id6">2&nbsp;&nbsp;&nbsp;Synopsis</a></li>
+<li><a class="reference" href="#description" id="id7" name="id7">3&nbsp;&nbsp;&nbsp;Description</a><ul class="auto-toc">
+<li><a class="reference" href="#why-yet-another-bitrate-calculator" id="id8" name="id8">3.1&nbsp;&nbsp;&nbsp;Why yet another bitrate calculator?</a></li>
+<li><a class="reference" href="#features" id="id9" name="id9">3.2&nbsp;&nbsp;&nbsp;Features</a></li>
+</ul>
+</li>
+<li><a class="reference" href="#requirements" id="id10" name="id10">4&nbsp;&nbsp;&nbsp;Requirements</a></li>
+<li><a class="reference" href="#commandline-options" id="id11" name="id11">5&nbsp;&nbsp;&nbsp;Commandline Options</a><ul class="auto-toc">
+<li><a class="reference" href="#good-overhead-values" id="id12" name="id12">5.1&nbsp;&nbsp;&nbsp;Good overhead values</a></li>
+</ul>
+</li>
+<li><a class="reference" href="#examples" id="id13" name="id13">6&nbsp;&nbsp;&nbsp;Examples</a></li>
+<li><a class="reference" href="#history" id="id14" name="id14">7&nbsp;&nbsp;&nbsp;History</a></li>
+<li><a class="reference" href="#todo" id="id15" name="id15">8&nbsp;&nbsp;&nbsp;ToDo</a></li>
+<li><a class="reference" href="#bugs" id="id16" name="id16">9&nbsp;&nbsp;&nbsp;Bugs</a></li>
+<li><a class="reference" href="#see-also" id="id17" name="id17">10&nbsp;&nbsp;&nbsp;See also</a><ul class="auto-toc">
+<li><a class="reference" href="#video-codecs-all-mpeg4" id="id18" name="id18">10.1&nbsp;&nbsp;&nbsp;Video codecs (all MPEG4)</a></li>
+<li><a class="reference" href="#container-formats" id="id19" name="id19">10.2&nbsp;&nbsp;&nbsp;Container formats</a></li>
+</ul>
+</li>
+<li><a class="reference" href="#copyright" id="id20" name="id20">11&nbsp;&nbsp;&nbsp;Copyright</a></li>
+</ul>
+</div>
+<div class="section" id="name">
+<h1><a class="toc-backref" href="#id5" name="name">1&nbsp;&nbsp;&nbsp;Name</a></h1>
+<p>bitrate.py -- a bitrate calculator for video/audio data.</p>
+</div>
+<div class="section" id="synopsis">
+<h1><a class="toc-backref" href="#id6" name="synopsis">2&nbsp;&nbsp;&nbsp;Synopsis</a></h1>
+<pre class="literal-block">
+bitrate.py [-h|--help|--version]
+bitrate.py [options] length(s) [file ...]
+</pre>
+<p>The length argument has '[[&lt;hours&gt;:]&lt;minutes&gt;:]&lt;seconds&gt;' format.
+Every value may &quot;overflow&quot; i.e. it's okay to type <tt class="docutils literal"><span class="pre">1:90:0</span></tt> which is
+actually 2 hours and a half.  Additional lengths, separated by commas,
+are added to one final length.</p>
+<p>The given files' sizes are taken into account when calculating the
+bitrate.</p>
+</div>
+<div class="section" id="description">
+<h1><a class="toc-backref" href="#id7" name="description">3&nbsp;&nbsp;&nbsp;Description</a></h1>
+<p>It's a little <a class="reference" href="http://www.python.org/">Python</a> script which calculates the maximum bitrate for
+a stream that has to fit alongside other material into a given size --
+typically one or more CD-Rs.</p>
+<p>It prints the maximum bitrate for following sizes (in MB): 185, 247,
+650, 700, 1300, and 1400 which are two kinds of mini-CD-Rs and the
+standard sizes for one or two 74 and 80 minute CD-Rs.  Alternativly
+the desired target size(s) can be given as command line option.</p>
+<div class="section" id="why-yet-another-bitrate-calculator">
+<h2><a class="toc-backref" href="#id8" name="why-yet-another-bitrate-calculator">3.1&nbsp;&nbsp;&nbsp;Why yet another bitrate calculator?</a></h2>
+<p>Well, the scripts that came with <a class="reference" href="http://www.MPlayerHQ.hu/">MPlayer</a>, <a class="reference" href="http://www.transcoding.org/">transcode</a>, and the like
+haven't suited my needs anymore because they allow only one argument
+for the bitrate of other material than the video stream.  Mostly this
+is intended for one audio stream.  But with modern container formats
+like <a class="reference" href="http://www.matroska.org/">Matroska</a> it's possible to mux<a class="footnote-reference" href="#id2" id="id1" name="id1">[1]</a> several audio streams and
+even other material like attachements into the file.</p>
+<p>As I like to encode the audio streams with variable bit rates before
+encoding the video in order to get a better quality/size ratio, I
+needed something I can feed with the sizes of all extra material
+instead of just <em>one</em> bitrate value.</p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1" name="id2">[1]</a></td><td><em>muxing</em> is the process of combining audio and video into a
+container format.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="features">
+<h2><a class="toc-backref" href="#id9" name="features">3.2&nbsp;&nbsp;&nbsp;Features</a></h2>
+<p>The script has the following &quot;highlights&quot;:</p>
+<ul class="simple">
+<li>takes one or more length of material in <em>hour</em>:<em>minute</em>:<em>seconds</em>
+format,</li>
+<li>takes one or more bitrate values which are acummulated,</li>
+<li>takes filename(s) and let the script take the file's size into
+account,</li>
+<li>and takes overhead of container format into account (given in
+percent).</li>
+</ul>
+</div>
+</div>
+<div class="section" id="requirements">
+<h1><a class="toc-backref" href="#id10" name="requirements">4&nbsp;&nbsp;&nbsp;Requirements</a></h1>
+<p>The script requires <a class="reference" href="http://www.python.org/">Python</a> 2.3 or higher.  The 2.2 series (or lower)
+won't work because it makes use of the new <tt class="docutils literal"><span class="pre">sum()</span></tt> function and the
+included new option parser for more GNU like commandline arguments.</p>
+</div>
+<div class="section" id="commandline-options">
+<h1><a class="toc-backref" href="#id11" name="commandline-options">5&nbsp;&nbsp;&nbsp;Commandline Options</a></h1>
+<blockquote>
+<table class="docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td>
+<kbd><span class="option">--version</span></kbd></td>
+<td>show program's version number and exit</td></tr>
+<tr><td>
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td>show this help message and exit</td></tr>
+<tr><td colspan="2">
+<kbd><span class="option">-b</span><var>AUDIO_BITRATE</var>, <span class="option">--audio-bitrate</span>=<var>AUDIO_BITRATE</var></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>Bitrate of audio stream.  Can be given several times
+which means &quot;add up all given bitrates&quot;.  If neither
+this option nor any filename(s) were given, a value of
+128 kbit/s is assumed.</td></tr>
+<tr><td colspan="2">
+<kbd><span class="option">-f</span><var>FPS</var>, <span class="option">--fps</span>=<var>FPS</var></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>Frames per second for number of frames calculation.
+Default = 25.0</td></tr>
+<tr><td colspan="2">
+<kbd><span class="option">-o</span><var>OVERHEAD</var>, <span class="option">--container-overhead</span>=<var>OVERHEAD</var></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>Overhead of container format in %.  Default = 0.0. Every
+container format has some overhead.  AVI and OGM have a
+quite high one while Matroska is a very lean format.
+The information on the net about the values varies a
+bit.  AVI and OGM need a value between 1.0 and 1.5 here
+and Matroska needs 0.5 or even a bit lower.</td></tr>
+<tr><td colspan="2">
+<kbd><span class="option">-t</span><var>SIZES</var>, <span class="option">--target-sizes</span>=<var>SIZES</var></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>One or more comma separated target size(s) in MB.
+Giving sizes here replaces the default list of [185,
+247, 650, 700, 1300, 1400] MB</td></tr>
+</tbody>
+</table>
+</blockquote>
+<div class="section" id="good-overhead-values">
+<h2><a class="toc-backref" href="#id12" name="good-overhead-values">5.1&nbsp;&nbsp;&nbsp;Good overhead values</a></h2>
+<p>I have no idea what the best values are.  This depends sometimes on
+the codec and the encoder of the material to be encoded.</p>
+<p>For example some simplified math shows that the overhead of <a class="reference" href="http://www.matroska.org/">Matroska</a>
+files is about 0.5%, but with <a class="reference" href="http://www.transcoding.org/">transcode</a> and a 2-pass encoded <a class="reference" href="http://www.xvid.org/">XviD</a>
+video I get away with 0.0% all the time because the video becomes
+always a little smaller than the bitrate given to the encoder implies.</p>
+<p class="rubric">Need <strong>your</strong> help!</p>
+<p>I would like to know <em>your</em> experience with the overhead values.  It
+would be very nice if you are willing to share information about
+typical overhead of <em>codec</em>, <em>encoder</em>, and <em>container format</em>
+combinations.  Please <a class="reference" href="mailto:marc&#64;rintsch.de">contact me</a>.</p>
+</div>
+</div>
+<div class="section" id="examples">
+<h1><a class="toc-backref" href="#id13" name="examples">6&nbsp;&nbsp;&nbsp;Examples</a></h1>
+<p>The simplest case is just providing the length of the stream and let
+the script assume the audio to be 128 kbit/s:</p>
+<pre class="literal-block">
+./bitrate.py 1:42:23
+</pre>
+<p>With relative short material like episodes of TV series often two or
+more videos fit on one target medium at a reasonable bitrate.  In this
+case it is tedious to calculate the overall length by hand.  Therefore
+it is possible to give several lengths, separated by commas:</p>
+<pre class="literal-block">
+./bitrate.py 42:23,40:17
+</pre>
+<p>The case which is described in <a class="reference" href="#why-yet-another-bitrate-calculator">Why yet another bitrate calculator?</a>
+above, where the audio is already encoded in several variable bitrate
+streams this time plus some subtitles in a Ogg media container:</p>
+<pre class="literal-block">
+./bitrate.py 42:23 sound-en.ogg sound-de.mp3 subtitles.ogm
+</pre>
+<p>A not so obvious use of the script is calculating the bitrate for a
+sound track if you already have the encoded video.  Maybe you have
+even both, the video and the audio already encoded but it turns out
+that there are still some megabytes of free space on the target
+medium.  You can of course re-encode the video with a slightly higher
+bitrate now, but if the space is less than about 10 MB this takes very
+long for just a tiny little quality gain which might not be visible at
+all.  Re-encoding the audio with a little higher bitrate instead isn't
+more likely to be noticable quality wise, but it's much faster and be
+honest: a video file that fills the CD-R exactly to the last MB looks
+better than leaving some megabytes free, doesn't it!?  ;-)</p>
+<pre class="literal-block">
+./bitrate.py 42:23 some-video.avi
+</pre>
+<p>Sometimes there's additional material to put onto the target medium so
+the list of builtin target sizes won't do.  Therefore there is an
+option to give one or more target sizes:</p>
+<pre class="literal-block">
+./bitrate.py --target-sizes 350,200 2:18:04
+</pre>
+</div>
+<div class="section" id="history">
+<h1><a class="toc-backref" href="#id14" name="history">7&nbsp;&nbsp;&nbsp;History</a></h1>
+<dl class="docutils">
+<dt>0.3 <span class="classifier-delimiter">:</span> <span class="classifier">2005-01-15</span></dt>
+<dd>Several length values that are added up and an option to replace the
+list of target sizes.  Some exceptions that could be raised while
+converting the command line options are catched.</dd>
+<dt>0.2 <span class="classifier-delimiter">:</span> <span class="classifier">2004-01-01</span></dt>
+<dd>Added calculation of number of frames, based on the length and a
+given framerate (<tt class="docutils literal"><span class="pre">--fps</span></tt>) and catched file errors to provide more
+userfriendly error messages.</dd>
+<dt>0.1 <span class="classifier-delimiter">:</span> <span class="classifier">2003-11-18</span></dt>
+<dd>Initial release.  Already calculates bitrates.  :-)</dd>
+</dl>
+</div>
+<div class="section" id="todo">
+<h1><a class="toc-backref" href="#id15" name="todo">8&nbsp;&nbsp;&nbsp;ToDo</a></h1>
+<ul class="simple">
+<li>Move option parser code into own function.</li>
+<li>Add named constants to container overhead option.</li>
+</ul>
+</div>
+<div class="section" id="bugs">
+<h1><a class="toc-backref" href="#id16" name="bugs">9&nbsp;&nbsp;&nbsp;Bugs</a></h1>
+<p>None known yet.</p>
+</div>
+<div class="section" id="see-also">
+<h1><a class="toc-backref" href="#id17" name="see-also">10&nbsp;&nbsp;&nbsp;See also</a></h1>
+<p>The three most popular codecs and container formats.  Well sort of...</p>
+<div class="section" id="video-codecs-all-mpeg4">
+<h2><a class="toc-backref" href="#id18" name="video-codecs-all-mpeg4">10.1&nbsp;&nbsp;&nbsp;Video codecs (all MPEG4)</a></h2>
+<dl class="docutils">
+<dt><a class="reference" href="http://www.divx.com/">DivX</a></dt>
+<dd>The classic one.  Evil and <em>not free</em>.  Although <em>for</em> free -- at
+least the basic version.</dd>
+<dt><a class="reference" href="http://www.xvid.org/">XviD</a></dt>
+<dd>The political correct one.  It's free as in free speech and at
+least as good as the basic version of <a class="reference" href="http://www.divx.com/">DivX</a>.</dd>
+<dt><a class="reference" href="http://www.MPlayerHQ.hu/">ffmpeg</a></dt>
+<dd>The fast one.  The ffmpeg package contains the fastest free MPEG4
+compliant encoder with reasonable quality.  The decoder is used by
+most video players to play MPEG4 under Linux.  The package is part
+of <a class="reference" href="http://www.MPlayerHQ.hu/">MPlayer</a> and hosted on the same site.</dd>
+</dl>
+<p>There's also Ogg Theora but it's still beta software and not MPEG4
+compliant.</p>
+</div>
+<div class="section" id="container-formats">
+<h2><a class="toc-backref" href="#id19" name="container-formats">10.2&nbsp;&nbsp;&nbsp;Container formats</a></h2>
+<dl class="docutils">
+<dt><a class="target" id="avi" name="avi">AVI</a> <span class="classifier-delimiter">:</span> <span class="classifier">Audio/Video Interleaved</span></dt>
+<dd>The classic one.  As <a class="reference" href="http://www.divx.com/">DivX</a> it's evil.  Not just because it's an
+invention of <a class="reference" href="http://www.micro$oft.com/">the evil empire</a> but because it has a rather high
+overhead.  MEncoder<a class="footnote-reference" href="#id4" id="id3" name="id3">[2]</a> and <a class="reference" href="http://www.transcoding.org/">transcode</a> support it out-of-the-box.</dd>
+<dt><a class="target" id="ogm" name="ogm">OGM</a> <span class="classifier-delimiter">:</span> <span class="classifier">OGg Media streams</span></dt>
+<dd>Somekind of half official hack of the Ogg <a class="reference" href="http://www.vorbis.com/">Vorbis</a> audio format.
+Like <a class="reference" href="#avi">AVI</a> it has a rather high overhead.  The format is, like it's
+audio ancestor, streamable.  One tool to mux video and audio into
+OGMs is <tt class="docutils literal"><span class="pre">ogmmerge</span></tt> from the <a class="reference" href="http://www.bunkus.org/videotools/ogmtools/">ogmtools</a>.</dd>
+<dt><a class="target" id="mkv" name="mkv">MKV</a> <span class="classifier-delimiter">:</span> <span class="classifier">MatrosKa Video file</span></dt>
+<dd>Quite new in the arena.  It's based on some kind of binary XML
+format to keep it flexible for prospectively extensions.  It has
+very low overhead, which was a design goal and allows to embed
+arbitrary attachements. One tool to mux video and audio into MKVs
+is <tt class="docutils literal"><span class="pre">mkvmerge</span></tt> from the <a class="reference" href="http://www.bunkus.org/videotools/mkvtoolnix/">mkvtoolnix</a> package or its graphical
+frontend <tt class="docutils literal"><span class="pre">mmg</span></tt>.</dd>
+</dl>
+<table class="docutils footnote" frame="void" id="id4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3" name="id4">[2]</a></td><td>MEncoder is part of the <a class="reference" href="http://www.MPlayerHQ.hu/">MPlayer</a> package.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="copyright">
+<h1><a class="toc-backref" href="#id20" name="copyright">11&nbsp;&nbsp;&nbsp;Copyright</a></h1>
+<p>Copyright © 2003-2005 Marc 'BlackJack' Rintsch &lt;<a class="reference" href="mailto:marc&#64;rintsch.de">marc&#64;rintsch.de</a>&gt;</p>
+<p>This is free software; see the source for copying conditions. There is
+NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.</p>
+</div>
+</div>
+<hr class="docutils footer" />
+<div class="footer">
+Generated on: 2005-01-15 10:37 UTC.
+Generated by <a class="reference" href="http://docutils.sourceforge.net/">Docutils</a> from <a class="reference" href="http://docutils.sourceforge.net/rst.html">reStructuredText</a> source.
+</div>
+</body>
+</html>
