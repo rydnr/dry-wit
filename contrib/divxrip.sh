@@ -606,6 +606,7 @@ function deprecated_extract_subs() {
     _afile="$(basename ${OUTPUT_FILE} .avi).${_slang}";
     _sfile="${_afile}.sub";
     _sid="$(echo ${SUBTITLE_ID} | awk -v i=${_index} '{print $i;}')";
+
     if [ "x${_sid}" != "" ]; then
       _sid="-sid ${_sid}";
       _index=$((_index+1));
@@ -615,7 +616,7 @@ function deprecated_extract_subs() {
         logInfo \
           mencoder "${INPUT}" \
           -passlogfile ${_twoPassFile} \
-          ${_dvdDevice} \
+          -dvd-device ${DVD_DEVICE} \
           -ovc frameno \
           ${_aid} \
           ${_sid} \
@@ -633,7 +634,7 @@ function deprecated_extract_subs() {
         runCommandLongOutput \
           mencoder "${INPUT}" \
           -passlogfile ${_twoPassFile} \
-          ${_dvdDevice} \
+          -dvd-device ${DVD_DEVICE} \
           -ovc frameno \
           -nosound
           ${_aid} \
@@ -684,7 +685,7 @@ function deprecated_extract_subs() {
 # - opts: the original options (with placeholders).
 # - varName: the variable name.
 # - varValue: the variable value.
-function retrieve_mencoder_opts() {
+function process_mencoder_opts() {
   local _opts="${1}";
   local _varName="${2}";
   local _placeHolder="${3}";
@@ -692,9 +693,9 @@ function retrieve_mencoder_opts() {
   local _result="${_opts}";
 
   if [ "x${_varValue}" ==  "x" ]; then
-    _result="$(echo ${_result} | sed "s|${_varName}=\${${_placeHolder}}||g")";
+    _result="$(echo ${_result} | sed "s|${_varName}=${_placeHolder}||g")";
   else
-    _result="$(echo ${_result} | sed "s|\${${_placeHolder}}|${_varValue}|g")";
+    _result="$(echo ${_result} | sed "s|${_placeHolder}|${_varValue}|g")";
   fi
 
   export RESULT="${_result}";
@@ -707,13 +708,13 @@ function retrieve_mencoder_opts() {
 function retrieve_video_opts_first_pass() {
   local _crop="${_crop}";
   local _bitrate="${_bitrate}";
-
+  local _dollar="$";
   local _result;
 
-  process_mencoder_opts "${VIDEO_OPTS_FIRST_PASS}" "crop" "\${CROP}" "${_crop}";
+  process_mencoder_opts "${VIDEO_OPTS_FIRST_PASS}" "crop" "${_dollar}{CROP}" "${_crop}";
   _result="${RESULT}";
 
-  process_mencoder_opts "${_result}" "bitrate" "\${BITRATE}" "${_bitrate}";
+  process_mencoder_opts "${_result}" "bitrate" "${_dollar}${BITRATE}" "${_bitrate}";
   _result="${RESULT}";
 
   export RESULT="${_result}";
@@ -773,7 +774,7 @@ function first_pass() {
       logInfo \
         mencoder "${_input}" \
         -passlogfile ${_twoPassFile} \
-        ${_dvdDevice} \
+        -dvd-device ${DVD_DEVICE} \
         ${_videoOptsFirstPass} \
         ${AUDIO_OPTS_FIRST_PASS} \
         ${_cropOpts} \
@@ -784,7 +785,7 @@ function first_pass() {
       runCommandLongOutput \
         mencoder "${INPUT}" \
         -passlogfile ${_twoPassFile} \
-        ${_dvdDevice} \
+        -dvd-device ${DVD_DEVICE} \
         ${_videoOptsFirstPass} \
         ${AUDIO_OPTS_FIRST_PASS} \
         ${_cropOpts} \
@@ -830,6 +831,7 @@ function second_pass() {
   local _audioId="${8}";
   local _undefinedSubtitleId="${9}";
   local _bitrate="${10}";
+  local _result=0;
 
   if isLowerThanInfoEnabled; then
     logInfo "Second pass...";
@@ -847,7 +849,7 @@ function second_pass() {
     logInfo \
       mencoder "${_input}" \
       -passlogfile ${_twoPassFile} \
-      ${_dvdDevice} \
+      -dvd-device ${DVD_DEVICE} \
       ${_videoOptsSecondPass} \
       ${AUDIO_OPTS_SECOND_PASS} \
       ${_cropOpts} \
@@ -861,7 +863,7 @@ function second_pass() {
     runCommandLongOutput \
       mencoder "${_input}" \
       -passlogfile ${_twoPassFile} \
-      ${_dvdDevice} \
+      -dvd-device ${DVD_DEVICE} \
       ${_videoOptsSecondPass} \
       ${AUDIO_OPTS_SECOND_PASS} \
       ${_cropOpts} \
@@ -871,8 +873,9 @@ function second_pass() {
       -sid ${_undefinedSubtitleId} \
       -o "${_outputFile}";
 #      ${_sid} \
+      _result=$?;
   fi
-  if [ $? == 0 ]; then
+  if [ ${_result} -eq 0 ]; then
     if isLowerThanInfoEnabled; then
       logInfoResult SUCCESS "done";
     fi
@@ -884,6 +887,7 @@ function second_pass() {
     exitWithErrorCode ERROR_IN_SECOND_PASS;
   fi
 #fi
+  return ${_result};
 
 }
 
@@ -918,7 +922,7 @@ function merge_audio_tracks_in_avi() {
   if [ ${_totalAids} -gt 1 ]; then
     _index=2;
     while [ ${_index} -le ${_totalAids} ]; do
-      _audioId="$(echo ${audioIds} | awk -v i=${_index} '{print $i;}')";
+      _audioId="$(echo ${_audioIds} | awk -v i=${_index} '{print $i;}')";
       _aid="-aid ${_audioId}";
       _slang="$(echo ${_subtitleLangs} | awk -v i=${_index} '{print $i;}')";
       if [ "x${_slang}" == "x" ]; then
@@ -935,7 +939,7 @@ function merge_audio_tracks_in_avi() {
         logInfo \
           mencoder "${_input}" \
           -passlogfile ${_twoPassFile} \
-          ${_dvdDevice} \
+          -dvd-device ${DVD_DEVICE} \
           -ovc frameno \
           ${AUDIO_OPTS_SECOND_PASS} \
           ${_aid} \
@@ -959,7 +963,7 @@ function merge_audio_tracks_in_avi() {
           runCommandLongOutput \
             mencoder "${_input}" \
             -passlogfile ${_twoPassFile} \
-            ${_dvdDevice} \
+            -dvd-device ${DVD_DEVICE} \
             -ovc frameno \
             ${AUDIO_OPTS_SECOND_PASS} \
             ${_aid} \
@@ -1039,7 +1043,7 @@ function deprecated_extract_subs() {
         logInfo \
           mencoder "${INPUT}" \
           -passlogfile ${_twoPassFile} \
-          ${_dvdDevice} \
+          -dvd-device ${DVD_DEVICE} \
           -ovc frameno \
           ${_aid} \
           ${_sid} \
@@ -1057,7 +1061,7 @@ function deprecated_extract_subs() {
         runCommandLongOutput \
           mencoder "${INPUT}" \
           -passlogfile ${_twoPassFile} \
-          ${_dvdDevice} \
+          -dvd-device ${DVD_DEVICE} \
           -ovc frameno \
           -nosound
           ${_aid} \
@@ -1116,7 +1120,7 @@ function is_dvd() {
   return ${_result};
 }
 
-function retrieve_dvd_device() {
+function retrieve_dvd_device_opt() {
   local _result="";
 
   if [ "x${DVD_DEVICE}" != "x${DVD_DEVICE_DEFAULT}" ]; then
@@ -1423,12 +1427,11 @@ function spell_check_subtitles() {
   local _dialect;
   local _langHash;
 
-  case "x${_slang}" in
-    "en") _dialect=${DEFAULT_ENGLISH_DIALECT};
+  case ${_slang} in
+    "en") _dialect="${DEFAULT_ENGLISH_DIALECT}";
           ;;
     "en") _dialect="${DEFAULT_SPANISH_DIALECT}";
           ;;
-    *) ;;
   esac
 
   _langHash="${ISPELL_HASH_FOLDER}/${_dialect}${ISPELL_HASH_FILE_SUFFIX}";
@@ -1704,7 +1707,7 @@ function mount_dvd() {
   local _dvdDevice="${1}";
   local _mountDir="${2}";
 
-  logInfo -n "Mounting DVD";
+  logInfo -n "Mounting DVD ${_dvdDevice} into ${_mountDir}";
   if is_dry_run; then
     logInfoResult "dry-run";
   else
@@ -1712,7 +1715,7 @@ function mount_dvd() {
     if [ $? -eq 0 ]; then
       logInfoResult SUCCESS "done";
     else
-      logInfoResult FAILED "failed";
+      logInfoResult FAILURE "failed";
     fi
   fi
 }
@@ -1730,7 +1733,7 @@ function umount_dvd() {
     if [ $? -eq 0 ]; then
       logInfoResult SUCCESS "done";
     else
-      logInfoResult FAILED "failed";
+      logInfoResult FAILURE "failed";
     fi
   fi
 }
@@ -1739,18 +1742,23 @@ function umount_dvd() {
 function copy_vts_01_0_ifo() {
   local _mountFolder="${1}";
   local _destination="${2}";
+  local _result=0;
 
   logInfo -n "Copying VIDEO_TS/VTS_01_0.IFO";
   if is_dry_run; then
     logInfoResult "dry-run";
   else
-    cp "${_mountFolder}/video_ts/vts_01_0.ifo" "${_destination}" > /dev/null 2> /dev/null;
+    cp "${_mountFolder}/VIDEO_TS/VTS_01_0.IFO" "${_destination}" > /dev/null 2> /dev/null;
+    _result=$?;
     if [ $? -eq 0 ]; then
       logInfoResult SUCCESS "done";
+      export RESULT="${_destination}/VTS_01_0.IFO";
     else
-      logInfoResult FAILED "failed";
+      logInfoResult FAILURE "failed";
     fi
   fi
+
+  return ${_result};
 }
 
 # Retrieves the subtitle id from given identifier.
@@ -1765,7 +1773,7 @@ function retrieve_default_sid() {
 # Calls mplayer and mencoder to perform a two-phase encoding in xdiv+mp3.
 function encode_avi() {
 
-  local _dvdDevice;
+  local _dvdDeviceOpt;
   local _slang;
   local _track;
   local _audioId;
@@ -1784,8 +1792,8 @@ function encode_avi() {
   local _tempFolder;
   local _vts010ifo;
 
-  retrieve_dvd_device;
-  _dvdDevice="${RESULT}";
+  retrieve_dvd_device_opt;
+  _dvdDeviceOpt="${RESULT}";
 
   if is_dvd; then
     retrieve_track;
@@ -1806,12 +1814,13 @@ function encode_avi() {
         createTempFolder;
         _mountFolder="${RESULT}";
 
-        mount_dvd "${_dvdDevice}" "${_mountFolder}";
+        mount_dvd "${DVD_DEVICE}" "${_mountFolder}";
 
         createTempFolder;
         _tempFolder="${RESULT}";
 
         copy_vts_01_0_ifo "${_mountFolder}" "${_tempFolder}";
+        _vts010ifo="${RESULT}";
         umount_dvd "${_mountFolder}";
 
         extract_subtitles "${_newInput}" "${_track}" "${_subtitleId}" "${OUTPUT_FILE}" "${_vts010ifo}";
@@ -1829,7 +1838,7 @@ function encode_avi() {
   retrieve_two_pass_file_log "${OUTPUT_FILE}";
   _twoPassFile="${RESULT}";
 
-  retrieve_crop_opts "${_dvdDevice}";
+  retrieve_crop_opts "${DVD_DEVICE}";
   _cropOpts="${RESULT}";
 
   if audio_id_specified; then
@@ -1852,7 +1861,7 @@ function encode_avi() {
 
   first_pass \
     "${INPUT}" \
-    "${_dvdDevice}" \
+    "${DVD_DEVICE}" \
     "${_twoPassFile}" \
     "${_cropOpts}" \
     "${_audioChannels}" \
@@ -1861,7 +1870,7 @@ function encode_avi() {
 
   second_pass \
     "${INPUT}" \
-    "${_dvdDevice}" \
+    "${DVD_DEVICE}" \
     "${OUTPUT_FILE}" \
     "${_twoPassFile}" \
     "${_cropOpts}" \
@@ -1873,7 +1882,7 @@ function encode_avi() {
 
   merge_audio_tracks_in_avi \
     "${INPUT}" \
-    "$_dvdDevice}" \
+    "${DVD_DEVICE}" \
     "${OUTPUT_FILE}" \
     "${AUDIO_ID}" \
     "${SUBTITLE_ID}" \
@@ -1887,19 +1896,17 @@ function encode_avi() {
 # Dumps the selected audio files.
 # Parameters:
 # - input: the input source.
-# - dvdDevice: the DVD device.
 # - outputFile: the output file name (to follow a common naming conventions on the audio files).
 # - audioIds: the ids of the audio tracks.
 # - langs: the subtitle language list.
 # - twoPassFile: the 2-pass file.
 function dump_audio_files() {
   local _input="${1}";
-  local _dvdDevice="${2}";
-  local _outputFile="${3}";
-  local _audioIds="${4}";
-  local _langs="${5}";
-  local _twoPassFile="${7}";
-  local _trackId="${8}";
+  local _outputFile="${2}";
+  local _audioIds="${3}";
+  local _langs="${4}";
+  local _twoPassFile="${5}";
+  local _trackId="${6}";
   local _result="";
 
   local _audioId;  
@@ -1925,7 +1932,6 @@ function dump_audio_files() {
       _index=$((_index+1));
 
       dump_audio_file \
-        "${_dvdDevice}" \
         "${_afile}.${_aformat}" \
         "${_audioId}" \
         "${_twoPassFile}";
@@ -1944,10 +1950,9 @@ function dump_audio_files() {
 # - audioId: the audio id.
 # - twoPassFile: the 2-pass file.
 function dump_audio_file() {
-  local _dvdDevice="${1}";
-  local _outputFile="${2}";
-  local _audioId="${3}";
-  local _twoPassFile="${4}";
+  local _outputFile="${1}";
+  local _audioId="${2}";
+  local _twoPassFile="${3}";
   local _aid="-aid ${_audioId}";
 
   if [ -f ${_outputFile} ]; then
@@ -1958,7 +1963,7 @@ function dump_audio_file() {
       logInfo \
         mencoder "${_input}" \
           -passlogfile ${_twoPassFile} \
-          ${_dvdDevice} \
+          -dvd-device ${DVD_DEVICE} \
           -ovc frameno \
           ${AUDIO_OPTS_SECOND_PASS} \
           ${_aid} \
@@ -1973,7 +1978,7 @@ function dump_audio_file() {
       runCommandLongOutput \
         mencoder "${_input}" \
           -passlogfile ${_twoPassFile} \
-          ${_dvdDevice} \
+          -dvd-device ${DVD_DEVICE} \
           -ovc frameno \
           ${AUDIO_OPTS_SECOND_PASS} \
           ${_aid} \
@@ -2119,7 +2124,7 @@ function guess_title() {
 # Calls mplayer and mencoder to perform a two-phase encoding in mkv.
 function encode_mkv() {
 
-  local _dvdDevice;
+  local _dvdDeviceOpt;
   local _slang;
   local _track;
   local _audioId;
@@ -2141,13 +2146,13 @@ function encode_mkv() {
   local _chaptersFile;
   local _title;
 
-  retrieveDvdDevice;
-  _dvdDevice="${RESULT}";
+  retrieve_dvd_device_opt;
+  _dvdDeviceOpt="${RESULT}";
 
   if is_dvd; then
     retrieve_track;
     _track="${RESULT}";
-    retrieve_duration "${_dvdDevice}" "${_track}";
+    retrieve_duration "${DVD_DEVICE}" "${_track}";
     _duration="${RESULT}";
     retrieve_audio_id;
     _audioId="${RESULT}";
@@ -2161,28 +2166,29 @@ function encode_mkv() {
     dump_dvd;
     _newInput="${RESULT}";
 
-    dump_audio_files() \
+    dump_audio_files \
       "${_newInput}" \
-      "${_dvdDevice}" \
       "${OUTPUT_FILE}" \
       "${_audioIds}" \
       "${_subtitleLangs}" \
       "${_twoPassFile}" \
       "${_track}";
+
     _audioFiles="${RESULT}";
 
     createTempFolder;
     _mountFolder="${RESULT}";
 
-    mount_dvd "${_dvdDevice}" "${_mountFolder}";
+    mount_dvd "${DVD_DEVICE}" "${_mountFolder}";
 
     createTempFolder;
     _tempFolder="${RESULT}";
 
     copy_vts_01_0_ifo "${_mountFolder}" "${_tempFolder}";
+    _vts010ifo="${RESULT}";
     umount_dvd "${_mountFolder}";
 
-    extract_chapter_information "${_dvdDevice}" "${_track}" "${_tempFolder}";
+    extract_chapter_information "${DVD_DEVICE}" "${_track}" "${_tempFolder}";
     _chaptersFile="${RESULT}";
 
     extract_subtitles "${_newInput}" "${_track}" "${_subtitleId}" "${OUTPUT_FILE}" "${_vts010ifo}";
@@ -2199,11 +2205,11 @@ function encode_mkv() {
   retrieve_two_pass_file_log "${OUTPUT_FILE}";
   _twoPassFile="${RESULT}";
 
-  retrieve_crop_opts "${_dvdDevice}";
+  retrieve_crop_opts "${DVD_DEVICE}";
   _cropOpts="${RESULT}";
 
   if audio_id_specified; then
-    retrieve_default_aid "${AUDIO_ID}";
+    retrieve_default_aid "${_audioId}";
     _defaultAid="${RESULT}";
     _aid="-aid ${_defaultAid}";
   fi
@@ -2217,7 +2223,7 @@ function encode_mkv() {
 
   first_pass \
     "${INPUT}" \
-    "${_dvdDevice}" \
+    "${DVD_DEVICE}" \
     "${_twoPassFile}" \
     "${_cropOpts}" \
     "${_audioChannels}" \
@@ -2226,7 +2232,7 @@ function encode_mkv() {
 
   second_pass \
     "${INPUT}" \
-    "${_dvdDevice}" \
+    "${DVD_DEVICE}" \
     "${OUTPUT_FILE}" \
     "${_twoPassFile}" \
     "${_cropOpts}" \
