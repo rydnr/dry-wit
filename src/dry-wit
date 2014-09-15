@@ -104,23 +104,28 @@ function createTempFile() {
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  local result="$(mktemp -p \"${_dirname}\"  -t \".${_prefix}.XXXXXXXXXX\")";
+  local result="$(mktemp -p "${_dirname}"  -t ".${_prefix}.XXXXXXXXXX")";
   local _aux=$?;
   rm -f $result > /dev/null
   if [ $_aux -ne 0 ]; then
-     result="$(mktemp -t \".${_prefix}.XXXXXXXXXX\")";
+     result="$(mktemp -t ".${_prefix}.XXXXXXXXXX")";
      _aux=$?;
   fi
   if [ $_aux -ne 0 ]; then
      exitWithErrorCode $1;
   fi
+  addFileToCleanup "${result}";
+
+  export RESULT="${result}";
+}
+
+function addFileToCleanup() {
+  local _file="${1}";
 #  logTrace "Appending ${result} to _CLEANUP_FILES";
   _CLEANUP_FILES=(\
     $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
-    "${result}" \
+      "${_file}" \
   );
-
-  export RESULT="${result}";
 }
 
 function createTempFolder() {
@@ -140,11 +145,7 @@ function createTempFolder() {
   if [ $_aux -ne 0 ]; then
      exitWithErrorCode $1;
   fi
-#  logTrace "Appending ${result} to _CLEANUP_FILES";
-  _CLEANUP_FILES=(\
-    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
-    "${result}" \
-  );
+  addFileToCleanup "${result}";
 
   export RESULT="${result}";
 }
@@ -347,6 +348,10 @@ EOF
 }
 
 function _printHelp() {
+
+  if _functionPresent defineEnv "$SCRIPT_NAME"; then
+    defineEnv;
+  fi
   usage $SCRIPT_NAME;
   _printEnvironment;
   _printExitValues;
@@ -1299,7 +1304,7 @@ function runCommandLongOutput() {
 
   if isDebugEnabled; then
     $@ 2>&1 | tee "${_result}";
-    _resultCode=$?;
+    _resultCode=${PIPESTATUS[0]};
   else
     $@ > "${_result}" 2>&1;
     _resultCode=$?;
@@ -1354,8 +1359,17 @@ function _checkCommonInput() {
 function _functionPresent() {
   local _function=$1;
   local _script=$2;
-  grep " $_function\(\)" $_script 2>&1 > /dev/null
-  return $?;
+  type ${_function} 2> /dev/null | grep -q 'shell function'
+  local _rescode=$?;
+  if [ ${_rescode} -ne 0 ]; then
+    grep " $_function\(\)" $_script 2>&1 > /dev/null
+    _rescode=$?;
+  fi
+  if [ ${_rescode} -ne 0 ]; then
+    grep " $_function\(\)" "$(basename ${_script} .sh).inc.sh" 2>&1 > /dev/null
+    _rescode=$?;
+  fi
+  return ${_rescode};
 }
 
 function _checkScript() {
@@ -1385,6 +1399,7 @@ function _checkScript() {
 function _setup() {
   _defineDefaultEnvVariables;
   _trapSignals;
+  [ -e "$(basename $1 .sh).inc.sh" ] && echo "Sourcing inc" && source "$(basename $1 .sh).inc.sh"
 }
 
 if [ "$1" != "" ]; then
@@ -1406,6 +1421,8 @@ function _main() {
 
   if _functionPresent defineEnv "$_script"; then
     defineEnv;
+  else
+    echo "defineEnv not available"
   fi
 
   if _functionPresent defineKeywords "$_script"; then
