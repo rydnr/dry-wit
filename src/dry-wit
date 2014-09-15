@@ -136,10 +136,10 @@ function createTempFolder() {
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  local result=$(mktemp -p ${_dirname} -d -t ".${_prefix}.XXXXXXXXXX");
+  local result=$(mktemp -p "${_dirname}" -d -t ".${_prefix}.XXXXXX");
   local _aux=$?;
   if [ $_aux -ne 0 ]; then
-    result=$(mktemp -d -t ".${_prefix}.XXXXXXXXXX");
+    result=$(mktemp -d -t ".${_prefix}.XXXXXX");
     _aux=$?;
   fi
   if [ $_aux -ne 0 ]; then
