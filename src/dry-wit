@@ -321,7 +321,7 @@ function _printEnvironment() {
 Environment variables:
 EOF
     for ((i = 0; i < ${#ENV_VARIABLES[*]}; i++)); do
-      echo "  ${ENV_VARIABLES[$i]} `echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\\"" '{printf("echo %s(%s{%s}): %s{%s_DESCRIPTION}%s.\n", quote, dollar, $0, dollar, $0, quote);}' | sh`";
+      echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s{%s}): %s{%s_DESCRIPTION}%s.\n", quote, dollar, $0, dollar, $0, quote);}' | sh)";
     done
   fi
 }
@@ -918,7 +918,7 @@ function urlEncode() {
   | sed 's \[\[BR\]\] %0D%0A g' \
   | sed 's ! %21 g'  \
   | sed 's \* %2A g' \
-  | sed "s ' %27 g"  \
+  | sed "s ' %27 g" \
   | sed 's ( %28 g'  \
   | sed 's ) %29 g'  \
   | sed 's ; %3B g'  \
@@ -1362,12 +1362,15 @@ function _functionPresent() {
   type ${_function} 2> /dev/null | grep -q 'shell function'
   local _rescode=$?;
   if [ ${_rescode} -ne 0 ]; then
-    grep " $_function\(\)" $_script 2>&1 > /dev/null
+    grep " ${_function}()" "${_script}" 2>&1 > /dev/null
     _rescode=$?;
   fi
   if [ ${_rescode} -ne 0 ]; then
-    grep " $_function\(\)" "$(basename ${_script} .sh).inc.sh" 2>&1 > /dev/null
-    _rescode=$?;
+    local _inc="$(basename ${_script} .sh).inc.sh" 
+    if [ -e "${_inc}" ]; then
+      _functionPresent "${_function}" "${_inc}";
+      _rescode=$?;
+    fi
   fi
   return ${_rescode};
 }
@@ -1399,7 +1402,7 @@ function _checkScript() {
 function _setup() {
   _defineDefaultEnvVariables;
   _trapSignals;
-  [ -e "$(basename $1 .sh).inc.sh" ] && echo "Sourcing inc" && source "$(basename $1 .sh).inc.sh"
+  [ -e "$(basename $1 .sh).inc.sh" ] && source "$(basename $1 .sh).inc.sh"
 }
 
 if [ "$1" != "" ]; then
@@ -1409,9 +1412,9 @@ else
 fi
 
 function _main() {
-  local _script="$1";
+  local _script="${1#./}";
   shift;
-  _setup;
+  _setup "${_script}";
 
   if _functionPresent defineErrors "$_script"; then
     defineErrors;
