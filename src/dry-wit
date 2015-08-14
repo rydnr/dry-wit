@@ -64,14 +64,111 @@ export SUCCESS=0;
 export FAILURE=1;
 export UNDEFINED=255;
 
-function _defineDefaultEnvVariables() {
-  export DEFAULT_ENV_VARIABLES=(\
-    $(for i in ${ENV_VARIABLES[*]}; do \
-       echo $i \
-       | awk -v dollar="$" \
-         '{printf("echo %s{%s_DEFAULT}\n", dollar, $0);}' \
-       | sh;\
-     done));
+function defineEnvVar() {
+  local _varName="${1}";
+  local _varDescription="${2}";
+  local _varDefault="${3}";
+  local _varCommand="${4}";
+
+  local _varValue="$(echo 'echo $'$(echo ${_varName}) | sh)";
+
+  if [[ -n ${_varDescription} ]]; then
+    local _description="$(echo 'echo $'$(echo ${_varName})_DESCRIPTION | sh)";
+
+    if [[ ! -n ${_description} ]]; then
+      export ${_varName}_DESCRIPTION="${_varDescription}";
+    fi
+  fi
+  
+  local _defaultValue="$(echo 'echo $'$(echo ${_varName})_DEFAULT | sh)";
+
+  if [[ -n ${_varDefault} ]]; then
+    _defaultValue="${_varDefault}";
+  fi
+
+  if [[ -n ${_defaultValue} ]]; then
+    export ${_varName}_DEFAULT="${_defaultValue}";
+  fi
+
+  _addEnvVar "${_varName}";
+  
+  if [[ -n ${_varCommand} ]]; then
+    local _command="$(echo 'echo $'$(echo ${_varName})_DEFAULT_COMMAND | sh)";
+    if [[ ! -n ${_command} ]]; then
+      export ${_varName}_DEFAULT_COMMAND="${_varCommand}";
+    fi
+    _command="$(echo 'echo $'$(echo ${_varName})_DEFAULT_COMMAND | sh)";
+  fi
+}
+
+function overrideEnvVar() {
+  local _varName="${1}";
+  local _varDefault="${2}";
+
+  defineEnvVar "${_varName}" "" "${_varDefault}" "";
+  _evalEnvVar ${_varName};
+}
+
+function _addEnvVar() {
+  local _varName="${1}";
+  if ! _isEnvVarDefined "${_varName}"; then
+    ENV_VARIABLES=(\
+        ${ENV_VARIABLES[@]} \
+        ${_varName} \
+    );
+    export ${_varName};
+    export ENV_VARIABLES;
+  fi
+}
+
+function _isEnvVarDefined() {
+    local _varName="${1}";
+    local e;
+    for e in "${ENV_VARIABLES[@]}"; do [[ "${e}" == "${_varName}" ]] && return 0; done
+    return 1;
+}
+
+function _evalEnvVar() {
+  local _varName="${1}";
+  local _defaultValue="$(echo 'echo $'$(echo ${_varName})_DEFAULT | sh)";
+
+  local _varValue="$(echo 'echo $'$(echo ${_varName}) | sh)";
+
+  if [[ ! -n ${_varValue} ]]; then
+    if [[ -n ${DRY_WIT_EVAL_DEFAULTS_FLAG} ]]; then
+      local _defaultCommand="$(echo 'echo $'$(echo ${_varName})_DEFAULT_COMMAND | sh)";
+      if [[ -n ${_defaultCommand} ]]; then
+        logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
+#        local _aux="$(${_defaultCommand} 2> /dev/null)";
+#        local _aux="$(${_defaultCommand})";
+        local _aux="$(echo "${_defaultCommand}" | sh)";
+        if [[ -n ${_aux} ]]; then
+          _defaultValue="${_aux}";
+          logTraceResult SUCCESS "${_aux}"
+        else
+          logTraceResult FAILURE "failed"
+        fi
+      fi
+    fi
+    _varValue="${_defaultValue}";
+  fi
+
+  if [[ -n ${_varValue} ]]; then
+    while [[ "${_varValue}" =~ .*'$'.* ]]; do
+      _varValue="$(echo "echo ${_varValue}" | sh)";
+    done
+  fi
+  
+  if [[ -n ${_varValue} ]]; then
+    export ${_varName}="${_varValue}";
+  fi
+
+}
+
+function evalEnvVars() {
+  for var in ${ENV_VARIABLES[@]}; do
+    _evalEnvVar ${var};
+  done
 }
 
 # AUXILIARY GENERAL-PURPOSE FUNCTIONS
@@ -1323,10 +1420,28 @@ function logDebugFileContents() {
   fi
 }
 
-function _checkCommonInput() {
+function _functionPresent() {
+  local _function=$1;
+  local _script=$2;
+  type ${_function} 2> /dev/null | grep -q 'shell function'
+  local _rescode=$?;
+  if [ ${_rescode} -ne 0 ]; then
+    grep " ${_function}()" "${_script}" 2>&1 > /dev/null
+    _rescode=$?;
+  fi
+  if [ ${_rescode} -ne 0 ]; then
+    local _inc="$(basename ${_script} .sh).inc.sh" 
+    if [ -e "${_inc}" ]; then
+      _functionPresent "${_function}" "${_inc}";
+      _rescode=$?;
+    fi
+  fi
+  return ${_rescode};
+}
+
+function _parseCommonInput() {
 
   local _help=0;
-
   setInfoEnabled;
 
   local _flags=$(extractFlags $@);
@@ -1346,33 +1461,22 @@ function _checkCommonInput() {
       -q)
          setQuietMode;
          ;;
+      -X:e | --X:eval-defaults)
+          export DRY_WIT_EVAL_DEFAULTS_FLAG=1;
+         ;;
     esac
   done
   shift ${_flagCount};
 
-  if [ $_help == 1 ]; then
+  export DRY_WIT_HELP_FLAG=${_help};
+}
+
+function _checkCommonInput() {
+
+  if [ ${DRY_WIT_HELP_FLAG} == 1 ]; then
     _printHelp;
     exit 0;
   fi
-}
-
-function _functionPresent() {
-  local _function=$1;
-  local _script=$2;
-  type ${_function} 2> /dev/null | grep -q 'shell function'
-  local _rescode=$?;
-  if [ ${_rescode} -ne 0 ]; then
-    grep " ${_function}()" "${_script}" 2>&1 > /dev/null
-    _rescode=$?;
-  fi
-  if [ ${_rescode} -ne 0 ]; then
-    local _inc="$(basename ${_script} .sh).inc.sh" 
-    if [ -e "${_inc}" ]; then
-      _functionPresent "${_function}" "${_inc}";
-      _rescode=$?;
-    fi
-  fi
-  return ${_rescode};
 }
 
 function _checkScript() {
@@ -1400,9 +1504,10 @@ function _checkScript() {
 }
 
 function _setup() {
-  _defineDefaultEnvVariables;
   _trapSignals;
   [ -e "$(basename $1 .sh).inc.sh" ] && source "$(basename $1 .sh).inc.sh"
+  [ -e "$(basename $1 .sh).inc.sh-private" ] && source "$(basename $1 .sh).inc.sh-private"
+  evalEnvVars;
 }
 
 if [ "$1" != "" ]; then
@@ -1422,17 +1527,31 @@ function _main() {
     export ERROR_MESSAGES=();
   fi
 
+  if _functionPresent defineEnvDefaults "$_script"; then
+    defineEnvDefaults;
+  fi
+  
   if _functionPresent defineEnv "$_script"; then
     defineEnv;
-  else
-    echo "defineEnv not available"
+  fi
+
+  if _functionPresent definePrivateEnv "$_script"; then
+    definePrivateEnv;
   fi
 
   if _functionPresent defineKeywords "$_script"; then
     defineKeywords;
   fi
 
+  _parseCommonInput $@;
+
+  if _functionPresent parseInput "$_script"; then
+    evalEnvVars;
+    parseInput $@;
+  fi
+
   _checkCommonInput $@;
+
   _checkScript "$_script";
 
   if _functionPresent checkRequirements "$_script"; then
@@ -1442,7 +1561,12 @@ function _main() {
   fi
 
   if _functionPresent checkInput "$_script"; then
+    evalEnvVars;
     checkInput $@;
+
+    if _functionPresent postCheckInput "$_script"; then
+      postCheckInput $@;
+    fi
   fi
 
   setLogCategory "main";
