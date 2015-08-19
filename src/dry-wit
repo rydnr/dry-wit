@@ -253,6 +253,18 @@ function createTempFile() {
   export RESULT="${result}";
 }
 
+## Checks if given file is writeable
+## -> 1: the file to check.
+## <- 0: the file is writeable; 1 otherwise.
+function fileIsWriteable() {
+  local _file="${1}";
+  if [[ -n ${_file} ]] && [[ -w ${_file} ]]; then
+    return 0;
+  else
+    return 1;
+  fi
+}
+
 function addFileToCleanup() {
   local _file="${1}";
 #  logTrace "Appending ${result} to _CLEANUP_FILES";
@@ -494,8 +506,7 @@ EOF
 
 function _printHelp() {
 
-  if _functionPresent defineEnv "$SCRIPT_NAME"; then
-#  if _functionPresent defineEnv "${SCRIPT_NAME}"; then
+  if _functionPresent defineEnv "${SCRIPT_NAME}"; then
     defineEnv;
   fi
   usage $SCRIPT_NAME;
@@ -1469,6 +1480,14 @@ function logDebugFileContents() {
   fi
 }
 
+## Retrieves the absolute path of given argument.
+## -> 1: The relative path.
+## <- RESULT: The absolute path.
+function _retrieveAbsolutePath() {
+  local _relativePath="${1}";
+  export RESULT="$(readlink -f "${_relativePath}")";
+}
+
 function _functionPresent() {
   local _function=$1;
   local _script=$2;
@@ -1479,7 +1498,7 @@ function _functionPresent() {
     _rescode=$?;
   fi
   if [ ${_rescode} -ne 0 ]; then
-    local _inc="$(basename ${_script} .sh).inc.sh" 
+    local _inc="${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"
     if [ -e "${_inc}" ]; then
       _functionPresent "${_function}" "${_inc}";
       _rescode=$?;
@@ -1554,8 +1573,10 @@ function _checkScript() {
 
 function _setup() {
   _trapSignals;
-  [ -e "$(basename $1 .sh).inc.sh" ] && source "$(basename $1 .sh).inc.sh"
-  [ -e ".$(basename $1 .sh).inc.sh" ] && source ".$(basename $1 .sh).inc.sh"
+  [ -e "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
+      source "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
+  [ -e "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
+      source "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
   evalEnvVars;
 }
 
@@ -1568,6 +1589,11 @@ fi
 function _main() {
   local _script="${1#./}";
   shift;
+  local _absolutePath;
+  _retrieveAbsolutePath "${_script}";
+  export DRY_WIT_SCRIPT_PATH="${RESULT}";
+  export DRY_WIT_SCRIPT_FOLDER="$(dirname ${DRY_WIT_SCRIPT_PATH})";
+
   _setup "${_script}";
 
   if _functionPresent defineErrors "${_script}"; then
