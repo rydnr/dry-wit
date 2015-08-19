@@ -64,6 +64,12 @@ export SUCCESS=0;
 export FAILURE=1;
 export UNDEFINED=255;
 
+function _evalVar() {
+  local _varName="${1}";
+  local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh)";
+  export RESULT="${_result}";
+}
+
 function defineEnvVar() {
   local _varName="${1}";
   local _varDescription="${2}";
@@ -73,31 +79,36 @@ function defineEnvVar() {
   local _varValue="$(echo 'echo $'$(echo ${_varName}) | sh)";
 
   if [[ -n ${_varDescription} ]]; then
-    local _description="$(echo 'echo $'$(echo ${_varName})_DESCRIPTION | sh)";
+    _evalVar "${_varName}_DESCRIPTION";
+    local _description="${RESULT}";
 
     if [[ ! -n ${_description} ]]; then
       export ${_varName}_DESCRIPTION="${_varDescription}";
     fi
   fi
   
-  local _defaultValue="$(echo 'echo $'$(echo ${_varName})_DEFAULT | sh)";
-
   if [[ -n ${_varDefault} ]]; then
+    _evalVar "${_varName}_DEFAULT";
+    local _defaultValue="${RESULT}";
     _defaultValue="${_varDefault}";
   fi
 
-  if [[ -n ${_defaultValue} ]]; then
+  if [[ -n ${_defaultValue} ]]; then    
     export ${_varName}_DEFAULT="${_defaultValue}";
+    _evalVar "${_varName}_DEFAULT";
   fi
+
 
   _addEnvVar "${_varName}";
   
   if [[ -n ${_varCommand} ]]; then
-    local _command="$(echo 'echo $'$(echo ${_varName})_DEFAULT_COMMAND | sh)";
+    _evalVar "${_varName}_DEFAULT_COMMAND";
+    local _command="${RESULT}";
     if [[ ! -n ${_command} ]]; then
       export ${_varName}_DEFAULT_COMMAND="${_varCommand}";
     fi
-    _command="$(echo 'echo $'$(echo ${_varName})_DEFAULT_COMMAND | sh)";
+    _evalVar "${_varName}_DEFAULT_COMMAND";
+    local _command="${RESULT}";
   fi
 }
 
@@ -130,18 +141,18 @@ function _isEnvVarDefined() {
 
 function _evalEnvVar() {
   local _varName="${1}";
-  local _defaultValue="$(echo 'echo $'$(echo ${_varName})_DEFAULT | sh)";
-
-  local _varValue="$(echo 'echo $'$(echo ${_varName}) | sh)";
+  _evalVar "${_varName}_DEFAULT";
+  local _defaultValue="${RESULT}";
+  _evalVar "${_varName}";
+  local _varValue="${RESULT}";
 
   if [[ ! -n ${_varValue} ]]; then
     if [[ -n ${DRY_WIT_EVAL_DEFAULTS_FLAG} ]]; then
-      local _defaultCommand="$(echo 'echo $'$(echo ${_varName})_DEFAULT_COMMAND | sh)";
+      _evalVar "${_varName}_DEFAULT_COMMAND";
+      local _defaultCommand="${RESULT}";
       if [[ -n ${_defaultCommand} ]]; then
         logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
-#        local _aux="$(${_defaultCommand} 2> /dev/null)";
-#        local _aux="$(${_defaultCommand})";
-        local _aux="$(echo "${_defaultCommand}" | sh)";
+        local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
         if [[ -n ${_aux} ]]; then
           _defaultValue="${_aux}";
           logTraceResult SUCCESS "${_aux}"
@@ -153,22 +164,46 @@ function _evalEnvVar() {
     _varValue="${_defaultValue}";
   fi
 
-  if [[ -n ${_varValue} ]]; then
+  if [[ -n ${_varValue} ]] && [[ -z ${DRY_WIT_EVAL_DEFAULTS_FLAG} ]]; then
     while [[ "${_varValue}" =~ .*'$'.* ]]; do
-      _varValue="$(echo "echo ${_varValue}" | sh)";
+      _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
     done
   fi
   
   if [[ -n ${_varValue} ]]; then
     export ${_varName}="${_varValue}";
   fi
-
 }
 
 function evalEnvVars() {
   for var in ${ENV_VARIABLES[@]}; do
     _evalEnvVar ${var};
   done
+}
+
+# Checks whether a given flag is enabled
+# -> 1: the name of the flag variable
+# <- 0 if the flag is enabled, 1 otherwise.
+# Example:
+# function parseInput() {
+# [..]
+#   -my | --myFlag) export MY_FLAG=0;
+#                   ;;
+# [..]
+# if _flagEnabled MY_FLAG; then
+#    ..
+function _flagEnabled() {
+  local _flagVar="${1}";
+  local _flagVal;
+  local _result;
+  _evalVar "${_flagVar}";
+  _flagVal="${RESULT}";
+  if [ "x${_flagVal}" == "x0" ]; then
+      _result=0;
+  else
+      _result=1;
+  fi
+  return ${_result};
 }
 
 # AUXILIARY GENERAL-PURPOSE FUNCTIONS
@@ -196,6 +231,8 @@ function checkReq() {
 function createTempFile() {
   local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}')";
   local _dirname="$(dirname \"${SCRIPT_NAME}\")";
+#  local _prefix="$(echo "${SCRIPT_NAME}" | awk -F"/" '{print $NF;}')";
+#  local _dirname="$(dirname "${SCRIPT_NAME}")";
   if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
     _dirname="$PWD/${_dirname#\.}";
   else
@@ -282,6 +319,7 @@ function logFlag() {
 function findInPath() {
   local _result="";
   local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
+#  local _paths="$(echo "$PATH:." | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
   for _path in $_paths; do
     if [ -f "${_path}/$1" ]; then
       _result="${_path}/$1";
@@ -301,6 +339,8 @@ function isSuccessKeyword() {
       if    [ "x${i}" == "x${_keyword}" ] \
          || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
              == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+#         || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
+#             == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
         _result=0;
         break;
       fi;
@@ -312,6 +352,8 @@ function isSuccessKeyword() {
       if [ "x${i}" == "x${1}" ] \
           || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
               == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+#          || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
+#              == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
         _result=0;
         break;
       fi;
@@ -329,6 +371,8 @@ function isFailureKeyword() {
     if    [ "x${i}" == "x${1}" ] \
        || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
            == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+#      || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
+#           == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
       _result=0;
       break;
     fi;
@@ -339,6 +383,8 @@ function isFailureKeyword() {
       if [ "x${i}" == "x${1}" ] \
         || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
             == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+#        || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
+#            == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
         _result=0;
         break;
       fi;
@@ -381,6 +427,7 @@ function printErrorMessage() {
     shift;
     _error="$(echo ${_message} \
   | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
+#  | awk -v dollar="$" '{printf("echo \"%s{%s}\"\n", dollar, $0);}' | sh)";
   fi
 
   if [ ${#@} -gt 0 ]; then
@@ -419,6 +466,7 @@ Environment variables:
 EOF
     for ((i = 0; i < ${#ENV_VARIABLES[*]}; i++)); do
       echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s{%s}): %s{%s_DESCRIPTION}%s.\n", quote, dollar, $0, dollar, $0, quote);}' | sh)";
+#      echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s%s%s{%s}): %s%s%s{%s_DESCRIPTION}%s%s.%s\n", quote, quote, quote, dollar, $0, quote, quote, dollar, $0, quote, quote, quote);}' | sh)";
     done
   fi
 }
@@ -447,6 +495,7 @@ EOF
 function _printHelp() {
 
   if _functionPresent defineEnv "$SCRIPT_NAME"; then
+#  if _functionPresent defineEnv "${SCRIPT_NAME}"; then
     defineEnv;
   fi
   usage $SCRIPT_NAME;
@@ -1506,7 +1555,7 @@ function _checkScript() {
 function _setup() {
   _trapSignals;
   [ -e "$(basename $1 .sh).inc.sh" ] && source "$(basename $1 .sh).inc.sh"
-  [ -e "$(basename $1 .sh).inc.sh-private" ] && source "$(basename $1 .sh).inc.sh-private"
+  [ -e ".$(basename $1 .sh).inc.sh" ] && source ".$(basename $1 .sh).inc.sh"
   evalEnvVars;
 }
 
@@ -1521,50 +1570,46 @@ function _main() {
   shift;
   _setup "${_script}";
 
-  if _functionPresent defineErrors "$_script"; then
+  if _functionPresent defineErrors "${_script}"; then
     defineErrors;
   else
     export ERROR_MESSAGES=();
   fi
 
-  if _functionPresent defineEnvDefaults "$_script"; then
+  if _functionPresent defineEnvDefaults "${_script}"; then
     defineEnvDefaults;
   fi
   
-  if _functionPresent defineEnv "$_script"; then
+  if _functionPresent defineEnv "${_script}"; then
     defineEnv;
   fi
 
-  if _functionPresent definePrivateEnv "$_script"; then
-    definePrivateEnv;
-  fi
-
-  if _functionPresent defineKeywords "$_script"; then
+  if _functionPresent defineKeywords "${_script}"; then
     defineKeywords;
   fi
 
   _parseCommonInput $@;
 
-  if _functionPresent parseInput "$_script"; then
+  if _functionPresent parseInput "${_script}"; then
     evalEnvVars;
     parseInput $@;
   fi
 
   _checkCommonInput $@;
 
-  _checkScript "$_script";
+  _checkScript "${_script}";
 
-  if _functionPresent checkRequirements "$_script"; then
+  if _functionPresent checkRequirements "${_script}"; then
     logTrace -n "Checking declared requirements";
     checkRequirements;
     logTraceResult SUCCESS "Done";
   fi
 
-  if _functionPresent checkInput "$_script"; then
+  if _functionPresent checkInput "${_script}"; then
     evalEnvVars;
     checkInput $@;
 
-    if _functionPresent postCheckInput "$_script"; then
+    if _functionPresent postCheckInput "${_script}"; then
       postCheckInput $@;
     fi
   fi
