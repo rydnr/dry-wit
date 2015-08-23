@@ -265,6 +265,28 @@ function fileIsWriteable() {
   fi
 }
 
+## Checks if an element is already contained in an array.
+## -> [1]: The element to check
+## -> [2]: The array (passed as "${array[@]}"
+## <- 0: If the element is present in the array.
+## <- 1: Otherwise
+## Example:
+##   a=("one" "two" "three" "other number")
+##   if containsElement "other number" "${array[@]}"; then
+##     ...
+##   fi
+function arrayContainsElement() {
+    local _item="${1}";
+    local _array="${2}";
+    local _aux;
+    for _aux in "${_array}"; do
+        if [[ "${_aux}" == "${_item}" ]]; then
+            return 0;
+        fi
+    done
+    return 1;
+}
+        
 function addFileToCleanup() {
   local _file="${1}";
 #  logTrace "Appending ${result} to _CLEANUP_FILES";
