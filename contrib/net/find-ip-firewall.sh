@@ -181,12 +181,13 @@ function retrieve_first_ip_for_ip_and_netmask() {
   local _netmaskBlocks=(${_netmask//./ });
   local _aux=();
   local _result;
-  for i in $(seq 0 3); do
+  for i in 0 1 2 3; do
       _aux[${i}]=$((${_ipBlocks[${i}]} & ${_netmaskBlocks[${i}]}));
   done
-  _aux[${#_aux}]="$((_aux[${#_aux}]+1))";
+  _aux[$((${#_aux[@]}-1))]="$((${_aux[${#_aux[@]}-1]}+1))";
   _result="${_aux[@]}";
-  export RESULT="${_result// /.}";
+  _result="${_result// /.}";
+  export RESULT="${_result}";
 }
 
 ## Retrieves the last IP for given IP range and netmask.
@@ -212,7 +213,7 @@ function retrieve_last_ip_for_ip_and_netmask() {
     _negatedNetmaskBlock=$((255-${_netmaskBlocks[${i}]}));
     _aux[${i}]=$((${_ipBlocks[${i}]} | ${_negatedNetmaskBlock}));
   done
-  _aux[${#_aux}]="$((_aux[${#_aux}]-1))";
+  _aux[$((${#_aux[@]}-1))]="$((${_aux[${#_aux[@]}-1]}-1))";
   _result="${_aux[@]}";
   export RESULT="${_result// /.}";
 }
