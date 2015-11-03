@@ -1,0 +1,2 @@
+createTempFolder;
+local tempFolder=${RESULT};
