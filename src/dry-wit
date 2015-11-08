@@ -102,8 +102,10 @@ function defineEnvVar() {
   _addEnvVar "${_varName}";
   
   if [[ -n ${_varCommand} ]]; then
+#    echo -n "${_varName}_DEFAULT_COMMAND->${_varCommand}";
     _evalVar "${_varName}_DEFAULT_COMMAND";
     local _command="${RESULT}";
+#    echo "${_command}";
     if [[ ! -n ${_command} ]]; then
       export ${_varName}_DEFAULT_COMMAND="${_varCommand}";
     fi
@@ -148,8 +150,10 @@ function _evalEnvVar() {
 
   if [[ ! -n ${_varValue} ]]; then
     if [[ -n ${DRY_WIT_EVAL_DEFAULTS_FLAG} ]]; then
+#      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
       _evalVar "${_varName}_DEFAULT_COMMAND";
       local _defaultCommand="${RESULT}";
+#      echo "${_defaultCommand}";
       if [[ -n ${_defaultCommand} ]]; then
         logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
         local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
@@ -1599,6 +1603,8 @@ function _setup() {
       source "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
   [ -e "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
       source "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
+  [ -e "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
+      source "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
   evalEnvVars;
 }
 
