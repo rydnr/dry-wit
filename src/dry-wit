@@ -1520,11 +1520,16 @@ function _functionPresent() {
     _rescode=$?;
   fi
   if [ ${_rescode} -ne 0 ]; then
-    local _inc="${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"
-    if [ -e "${_inc}" ]; then
-      _functionPresent "${_function}" "${_inc}";
-      _rescode=$?;
-    fi
+    for _inc in "./$(basename ${_script} .sh).inc.sh" \
+                "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+      if [ -e "${_inc}" ]; then
+        _functionPresent "${_function}" "${_inc}";
+        _rescode=$?;
+	if [ ${_rescode} -eq 0 ]; then
+	  break;
+	fi
+      fi
+    done
   fi
   return ${_rescode};
 }
@@ -1596,9 +1601,11 @@ function _checkScript() {
 function _setup() {
   _trapSignals;
   [ -e "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
-      source "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
+      source "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh";
+  [ -e "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
+      source "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh";
   [ -e "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
-      source "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
+      source "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh";
   evalEnvVars;
 }
 
