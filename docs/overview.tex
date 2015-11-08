@@ -1,0 +1,207 @@
+% ====================================================================
+%    ___ ___ ___  __ ___ 
+%   / _ (_-</ _ \/ _/ _ \
+%   \___/__/\___/\__\___/
+%
+%   ~ La Empresa de los Programadores Profesionales ~
+%
+%
+%  | http://www.osoco.es
+%  |
+%  | Edificio Moma Lofts
+%  | Planta 3, Loft 18
+%  | Ctra. Mostoles-Villaviciosa, Km 0,2
+%  | Mostoles, Madrid 28935 EspaÃ±a
+%
+% ====================================================================
+%
+% Copyleft 2015 
+%
+% by Jose San Leandro
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass{beamer}
+
+\usetheme{osoco2012}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{minted}
+\usepackage{listings}
+
+% Metadata
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{dry-wit}
+\subtitle{Bash framework}
+\author{Jose San Leandro \href{http://twitter.com/rydnr}{@rydnr}}
+\institute[OSOCO]{%
+  \href{http://www.osoco.es}{OSOCO}
+}
+\date[10/2015]{October 2015}
+\subject{dry-wit}
+\keywords{dry-wit, bash, framework}
+
+% Contents
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\begin{frame}[plain]{Contents}
+  \tableofcontents[hideallsubsections]
+\end{frame}
+
+\section{Introduction}
+
+\subsection{Motivation}
+
+\begin{frame}{Bash}
+	\begin{columns}[t]
+		\column{.5\textwidth}
+		\begin{block}{In theory}
+			\begin{itemize}
+				\item Powerful language.
+				\item Conventions improve reusability and maintainability.
+				\item Great fit for Unix and OSs with strong command-line focus.
+			\end{itemize}
+		\end{block}
+		\pause
+
+		\column{.5\textwidth}
+		\begin{block}{In practice}
+			\begin{itemize}
+				\item Easy for newcomers.
+				\item Difficult to master.
+                                \item Write once, use twice, dispose.
+                                \item Expensive maintenance.
+                                \item Hardly reusable.
+			\end{itemize}
+		\end{block}
+
+	\end{columns}
+\end{frame}
+
+\section{dry-wit approach}
+
+\begin{frame}{dry-wit: Features}
+  \begin{block}{Features}
+    \begin{enumerate}
+    \item Provides a consistent way to structure scripts.
+    \item Manages required dependencies.
+    \item Declarative approach for dealing with errors (Output message + error code).
+    \item Handles parameters, flags, and environment variables.
+    \item API for creating temporary files, logging, etc.
+    \end{enumerate}
+  \end{block}
+\end{frame}
+
+\section{dry-wit hooks}
+
+\begin{frame}[fragile]{Usage / Help}
+  \begin{block}{usage()}
+    \inputminted{bash}{usage.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Input: checking}
+  \begin{block}{checkInput()}
+    \inputminted{bash}{checkinput.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Input: parsing}
+  \begin{block}{parseInput()}
+    \inputminted{bash}{parseinput.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Script requirements}
+  \begin{block}{Dependencies}
+    \inputminted{bash}{checkrequirements.bash}
+  \end{block}
+  \begin{block}{DSL}
+    \begin{enumerate}
+    \item \textit{executable-file}: The required dependency.
+    \item \texttt{message}: The name of a constant describing the error to display should the dependency is not present.
+    \item dry-wit checks each dependency and exits if the check fails.
+    \end{enumerate}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Error messages}
+  \begin{block}{defineErrors()}
+    \inputminted[breaklines,fontsize=\tiny]{bash}{defineerrors.bash}
+  \end{block}
+  \begin{block}{dry-wit takes care of the exit codes}
+    \inputminted{bash}{exitwitherrorcode.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{main()}
+  \begin{block}{main()}
+    \inputminted{bash}{main.bash}
+  \end{block}
+\end{frame}
+
+\section{dry-wit API}
+
+\begin{frame}[fragile]{Logging}
+  \begin{block}{logging}
+    \inputminted{bash}{logging.bash}
+  \end{block}
+  \begin{block}{output}
+    \inputminted[breaklines,fontsize=\tiny]{bash}{logging-output.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Temporary files}
+  \begin{block}{API functions}
+    \begin{enumerate}
+    \item Functions to create temporary files or folders.
+    \item dry-wit takes cares of cleaning them up afterwards.
+    \end{enumerate}
+  \end{block}
+  \begin{block}{createTempFile()}
+    \inputminted{bash}{createtempfile.bash}
+  \end{block}
+  \begin{block}{createTempFolder()}
+    \inputminted{bash}{createtempfolder.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Environment variables: Declaration (1/3)}
+  \begin{block}{DSL for declaring environment variables}
+    \begin{enumerate}
+    \item Declared in \textbf{[script].inc.sh}.
+    \item Safe to add to version control systems.
+    \item Mandatory information: description and default value.
+    \end{enumerate}
+  \end{block}
+  \begin{block}{defineEnvVar()}
+    \inputminted{bash}{defineenvvar.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Environment variables: Overridding (2/3)}
+  \begin{block}{DSL for overridding default values}
+    \begin{enumerate}
+    \item Declared in \textbf{.[script].inc.sh}.
+    \item Not always safe to add to version control systems.
+    \end{enumerate}
+  \end{block}
+  \begin{block}{overrideEnvVar()}
+    \inputminted{bash}{overrideenvvar.bash}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Environment variables: Overridding (3/3)}
+  \begin{block}{Environment value overridden from the command line}
+    \inputminted{bash}{specifyenvvarcommandline.bash}
+  \end{block}
+\end{frame}
+
+\end{document}

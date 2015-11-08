@@ -1,0 +1,2 @@
+createTempFile;
+local tempFile=${RESULT};
