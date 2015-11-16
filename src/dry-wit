@@ -1,5 +1,5 @@
 #!/bin/bash
-# (c) 2008-2010 Automated Computing Machinery, S.L.
+# (c) 2008-today Automated Computing Machinery, S.L.
 #
 #    This file is part of dry-wit.
 #
@@ -56,13 +56,118 @@ export BUILTIN_FAILURE_KEYWORDS=(\
 #export SUCCESS_KEYWORDS;
 #export FAILURE_KEYWORDS;
 
-export SUCCESS_COLOR=GREEN;
-export FAILURE_COLOR=RED;
-export WARNING_COLOR=ORANGE;
-export UNDEFINED_COLOR=YELLOW;
 export SUCCESS=0;
 export FAILURE=1;
+export IN_PROGRESS=2;
+export TRUE=0;
+export FALSE=1;
 export UNDEFINED=255;
+
+export _DRY_WIT_LOG_STACK=();
+export _DRY_WIT_LOG_CATEGORY_STACK=();
+export _DRY_WIT_LOG_LEVEL_STACK=();
+export _DRY_WIT_LOG_OUTCOME_TOKENS=();
+export _DRY_WIT_LOG_OUTCOME_COLORS=();
+export _DRY_WIT_DEFAULT_TERM_WIDTH=80;
+export _DRY_WIT_LOG_LINE_OPEN=${FALSE};
+export NESTED_TASK_IN_PROGRESS="....";
+
+export LOG_TIMESTAMP="+%Y/%m/%d %H:%M:%S";
+export LOG_OUTCOME_SEPARATOR=" ";
+export LOG_NESTED_INDENTATION="  ";
+
+## PUBLIC
+## Checks whether given value is empty.
+## -> 1: The value to check.
+## <- 0: if the value is empty; 1 otherwise.
+## Example:
+##   if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
+function isEmpty() {
+  local _rescode;
+  if [ -z "${1}" ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether given value is defined.
+## -> 1: The value to check.
+## <- 0: if the value is empty; 1 otherwise.
+## Example:
+##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+function isDefined() {
+    local _rescode;
+    if [ -z ${1+x} ]; then
+      _rescode=${TRUE};
+    else
+        _rescode=${FALSE};
+    fi
+    return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether given variable is defined.
+## -> 1: The value to check.
+## <- 0: if the value is empty; 1 otherwise.
+## Example:
+##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+function isVariableDefined() {
+    local _rescode;
+    eval "[ -v \${$1} ] 2> /dev/null"
+    if [ $? -eq 0 ]; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+    return ${_rescode};
+}
+
+## PRIVATE/DEBUG
+## Prints the contents of given array.
+## -> 1: The name of the array.
+## Example:
+##   A=( "1" "2" "3" );
+##   _dwDebugArray "${A}"
+function __dwDebugArray() {
+    flattenArray "${1}" " + ";
+    echo "${RESULT}";
+}
+
+## PUBLIC
+## Checks whether given value is true.
+## -> 1: The value.
+## <- 0: if the value is true; 1 otherwise.
+function isTrue() {
+  local _value="${1}";
+  local _rescode;
+  if [ "${_value}" == "${TRUE}" ]; then
+    _rescode=${TRUE};
+  elif [ "${_value}" == TRUE ]; then
+    _rescode=${TRUE};
+  elif [ "${_value}" == "true" ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether given value is false.
+## -> 1: The value.
+## <- 0: if the value is false; 1 otherwise.
+function isFalse() {
+  local _rescode;
+  if isTrue $*; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+  return ${_rescode};
+}
 
 function _evalVar() {
   local _varName="${1}";
@@ -86,21 +191,21 @@ function defineEnvVar() {
       export ${_varName}_DESCRIPTION="${_varDescription}";
     fi
   fi
-  
+
   if [[ -n ${_varDefault} ]]; then
     _evalVar "${_varName}_DEFAULT";
     local _defaultValue="${RESULT}";
     _defaultValue="${_varDefault}";
   fi
 
-  if [[ -n ${_defaultValue} ]]; then    
+  if [[ -n ${_defaultValue} ]]; then
     export ${_varName}_DEFAULT="${_defaultValue}";
     _evalVar "${_varName}_DEFAULT";
   fi
 
 
   _addEnvVar "${_varName}";
-  
+
   if [[ -n ${_varCommand} ]]; then
 #    echo -n "${_varName}_DEFAULT_COMMAND->${_varCommand}";
     _evalVar "${_varName}_DEFAULT_COMMAND";
@@ -173,7 +278,7 @@ function _evalEnvVar() {
       _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
     done
   fi
-  
+
   if [[ -n ${_varValue} ]]; then
     export ${_varName}="${_varValue}";
   fi
@@ -185,13 +290,179 @@ function evalEnvVars() {
   done
 }
 
+## PUBLIC
+## Retrieves the value of a constant.
+## -> 1: The constant name.
+## <- RESULT: The constant value.
+## Example:
+##  _OTHERVAR="works"
+##  _MYVAR="OTHERVAR";
+##  evalConstant "${_MYVAR}";
+##  echo "${_MYVAR}->${RESULT}" # _OTHERVAR->works
+function evalConstant() {
+    local _constant="${1}";
+
+    local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
+
+    if isEmpty "${_result}" ; then
+      _result="${2}";
+    fi
+
+    if isEmpty "${_result}" ; then
+      _result="${_constant}";
+    fi
+    #  if [ "${DEBUG}" == "1" ]; then
+    #    echo "";
+    #    echo "${_constant} converts to ${_result}";
+    #  fi
+
+    export RESULT="${_result}";
+}
+
+## PUBLIC
+## Converts given |-separated text into an array (after
+## sourcing a temporary file.
+## -> 1: The name of the array variable to set.
+## -> 2: The string with the "exported" array.
+## <- RESULT: Either the empty string, if the array
+##            already existed globally, or the name
+##            of a temporary file to source to be able
+##            to use the array, if it's new.
+## Example:
+##    pipe2Array "MY_ARRAY" "a|b and c|d";
+##    source "${RESULT}";
+##    echo "${MY_ARRAY[0]}" # a
+##    echo "${MY_ARRAY[1]}" # b and c
+##    echo "${MY_ARRAY[2]}" # d
+function pipe2Array() {
+  local _name="${1}";
+  shift;
+  if ! isVariableDefined "${_name}"; then
+    declare -a "${_name}";
+  fi
+
+  if isVariableDefined "${_name}"; then
+    _pipe2ExistingArray "${_name}" "$@";
+  else
+    echo "${_name} not defined"
+    exit 1
+    _pipe2ArrayWithTempFile "${_name}" "$@";
+  fi
+  export "${_name}";
+}
+
+## PRIVATE
+## Updates the values of an array, with the given |-separated text.
+## -> 1: The name of the array variable to update.
+## -> 2: The string with the "exported" array.
+## Example:
+##    declare -a MY_ARRAY;
+##    pipe2Array "MY_ARRAY" "a|b and c|d";
+##    source "${RESULT}";
+##    echo "${MY_ARRAY[0]}" # a
+##    echo "${MY_ARRAY[1]}" # b and c
+##    echo "${MY_ARRAY[2]}" # d
+function _pipe2ExistingArray() {
+  local _name="${1}";
+  local _value="${2}";
+  local -i _i=0;
+  local _len=$(echo "${_value}" | sed 's/|/\n|\n/g' | grep -c '|');
+  mapfile -t "${_name}" < <(echo "${_value}" | sed 's/|/\n/g' | sed 's/^\s+//g' | sed 's/\s+$//g' | sed 's/^"//g' | sed 's/"$//g');
+#
+#  local _oldIFS=$IFS
+#  IFS=$(echo -en "\n\b")
+#  local _valueLines="$(echo "${_value}" | sed 's/|/\n/g' | sed 's/^\s+//g' | sed 's/\s+$//g' | sed 's/^"//g' | sed 's/"$//g')";
+#  eval "export ${_name}=();"
+#  for _line in ${_valueLines}; do
+#    eval "${_name}[${_i}]=\"${_line}\"";
+#    echo "${_name}[${_i}]=\"${_line}\"";
+#    _i=$((${_i}+1))
+#  done
+#  declare -a ${_name};
+#  export ${_name};
+#  # restore $IFS
+#  IFS=${_oldIFS};
+  export RESULT="";
+}
+
+## PRIVATE
+## Converts given |-separated text into an array (after
+## sourcing a temporary file.
+## -> 1: The name of the array variable to set.
+## -> 2: The string with the "exported" array.
+## <- RESULT: Either the empty string, if the array
+##            already existed globally, or the name
+##            of a temporary file to source to be able
+##            to use the array, if it's new.
+## Example:
+##    pipe2Array "MY_ARRAY" "a|b and c|d";
+##    source "${RESULT}";
+##    echo "${MY_ARRAY[0]}" # a
+##    echo "${MY_ARRAY[1]}" # b and c
+##    echo "${MY_ARRAY[2]}" # d
+function _pipe2ArrayWithTempFile() {
+  local _name="${1}";
+  local _value="${2}";
+  local _result="${3}";
+  local _temp="";
+  if isEmpty "${_result}"; then
+    createTempFile;
+    _result="${RESULT}";
+    _temp="${4}";
+  fi
+  if isEmpty "${_temp}"; then
+    createTempFile;
+    _temp="${RESULT}";
+  fi
+  echo "declare -a ${_name};" >> ${_result};
+  local -i _i=0;
+  local _len=$(echo "${_value}" | sed 's/|/\n|\n/g' | grep -c '|');
+  local _valueLines="$(echo "${_value}" | sed 's/|/\n/g' | sed 's/^\s+//g' | sed 's/\s+$//g' | sed 's/^"//g' | sed 's/"$//g')";
+  echo "temp -> ${_temp}";
+  cat <<EOF > ${_temp}
+${_valueLines}
+EOF
+  for _i in $(seq 0 ${_len}); do
+    echo "${_name}[${_i}]=\"$(cat -n "${_temp}" | grep -e "^\s*$((${_i} + 1))\s" | awk '{if (NF>1) {for (i=2;i<NF;i++) {printf("%s ", $i);}; printf("%s", $NF);}}';)\";" >> ${_result};
+    _i=$((${_i}+1));
+  done
+  echo "export ${_name};" >> ${_result};
+
+  export RESULT="${_result}";
+}
+
+## PUBLIC
+## Flattens an array, using given separator.
+## -> 1: The name of the array variable.
+## -> 2: The separator to use.
+## <- RESULT: The resulting string.
+## Example:
+##   A=(a b c);
+##   _flattenArray A "x";
+##   echo "A->${RESULT}" # axbxc
+function flattenArray() {
+  local _arrayName="${1}";
+  local _separator="${2}";
+  local _result="";
+
+  local _aux="$(echo "\${#${_arrayName}[@]}")";
+  local _len=$((-1+$(eval echo "${_aux}")));
+  for _i in $(seq 0 ${_len}); do
+    _aux="$(echo "\${${_arrayName}[${_i}]}")";
+    _item=$(eval echo "${_aux}");
+    _result="${_result}${_separator}${_item}";
+  done
+  _result="${_result#${_separator}}";
+  export RESULT="${_result}";
+}
+
 # Checks whether a given flag is enabled
 # -> 1: the name of the flag variable
 # <- 0 if the flag is enabled, 1 otherwise.
 # Example:
 # function parseInput() {
 # [..]
-#   -my | --myFlag) export MY_FLAG=0;
+#   -my | --myFlag) export MY_FLAG=${TRUE};
 #                   ;;
 # [..]
 # if _flagEnabled MY_FLAG; then
@@ -203,7 +474,7 @@ function _flagEnabled() {
   _evalVar "${_flagVar}";
   _flagVal="${RESULT}";
   if [ "x${_flagVal}" == "x0" ]; then
-      _result=0;
+      _result=${TRUE};
   else
       _result=1;
   fi
@@ -213,16 +484,23 @@ function _flagEnabled() {
 # AUXILIARY GENERAL-PURPOSE FUNCTIONS
 
 function cleanup() {
-  setLogCategory "post-process";
+  if [ "${#_CLEANUP_FILES}" != "0" ]; then
+    setLogCategory "post-process";
 
-  if [ "${#_CLEANUP_FILES}" != "0" ] \
-     && isDebugEnabled; then
-    logTrace "Cleaning up temporary files";
+    logDebug -n "Cleaning up temporary files";
+
+    for i in ${_CLEANUP_FILES[*]}; do
+      logTrace -n "Deleting $i";
+      rm -rf $i > /dev/null;
+      if [ $? -eq 0 ]; then
+        logTraceResult SUCCESS "done";
+      else
+        logTraceResult FAILURE "failed";
+      fi
+    done
+
+    logDebugResult SUCCESS "done";
   fi
-  for i in ${_CLEANUP_FILES[*]}; do
-#    logTrace "Deleting $i";
-    rm -rf $i > /dev/null;
-  done
   # restoring old IFS
   export IFS="${_OLD_IFS}";
 }
@@ -233,7 +511,7 @@ function checkReq() {
 }
 
 function createTempFile() {
-  local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}')";
+  local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
   local _dirname="$(dirname \"${SCRIPT_NAME}\")";
 #  local _prefix="$(echo "${SCRIPT_NAME}" | awk -F"/" '{print $NF;}')";
 #  local _dirname="$(dirname "${SCRIPT_NAME}")";
@@ -263,9 +541,9 @@ function createTempFile() {
 function fileIsWriteable() {
   local _file="${1}";
   if [[ -n ${_file} ]] && [[ -w ${_file} ]]; then
-    return 0;
+    return ${TRUE};
   else
-    return 1;
+    return ${FALSE};
   fi
 }
 
@@ -280,17 +558,17 @@ function fileIsWriteable() {
 ##     ...
 ##   fi
 function arrayContainsElement() {
-    local _item="${1}";
-    local _array="${2}";
-    local _aux;
-    for _aux in "${_array}"; do
-        if [[ "${_aux}" == "${_item}" ]]; then
-            return 0;
-        fi
-    done
-    return 1;
+  local _item="${1}";
+  local _array="${2}";
+  local _aux;
+  for _aux in "${_array}"; do
+    if [[ "${_aux}" == "${_item}" ]]; then
+      return 0;
+    fi
+  done
+  return 1;
 }
-        
+
 function addFileToCleanup() {
   local _file="${1}";
 #  logTrace "Appending ${result} to _CLEANUP_FILES";
@@ -325,18 +603,18 @@ function createTempFolder() {
 function extractFlags() {
   local result="";
   echo " $@" \
-| awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' \
-| awk -F" " '{print $1;}'
+    | awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' \
+    | awk -F" " '{print $1;}'
 }
 
 function extractFlagValue() {
   local flag=$1;
   shift;
   echo " $@" \
-| awk -F" -" '{printf("-"); for (i=2; i<=NF; i++){if(i%2 == 1) {printf("-");}; printf("%s \n", $i);}}' \
-| grep -e "^$flag " \
-| awk -v f="${flag}" '{printf("echo \"%s\" | sed -e \"s_^%s __g\"\n", $2, f);}' \
-| sh;
+    | awk -F" -" '{printf("-"); for (i=2; i<=NF; i++){if(i%2 == 1) {printf("-");}; printf("%s \n", $i);}}' \
+    | grep -e "^$flag " \
+    | awk -v f="${flag}" '{printf("echo \"%s\" | sed -e \"s_^%s __g\"\n", $2, f);}' \
+    | sh;
 }
 
 function logFlag() {
@@ -379,7 +657,7 @@ function isSuccessKeyword() {
              == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #         || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
 #             == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _result=0;
+        _result=${TRUE};
         break;
       fi;
     done
@@ -392,7 +670,7 @@ function isSuccessKeyword() {
               == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #          || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
 #              == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _result=0;
+        _result=${TRUE};
         break;
       fi;
     done
@@ -411,7 +689,7 @@ function isFailureKeyword() {
            == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #      || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
 #           == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-      _result=0;
+      _result=${TRUE};
       break;
     fi;
   done
@@ -423,7 +701,7 @@ function isFailureKeyword() {
             == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #        || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
 #            == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _result=0;
+        _result=${TRUE};
         break;
       fi;
     done
@@ -433,10 +711,10 @@ function isFailureKeyword() {
 }
 
 function printErrorMessage() {
-  local _result=0;
+  local _result=${TRUE};
   local _message;
   local _error;
-  local _interruption=0;
+  local _interruption=${TRUE};
 
   for i in ${BUILTIN_ERRORS[*]}; do
     _result=$((_result+1));
@@ -448,7 +726,7 @@ function printErrorMessage() {
 
   if [ "x${_message}" == "x" ]; then
     # IFS issue
-#    _result=0;
+#    _result=${TRUE};
     for i in ${ERROR_MESSAGES[*]}; do
       _result=$((_result+1));
       if [ "x${i}" == "x${1}" ]; then
@@ -572,7 +850,7 @@ function jd2date() {
   _temp1=$((_month/11));
   _month=$((_month+2-12*_temp1));
   _year=$((100*(_temp2-49)+_year+_temp1));
-  
+
   export RESULT="$_year $_month $_day";
 }
 
@@ -584,10 +862,9 @@ function date2jd() {
   local _month=$2;
   local _day=$3;
 
-  
   local _standardJd=$(( _day - 32075
-       + 1461 * (_year + 4800 - (14 - _month)/12)/4 
-       + 367 * (_month - 2 + (14 - _month)/12*12)/12 
+       + 1461 * (_year + 4800 - (14 - _month)/12)/4
+       + 367 * (_month - 2 + (14 - _month)/12*12)/12
        - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
 
   _result=$((_standardJd-2400001));
@@ -617,9 +894,8 @@ function jds2date() {
   _temp=$((_temp-_hour*3600));
   _minute=$((_temp/60));
   _second=$((_temp-_minute*60));
-  
-  export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}";
 
+  export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}";
 }
 
 # Converts given formatted date to a second-based one.
@@ -632,7 +908,7 @@ function date2jds() {
   local _hour=$4;
   local _minute=$5;
   local _second=$6;
-  
+
   date2jd ${_year} ${_month} ${_day};
   _result=${RESULT};
   _result=$((_result*24+_hour));
@@ -643,41 +919,74 @@ function date2jds() {
 }
 
 function retrieveTERM() {
-    local _result="${TERM}";
+  local _result="${TERM}";
 
-    if [ "x${_result}" == "x" ]; then
-      _result="dumb";
-    fi
+  if [ "x${_result}" == "x" ]; then
+    _result="dumb";
+  fi
 
-    case ${_result} in
-      
-      dumb) _result="$(uname | tr '[:upper:]' '[:lower:]')";
-            ;;
+  case ${_result} in
+    dumb) _result="$(uname | tr '[:upper:]' '[:lower:]')";
+         ;;
       *) ;;
-    esac
+  esac
 
-    export RESULT="${_result}";
+  export RESULT="${_result}";
 }
 
 # Retrieves the width of the term.
 # Exports the value, since values greater
 # than 255 are not allowed as return codes.
+# <- 0: if the calculation
+# <- RESULT: the term width.
 function getTermWidth() {
-
+  local -i _rescode;
+  local _result;
+  local _term;
   retrieveTERM;
-  local _term="${RESULT}";
+  _term="${RESULT}";
 
-  if [ "x${_term}" == "x" ]; then
-    _term="$(uname | tr '[:upper:]' '[:lower:]')";
-  fi
+  getTermWidthForTerm "${_term}";
+  _rescode=$?;
 
-  $(tput -T ${_term} cols &> /dev/null) 2>&1 > /dev/null
-  local -i _rescode=$?;
+  return ${_rescode};
+}
+
+# Retrieves the width of the term.
+# Exports the value, since values greater
+# than 255 are not allowed as return codes.
+# -> 1: the TERM.
+# <- 0: if the calculation is performed successfully.
+# <- RESULT: the term width.
+function getTermWidthForTerm() {
+  local -i _rescode;
+  local _result;
+  local _term="${1}";
+
+  $(tput cols &> /dev/null > /dev/null 2>&1) 
+  _rescode=$?;
 
   if [ ${_rescode} -eq 0 ]; then
-    local _result=$(tput -T ${_term} cols &> /dev/null);
-    export RESULT=${_result};
+    _result=$(tput cols);
   fi
+
+  if    isEmpty ${_result} \
+     || [ $((_result)) -le 0 ]; then
+
+    if ! isEmpty "${_term}"; then
+
+      $(tput -T ${_term} cols > /dev/null 2>&1);
+
+      if [ ${_rescode} -eq 0 ]; then
+        _result=$(tput -T ${_term} cols);
+      fi
+    fi
+  fi
+  if    isEmpty ${_result} \
+     || [ $((_result)) -le 0 ]; then
+    _result=${_DRY_WIT_DEFAULT_TERM_WIDTH};
+  fi
+  export RESULT=${_result};
 
   return ${_rescode};
 }
@@ -700,65 +1009,148 @@ function getLogCategory() {
   export RESULT="${LOG_CATEGORY}";
 }
 
+## Retrieves given color.
+## -> 1: The first color modifier.
+## -> 2: The second color modifier (optional).
+## <- RESULT: The color string.
+## Example:
+##   retrieveColor "setaf 2" "bold";
+##   _green="${RESULT}"
+function buildColor() {
+  local _color="${1}";
+  shift
+  local _len="$#";
+  local _result="";
+  local _modifier;
+
+  for _i in $(seq 1 ${_len}); do
+    _modifier="${1}";
+    shift;
+    _result="${_result}|tput ${_modifier}";
+  done
+  _result="${_result#|}";
+
+  pipe2Array "${_color}_TPUT" "${_result}";
+}
+
+declare -a BLACK_TPUT;
+buildColor BLACK "setaf 0";
+declare -a BLACK_B_TPUT;
+buildColor BLACK_B "setaf 0" "bold";
+declare -a RED_TPUT;
+buildColor RED "setaf 1";
+declare -a RED_B_TPUT;
+buildColor RED_B "setaf 1" "bold";
+declare -a RED_S_TPUT;
+buildColor RED_S "setaf 1" "smul";
+declare -a GREEN_TPUT;
+buildColor GREEN "setaf 2" "bold";
+declare -a GREEN_B_TPUT;
+buildColor GREEN_B "setaf 2" "bold";
+declare -a YELLOW_TPUT;
+buildColor YELLOW "setaf 3";
+declare -a YELLOW_B_TPUT;
+buildColor YELLOW_B "setaf 3" "bold";
+declare -a BLUE_TPUT;
+buildColor BLUE "setaf 4";
+declare -a BLUE_B_TPUT;
+buildColor BLUE_B "bold" "setaf 4" "dim";
+declare -a MAGENTA_TPUT;
+buildColor MAGENTA "setaf 5";
+declare -a MAGENTA_B_TPUT;
+buildColor MAGENTA_B "setaf 5" "bold";
+declare -a CYAN_TPUT;
+buildColor CYAN "setaf 6";
+declare -a CYAN_B_TPUT;
+buildColor CYAN_B "setaf 6" "bold";
+declare -a GREY_TPUT;
+buildColor GREY "setaf 7";
+declare -a WHITE_TPUT;
+buildColor WHITE "setaf 7" "bold";
+declare -a WHITE_B_TPUT;
+buildColor WHITE_B "setaf 9" "bold";
+declare -a NO_COLOR_TPUT;
+buildColor NO_COLOR "sgr0";
+
+export SUCCESS_COLOR=GREEN_B;
+export FAILURE_COLOR=RED_B;
+export IN_PROGRESS_COLOR=BLUE;
+export UNDEFINED_COLOR=GREY;
+export DEFAULT_LOG_PREFIX_COLOR=WHITE_B;
+export DEFAULT_LOG_OUTCOME_COLOR=GREY;
+export DEFAULT_LOG_RESUMING_TASK_COLOR=GREY;
+
+export LOG_PREFIX_COLORS=(\
+  BLUE   \
+  CYAN  \
+  RED    \
+  YELLOW \
+  RED \
+  GREY \
+  BLUE   \
+);
+
+export LOG_PREFIX_TOKENS=(\
+    "[" \
+    "timestamp"  \
+    "<" \
+    "category"  \
+    ">" \
+    "logLevel" \
+    "]" \
+);
+export LOG_PREFIX_TIMESTAMP_POSITION=1;
+export LOG_PREFIX_CATEGORY_POSITION=3;
+export LOG_PREFIX_LEVEL_POSITION=5;
+
+export INFO_LOG_PREFIX_TOKEN=".";
+export DEBUG_LOG_PREFIX_TOKEN="o";
+export TRACE_LOG_PREFIX_TOKEN="O";
+
+export LOG_OUTCOME_COLORS=(\
+    CYAN  \
+    WHITE \
+    CYAN  \
+);
+
+export LOG_OUTCOME_TOKENS=(\
+    "[" \
+    "done" \
+    "]" \
+);
+
+export LOG_OUTCOME_TEXT_POSITION=1;
+
 function allowsColors() {
   local _result;
 
-  retrieveTERM;
-  local _term="${RESULT}";
-
-  case ${_term} in
-    xterm*|rxvt*)
+  $(tput colors > /dev/null 2>&1);
+  if isTrue $?; then
+    _colors=$(tput colors);
+    if [ ${_colors} -ge 8 ]; then
       env | grep -e '^_=' | grep env 2>&1 > /dev/null;
-      if [ $? == 0 ]; then
-        _result=0;
-        export GREEN="$(tput -T ${_term} setaf 2 2>&1 > /dev/null; tput -T ${_term} bold 2>&1 > /dev/null)";
-        export RED="$(tput -T ${_term} setaf 1 2>&1 > /dev/null ; tput -T ${_term} bold 2>&1 > /dev/null)";
-        export BLUE="$(tput -T ${_term} setaf 4 2>&1 > /dev/null ; tput -T ${_term} bold 2>&1 > /dev/null)";
-        export WHITE="$(tput -T ${_term} setaf 7 2>&1 > /dev/null ; tput -T ${_term} bold 2>&1 > /dev/null)";
-        export YELLOW="$(tput -T ${_term} bold 2>&1 > /dev/null ; tput -T ${_term} setaf 3 2>&1 > /dev/null)";
-        export CYAN="$(tput -T ${_term} setaf 6 2>&1 > /dev/null)";
-        export ORANGE="$(tput -T ${_term} bold 2>&1 > /dev/null ; tput -T ${_term} setaf 1 2>&1 > /dev/null)";
-        export NO_COLOR="$(tput -T ${_term} sgr0 2>&1 > /dev/null)";
+      if isTrue $?; then
+        _result=${TRUE};
       else
-        result=1;
+        result=${FALSE};
       fi
-      ;;
-    *)
-      _result=1;
-      ;;
-  esac;
-
-  tput -T ${_term} cols 2>&1 > /dev/null;
-  if [ $? -ne 0 ]; then
-    _result=1;
-  fi
+    else
+      _result=${FALSE};
+    fi
+  else
+    _result=${FALSE};
+  fi;
 
   return ${_result};
 }
 
-function evalConstant() {
-  local _constant="${1}";
-
-  local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
-
-  if [ "x${_result}" == "x" ]; then
-    _aux="${2}";
-  fi
-
-#  if [ "${DEBUG}" == "1" ]; then
-#    echo "";
-#    echo "${_constant} converts to ${_result}";
-#  fi 
-
-  export RESULT="${_result}";
-}
-
 function getColor() {
   local _colorConstant="${1}";
+  local _defaultColor="${2:${UNDEFINED_COLOR}}"
   local _result;
 
   if allowsColors; then
-    evalConstant "${_colorConstant}" "${UNDEFINED_COLOR}";
+    evalConstant "${_colorConstant}" "${_defaultColor}";
     _result="${RESULT}";
   fi
 
@@ -791,9 +1183,9 @@ function definedTag() {
   local _result;
 
   case "${1}" in
-    "SUCCESS" | "FAILURE") _result=0;
-                           ;;
-    *) _result=1;
+    "SUCCESS" | "FAILURE") _result=${TRUE};
+       ;;
+    *) _result=${FALSE};
        ;;
   esac
 
@@ -815,11 +1207,11 @@ function resolveVerbosity() {
 }
 
 function isTraceEnabled() {
-  local _rescode=1;
+  local _rescode=${FALSE};
 
   if isDebugEnabled; then
     if [ "x${LOG_VV}" != "x" ]; then
-      _rescode=0;
+      _rescode=${TRUE};
     fi
   fi
 
@@ -833,28 +1225,28 @@ function setTraceEnabled() {
 
 function logTrace() {
   if isTraceEnabled; then
-    _logStuff $@;
+    _logStuff TRACE "$@";
   fi
 }
 
 function logTraceResult() {
   if isTraceEnabled; then
-    _logStuffResult $@;
+    _logStuffResult TRACE "$@";
   fi
 }
 
 function logTraceFile() {
   if isTraceEnabled; then
-    cat "${1}" 2> /dev/null | while read line; do _logStuff "${line}"; done
+    cat "${1}" 2> /dev/null | while IFS='' read -r line; do _logStuff TRACE "${line}"; done
   fi
 }
 
 function isDebugEnabled() {
-  local _rescode=1;
+  local _rescode=${FALSE};
 
   if isInfoEnabled; then
     if [ "x${LOG_V}" != "x" ]; then
-      _rescode=0;
+      _rescode=${TRUE};
     fi
   fi
 
@@ -868,227 +1260,1018 @@ function setDebugEnabled() {
 
 function logDebugFile() {
   if isDebugEnabled; then
-    cat "${1}" | while read line; do _logStuff "${line}"; done
+    cat "${1}" | while IFS='' read -r line; do _logStuff DEBUG "${line}"; done
   fi
 }
 
 function logDebug() {
   if isDebugEnabled; then
-    _logStuff $@;
+    _logStuff DEBUG "$@";
   fi
 }
 
 function logDebugResult() {
   if isDebugEnabled; then
-    _logStuffResult $@;
+    _logStuffResult DEBUG "$@";
   fi
 }
 
 function isLowerThanInfoEnabled() {
   if isDebugEnabled || isTraceEnabled; then
-    return 0;
+    return ${TRUE};
   else
-    return 1;
+    return ${FALSE};
   fi
 }
 
 function isInfoEnabled() {
-  if [ "x${LOG_QUIET}" != "x" ]; then
-    return 1;
+  if isTrue ${LOG_QUIET}; then
+    return ${FALSE};
   else
-    return 0;
+    return ${TRUE};
   fi
 }
 
 function setInfoEnabled() {
-  LOG_QUIET=;
+  LOG_QUIET=${FALSE};
 }
 
 function logInfoFile() {
   if isInfoEnabled; then
-    cat "${1}" | while read line; do _logStuff "${line}"; done
+    cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
   fi
 }
 
 function logInfo() {
   if isInfoEnabled; then
-    _logStuff $@;
+    _logStuff INFO "$@";
   fi
 }
 
 function logInfoResult() {
   if isInfoEnabled; then
-    _logStuffResult $@;
+    _logStuffResult INFO "$@";
   fi
 }
 
 function setQuietMode() {
-  LOG_QUIET=1;
+  LOG_QUIET=${TRUE};
 }
 
 function log() {
-  _logStuff $@;
+  _logInfo "$@";
 }
 
 function logResult() {
-  _logStuffResult $@;
+  _logInfoResult "$@";
 }
 
 function logFile() {
-  cat "${1}" | while read line; do _logStuff "${line}"; done
+  cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
 }
 
 function logWarn() {
-  _internalLogStuff 0 -1 0 "$@";
+  _internalLogStuff "false" -1 0 "$@";
 }
 
 function _logStuff() {
-  _internalLogStuff 0 -1 1 $@;
+  local _level="${1}";
+  shift;
+  local _minusN="${1}";
+  if [ "-n" == "${_minusN}" ]; then
+    shift;
+  fi
+  _logInProgress "${_level}" "$@";
+  if [ "-n" != "${_minusN}" ]; then
+    echo;
+    _popLog;
+    _popLogCategory;
+  fi
 }
 
 function _logStuffResult() {
-  findOutKeyword "${1}";
-  local _keyword=$?;
-  if definedTag ${1}; then
-    shift;
-  fi
-  _internalLogStuff 1 ${_keyword} 1 $@;
+   local _level="${1}";
+   shift;
+  _logCompleted "${_level}" "$@";
 }
 
-function _internalLogStuff() {
-  local _flag=0;
-  local _message="";
-  local _printingResults=$1;
-  shift;
-  local _keyword=$1;
-  shift;
-  local _warning=$1;
-  shift;
-  allowsColors;
-  local _allowsColors=$?;
-  local _color;
-  local _offset=-3;
+## PRIVATE
+## Annotates the last log message.
+## -> 1: The log message.
+function _setLastLog() {
+  _DRY_WIT_LAST_LOG="${@}";
+}
 
-  local _categoryNamespace="${LOG_CATEGORY_NAMESPACE}";
-  local _category="${LOG_CATEGORY}";
-  local _timestamp="$(date '+%Y/%m/%d %H:%M:%S')";
+## PRIVATE
+## Retrieves the last log message.
+## <- RESULT: The log message.
+function _getLastLog() {
+  export RESULT="${_DRY_WIT_LAST_LOG}";
+}
 
-  if    [ "x${_categoryNamespace}" == "x" ] \
-     && [ "${SCRIPT_NAME}" != "" ]; then
-    _categoryNamespace="$(basename ${SCRIPT_NAME} .sh)";
+## PRIVATE
+## Pushes given message to the log stack.
+## -> 1: The message to push.
+function _pushLog() {
+  _DRY_WIT_LOG_STACK[${#_DRY_WIT_LOG_STACK[@]}]="$*";
+}
+
+## PRIVATE
+## Pushes given category to the log category stack.
+## -> 1: The category to push.
+function _pushLogCategory() {
+    _DRY_WIT_LOG_CATEGORY_STACK[${#_DRY_WIT_LOG_CATEGORY_STACK[@]}]="$*";
+}
+
+## PRIVATE
+## Pushes given level to the log level stack.
+## -> 1: The level to push.
+function _pushLogLevel() {
+    _DRY_WIT_LOG_LEVEL_STACK[${#_DRY_WIT_LOG_LEVEL_STACK[@]}]="$*";
+}
+
+## PRIVATE
+## Retrieves the number of "in-progress" tasks pending.
+## <- : Such count.
+## Example:
+##   _numberOfNestedInProgressTasks;
+##   _count=$?
+function _numberOfNestedInProgressTasks() {
+  local _rescode;
+  _rescode=${#_DRY_WIT_LOG_STACK[@]};
+  return ${_rescode};
+}
+
+## PRIVATE
+## Pops given message from the log stack.
+## <- 0: if the stack contained at least the popped item; 1 otherwise.
+## <- RESULT: The popped message.
+## Example:
+##   if _popLog; then
+##     echo "Last log: ${RESULT}";
+##   fi
+function _popLog() {
+  local _rescode;
+  local _result="";
+  local -i _len=${#_DRY_WIT_LOG_STACK[@]};
+  local -i _newLen;
+  if [ ${_len} -gt 0 ]; then
+    _newLen=$((${_len} - 1));
+    _result="${_DRY_WIT_LOG_STACK[${_newLen}]}";
+    eval "unset _DRY_WIT_LOG_STACK[${_newLen}]";
+    _rescode=$?;
+  else
+    _rescode=1;
   fi
+  export RESULT="${_result}";
+  return ${_rescode};
+}
 
-  if [ "x${_categoryNamespace}" != "x" ]; then
-    _category="${_categoryNamespace}:${_category}";
+## PRIVATE
+## Peeks given message from top of the log stack.
+## <- 0: if the stack contains at least the returned item; 1 otherwise.
+## <- RESULT: The message.
+## Example:
+##   if _peekLog; then
+##     echo "Last log: ${RESULT}";
+##   fi
+function _peekLog() {
+  local _rescode;
+  local _result="";
+  local -i _len=${#_DRY_WIT_LOG_STACK[@]};
+  local -i _newLen;
+  if [ ${_len} -gt 0 ]; then
+    _newLen=$((${_len} - 1));
+    _result="${_DRY_WIT_LOG_STACK[${_newLen}]}";
+    _rescode=$?;
+  else
+    _rescode=1;
   fi
+  export RESULT="${_result}";
+  return ${_rescode};
+}
 
-  if [ "x${_LOG_LINE_OPEN}" == "x" ]; then
-    if    [ "x${_category}" == "x" ] \
-       &&   ${_warning}; then
-      _category="WARN";
-    fi
-
-    if [ ${_allowsColors} == 0 ]; then
-      if [ ${_warning} == 0 ]; then
-        evalConstant "${WARNING_COLOR}" "${UNDEFINED_COLOR}";
-        local _color=${RESULT};
-        _message="${BLUE}[${GREEN}${_timestamp} ${_color}${_category}${BLUE}]${NO_COLOR} ";
-      else
-        _message="${BLUE}[${GREEN}${_timestamp} ${CYAN}${_category}${BLUE}]${NO_COLOR} ";
-      fi
+## PRIVATE
+## Pops given category from the log category stack.
+## <- 0: if the stack contained at least the popped item; 1 otherwise.
+## <- RESULT: The popped category.
+## Example:
+##   if _popLogCategory; then
+##     echo "Last log category: ${RESULT}";
+##   fi
+function _popLogCategory() {
+    local _rescode;
+    local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
+    local -i _newLen;
+    if [ ${_len} -gt 0 ]; then
+      _newLen=$((${_len} - 1));
+      export RESULT="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
+      eval "unset _DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]";
+      _rescode=$?;
     else
-      _message="[${_timestamp} ${_category}] ";
+        _rescode=1;
+    fi
+    return ${_rescode};
+}
+
+## PRIVATE
+## Peeks given category from the log category stack.
+## <- 0: if the stack contained at least the returned item; 1 otherwise.
+## <- RESULT: The category.
+## Example:
+##   if _peekLogCategory; then
+##     echo "Last log category: ${RESULT}";
+##   fi
+function _peekLogCategory() {
+    local _rescode;
+    local _result="";
+    local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
+    local -i _newLen;
+    if [ ${_len} -gt 0 ]; then
+      _newLen=$((${_len} - 1));
+      _result="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
+      _rescode=$?;
+    else
+        _rescode=1;
+    fi
+    export RESULT="${_result}";
+    return ${_rescode};
+}
+
+## PRIVATE
+## Pops given level from the log level stack.
+## <- 0: if the stack contained at least the popped item; 1 otherwise.
+## <- RESULT: The popped level.
+## Example:
+##   if _popLogLevel; then
+##     echo "Last log level: ${RESULT}";
+##   fi
+function _popLogLevel() {
+    local _rescode;
+    local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
+    local -i _newLen;
+    if [ ${_len} -gt 0 ]; then
+      _newLen=$((${_len} - 1));
+      export RESULT="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
+      eval "unset _DRY_WIT_LOG_LEVEL_STACK[${_newLen}]";
+      _rescode=$?;
+    else
+        _rescode=1;
+    fi
+    return ${_rescode};
+}
+
+## PRIVATE
+## Peeks given level from the log level stack.
+## <- 0: if the stack contained at least the returned item; 1 otherwise.
+## <- RESULT: The level.
+## Example:
+##   if _peekLogLevel; then
+##     echo "Last log level: ${RESULT}";
+##   fi
+function _peekLogLevel() {
+  local _rescode;
+  local _result="";
+  local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
+  local -i _newLen;
+  if [ ${_len} -gt 0 ]; then
+    _newLen=$((${_len} - 1));
+    _result="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
+    _rescode=$?;
+  else
+    _rescode=1;
+  fi
+  export RESULT="${_result}";
+  return ${_rescode};
+}
+
+## PRIVATE
+## Checks whether the log line is currently opened.
+## <- 0: if it's open; 1 otherwise.
+## Example:
+##   if _isLogLineOpen; then [..]; fi
+function _isLogLineOpen() {
+  return ${_DRY_WIT_LOG_LINE_OPEN};
+}
+
+## PRIVATE
+## Opens the log line.
+## Example:
+##   _openLogLine;
+function _openLogLine() {
+  export _DRY_WIT_LOG_LINE_OPEN=${TRUE};
+}
+
+## PRIVATE
+## Closes the log line.
+## Example:
+##   _closeLogLine;
+function _closeLogLine() {
+  export _DRY_WIT_LOG_LINE_OPEN=${FALSE};
+}
+
+## PRIVATE
+## Retrieves the timestamp used for logging.
+## <- RESULT: The timestamp.
+## Note: Override LOG_TIMESTAMP to modify the timestamp format.
+## Example:
+##   _retrieveLogTimestamp;
+##   echo "The log timestamp is ${RESULT}";
+function _retrieveLogTimestamp() {
+  export RESULT="$(date "${LOG_TIMESTAMP}")";
+}
+
+## PRIVATE
+## Retrieves the position of the timestamp in
+## the log prefix tokens array.
+## <- RESULT: the timestamp position.
+## Example:
+##   _retrieveTimestampPositionInLogPrefix;
+##   echo "timestamp -> ${RESULT}";
+function _retrieveTimestampPositionInLogPrefix() {
+  export RESULT=${LOG_PREFIX_TIMESTAMP_POSITION};
+}
+
+## PRIVATE
+## Retrieves the position of the category in
+## the log prefix tokens array.
+## <- RESULT: the category position.
+## Example:
+##   _retrieveCategoryPositionInLogPrefix;
+##   echo "category -> ${RESULT}";
+function _retrieveCategoryPositionInLogPrefix() {
+  export RESULT=${LOG_PREFIX_CATEGORY_POSITION};
+}
+
+## PRIVATE
+## Retrieves the position of the log level in
+## the log prefix tokens array.
+## <- RESULT: the level position.
+## Example:
+##   _retrieveLevelPositionInLogPrefix;
+##   echo "level -> ${RESULT}";
+function _retrieveLevelPositionInLogPrefix() {
+    export RESULT=${LOG_PREFIX_LEVEL_POSITION};
+}
+
+## PRIVATE
+## Retrieves the position of the outcome token in
+## the log outcome colors array.
+## <- RESULT: the outcome text position.
+## Example:
+##   _retrieveOutcomeTextPositionInLogOutcome;
+##   echo "outcome text -> ${RESULT}";
+function _retrieveOutcomeTextPositionInLogOutcome() {
+  export RESULT=${LOG_OUTCOME_TEXT_POSITION};
+}
+
+## PRIVATE
+## Retrieves the tokens composing the log prefix.
+## -> 1: The log category.
+## -> 2: The log level (optional).
+## <- RESULT: The output file to source to be able to use
+##            _DRY_WIT_LOG_PREFIX_TOKENS array.
+## Example:
+##    _retrieveLogPrefixTokens "a:b:c" DEBUG;
+##    source ${RESULT};
+##    echo "${_DRY_WIT_LOG_PREFIX_TOKENS[*]}"
+function  _retrieveLogPrefixTokens() {
+  local _category="${1}";
+  local _levelVar="${2}";
+  evalConstant "${_levelVar}_LOG_PREFIX_TOKEN" "${INFO_LOG_PREFIX_TOKEN}";
+  local _level="${RESULT}";
+  local _result=();
+  local _aux="";
+  local _timestamp;
+  local -i _i;
+  local -i _len;
+  local -i _timestampPosition;
+  local -i _category_position;
+  local -i _levelPosition;
+
+  _len=$((${#LOG_PREFIX_TOKENS[@]} - 1));
+  for _i in $(seq 0 ${_len}); do
+    _aux="${_aux}|${LOG_PREFIX_TOKENS[${_i}]}";
+  done
+  _aux="${_aux#|}";
+  pipe2Array _DRY_WIT_LOG_PREFIX_TOKENS "${_aux}";
+
+  _retrieveLogTimestamp;
+  _timestamp="${RESULT}";
+  _retrieveTimestampPositionInLogPrefix;
+  _timestampPosition=${RESULT};
+  _DRY_WIT_LOG_PREFIX_TOKENS[${_timestampPosition}]="${_timestamp}";
+  _retrieveCategoryPositionInLogPrefix;
+  _categoryPosition=${RESULT};
+  _DRY_WIT_LOG_PREFIX_TOKENS[${_categoryPosition}]="${_category}";
+  _retrieveLevelPositionInLogPrefix;
+  _levelPosition=${RESULT};
+  _DRY_WIT_LOG_PREFIX_TOKENS[${_levelPosition}]="${_level}";
+}
+
+## PRIVATE
+## Retrieves the tokens composing the log outcome.
+## -> 1: The outcome text.
+## <- RESULT: The output file to source to be able to use
+##            _DRY_WIT_LOG_OUTCOME_TOKENS array.
+## Example:
+##    _retrieveLogOutcomeTokens "done";
+##    source ${RESULT};
+##    echo "${_DRY_WIT_LOG_OUTCOME_TOKENS[*]}"
+function  _retrieveLogOutcomeTokens() {
+  local _text="${1}";
+  local _result=();
+  local _aux="";
+  local _timestamp;
+  local -i _i;
+  local -i _len;
+  local -i _outcomeTextPosition;
+
+  _len=$((${#LOG_OUTCOME_TOKENS[@]} - 1));
+  for _i in $(seq 0 ${_len}); do
+    _aux="${_aux}|${LOG_OUTCOME_TOKENS[${_i}]}";
+  done
+  _aux="${_aux#|}";
+  pipe2Array "_DRY_WIT_LOG_OUTCOME_TOKENS" "${_aux}";
+
+  _retrieveOutcomeTextPositionInLogOutcome;
+  _outcomeTextPosition=${RESULT};
+  _DRY_WIT_LOG_OUTCOME_TOKENS[${_outcomeTextPosition}]="${_text}";
+
+}
+
+## PRIVATE
+## Retrieves the tokens composing the log outcome.
+## -> 1: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+## <- RESULT: The output file to source to be able to use
+##            _DRY_WIT_LOG_OUTCOME_COLORS array.
+## Example:
+##    _retrieveLogOutcomeColors SUCCESS "done";
+##    source ${RESULT};
+##    echo "${_DRY_WIT_LOG_OUTCOME_COLORS[*]}"
+function  _retrieveLogOutcomeColors() {
+  local _keyword="${1}";
+  local _result=();
+  local _aux="";
+  _retrieveKeywordColor "${_keyword}";
+  local _keywordColor="${RESULT}";
+  local -i _i;
+  local -i _len;
+  local -i _outcomeTextPosition;
+
+  _len=$((${#LOG_OUTCOME_COLORS[@]} - 1));
+  for _i in $(seq 0 ${_len}); do
+    _aux="${_aux}|${LOG_OUTCOME_COLORS[${_i}]}";
+  done
+  _aux="${_aux#|}";
+  pipe2Array "_DRY_WIT_LOG_OUTCOME_COLORS" "${_aux}";
+
+  _retrieveOutcomeTextPositionInLogOutcome;
+  _outcomeTextPosition=${RESULT};
+  _DRY_WIT_LOG_OUTCOME_COLORS[${_outcomeTextPosition}]="${_keywordColor}";
+}
+
+## PRIVATE
+## Retrieves the color for a given keyword.
+## -> 1: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+## -> 2: The default color.
+## <- RESULT: The associated color.
+## Example:
+##   _retrieveKeywordColor SUCCESS GREEN;
+##   echo "Color -> ${RESULT}"
+function _retrieveKeywordColor() {
+  local _keyword="${1}";
+  local _defaultColor="${2}";
+
+  local _result;
+
+  case ${_keyword} in
+      SUCCESS | "${SUCCESS}") _result="${SUCCESS_COLOR}";
+                              ;;
+      FAILURE | "${FAILURE}" | "FAILED" | "failed" | "FAIL" | "fail") _result="${FAILURE_COLOR}";
+                                                                      ;;
+      IN_PROGRESS | "${IN_PROGRESS}") _result="${IN_PROGRESS_COLOR}";
+                                      ;;
+      *) _result="${_defaultColor}";
+         ;;
+  esac
+
+  export RESULT="${_result}";
+}
+
+## PRIVATE
+## Prints the log prefix.
+## -> 1: The log category.
+## -> 2: The log level.
+## Example:
+##   _echoLogPrefix "cat" DEBUG
+function _echoLogPrefix() {
+  local _category="${1}";
+  local _level="${2}";
+  local _allowsColors;
+  allowsColors;
+  _allowsColors=$?;
+  _echoColorAwareLogPrefix "${_category}" ${_allowsColors} "${_level}";
+}
+
+## PRIVATE
+## Retrieves the log prefix.
+## -> 1: The log category.
+## -> 2: The log level.
+## Example:
+##   _retrieveLogPrefix "cat" DEBUG;
+##   echo "log prefix -> ${RESULT}";
+function _retrieveLogPrefix() {
+  local _category="${1}";
+  local _level="${2}";
+  local _result="$(_echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
+  export RESULT="${_result}";
+}
+
+## PRIVATE
+## Prints the log prefix, for color terminals.
+## -> 1: The log category.
+## -> 2: ${TRUE} if using colors; ${FALSE} otherwise.
+## -> 3: The log level.
+## Example:
+##   _echoColorAwareLogPrefix "cat" ${TRUE} DEBUG
+function _echoColorAwareLogPrefix() {
+  local _category="${1}";
+  local _allowsColors=${2};
+  local _level="${3}";
+  local _len;
+  local _colors;
+
+  _retrieveLogPrefixTokens "${_category}" "${_level}";
+#  source ${RESULT};
+
+  _len=$((${#_DRY_WIT_LOG_PREFIX_TOKENS[@]} - 1));
+  for _i in $(seq 0 ${_len}); do
+    if isTrue ${_allowsColors}; then
+      echoInColor -n "${LOG_PREFIX_COLORS[${_i}]}" "${_DRY_WIT_LOG_PREFIX_TOKENS[${_i}]}";
+    else
+      echo -n "${_DRY_WIT_LOG_PREFIX_TOKENS[${_i}]}";
+    fi
+  done
+
+  if isTrue ${_allowsColors}; then
+    resetColor;
+  fi
+  echo -n " ";
+}
+
+## PRIVATE
+## Retrieves the log namespace.
+## <- RESULT: The log namespace.
+function _retrieveLogNamespace() {
+  local _namespace="${LOG_CATEGORY_NAMESPACE}";
+  local _category="${LOG_CATEGORY}";
+
+  if isEmpty "${_namespace}"; then
+    if isEmpty "${SCRIPT_NAME}" ; then
+      _result="?";
+    else
+      _result="$(basename ${SCRIPT_NAME} .sh)";
     fi
   fi
 
-  if [ "$1" == "-n" ]; then
-    _flag=1;
+  if ! isEmpty ${_category} ; then
+    _result="${_result}:${_category}";
+  fi
+
+  export RESULT="${_result}";
+}
+
+## PRIVATE
+## Prints the log outcome.
+## -> 1: The log level.
+## -> 2: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
+## -> 3: The outcome text.
+## Example:
+##   _echoLogOutcome DEBUG SUCCESS "sample"
+function _echoLogOutcome() {
+  local _level="${1}";
+  shift;
+  local _keyword="${1}";
+  shift;
+  local _text="${@}";
+  local _len;
+  local _allowsColors;
+  local _colors;
+  local _inProgressMessage;
+  local _logPrefix;
+
+  _retrieveLogOutcomeTokens "${_text}";
+
+  allowsColors;
+  _allowsColors=$?;
+
+  if isTrue ${_allowsColors}; then
+    _retrieveLogOutcomeColors ${_keyword};
+  fi
+
+  _peekLog;
+  _inProgressMessage="${RESULT}";
+  _peekLogCategory;
+  _category="${RESULT}";
+  _peekLogLevel;
+  _level="${RESULT}";
+  _retrieveLogPrefix "${_category}" "${_level}";
+  _logPrefix="${RESULT}";
+  _alignRight "${_logPrefix}${_inProgressMessage}" "${_text}";
+
+  _len=$((${#_DRY_WIT_LOG_OUTCOME_TOKENS[@]} - 1));
+  for _i in $(seq 0 ${_len}); do
+    if isTrue ${_allowsColors}; then
+      echoInColor -n "${_DRY_WIT_LOG_OUTCOME_COLORS[${_i}]}" "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
+    else
+      echo -n "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
+    fi
+  done
+
+  if isTrue ${_allowsColors}; then
+    resetColor;
+  fi
+}
+
+## PRIVATE
+## Prints the log outcome.
+## -> 1: The log level.
+## -> 2: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
+## -> 3: The outcome text.
+## Example:
+##   _echoLogOutcome DEBUG SUCCESS "sample"
+function _echoLogOutcomeNested() {
+  local _level="${1}";
+  shift;
+  local _keyword="${1}";
+  shift;
+  local _text="${@}";
+  local _inProgressMessage;
+  local _alreadyInProgressMessage;
+  local _category;
+  local _alreadyInProgressCategory;
+  local _indentation;
+  local -i _i;
+  _popLog;
+  _inProgressMessage="${RESULT}";
+  _popLogCategory;
+  _category="${RESULT}";
+  _echoLogOutcome "${_level}" "${_keyword}" "${_text}";
+  _numberOfNestedInProgressTasks;
+  _nestedTasks=$?;
+  for _i in $(seq 1 ${_nestedTasks}); do
+    _indentation="${_indentation}${LOG_NESTED_INDENTATION}";
+  done
+  _pushLog "${_indentation}${_inProgressMessage}";
+  _pushLogCategory "${_category}";
+}
+
+## PRIVATE
+## Writes spaces until the next message to print
+## is aligned to the right.
+## -> 1: The log-line message.
+## -> 2: The log outcome message.
+## Example:
+##  _alignRight "Finishing work" "done";
+function _alignRight() {
+  local _logLineMessage="${1}";
+  local _outcome="${2}";
+  local _logMessage;
+
+  local -i _termWidth;
+  local -i _index;
+  local -i _offset=0;
+  local -i _end;
+  local _allowsColors;
+
+  _retrieveLogOutcomeTokens "${_outcome}";
+  for _token in "${_DRY_WIT_LOG_OUTCOME_TOKENS[@]}"; do
+    _logMessage="${_logMessage}${_token}";
+  done
+
+  getTermWidth;
+  if isTrue $?; then
+    _termWidth=$RESULT;
+    _index=0;
+    allowsColors;
+    _allowsColors=$?;
+    if isTrue ${_allowsColors}; then
+      _offset=$((_offset));
+    fi
+    _end=$((${_offset}+${_termWidth}-${#_logLineMessage}%${_termWidth}-${#_logMessage}-1));
+    while [ $((_end)) -lt 0 ]; do
+      echo "";
+      _end=$((-${_end}+${_offset}+${_termWidth}-${#_logMessage}));
+    done
+    while [ $((${_end}-${_index}+1)) != 0 ]; do
+      _index=$((${_index}+1));
+      echo -n "${LOG_OUTCOME_SEPARATOR}";
+    done
+  fi
+}
+
+## PUBLIC
+## Prints a text in color.
+## -> 1: -n : Whether to remove the CRLF from the end (optional).
+## -> 2: The color.
+## -> 3: The text to echo.
+function echoInColor() {
+  local _flagMinusN;
+  local _colorAux;
+  if [ "${1}" == "-n" ]; then
+    _flagMinusN=${TRUE};
     shift;
   else
-    export _LOG_LINE_OPEN="";
+    _flagMinusN=${FALSE};
   fi
-  _message="${_message}$@";
-  if [ ${_printingResults} == 0 ]; then
-    if [ ${_flag} == 0 ]; then
-      if [ "${_LAST_LOG_FLAG}" != "" ]; then
-        _printingResults=1;
-      fi
-    fi
-  fi
+  local _color="${1}";
+  local _text="${2}";
 
-  if [ ${_printingResults} == 1 ]; then
-    getTermWidth;
-    if [ $? -eq 0 ]; then
-      local _termWidth=$RESULT;
-      if [ "x${_termWidth}" == "x" ] \
-	 || [ $((_termWidth)) -le 0 ]; then
-	 _termWidth=80;
-      fi
-      local -i _index=0;
-      if [ ${_allowsColors} == 0 ]; then
-        _offset=$((_offset+2));
-      fi
-      local _end=$((${_offset}+${_termWidth}-${_LOG_LINE_MESSAGE}%_termWidth-${#_message}));
-      while [ $((_end)) -lt 0 ]; do
-#        echo "${_offset}+${_termWidth}-${#_message}";
-        echo "";
-        _end=$((-${_end}+${_offset}+${_termWidth}-${#_message}));
-      done
-      while [ $((_end-_index+1)) != 0 ]; do
-        _index=$((_index+1));
-        echo -n " ";
-      done
-    fi    
+  if ! isEmpty "${_color}_TPUT"; then
+    flattenArray "${_color}_TPUT" " && ";
+    _colorAux="${RESULT}";
+#    echo "${BLUE_TPUT}, coloraux -> ${_colorAux}"
   fi
-  if [ ${_flag} == 1 ]; then
-    export _LOG_LINE_OPEN="1";
+  if isTrue ${_flagMinusN}; then
+    echo -n "$(${_colorAux})${_text}";
+#    echo -n "${_text}";
   else
-    export _LOG_LINE_OPEN="";
+    echo "$(${_colorAux})${_text}";
+#    echo "${_text}";
   fi
+}
 
-  if [ ${_flag} == 0 ]; then
-    if [ ${_printingResults} == 1 ]; then
-      if [ ${_allowsColors} == 0 ]; then
-        getColor ${UNDEFINED_COLOR};
-        local _undefinedColor="${RESULT}";
-        getColor ${SUCCESS_COLOR};
-        local _successColor="${RESULT}";
-        getColor ${FAILURE_COLOR};
-        local _failureColor="${RESULT}";
-        case ${_keyword} in
-          0) 
-            _color="${_successColor}";
-            ;;
-          1) 
-            _color="${_failureColor}";
-            ;;
-          *)
-            if isSuccessKeyword "${_message}"; then
-              _color="${_successColor}";
-            elif isFailureKeyword "${_message}"; then
-              _color="${_failureColor}";
-            else
-              _color="${_undefinedColor}";
-            fi
-            ;;
-        esac
-        echo "${WHITE}[${_color}${_message}${WHITE}]${NO_COLOR}";
-      else
-        echo "[${_message}]";
-      fi
+## PUBLIC
+## Prints a text in color.
+## -> 1: -n : Whether to remove the CRLF from the end (optional).
+## -> 2: The color.
+## -> 3: The text to echo.
+function resetColor() {
+  ${NO_COLOR};
+}
+
+## PUBLIC
+## Echoes given text, colorized.
+## -> 1: The text to colorize.
+## -> 2: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text).
+## -> 3: The default color (optional).
+## Example:
+##   echoColorizeText "done" SUCCESS;
+function echoColorizedText() {
+  local _text="${1}";
+  local _keyword="${2}";
+  local _defaultColor="${3:${UNDEFINED_COLOR}}";
+  local _color="";
+  allowsColors;
+  _allowsColors=$?;
+
+  if isTrue ${_allowsColors}; then
+    getColor ${_defaultColor};
+    _undefinedColor="${RESULT}";
+    getColor ${SUCCESS_COLOR};
+    _successColor="${RESULT}";
+    getColor ${FAILURE_COLOR};
+    _failureColor="${RESULT}";
+    case ${_keyword} in
+      ${SUCCESS}) _color="${_successColor}";
+         ;;
+      ${FAILURE}) _color="${_failureColor}";
+         ;;
+      *) if isSuccessKeyword "${_text}"; then
+           _color="${_successColor}";
+         elif isFailureKeyword "${_text}"; then
+           _color="${_failureColor}";
+         else
+           _color="${_undefinedColor}";
+         fi
+         ;;
+    esac
+  fi
+  echoColorizedTextWithColor -n "${_color}" "${_text}";
+}
+
+## PUBLIC
+## Echoes given text, colorized.
+## -> 1: The text to colorize.
+## -> 2: The text color.
+## Example:
+##   echoColorizeTextWithColor "${WHITE}" "done";
+function echoColorizedTextWithColor() {
+  local _flagMinusN;
+  if [ "${1}" == "-n" ]; then
+    _flagMinusN=${TRUE};
+    shift;
+  else
+    _flagMinusN=${FALSE};
+  fi
+  evalConstant "${1}";
+  local _color="${RESULT}";
+  local _text="${2}";
+  local _result;
+
+  local _allowsColors;
+  allowsColors;
+  _allowsColors=$?;
+
+  if isTrue ${_allowsColors}; then
+    if isTrue ${_flagMinusN}; then
+      echoInColor -n "${_color}" "${_text}";
     else
-      echo "${_message}";
+      echoInColor "${_color}" "${_text}";
     fi
-    export _LAST_LOG_FLAG="";
+    resetColor;
+  elif isTrue ${_flagMinusN}; then
+    echo -n "${_text}";
   else
-    echo -n "${_message}";
-    export _LAST_LOG_FLAG="1";
+    echo "${_text}";
   fi
-  if [ ${_allowsColors} != 0 ]; then
-    export _LOG_LINE_MESSAGE="${#_message}";
+}
+
+## PRIVATE
+## Prints a log message.
+## -> 1: The log level.
+## -> 2: The message.
+## Example:
+##   _logMessage INFO "A message to log"
+##   # [...] A message to log
+function _logMessage() {
+  local _level="${1}";
+  shift;
+  local _message="$@";
+  _logInProgress "${_level}" "${_message}";
+  echo;
+}
+
+## PRIVATE
+## Prints a log message, indicating some uncompleted task.
+## -> 1: The message.
+## Example:
+##   _logInProgress "Calculating ...";
+##   # [...] Calculating ...
+function _logInProgress() {
+  local _level="${1}";
+  shift;
+  local _message="$@";
+  local -i nestedTasks;
+  local _category;
+  _retrieveLogNamespace;
+  _category="${RESULT}";
+
+  _numberOfNestedInProgressTasks;
+  _nestedTasks=$?;
+  if [ ${_nestedTasks} -gt 0 ]; then
+    _logInProgressNested "${_category}" "${_level}" "${_message}";
   else
-    export _LOG_LINE_MESSAGE="$((${#_message}-27))";
+    _logInProgressNoNested "${_category}" "${_level}" "${_message}";
   fi
+}
+
+## PRIVATE
+## Prints a log message, indicating some uncompleted task,
+## when there're nested tasks.
+## -> 1: The category.
+## -> 2: The log level.
+## -> 3: The message.
+## Example:
+##   _logInProgressNested "cat" DEBUG "Calculating ...";
+##   # [...<cat>|o] Calculating ...
+function _logInProgressNested() {
+  local _category="${1}";
+  shift;
+  local _level="${1}";
+  shift;
+  local _message="$@";
+  local _logPrefix;
+  _pushLog "${_message}";
+  _pushLogCategory "${_category}";
+  _pushLogLevel "${_level}";
+  _logCompletedNestedNoPop "${_level}" IN_PROGRESS "${NESTED_TASK_IN_PROGRESS}";
+  echo;
+
+  _retrieveLogPrefix "${_category}" "${_level}";
+  _logPrefix="${RESULT}";
+  _echoLogPrefix "${_category}" "${_level}";
+  _peekLog;
+  _actualMessage="${RESULT}";
+  echoColorizedText "${_actualMessage}" "" "${DEFAULT_LOG_PREFIX_COLOR}";
+}
+
+## PRIVATE
+## Prints a log message, indicating some uncompleted task,
+## when there're no nested tasks.
+## -> 1: The log category.
+## -> 2: The log level.
+## -> 3: The message.
+## Example:
+##   _logProgressNoNested "cat" INFO "Calculating ...";
+##   # [...<cat|.>] Calculating ...
+function _logInProgressNoNested() {
+  local _category="${1}";
+  shift;
+  local _level="${1}";
+  shift;
+  local _message="$@";
+  local _logPrefix;
+
+  _logPrefix="${RESULT}";
+  _pushLogCategory "${_category}";
+  _pushLog "${_message}";
+  _pushLogLevel "${_level}";
+  _retrieveLogPrefix "${_category}" "${_level}";
+  _echoLogPrefix "${_category}" "${_level}";
+  echoColorizedText "${_message}" "" "${DEFAULT_LOG_PREFIX_COLOR}";
+}
+
+## PRIVATE
+## Prints the result of a task.
+## -> 1: The log level.
+## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
+## -> 3: The outcome text.
+## Example:
+##   _logCompleted INFO SUCCESS "done";
+function _logCompleted() {
+  local _level="${1}";
+  shift;
+  local _keyword="${1}";
+  shift;
+  local _text="${@}";
+  local -i nestedTasks;
+
+  _numberOfNestedInProgressTasks;
+  _nestedTasks=$?;
+  if [ ${_nestedTasks} -gt 1 ]; then
+    _logCompletedNested "${_level}" "${_keyword}" "${_text}";
+  else
+    _logCompletedNoNested "${_level}" "${_keyword}" "${_text}";
+  fi
+}
+
+## PRIVATE
+## Prints the result of a task.
+## -> 1: The log level.
+## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
+## -> 3: The outcome text.
+## Example:
+##   _logCompletedNoNested INFO SUCCESS "done";
+function _logCompletedNoNested() {
+  local _level="${1}";
+  shift;
+  local _keyword="${1}";
+  shift;
+  local _text="${@}";
+  _echoLogOutcome "${_level}" "${_keyword}" "${_text}";
+  _popLog;
+  _popLogCategory;
+  _popLogLevel;
+  echo;
+}
+
+## PRIVATE
+## Prints the result of a task, when there're nested tasks.
+## -> 1: The log level.
+## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
+## -> 3: The outcome text.
+## Example:
+##   _logCompletedNested INFO SUCCESS "done";
+function _logCompletedNested() {
+  local _level="${1}";
+  shift;
+  local _keyword="${1}";
+  shift
+  local _message="$@";
+  local _nestedTask;
+  local _nestedTaskCategory;
+  local _logPrefix;
+  _echoLogOutcome "${_level}" "${_keyword}" "${_message}";
+  echo;
+  _popLogCategory;
+  _peekLogCategory;
+  _nestedTaskCategory="${RESULT}";
+  _popLogLevel;
+  _peekLogLevel;
+  _nestedTaskLevel="${RESULT}";
+  _popLog;
+  _peekLog;
+  _nestedTask="${RESULT}";
+  _echoLogPrefix "${_nestedTaskCategory}" "${_nestedTaskLevel}";
+  echoColorizedText "${_nestedTask}" "" "${DEFAULT_LOG_RESUMING_TASK_COLOR}";
+}
+
+## PRIVATE
+## Prints the result of a task, when there're nested tasks.
+## -> 1: The log level.
+## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
+## -> 3: The outcome text.
+## Example:
+##   _logCompletedNested SUCCESS "done";
+function _logCompletedNestedNoPop() {
+  local _level="${1}";
+  shift;
+  local _keyword="${1}";
+  shift
+  local _message="$@";
+  _echoLogOutcomeNested "${_level}" "${_keyword}" "${_message}";
 }
 
 function urlEncode() {
@@ -1116,24 +2299,24 @@ function urlEncode() {
   | sed 's \[ %5B g' \
   | sed 's \] %5D g';
 
-#  !    *    '    (    )    ;    :    @    &    =    +    $    ,    / 
-#%21  %2A  %27  %28  %29  %3B  %3A  %40  %26  %3D  %2B  %24  %2C  %2F 
+#  !    *    '    (    )    ;    :    @    &    =    +    $    ,    /
+#%21  %2A  %27  %28  %29  %3B  %3A  %40  %26  %3D  %2B  %24  %2C  %2F
 #  ?    %    #    [    ]
 # %3F  %25  %23  %5B  %5D
 }
 
 function readConfFile() {
   local _confFile="${1}";
-  local result=0;
+  local result=${TRUE};
 
-  [ ! -e "${_confFile}" ] && result=1;
+  [ ! -e "${_confFile}" ] && result=${FALSE};
 
   local _actualConfFile="${_confFile}";
 
   createTempFile;
   result=$?;
 
-  if [ ${result} != 0 ]; then
+  if isFalse ${result}; then
     return ${result};
   fi
 
@@ -1152,7 +2335,7 @@ function readConfFile() {
 }
 
 function checkPasswordlessSudo() {
-  local _result=0;
+  local _result=${TRUE};
 
   which sudo 2>&1 > /dev/null;
   _result=$?;
@@ -1196,32 +2379,24 @@ function findRelativePathBetweenFolders() {
   local _p;
   local _result;
 
-  # 1.
   findGreatestCommonParentFolder "${_pathA}" "${_pathB}";
   _parent="${RESULT}";
-
-#  echo "findGreatestCommonParentFolder ${_pathA} ${_pathB} -> ${_parent}";
 
   _pathAb="${_pathA#${_parent}}";
   _pathAb="${_pathAb#/}";
   _pathBb="${_pathB#${_parent}}";
   _pathBb="${_pathBb#/}";
 
-#  echo "_pathAb=${_pathAb}, _pathBb=${_pathBb}";
-
   findFolderDistance "${_pathA}" "${_pathAb}";
   _d="${RESULT}";
-#  echo "findFolderDistance ${_pathA} ${_pathAb} -> ${_d}";
   index=0;
 
-  # 4.
   replaceNLeftmostTokens "${_pathA}" ".." ${_d} "/";
   _p="${RESULT}";
   local _aux=$(echo ${_pathA} | awk -F"/" '{print NF;};');
   replaceNRightmostTokens "${_p}" "" $((_aux-_d-1)) "/";
   _p="${RESULT}";
 
-  # 5.
   _result="${_p}/${_pathBb}";
 
   export RESULT="${_result}";
@@ -1289,7 +2464,7 @@ function findFolderDistance() {
     _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_indexB} '{printf("%s", $indx);}');
     _index=$((_index-1));
     if [ "${_auxA}" != "${_auxB}" ]; then
-      _result=0;
+      _result=${TRUE};
       break;
     fi
   done
@@ -1297,7 +2472,7 @@ function findFolderDistance() {
 #  if [ $((_result)) -ge 0 ]; then
 #    _result=$((_max-_result));
 #  else
-#    _result=0;
+#    _result=${TRUE};
 #  fi
 
   export RESULT="${_result}";
@@ -1332,7 +2507,7 @@ function replaceNRightmostTokens() {
 function uncompress() {
   local _file="${1}";
   local _destination="${2}";
-  local _result=0;
+  local _result=${TRUE};
 
   createTempFile;
   local _errorOutput="${RESULT}";
@@ -1377,7 +2552,7 @@ function removeExtension() {
 
 function remoteSshCommand() {
   local _result;
-  local _resultCode=0;
+  local _resultCode=${TRUE};
   local _user="$1";
   local _server="$2";
   local _command="$3";
@@ -1423,7 +2598,7 @@ function retrieveFreeDiskSpaceUnderFolder() {
 
 function remoteSshCommandPipe() {
   local _result;
-  local _resultCode=0;
+  local _resultCode=${TRUE};
   local _user="$1";
   local _server="$2";
   local _command="$3";
@@ -1540,7 +2715,7 @@ function _functionPresent() {
 
 function _parseCommonInput() {
 
-  local _help=0;
+  local _help=${TRUE};
   setInfoEnabled;
 
   local _flags=$(extractFlags $@);
@@ -1640,7 +2815,7 @@ function _main() {
   if _functionPresent defineEnvDefaults "${_script}"; then
     defineEnvDefaults;
   fi
-  
+
   if _functionPresent defineEnv "${_script}"; then
     defineEnv;
   fi
