@@ -758,14 +758,15 @@ function printErrorMessage() {
   fi
   _printError "${_error}";
 
-  return $_result;
+  return ${_result};
 }
 
 function exitWithErrorCode() {
+  local _rescode;
   printErrorMessage $@;
-  local _result=$?;
+  _rescode=$?;
   cleanup;
-  exit ${_result};
+  exit ${_rescode};
 }
 
 # Internal functions
