@@ -473,10 +473,10 @@ function _flagEnabled() {
   local _result;
   _evalVar "${_flagVar}";
   _flagVal="${RESULT}";
-  if [ "x${_flagVal}" == "x0" ]; then
-      _result=${TRUE};
+  if [ "x${_flagVal}" == "x${TRUE}" ]; then
+    _result=${TRUE};
   else
-      _result=1;
+    _result=${FALSE};
   fi
   return ${_result};
 }
@@ -2657,7 +2657,7 @@ function runCommandLongOutput() {
 
   getLogCategory;
   local _previousLogCategory="${RESULT}";
-  setLogCategory "${_previousLogCategory}:($1)";
+  setLogCategory "${_previousLogCategory}*";
 
   logDebug "${_command}";
 
