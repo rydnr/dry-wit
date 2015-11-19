@@ -935,6 +935,20 @@ function retrieveTERM() {
   export RESULT="${_result}";
 }
 
+# PRIVATE
+# Retrieves the column width, from an environment
+# variable.
+# <- [int]: the column width; -1 if the environment variable
+#           is not specified.
+# Example:
+#   retrieveTermWidthFromEnvVar;
+#   _width=$?;f
+function _retrieveTermWidthFromEnvVar() {
+  local _result="${DW_TERM_WIDTH:-1}";
+  return $((${_result}));
+}
+
+# PRIVATE
 # Retrieves the width of the term.
 # Exports the value, since values greater
 # than 255 are not allowed as return codes.
@@ -942,13 +956,19 @@ function retrieveTERM() {
 # <- RESULT: the term width.
 function getTermWidth() {
   local -i _rescode;
-  local _result;
   local _term;
-  retrieveTERM;
-  _term="${RESULT}";
 
-  getTermWidthForTerm "${_term}";
+  _retrieveTermWidthFromEnvVar;
   _rescode=$?;
+  if [ ${_rescode} == -1 ]; then
+    retrieveTERM;
+    _term="${RESULT}";
+
+    getTermWidthForTerm "${_term}";
+    _rescode=$?;
+  else
+    _rescode=${_aux};
+  fi
 
   return ${_rescode};
 }
