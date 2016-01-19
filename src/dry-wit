@@ -520,19 +520,19 @@ function createTempFile() {
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  local result="$(mktemp -p "${_dirname}"  -t ".${_prefix}.XXXXXXXXXX")";
+  local _result="$(mktemp -p "${_dirname}"  -t ".${_prefix}.XXXXXXXXXX")";
   local _aux=$?;
-  rm -f $result > /dev/null
+  rm -f ${_result} > /dev/null
   if [ $_aux -ne 0 ]; then
-     result="$(mktemp -t ".${_prefix}.XXXXXXXXXX")";
+     _result="$(mktemp -t ".${_prefix}.XXXXXXXXXX")";
      _aux=$?;
   fi
   if [ $_aux -ne 0 ]; then
      exitWithErrorCode $1;
   fi
-  addFileToCleanup "${result}";
+  addFileToCleanup "${_result}";
 
-  export RESULT="${result}";
+  export RESULT="${_result}";
 }
 
 ## Checks if given file is writeable
@@ -1231,7 +1231,7 @@ function isTraceEnabled() {
   local _rescode=${FALSE};
 
   if isDebugEnabled; then
-    if [ "x${LOG_VV}" != "x" ]; then
+    if isTrue ${_DRY_WIT_LOG_TRACE}; then
       _rescode=${TRUE};
     fi
   fi
@@ -1240,7 +1240,7 @@ function isTraceEnabled() {
 }
 
 function setTraceEnabled() {
-  LOG_VV=1;
+  _DRY_WIT_LOG_TRACE=${TRUE};
   setDebugEnabled;
 }
 
@@ -1266,7 +1266,7 @@ function isDebugEnabled() {
   local _rescode=${FALSE};
 
   if isInfoEnabled; then
-    if [ "x${LOG_V}" != "x" ]; then
+    if isTrue ${_DRY_WIT_LOG_DEBUG}; then
       _rescode=${TRUE};
     fi
   fi
@@ -1275,7 +1275,7 @@ function isDebugEnabled() {
 }
 
 function setDebugEnabled() {
-  LOG_V=1;
+  _DRY_WIT_LOG_DEBUG=${TRUE};
   setInfoEnabled;
 }
 
@@ -1306,7 +1306,7 @@ function isLowerThanInfoEnabled() {
 }
 
 function isInfoEnabled() {
-  if isTrue ${LOG_QUIET}; then
+  if isTrue ${_DRY_WIT_LOG_QUIET}; then
     return ${FALSE};
   else
     return ${TRUE};
@@ -1314,7 +1314,7 @@ function isInfoEnabled() {
 }
 
 function setInfoEnabled() {
-  LOG_QUIET=${FALSE};
+  _DRY_WIT_LOG_QUIET=${FALSE};
 }
 
 function logInfoFile() {
@@ -1336,7 +1336,7 @@ function logInfoResult() {
 }
 
 function setQuietMode() {
-  LOG_QUIET=${TRUE};
+  _DRY_WIT_LOG_QUIET=${TRUE};
 }
 
 function log() {
@@ -1847,6 +1847,7 @@ function _echoColorAwareLogPrefix() {
 function _retrieveLogNamespace() {
   local _namespace="${LOG_CATEGORY_NAMESPACE}";
   local _category="${LOG_CATEGORY}";
+  local _result;
 
   if isEmpty "${_namespace}"; then
     if isEmpty "${SCRIPT_NAME}" ; then
@@ -2628,8 +2629,8 @@ function remoteSshCommandPipe() {
   shift;
   local _previousPipe="$@";
 
-  echo "_previousPipe=${_previousPipe}";
-  echo "_command=${_command}";
+#  echo "_previousPipe=${_previousPipe}";
+#  echo "_command=${_command}";
   _result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
   _resultCode=$?;
   if [ ${_resultCode} == 0 ]; then
@@ -2663,6 +2664,8 @@ function runCommand() {
   return ${_resultCode};
 }
 
+# TODO: find out why this fails. _result gets modified
+# externally in the getLogCategory/setLogCategory/logDebug block
 # Runs a command supporting logging of command-line and output,
 # even if it's long, since it uses a temporary file to store it.
 # Parameters:
@@ -2682,8 +2685,8 @@ function runCommandLongOutput() {
   logDebug "${_command}";
 
   if isDebugEnabled; then
-    $@ 2>&1 | tee "${_result}";
-    _resultCode=${PIPESTATUS[0]};
+      $@ 2>&1 | tee "${_result}";
+      _resultCode=${PIPESTATUS[0]};
   else
     $@ > "${_result}" 2>&1;
     _resultCode=$?;
