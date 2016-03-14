@@ -944,7 +944,7 @@ function retrieveTERM() {
 #   retrieveTermWidthFromEnvVar;
 #   _width=$?;f
 function _retrieveTermWidthFromEnvVar() {
-  local _result="${DW_TERM_WIDTH:-1}";
+  local _result="${DW_TERM_WIDTH:-0}";
   return $((${_result}));
 }
 
@@ -960,7 +960,7 @@ function getTermWidth() {
 
   _retrieveTermWidthFromEnvVar;
   _rescode=$?;
-  if [ ${_rescode} == -1 ]; then
+  if [ ${_rescode} == 0 ]; then
     retrieveTERM;
     _term="${RESULT}";
 
