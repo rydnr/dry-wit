@@ -473,7 +473,8 @@ function _flagEnabled() {
   local _result;
   _evalVar "${_flagVar}";
   _flagVal="${RESULT}";
-  if [ "x${_flagVal}" == "x${TRUE}" ]; then
+  if    [ "x${_flagVal}" == "x${TRUE}" ] \
+     || [ "x${_flagVal}" == "xTRUE" ]; then
     _result=${TRUE};
   else
     _result=${FALSE};
