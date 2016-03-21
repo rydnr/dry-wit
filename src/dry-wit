@@ -1352,10 +1352,6 @@ function logFile() {
   cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
 }
 
-function logWarn() {
-  _internalLogStuff "false" -1 0 "$@";
-}
-
 function _logStuff() {
   local _level="${1}";
   shift;
@@ -2017,10 +2013,10 @@ function echoInColor() {
 #    echo "${BLUE_TPUT}, coloraux -> ${_colorAux}"
   fi
   if isTrue ${_flagMinusN}; then
-    echo -n "$(${_colorAux})${_text}";
+    echo -n "$(${_colorAux} 2> /dev/null)${_text}";
 #    echo -n "${_text}";
   else
-    echo "$(${_colorAux})${_text}";
+    echo "$(${_colorAux} 2> /dev/null)${_text}";
 #    echo "${_text}";
   fi
 }
