@@ -2013,10 +2013,10 @@ function echoInColor() {
 #    echo "${BLUE_TPUT}, coloraux -> ${_colorAux}"
   fi
   if isTrue ${_flagMinusN}; then
-    echo -n "$(${_colorAux} 2> /dev/null)${_text}";
+    echo -n "$(${_colorAux} > /dev/null 2>&1)${_text}";
 #    echo -n "${_text}";
   else
-    echo "$(${_colorAux} 2> /dev/null)${_text}";
+    echo "$(${_colorAux} > /dev/null 2>&1)${_text}";
 #    echo "${_text}";
   fi
 }
