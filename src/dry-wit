@@ -240,10 +240,13 @@ function _addEnvVar() {
 }
 
 function _isEnvVarDefined() {
-    local _varName="${1}";
-    local e;
-    for e in "${ENV_VARIABLES[@]}"; do [[ "${e}" == "${_varName}" ]] && return 0; done
-    return 1;
+  local _varName="${1}";
+  local e;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  for e in "${ENV_VARIABLES[@]}"; do [[ "${e}" == "${_varName}" ]] && return 0; done
+  IFS="${_oldIFS}";
+  return 1;
 }
 
 function _evalEnvVar() {
@@ -285,9 +288,12 @@ function _evalEnvVar() {
 }
 
 function evalEnvVars() {
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for var in ${ENV_VARIABLES[@]}; do
     _evalEnvVar ${var};
   done
+  IFS="${_oldIFS}";
 }
 
 ## PUBLIC
@@ -422,10 +428,13 @@ function _pipe2ArrayWithTempFile() {
   cat <<EOF > ${_temp}
 ${_valueLines}
 EOF
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     echo "${_name}[${_i}]=\"$(cat -n "${_temp}" | grep -e "^\s*$((${_i} + 1))\s" | awk '{if (NF>1) {for (i=2;i<NF;i++) {printf("%s ", $i);}; printf("%s", $NF);}}';)\";" >> ${_result};
     _i=$((${_i}+1));
   done
+  IFS="${_oldIFS}";
   echo "export ${_name};" >> ${_result};
 
   export RESULT="${_result}";
@@ -447,11 +456,14 @@ function flattenArray() {
 
   local _aux="$(echo "\${#${_arrayName}[@]}")";
   local _len=$((-1+$(eval echo "${_aux}")));
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");
     _result="${_result}${_separator}${_item}";
   done
+  IFS="${_oldIFS}";
   _result="${_result#${_separator}}";
   export RESULT="${_result}";
 }
@@ -490,6 +502,8 @@ function cleanup() {
 
     logDebug -n "Cleaning up temporary files";
 
+    local _oldIFS="${IFS}";
+    IFS=$' \t\n';
     for i in ${_CLEANUP_FILES[*]}; do
       logTrace -n "Deleting $i";
       rm -rf $i > /dev/null;
@@ -499,11 +513,10 @@ function cleanup() {
         logTraceResult FAILURE "failed";
       fi
     done
+    IFS="${_oldIFS}";
 
     logDebugResult SUCCESS "done";
   fi
-  # restoring old IFS
-  export IFS="${_OLD_IFS}";
 }
 
 function checkReq() {
@@ -562,21 +575,27 @@ function arrayContainsElement() {
   local _item="${1}";
   local _array="${2}";
   local _aux;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _aux in "${_array}"; do
     if [[ "${_aux}" == "${_item}" ]]; then
       return 0;
     fi
   done
+  IFS="${_oldIFS}";
   return 1;
 }
 
 function addFileToCleanup() {
   local _file="${1}";
 #  logTrace "Appending ${result} to _CLEANUP_FILES";
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   _CLEANUP_FILES=(\
     $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
       "${_file}" \
   );
+  IFS="${_oldIFS}";
 }
 
 function createTempFolder() {
@@ -637,12 +656,15 @@ function findInPath() {
   local _result="";
   local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
 #  local _paths="$(echo "$PATH:." | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _path in $_paths; do
     if [ -f "${_path}/$1" ]; then
       _result="${_path}/$1";
       break;
     fi
   done
+  IFS="${_oldIFS}";
   echo ${_result};
 }
 
@@ -650,6 +672,8 @@ function isSuccessKeyword() {
   local _keyword="${1}";
   local _result=1;
 
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   if    [ "x${SUCCESS_KEYWORDS}" != "x" ] \
      && [  ${SUCCESS_KEYWORDS[*]} != "" ]; then
     for i in ${SUCCESS_KEYWORDS[*]}; do
@@ -676,6 +700,7 @@ function isSuccessKeyword() {
       fi;
     done
   fi
+  IFS="${_oldIFS}";
 
   return ${_result};
 }
@@ -684,6 +709,8 @@ function isFailureKeyword() {
   local _keyword="${1}";
   local _result=1;
 
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for i in ${FAILURE_KEYWORDS[*]}; do
     if    [ "x${i}" == "x${1}" ] \
        || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
@@ -707,6 +734,7 @@ function isFailureKeyword() {
       fi;
     done
   fi
+  IFS="${_oldIFS}";
 
   return ${_result};
 }
@@ -717,6 +745,8 @@ function printErrorMessage() {
   local _error;
   local _interruption=${TRUE};
 
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for i in ${BUILTIN_ERRORS[*]}; do
     _result=$((_result+1));
     if [ "x${i}" == "x${1}" ]; then
@@ -736,6 +766,8 @@ function printErrorMessage() {
       fi;
     done
   fi
+  IFS="${_oldIFS}";
+
   if [ "x${_message}" == "x" ]; then
     _error="Error $1, but no error message defined. Fix this script";
     _result=-1;
@@ -782,10 +814,13 @@ function _printEnvironment() {
     cat <<EOF
 Environment variables:
 EOF
+    local _oldIFS="${IFS}";
+    IFS=$' \t\n';
     for ((i = 0; i < ${#ENV_VARIABLES[*]}; i++)); do
       echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s{%s}): %s{%s_DESCRIPTION}%s.\n", quote, dollar, $0, dollar, $0, quote);}' | sh)";
 #      echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s%s%s{%s}): %s%s%s{%s_DESCRIPTION}%s%s.%s\n", quote, quote, quote, dollar, $0, quote, quote, dollar, $0, quote, quote, quote);}' | sh)";
     done
+    IFS="${_oldIFS}";
   fi
 }
 
@@ -797,6 +832,8 @@ function _printExitValues() {
 Exit values:
   0: No error.
 EOF
+    local _oldIFS="${IFS}";
+    IFS=$' \t\n';
     if [ "x${BUILTIN_ERRORS[*]}" != "x" ]; then
       for ((i = 0; i < ${#BUILTIN_ERRORS[*]}; i++)); do
         echo "  $((i+1)): $(echo ${BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
@@ -807,6 +844,7 @@ EOF
         echo "  $((j+i+1)): $(echo ${ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
       done
     fi
+    IFS="${_oldIFS}";
   fi
 }
 
@@ -1045,11 +1083,14 @@ function buildColor() {
   local _result="";
   local _modifier;
 
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 1 ${_len}); do
     _modifier="${1}";
     shift;
     _result="${_result}|tput ${_modifier}";
   done
+  IFS="${_oldIFS}";
   _result="${_result#|}";
 
   pipe2Array "${_color}_TPUT" "${_result}";
@@ -1668,9 +1709,12 @@ function  _retrieveLogPrefixTokens() {
   local -i _levelPosition;
 
   _len=$((${#LOG_PREFIX_TOKENS[@]} - 1));
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     _aux="${_aux}|${LOG_PREFIX_TOKENS[${_i}]}";
   done
+  IFS="${_oldIFS}";
   _aux="${_aux#|}";
   pipe2Array _DRY_WIT_LOG_PREFIX_TOKENS "${_aux}";
 
@@ -1706,9 +1750,12 @@ function  _retrieveLogOutcomeTokens() {
   local -i _outcomeTextPosition;
 
   _len=$((${#LOG_OUTCOME_TOKENS[@]} - 1));
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     _aux="${_aux}|${LOG_OUTCOME_TOKENS[${_i}]}";
   done
+  IFS="${_oldIFS}";
   _aux="${_aux#|}";
   pipe2Array "_DRY_WIT_LOG_OUTCOME_TOKENS" "${_aux}";
 
@@ -1738,9 +1785,12 @@ function  _retrieveLogOutcomeColors() {
   local -i _outcomeTextPosition;
 
   _len=$((${#LOG_OUTCOME_COLORS[@]} - 1));
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     _aux="${_aux}|${LOG_OUTCOME_COLORS[${_i}]}";
   done
+  IFS="${_oldIFS}";
   _aux="${_aux#|}";
   pipe2Array "_DRY_WIT_LOG_OUTCOME_COLORS" "${_aux}";
 
@@ -1824,6 +1874,8 @@ function _echoColorAwareLogPrefix() {
 #  source ${RESULT};
 
   _len=$((${#_DRY_WIT_LOG_PREFIX_TOKENS[@]} - 1));
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     if isTrue ${_allowsColors}; then
       echoInColor -n "${LOG_PREFIX_COLORS[${_i}]}" "${_DRY_WIT_LOG_PREFIX_TOKENS[${_i}]}";
@@ -1831,6 +1883,7 @@ function _echoColorAwareLogPrefix() {
       echo -n "${_DRY_WIT_LOG_PREFIX_TOKENS[${_i}]}";
     fi
   done
+  IFS="${_oldIFS}";
 
   if isTrue ${_allowsColors}; then
     resetColor;
@@ -1900,6 +1953,8 @@ function _echoLogOutcome() {
   _alignRight "${_logPrefix}${_inProgressMessage}" "${_text}";
 
   _len=$((${#_DRY_WIT_LOG_OUTCOME_TOKENS[@]} - 1));
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     if isTrue ${_allowsColors}; then
       echoInColor -n "${_DRY_WIT_LOG_OUTCOME_COLORS[${_i}]}" "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
@@ -1907,6 +1962,7 @@ function _echoLogOutcome() {
       echo -n "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
     fi
   done
+  IFS="${_oldIFS}";
 
   if isTrue ${_allowsColors}; then
     resetColor;
@@ -1939,9 +1995,12 @@ function _echoLogOutcomeNested() {
   _echoLogOutcome "${_level}" "${_keyword}" "${_text}";
   _numberOfNestedInProgressTasks;
   _nestedTasks=$?;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _i in $(seq 1 ${_nestedTasks}); do
     _indentation="${_indentation}${LOG_NESTED_INDENTATION}";
   done
+  IFS="${_oldIFS}";
   _pushLog "${_indentation}${_inProgressMessage}";
   _pushLogCategory "${_category}";
 }
@@ -1965,9 +2024,12 @@ function _alignRight() {
   local _allowsColors;
 
   _retrieveLogOutcomeTokens "${_outcome}";
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _token in "${_DRY_WIT_LOG_OUTCOME_TOKENS[@]}"; do
     _logMessage="${_logMessage}${_token}";
   done
+  IFS="${_oldIFS}";
 
   getTermWidth;
   if isTrue $?; then
@@ -2720,16 +2782,19 @@ function _functionPresent() {
     _rescode=$?;
   fi
   if [ ${_rescode} -ne 0 ]; then
+    local _oldIFS="${IFS}";
+    IFS=$' \t\n';
     for _inc in "./$(basename ${_script} .sh).inc.sh" \
                 "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
       if [ -e "${_inc}" ]; then
         _functionPresent "${_function}" "${_inc}";
         _rescode=$?;
-	if [ ${_rescode} -eq 0 ]; then
-	  break;
-	fi
+	      if [ ${_rescode} -eq 0 ]; then
+          break;
+	      fi
       fi
     done
+    IFS="${_oldIFS}";
   fi
   return ${_rescode};
 }
@@ -2741,6 +2806,8 @@ function _parseCommonInput() {
 
   local _flags=$(extractFlags $@);
   local _flagCount;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _flag in ${_flags}; do
     _flagCount=$((_flagCount+1));
     case ${_flag} in
@@ -2761,6 +2828,7 @@ function _parseCommonInput() {
          ;;
     esac
   done
+  IFS="${_oldIFS}";
   shift ${_flagCount};
 
   export DRY_WIT_HELP_FLAG=${_help};
@@ -2781,6 +2849,8 @@ function _checkScript() {
 
   setLogCategory "sanity-check";
   logTrace -n "Checking mandatory constants";
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for v in ERROR_MESSAGES; do
     if [ "x${v}" == "x" ]; then
       exitWithErrorCode MISSING_MANDATORY_VARIABLES $v;
@@ -2795,6 +2865,7 @@ function _checkScript() {
       exitWithErrorCode MISSING_MANDATORY_FUNCTIONS $f;
     fi
   done
+  IFS="${_oldIFS}";
   logTraceResult SUCCESS "Done";
 }
 
