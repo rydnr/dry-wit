@@ -16,8 +16,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with dry-wit.  If not, see <http://www.gnu.org/licenses/>.
 
-set -o errexit  # terminate on any unhandled error
-set -o nounset  # terminate on any unset variable
+#set -o errexit  # terminate on any unhandled error
+## TODO: fix color stuff
+#set -o nounset  # terminate on any unset variable
 set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
 #set -o xtrace   # trace what gets executed
 
@@ -55,7 +56,11 @@ export UNDEFINED=255;
 
 export _DRY_WIT_LOG_STACK=();
 export _DRY_WIT_LOG_CATEGORY_STACK=();
+export LOG_CATEGORY_NAMESPACE="";
 export _DRY_WIT_LOG_LEVEL_STACK=();
+export _DRY_WIT_LOG_TRACE=${FALSE};
+export _DRY_WIT_LOG_DEBUG=${FALSE};
+export _DRY_WIT_LOG_INFO=${TRUE};
 export _DRY_WIT_LOG_OUTCOME_TOKENS=();
 export _DRY_WIT_LOG_OUTCOME_COLORS=();
 export _DRY_WIT_DEFAULT_TERM_WIDTH=80;
@@ -105,13 +110,13 @@ function isDefined() {
 ## Example:
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isVariableDefined() {
-    local _rescode;
-    set +o nounset  # terminate on any unset variable
-    eval "[ -v \${$1} ] 2> /dev/null"
-    _rescode=$?;
-    set -o nounset  # terminate on any unset variable
+  local _rescode;
+  set +o nounset  # allow unset variables
+  eval "[ -v \${$1} ] 2> /dev/null"
+  _rescode=$?;
+  # TODO set -o nounset  # terminate on any unset variable
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 ## PRIVATE/DEBUG
@@ -244,7 +249,7 @@ function _isEnvVarDefined() {
   IFS=$' \t\n';
   set +o nounset
   for e in ${#ENV_VARIABLES[@]}; do [[ "${e}" == "${_varName}" ]] && return 0; done
-  set -o nounset
+  # TODO set -o nounset
   IFS="${_oldIFS}";
   return 1;
 }
@@ -600,7 +605,13 @@ function appendEnvVariable() {
 function addFileToCleanup() {
   local _file="${1}";
   #  logTrace "Appending ${result} to _CLEANUP_FILES";
-  appendItemToArray "${_file}" _CLEANUP_FILES;
+
+  if declare -p _CLEANUP_FILES > /dev/null 2>&1; then
+    upvars -a$((${#_CLEANUP_FILES[@]}+1)) _CLEANUP_FILES "${_CLEANUP_FILES[@]}" "${_file}";
+  else
+    export -a _CLEANUP_FILES=();
+    upvars -a1 _CLEANUP_FILES "${_file}";
+  fi
 
 #  local _oldIFS="${IFS}";
 #  IFS=$' \t\n';
@@ -760,6 +771,7 @@ function printErrorMessage() {
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
+  set +o nounset  # allow unset variables
   for i in ${BUILTIN_ERRORS[@]}; do
     _result=$((_result+1));
     if [ "x${i}" == "x${1}" ]; then
@@ -767,11 +779,12 @@ function printErrorMessage() {
       break;
     fi;
   done
+  # TODO set -o nounset  # disallow unset variables
 
   if [ "x${_message}" == "x" ]; then
     # IFS issue
 #    _result=${TRUE};
-    for i in ${ERROR_MESSAGES[*]}; do
+    for i in ${ERROR_MESSAGES[@]}; do
       _result=$((_result+1));
       if [ "x${i}" == "x${1}" ]; then
         _message="$i";
@@ -2917,8 +2930,10 @@ function checkDependency() {
     _errorCode="${RESULT}";
   fi
 
-  which ${_req} > /dev/null 2&>1;
-  [ $? -ne ${TRUE} ] && exitWithErrorCode ${_errorCode};
+  echo "Checking ${_req} (true->${TRUE})"
+  which ${_req} > /dev/null 2>&1;
+  _rescode=$?;
+  [ ${_rescode} -ne ${TRUE} ] && exitWithErrorCode ${_errorCode};
 }
 
 ## Performs the checks for a required dependency.
@@ -2938,7 +2953,6 @@ function checkReq() {
 ## Checks dry-wit's own requirements.
 function _defineDryWitRequirements() {
   checkReq grep;
-  checkReq mapfile;
   checkReq mktemp;
 }
 
@@ -3362,13 +3376,12 @@ function _checkScript() {
   logTrace -n "Checking mandatory constants";
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for v in ERROR_MESSAGES; do
-    if [ "x${v}" == "x" ]; then
+  for v in ${ERROR_MESSAGES[@]}; do
+    if [ -z "${v}" ]; then
       exitWithErrorCode MISSING_MANDATORY_VARIABLES $v;
     fi
   done
   logTraceResult SUCCESS "Done";
-
   logTrace -n "Checking mandatory functions";
   for f in usage main; do
     _functionPresent $f $_script;
