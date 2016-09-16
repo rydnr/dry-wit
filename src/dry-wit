@@ -16,30 +16,16 @@
 #    You should have received a copy of the GNU General Public License
 #    along with dry-wit.  If not, see <http://www.gnu.org/licenses/>.
 
-#set -o errexit  # terminate on any unhandled error
-#set -o nounset  # terminate on any unset variable
+set -o errexit  # terminate on any unhandled error
+set -o nounset  # terminate on any unset variable
+set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
+#set -o xtrace   # trace what gets executed
 
 # IFS stuff
 _OLD_IFS="${IFS}";
 export IFS=$'\n\t\040';
 
-export SCRIPT_INTERRUPTED="User interruption";
-export MISSING_MANDATORY_VARIABLES=\
-"Script not complete, since it doesn't define all mandatory variables";
-export MISSING_MANDATORY_FUNCTIONS=\
-"Script not complete, since it doesn't define all mandatory functions";
-export UNKNOWN_ERROR=\
-"The script has finished due to an unexpected error";
-
-export BUILTIN_ERRORS=(\
-    SCRIPT_INTERRUPTED \
-    MISSING_MANDATORY_VARIABLES \
-    MISSING_MANDATORY_FUNCTIONS \
-    UNKNOWN_ERROR \
-  );
-
-export _CLEANUP_FILES=(\
-  );
+export _CLEANUP_FILES=();
 
 export BUILTIN_SUCCESS_KEYWORDS=(\
   "Success" \
@@ -52,6 +38,10 @@ export BUILTIN_FAILURE_KEYWORDS=(\
   "Failure" \
   "Ko" \
   );
+
+declare -a BUILTIN_ERRORS;
+declare -a ENV_VARIABLES;
+declare -a ERROR_MESSAGES;
 
 #export SUCCESS_KEYWORDS;
 #export FAILURE_KEYWORDS;
@@ -116,12 +106,11 @@ function isDefined() {
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isVariableDefined() {
     local _rescode;
+    set +o nounset  # terminate on any unset variable
     eval "[ -v \${$1} ] 2> /dev/null"
-    if [ $? -eq 0 ]; then
-      _rescode=${TRUE};
-    else
-      _rescode=${FALSE};
-    fi
+    _rescode=$?;
+    set -o nounset  # terminate on any unset variable
+
     return ${_rescode};
 }
 
@@ -179,42 +168,53 @@ function defineEnvVar() {
   local _varName="${1}";
   local _varDescription="${2}";
   local _varDefault="${3}";
-  local _varCommand="${4}";
+  local _varCommand="${4:-}";
+  local _upcasedVarName;
+  local _defaultValue;
+  local _description;
+
+  toUpper "${_varName}";
+  _upcasedVarName="${RESULT}";
 
   local _varValue="$(echo 'echo $'$(echo ${_varName}) | sh)";
 
   if [[ -n ${_varDescription} ]]; then
-    _evalVar "${_varName}_DESCRIPTION";
-    local _description="${RESULT}";
+    _evalVar "${_upcasedVarName}_DESCRIPTION";
+    _description="${RESULT}";
 
-    if [[ ! -n ${_description} ]]; then
+    if [[ -z "${_description}" ]]; then
       export ${_varName}_DESCRIPTION="${_varDescription}";
     fi
   fi
 
-  if [[ -n ${_varDefault} ]]; then
-    _evalVar "${_varName}_DEFAULT";
-    local _defaultValue="${RESULT}";
+  if [[ -n "${_varDefault}" ]]; then
+    _evalVar "${_upcasedVarName}_DEFAULT";
+    _defaultValue="${RESULT}";
     _defaultValue="${_varDefault}";
   fi
 
-  if [[ -n ${_defaultValue} ]]; then
-    export ${_varName}_DEFAULT="${_defaultValue}";
-    _evalVar "${_varName}_DEFAULT";
+  if [[ -z "${_varDefault}" ]]; then
+    _evalVar "${_upcasedVarName}_DEFAULT";
+    _defaultValue="${RESULT}";
   fi
 
+  if [[ -n ${_defaultValue} ]]; then
+    export ${_upcasedVarName}_DEFAULT="${_defaultValue}";
+    _evalVar "${_upcasedVarName}_DEFAULT";
+    _defaultValue="${RESULT}";
+  fi
 
-  _addEnvVar "${_varName}";
+  _addEnvVar "${_upcasedVarName}" "${_varValue}";
 
   if [[ -n ${_varCommand} ]]; then
 #    echo -n "${_varName}_DEFAULT_COMMAND->${_varCommand}";
-    _evalVar "${_varName}_DEFAULT_COMMAND";
+    _evalVar "${_upcasedVarName}_DEFAULT_COMMAND";
     local _command="${RESULT}";
 #    echo "${_command}";
     if [[ ! -n ${_command} ]]; then
-      export ${_varName}_DEFAULT_COMMAND="${_varCommand}";
+      export ${_upcasedVarName}_DEFAULT_COMMAND="${_varCommand}";
     fi
-    _evalVar "${_varName}_DEFAULT_COMMAND";
+    _evalVar "${_upcasedVarName}_DEFAULT_COMMAND";
     local _command="${RESULT}";
   fi
 }
@@ -229,13 +229,11 @@ function overrideEnvVar() {
 
 function _addEnvVar() {
   local _varName="${1}";
+  local _varValue="${2:-}";
+
   if ! _isEnvVarDefined "${_varName}"; then
-    ENV_VARIABLES=(\
-        ${ENV_VARIABLES[@]} \
-        ${_varName} \
-    );
-    export ${_varName};
-    export ENV_VARIABLES;
+    appendEnvVariable ${_varName} ENV_VARIABLES;
+    upvar "${_varName}" "${_varValue}";
   fi
 }
 
@@ -244,7 +242,9 @@ function _isEnvVarDefined() {
   local e;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for e in "${ENV_VARIABLES[@]}"; do [[ "${e}" == "${_varName}" ]] && return 0; done
+  set +o nounset
+  for e in ${#ENV_VARIABLES[@]}; do [[ "${e}" == "${_varName}" ]] && return 0; done
+  set -o nounset
   IFS="${_oldIFS}";
   return 1;
 }
@@ -257,7 +257,7 @@ function _evalEnvVar() {
   local _varValue="${RESULT}";
 
   if [[ ! -n ${_varValue} ]]; then
-    if [[ -n ${DRY_WIT_EVAL_DEFAULTS_FLAG} ]]; then
+    if [[ -n "${DRY_WIT_EVAL_DEFAULTS_FLAG:-}" ]]; then
 #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
       _evalVar "${_varName}_DEFAULT_COMMAND";
       local _defaultCommand="${RESULT}";
@@ -276,7 +276,7 @@ function _evalEnvVar() {
     _varValue="${_defaultValue}";
   fi
 
-  if [[ -n ${_varValue} ]] && [[ -z ${DRY_WIT_EVAL_DEFAULTS_FLAG} ]]; then
+  if [[ -n ${_varValue} ]] && [[ -z "${DRY_WIT_EVAL_DEFAULTS_FLAG:-}" ]]; then
     while [[ "${_varValue}" =~ .*'$'.* ]]; do
       _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
     done
@@ -290,7 +290,7 @@ function _evalEnvVar() {
 function evalEnvVars() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for var in ${ENV_VARIABLES[@]}; do
+  for var in "${ENV_VARIABLES[@]}"; do
     _evalEnvVar ${var};
   done
   IFS="${_oldIFS}";
@@ -519,11 +519,6 @@ function cleanup() {
   fi
 }
 
-function checkReq() {
-  which $1 2>/dev/null > /dev/null;
-  [ $? != 0 ] && exitWithErrorCode $2;
-}
-
 function createTempFile() {
   local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
   local _dirname="$(dirname \"${SCRIPT_NAME}\")";
@@ -586,16 +581,34 @@ function arrayContainsElement() {
   return 1;
 }
 
+## Appends a new variable to ENV_VARIABLES.
+## -> 1: The item to add.
+##
+## Example:
+##   appendEnvVariable "item";
+function appendEnvVariable() {
+  local _variable="${1}";
+
+  if declare -p ENV_VARIABLES > /dev/null 2>&1; then
+    upvars -a$((${#ENV_VARIABLES[@]}+1)) ENV_VARIABLES "${ENV_VARIABLES[@]}" "${_variable}";
+  else
+    export -a ENV_VARIABLES=();
+    upvars -a1 ENV_VARIABLES "${_variable}";
+  fi
+}
+
 function addFileToCleanup() {
   local _file="${1}";
-#  logTrace "Appending ${result} to _CLEANUP_FILES";
-  local _oldIFS="${IFS}";
-  IFS=$' \t\n';
-  _CLEANUP_FILES=(\
-    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
-      "${_file}" \
-  );
-  IFS="${_oldIFS}";
+  #  logTrace "Appending ${result} to _CLEANUP_FILES";
+  appendItemToArray "${_file}" _CLEANUP_FILES;
+
+#  local _oldIFS="${IFS}";
+#  IFS=$' \t\n';
+#  _CLEANUP_FILES=(\
+#    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
+#      "${_file}" \
+#  );
+#  IFS="${_oldIFS}";
 }
 
 function createTempFolder() {
@@ -747,7 +760,7 @@ function printErrorMessage() {
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for i in ${BUILTIN_ERRORS[*]}; do
+  for i in ${BUILTIN_ERRORS[@]}; do
     _result=$((_result+1));
     if [ "x${i}" == "x${1}" ]; then
       _message="$i";
@@ -809,14 +822,16 @@ function _printError() {
 }
 
 function _printEnvironment() {
-  if [ "x${ENV_VARIABLES[*]}" != "x" ] \
+  local i=0;
+
+  if [ -n "${ENV_VARIABLES:-}" ] \
      && isTraceEnabled; then
     cat <<EOF
 Environment variables:
 EOF
     local _oldIFS="${IFS}";
     IFS=$' \t\n';
-    for ((i = 0; i < ${#ENV_VARIABLES[*]}; i++)); do
+    for ((i = 0; i < ${#ENV_VARIABLES[@]}; i++)); do
       echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s{%s}): %s{%s_DESCRIPTION}%s.\n", quote, dollar, $0, dollar, $0, quote);}' | sh)";
 #      echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s%s%s{%s}): %s%s%s{%s_DESCRIPTION}%s%s.%s\n", quote, quote, quote, dollar, $0, quote, quote, dollar, $0, quote, quote, quote);}' | sh)";
     done
@@ -825,8 +840,9 @@ EOF
 }
 
 function _printExitValues() {
-  local i;
-  local j;
+  local i=0;
+  local j=0;
+
   if isTraceEnabled; then
     cat <<EOF
 Exit values:
@@ -834,13 +850,13 @@ Exit values:
 EOF
     local _oldIFS="${IFS}";
     IFS=$' \t\n';
-    if [ "x${BUILTIN_ERRORS[*]}" != "x" ]; then
-      for ((i = 0; i < ${#BUILTIN_ERRORS[*]}; i++)); do
+    if [ ${#BUILTIN_ERRORS[@]} -gt 0 ]; then
+      for ((i = 0; i < ${#BUILTIN_ERRORS[@]}; i++)); do
         echo "  $((i+1)): $(echo ${BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
       done
     fi
-    if [ "x${ERROR_MESSAGES[*]}" != "x" ]; then
-      for ((j = 0; j < ${#ERROR_MESSAGES[*]}; j++)); do
+    if [ ${#ERROR_MESSAGES[@]} -gt 0 ]; then
+      for ((j = 0; j < ${#ERROR_MESSAGES[@]}; j++)); do
         echo "  $((j+i+1)): $(echo ${ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
       done
     fi
@@ -1023,7 +1039,7 @@ function getTermWidthForTerm() {
   local _result;
   local _term="${1}";
 
-  $(tput cols &> /dev/null > /dev/null 2>&1) 
+  $(tput cols &> /dev/null > /dev/null 2>&1);
   _rescode=$?;
 
   if [ ${_rescode} -eq 0 ]; then
@@ -1191,7 +1207,7 @@ function allowsColors() {
   if isTrue $?; then
     _colors=$(tput colors);
     if [ ${_colors} -ge 8 ]; then
-      env | grep -e '^_=' | grep env 2>&1 > /dev/null;
+      env | grep -e '^_=' | grep env > /dev/null 2>&1;
       if isTrue $?; then
         _result=${TRUE};
       else
@@ -2418,7 +2434,7 @@ function readConfFile() {
 function checkPasswordlessSudo() {
   local _result=${TRUE};
 
-  which sudo 2>&1 > /dev/null;
+  which sudo > /dev/null 2>&1;
   _result=$?;
 
   if [ ${_result} == 0 ]; then
@@ -2596,13 +2612,13 @@ function uncompress() {
   local _flags;
 
   # First, check whether the bundle is compressed bzip2 format.
-  if file "${_file}" | cut -d ":" -f 2 | grep bzip2 2>&1 > /dev/null; then
+  if file "${_file}" | cut -d ":" -f 2 | grep bzip2 > /dev/null 2>&1; then
     _flags="xfj";
   # Second try: check whether the bundle is compressed gzip format.
-  elif file "${_file}" | cut -d ":" -f 2 | grep gzip 2>&1 > /dev/null; then
+  elif file "${_file}" | cut -d ":" -f 2 | grep gzip /dev/null 2>&1; then
     _flags="xfz";
   # Otherwise, it can also be a standard, uncompressed tar.
-  elif file "${_file}" | cut -d ":" -f 2 | grep tar 2>&1 > /dev/null; then
+  elif file "${_file}" | cut -d ":" -f 2 | grep tar /dev/null 2>&1; then
     _flags="xf";
   else
     _result=1;
@@ -2778,7 +2794,7 @@ function _functionPresent() {
   type ${_function} 2> /dev/null | grep -q 'shell function'
   local _rescode=$?;
   if [ ${_rescode} -ne 0 ]; then
-    grep " ${_function}()" "${_script}" 2>&1 > /dev/null
+    grep " ${_function}()" "${_script}" > /dev/null 2>&1;
     _rescode=$?;
   fi
   if [ ${_rescode} -ne 0 ]; then
@@ -2799,13 +2815,143 @@ function _functionPresent() {
   return ${_rescode};
 }
 
+## Converts given string to upper case.
+## -> 1: The string to convert.
+## <- RESULT: The converted string.
+##
+## Example:
+##   local _text="abc";
+##   toUpper "${_text}";
+##   local _upcased="${RESULT}";
+function toUpper() {
+  local _text="${1}";
+  local _result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${_result}";
+}
+
+## Appends a new error to ERROR_MESSAGES.
+## -> 1: The error to add.
+##
+## Example:
+##   appendErrorMessage "item";
+function appendErrorMessage() {
+  local _error="${1}";
+
+  if declare -p ERROR_MESSAGES > /dev/null 2>&1; then
+    upvars -a$((${#ERROR_MESSAGES[@]}+1)) ERROR_MESSAGES "${ERROR_MESSAGES[@]}" "${_error}";
+  else
+    export -a ERROR_MESSAGES=();
+    upvars -a1 ERROR_MESSAGES "${_error}";
+  fi
+}
+
+## Annotates a new error.
+## -> 1: The error name.
+## -> 1: The error message.
+function addError() {
+  local _errorName="${1}";
+  local _message="${2}";
+
+  appendErrorMessage "${_errorName}";
+  upvar "${_errorName}" "${_message}";
+  export "${_errorName}"="${_message}";
+}
+
+## Appends a new built-in error to BUILTIN_ERRORS.
+## -> 1: The error to add.
+##
+## Example:
+##   appendBuiltInError "error";
+function appendBuiltInError() {
+  local _error="${1}";
+
+  if declare -p BUILTIN_ERRORS > /dev/null 2>&1; then
+    upvars -a$((${#BUILTIN_ERRORS[@]}+1)) BUILTIN_ERRORS "${BUILTIN_ERRORS[@]}" "${_error}";
+  else
+    export -a BUILTIN_ERRORS=();
+    upvar BUILTIN_ERRORS "${_error}";
+  fi
+}
+
+## Annotates a new built-in error.
+## -> 1: The error name.
+## -> 1: The error message.
+function _addBuiltInError() {
+  local _errorName="${1}";
+  local _message="${2}";
+  toUpper "${_errorName}";
+  local _upcasedErrorName="${RESULT}";
+
+  appendBuiltInError "${_upcasedErrorName}";
+  upvar "${_upcasedErrorName}" "${_message}";
+  export "${_upcasedErrorName}"="${_message}";
+}
+
+## Declares dry-wit's error messages.
+function _defineDryWitErrorMessages() {
+  _addBuiltInError "SCRIPT_INTERRUPTED" "User interruption";
+  _addBuiltInError "MISSING_MANDATORY_VARIABLES" "Script not complete, since it doesn't define all mandatory variables";
+  _addBuiltInError "MISSING_MANDATORY_FUNCTIONS" "Script not complete, since it doesn't define all mandatory functions";
+  _addBuiltInError "UNKNOWN_ERROR" "The script has finished due to an unexpected error";
+}
+
+## Annotates a new error describing a missing dependency.
+## -> 1: The missing dependency.
+function _addMissingDependencyError() {
+  local _dependency="${1}";
+  toUpper "${_dependency}_NOT_INSTALLED";
+  local _constant="${RESULT}";
+
+  addError "${_constant}" "${_dependency} is not installed";
+}
+
+## Checks a required dependency is available.
+## -> 1: The program name.
+## -> 2: The error code to throw if the dependency is not available. Optional.
+function checkDependency() {
+  local _req="${1}";
+  local _errorCode="${2}";
+
+  if [ -z "${_errorCode}" ]; then
+    toUpper "${_req}_NOT_INSTALLED";
+    _errorCode="${RESULT}";
+  fi
+
+  which ${_req} > /dev/null 2&>1;
+  [ $? -ne ${TRUE} ] && exitWithErrorCode ${_errorCode};
+}
+
+## Performs the checks for a required dependency.
+## -> 1: The dependency.
+function checkReq() {
+  local _dependency="${1}";
+  local _errorCode="${2:-}";
+
+  if [ -z "${_errorCode}" ]; then
+    _addMissingDependencyError "${_dependency}";
+    checkDependency "${_dependency}";
+  else
+    checkDependency "${_dependency}" "${_errorCode}";
+  fi
+}
+
+## Checks dry-wit's own requirements.
+function _defineDryWitRequirements() {
+  checkReq grep;
+  checkReq mapfile;
+  checkReq mktemp;
+}
+
+## Parses the common flags. It sets the log level, whether to eval defaults, and
+## the help flag.
+## -> *: The arguments.
 function _parseCommonInput() {
 
   local _help=${TRUE};
   setInfoEnabled;
 
   local _flags=$(extractFlags $@);
-  local _flagCount;
+  local _flagCount=0;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _flag in ${_flags}; do
@@ -2834,6 +2980,369 @@ function _parseCommonInput() {
   export DRY_WIT_HELP_FLAG=${_help};
 }
 
+## User/Group helpers
+## Retrieves the uid of the owner user of given file or folder.
+## -> 1: The file or folder.
+## <- RESULT: The id of the user that owns the file or folder.
+## Example:
+##   retrieve_uid /tmp
+##   echo "The id of the owner of /tmp is ${RESULT}";
+function retrieve_owner_uid() {
+  local _file="${1}"
+  local _result;
+
+  _result="$(stat -c '%u' "${_file}")";
+
+  export RESULT="${_result}";
+}
+
+## Retrieves the id of the owner group of given file or folder.
+## -> 1: The file or folder.
+## <- RESULT: The id of the group that owns the file or folder.
+## Example:
+##   retrieve_uid /tmp
+##   echo "The id of the group of /tmp is ${RESULT}";
+function retrieve_owner_gid() {
+  local _file="${1}"
+  local _result;
+
+  _result="$(stat -c '%g' "${_file}")";
+
+  export RESULT="${_result}";
+}
+
+## Checks whether given uid already exists.
+## -> 1: The user id.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if uid_already_exists 1; then
+##     echo "User 1 exists";
+##   fi
+function uid_already_exists() {
+  local _uid="${1}";
+  local _rescode;
+
+  logDebug -n "Checking if uid ${_uid} is already used";
+  getent passwd ${_uid} > /dev/null;
+  _rescode=$?;
+
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given gid already exists.
+## -> 1: The group id.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if gid_already_exists 103; then
+##     echo "Group 103 exists";
+##   fi
+function gid_already_exists() {
+  local _gid="${1}";
+  local _rescode;
+
+  logDebug -n "Checking if gid ${_gid} already exists";
+  getent group ${_gid} > /dev/null;
+  _rescode=$?;
+
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given user already exists.
+## -> 1: The user name.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if user_already_exists guest; then
+##     echo "User guest exists";
+##   fi
+function user_already_exists() {
+  local _user="${1}";
+  local _rescode;
+
+  logDebug -n "Checking if user ${_user} is already used";
+  getent passwd ${_user} > /dev/null;
+  _rescode=$?;
+
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given group already exists.
+## -> 1: The group name.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if group_already_exists users; then
+##     echo "Group users exists";
+##   fi
+function group_already_exists() {
+  local _group="${1}";
+  local _rescode;
+
+  logDebug -n "Checking if group ${_group} already exists";
+  getent group ${_group} > /dev/null;
+  _rescode=$?;
+
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the user id of given user.
+## -> 1: The user name.
+## <- RESULT: The user id.
+##
+## Example:
+##   retrieve_user_from_uid "1";
+##   echo "The name of user 1 is ${RESULT}";
+function retrieve_user_from_uid() {
+  local _uid="${1}";
+  local _result;
+  local _rescode;
+
+  _result=$(getent passwd ${_uid} | cut -d':' -f1);
+  _rescode=$?;
+
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
+
+## Retrieves the group id of given group.
+## -> 1: The group name.
+## <- RESULT: The group id.
+##
+## Example:
+##   retrieve_group_from_gid "100";
+##   echo "The name of group 1 is ${RESULT}";
+function retrieve_group_from_gid() {
+  local _gid="${1}";
+  local _result;
+  local _rescode;
+
+  _result=$(getent group ${_gid} | cut -d':' -f1);
+  _rescode=$?;
+
+  if [ ${_rescode} -eq ${TRUE} ]; then
+      export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the name of the user matching given id.
+## -> 1: The user id.
+## <- RESULT: The user name.
+##
+## Example:
+##   retrieve_uid_from_user "root";
+##   echo "The name of user root is ${RESULT}";
+function retrieve_uid_from_user() {
+  local _user="${1}";
+  local _result;
+  local _rescode;
+
+  logDebug -n "Retrieving uid of user ${_user}";
+  _result=$(getent passwd ${_user} | cut -d':' -f3);
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "${_result}";
+    export RESULT="${_result}";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the name of the group matching given id.
+## -> 1: The group id.
+## <- RESULT: The group name.
+##
+## Example:
+##   retrieve_gid_from_group "admin";
+##   echo "The name of group admin is ${RESULT}";
+function retrieve_gid_from_group() {
+  local _group="${1}";
+  local _result;
+  local _rescode;
+
+  logDebug -n "Retrieving gid of group ${_group}";
+  _result=$(getent group ${_group} | cut -d':' -f3);
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "${_result}";
+    export RESULT="${_result}";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${_rescode};
+}
+
+## Creates a new user.
+## -> 1: The user name.
+## <- 0/${TRUE} if the user gets created successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if create_user "fakeuser"; then
+##    echo "fakeuser created successfully";
+## fi
+function create_user() {
+  local _userName="${1}";
+  local _rescode;
+
+  logDebug -n "Creating user ${_userName}";
+
+  useradd -M -N -l "${_userName}";
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${_rescode};
+}
+
+## Creates a new group.
+## -> 1: The group name.
+## <- 0/${TRUE} if the group gets created successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if create_group "fakegroup"; then
+##    echo "fakegroup created successfully";
+## fi
+function create_group() {
+  local _groupName="${1}";
+  local _rescode;
+
+  logDebug -n "Creating group ${_groupName}";
+
+  groupadd "${_groupName}";
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "done";
+  else
+      logDebugResult FAILURE "failed";
+  fi
+
+  return ${_rescode};
+}
+
+## Deletes given user.
+## -> 1: The user name.
+## <- 0/${TRUE} if the user is removed successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if delete_user "fakeuser"; then
+##    echo "fakeuser deleted successfully";
+## fi
+function delete_user() {
+  local _userName="${1}";
+  local _rescode;
+
+  logDebug -n "Deleting user ${_userName}";
+
+  userdel "${_userName}";
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${_rescode};
+}
+
+## Deletes given group.
+## -> 1: The group name.
+## <- 0/${TRUE} if the group is removed successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if delete_group "fakegroup"; then
+##    echo "fakegroup deleted successfully";
+## fi
+function delete_group() {
+  local _groupName="${1}";
+  local _rescode;
+
+  logDebug -n "Deleting group ${_groupName}";
+
+  groupdel "${_groupName}";
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${_rescode};
+}
+
+## Runs the command in a folder, under a given user.
+## -> 1: The user id.
+## -> 2: The group id.
+## -> 3: the folder.
+## -> 4+: the command.
+## Example:
+##  run_command_as_uid_gid 1000 100 /tmp "ls -ltrhia"
+function run_command_as_uid_gid() {
+  local _user="${1}";
+  local _uid="${2}";
+  local _gid="${3}";
+  local _folder="${4}";
+  local _command="${5}";
+  shift
+  shift
+  shift
+  shift
+  shift
+  local _args="${@}";
+  local _exports="$(export)";
+
+  createTempFile
+  local _runme="${RESULT}";
+
+  cat << EOF > ${_runme}
+#!/bin/bash
+
+${_exports}
+declare -x HOME="/home/${_user}"
+cd ${_folder}
+${_command} ${_args}
+EOF
+  chmod +x ${_runme}
+
+  logDebug "Running ${_command} ${_args} as ${SERVICE_USER}:${SERVICE_GROUP}";
+  exec 2>&1
+  chpst -u ${SERVICE_USER}:${SERVICE_GROUP} -U ${SERVICE_USER}:${SERVICE_GROUP} ${_runme}
+}
+
+## Checks input common to all scripts.
 function _checkCommonInput() {
 
   if [ ${DRY_WIT_HELP_FLAG} == 1 ]; then
@@ -2842,6 +3351,8 @@ function _checkCommonInput() {
   fi
 }
 
+## Performs some checks on the script itself.
+## -> 1: The script.
 function _checkScript() {
   local _script=$1;
   local v;
@@ -2898,6 +3409,8 @@ function _main() {
 
   _setup "${_script}";
 
+  _defineDryWitErrorMessages;
+
   if _functionPresent defineErrors "${_script}"; then
     defineErrors;
   else
@@ -2927,6 +3440,8 @@ function _main() {
 
   _checkScript "${_script}";
 
+  _defineDryWitRequirements;
+
   if _functionPresent checkRequirements "${_script}"; then
     logTrace -n "Checking declared requirements";
     checkRequirements;
@@ -2944,6 +3459,115 @@ function _main() {
 
   setLogCategory "main";
   main;
+}
+
+# Bash: Passing variables by reference
+# Copyright (C) 2010 Freddy Vulto
+# Version: upvars-0.9.dev
+# See: http://fvue.nl/wiki/Bash:_Passing_variables_by_reference
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Assign variable one scope above the caller
+# Usage: local "$1" && upvar $1 "value(s)"
+# Param: $1  Variable name to assign value to
+# Param: $*  Value(s) to assign.  If multiple values, an array is
+#            assigned, otherwise a single value is assigned.
+# NOTE: For assigning multiple variables, use 'upvars'.  Do NOT
+#       use multiple 'upvar' calls, since one 'upvar' call might
+#       reassign a variable to be used by another 'upvar' call.
+# Example: 
+#
+#    f() { local b; g b; echo $b; }
+#    g() { local "$1" && upvar $1 bar; }
+#    f  # Ok: b=bar
+#
+upvar() {
+    if unset -v "$1"; then           # Unset & validate varname
+        if (( $# == 2 )); then
+            eval $1=\"\$2\"          # Return single value
+        else
+            eval $1=\(\"\${@:2}\"\)  # Return array
+        fi
+    fi
+}
+
+
+# Assign variables one scope above the caller
+# Usage: local varname [varname ...] && 
+#        upvars [-v varname value] | [-aN varname [value ...]] ...
+# Available OPTIONS:
+#     -aN  Assign next N values to varname as array
+#     -v   Assign single value to varname
+# Return: 1 if error occurs
+# Example:
+#
+#    f() { local a b; g a b; declare -p a b; }
+#    g() {
+#        local c=( foo bar )
+#        local "$1" "$2" && upvars -v $1 A -a${#c[@]} $2 "${c[@]}"
+#    }
+#    f  # Ok: a=A, b=(foo bar)
+#
+upvars() {
+  if ! (( $# )); then
+    echo "${FUNCNAME[0]}: usage: ${FUNCNAME[0]} [-v varname"\
+         "value] | [-aN varname [value ...]] ..." 1>&2
+    return 2
+  fi
+  while (( $# )); do
+    case $1 in
+      -a*)
+        # Error checking
+        [[ ${1#-a} ]] || { echo "bash: ${FUNCNAME[0]}: \`$1': missing"\
+                                "number specifier" 1>&2; return 1; }
+        printf %d "${1#-a}" &> /dev/null || { echo "bash:"\
+                                                   "${FUNCNAME[0]}: \`$1': invalid number specifier" 1>&2
+                                              return 1; }
+        # Assign array of -aN elements
+        [[ "$2" ]] && unset -v "$2" && eval $2=\(\"\${@:3:${1#-a}}\"\) && \
+          shift $((${1#-a} + 2)) || { echo "bash: ${FUNCNAME[0]}:"\
+                                           "\`$1${2+ }$2': missing argument(s)" 1>&2; return 1; }
+        ;;
+      -v)
+        # Assign single value
+        [[ "$2" ]] && unset -v "$2" && eval $2=\"\$3\" && \
+          shift 3 || { echo "bash: ${FUNCNAME[0]}: $1: missing"\
+                            "argument(s)" 1>&2; return 1; }
+        ;;
+      --help) echo "\
+Usage: local varname [varname ...] &&
+   ${FUNCNAME[0]} [-v varname value] | [-aN varname [value ...]] ...
+Available OPTIONS:
+-aN VARNAME [value ...]   assign next N values to varname as array
+-v VARNAME value          assign single value to varname
+--help                    display this help and exit
+--version                 output version information and exit"
+              return 0 ;;
+      --version) echo "\
+${FUNCNAME[0]}-0.9.dev
+Copyright (C) 2010 Freddy Vulto
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law."
+                 return 0 ;;
+      *)
+        echo "bash: ${FUNCNAME[0]}: $1: invalid option" 1>&2
+        return 1 ;;
+    esac
+  done
 }
 
 source $@;
