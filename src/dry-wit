@@ -2875,14 +2875,14 @@ function addError() {
 ##
 ## Example:
 ##   appendBuiltInError "error";
-function appendBuiltInError() {
+function _appendBuiltInError() {
   local _error="${1}";
 
   if declare -p BUILTIN_ERRORS > /dev/null 2>&1; then
     upvars -a$((${#BUILTIN_ERRORS[@]}+1)) BUILTIN_ERRORS "${BUILTIN_ERRORS[@]}" "${_error}";
   else
     export -a BUILTIN_ERRORS=();
-    upvar BUILTIN_ERRORS "${_error}";
+    upvars -a1 BUILTIN_ERRORS "${_error}";
   fi
 }
 
@@ -2895,7 +2895,7 @@ function _addBuiltInError() {
   toUpper "${_errorName}";
   local _upcasedErrorName="${RESULT}";
 
-  appendBuiltInError "${_upcasedErrorName}";
+  _appendBuiltInError "${_upcasedErrorName}";
   upvar "${_upcasedErrorName}" "${_message}";
   export "${_upcasedErrorName}"="${_message}";
 }
@@ -2998,9 +2998,9 @@ function _parseCommonInput() {
 ## -> 1: The file or folder.
 ## <- RESULT: The id of the user that owns the file or folder.
 ## Example:
-##   retrieve_uid /tmp
+##   retrieveOwnerUid /tmp
 ##   echo "The id of the owner of /tmp is ${RESULT}";
-function retrieve_owner_uid() {
+function retrieveOwnerUid() {
   local _file="${1}"
   local _result;
 
@@ -3013,9 +3013,9 @@ function retrieve_owner_uid() {
 ## -> 1: The file or folder.
 ## <- RESULT: The id of the group that owns the file or folder.
 ## Example:
-##   retrieve_uid /tmp
+##   retrieveOwnerGid /tmp
 ##   echo "The id of the group of /tmp is ${RESULT}";
-function retrieve_owner_gid() {
+function retrieveOwnerGid() {
   local _file="${1}"
   local _result;
 
@@ -3029,10 +3029,10 @@ function retrieve_owner_gid() {
 ## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
 ##
 ## Example:
-##   if uid_already_exists 1; then
+##   if uidAlreadyExists 1; then
 ##     echo "User 1 exists";
 ##   fi
-function uid_already_exists() {
+function uidAlreadyExists() {
   local _uid="${1}";
   local _rescode;
 
@@ -3054,10 +3054,10 @@ function uid_already_exists() {
 ## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
 ##
 ## Example:
-##   if gid_already_exists 103; then
+##   if gidAlreadyExists 103; then
 ##     echo "Group 103 exists";
 ##   fi
-function gid_already_exists() {
+function gidAlreadyExists() {
   local _gid="${1}";
   local _rescode;
 
@@ -3079,10 +3079,10 @@ function gid_already_exists() {
 ## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
 ##
 ## Example:
-##   if user_already_exists guest; then
+##   if userAlreadyExists guest; then
 ##     echo "User guest exists";
 ##   fi
-function user_already_exists() {
+function userAlreadyExists() {
   local _user="${1}";
   local _rescode;
 
@@ -3104,10 +3104,10 @@ function user_already_exists() {
 ## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
 ##
 ## Example:
-##   if group_already_exists users; then
+##   if groupAlreadyExists users; then
 ##     echo "Group users exists";
 ##   fi
-function group_already_exists() {
+function groupAlreadyExists() {
   local _group="${1}";
   local _rescode;
 
@@ -3129,9 +3129,9 @@ function group_already_exists() {
 ## <- RESULT: The user id.
 ##
 ## Example:
-##   retrieve_user_from_uid "1";
+##   retrieveUserFromUid "1";
 ##   echo "The name of user 1 is ${RESULT}";
-function retrieve_user_from_uid() {
+function retrieveUserFromUid() {
   local _uid="${1}";
   local _result;
   local _rescode;
@@ -3149,9 +3149,9 @@ function retrieve_user_from_uid() {
 ## <- RESULT: The group id.
 ##
 ## Example:
-##   retrieve_group_from_gid "100";
+##   retrieveGroupFromGid "100";
 ##   echo "The name of group 1 is ${RESULT}";
-function retrieve_group_from_gid() {
+function retrieveGroupFromGid() {
   local _gid="${1}";
   local _result;
   local _rescode;
@@ -3171,9 +3171,9 @@ function retrieve_group_from_gid() {
 ## <- RESULT: The user name.
 ##
 ## Example:
-##   retrieve_uid_from_user "root";
+##   retrieveUidFromUser "root";
 ##   echo "The name of user root is ${RESULT}";
-function retrieve_uid_from_user() {
+function retrieveUidFromUser() {
   local _user="${1}";
   local _result;
   local _rescode;
@@ -3196,9 +3196,9 @@ function retrieve_uid_from_user() {
 ## <- RESULT: The group name.
 ##
 ## Example:
-##   retrieve_gid_from_group "admin";
+##   retrieveGidFromGroup "admin";
 ##   echo "The name of group admin is ${RESULT}";
-function retrieve_gid_from_group() {
+function retrieveGidFromGroup() {
   local _group="${1}";
   local _result;
   local _rescode;
@@ -3221,10 +3221,10 @@ function retrieve_gid_from_group() {
 ## <- 0/${TRUE} if the user gets created successfully; 1/${FALSE} otherwise.
 ##
 ## Example:
-## if create_user "fakeuser"; then
+## if createUser "fakeuser"; then
 ##    echo "fakeuser created successfully";
 ## fi
-function create_user() {
+function createUser() {
   local _userName="${1}";
   local _rescode;
 
@@ -3246,10 +3246,10 @@ function create_user() {
 ## <- 0/${TRUE} if the group gets created successfully; 1/${FALSE} otherwise.
 ##
 ## Example:
-## if create_group "fakegroup"; then
+## if createGroup "fakegroup"; then
 ##    echo "fakegroup created successfully";
 ## fi
-function create_group() {
+function createGroup() {
   local _groupName="${1}";
   local _rescode;
 
@@ -3271,10 +3271,10 @@ function create_group() {
 ## <- 0/${TRUE} if the user is removed successfully; 1/${FALSE} otherwise.
 ##
 ## Example:
-## if delete_user "fakeuser"; then
+## if deleteUser "fakeuser"; then
 ##    echo "fakeuser deleted successfully";
 ## fi
-function delete_user() {
+function deleteUser() {
   local _userName="${1}";
   local _rescode;
 
@@ -3296,10 +3296,10 @@ function delete_user() {
 ## <- 0/${TRUE} if the group is removed successfully; 1/${FALSE} otherwise.
 ##
 ## Example:
-## if delete_group "fakegroup"; then
+## if deleteGroup "fakegroup"; then
 ##    echo "fakegroup deleted successfully";
 ## fi
-function delete_group() {
+function deleteGroup() {
   local _groupName="${1}";
   local _rescode;
 
@@ -3322,8 +3322,8 @@ function delete_group() {
 ## -> 3: the folder.
 ## -> 4+: the command.
 ## Example:
-##  run_command_as_uid_gid 1000 100 /tmp "ls -ltrhia"
-function run_command_as_uid_gid() {
+##  runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"
+function runCommandAsUidGid() {
   local _user="${1}";
   local _uid="${2}";
   local _gid="${3}";
@@ -3353,6 +3353,98 @@ EOF
   logDebug "Running ${_command} ${_args} as ${SERVICE_USER}:${SERVICE_GROUP}";
   exec 2>&1
   chpst -u ${SERVICE_USER}:${SERVICE_GROUP} -U ${SERVICE_USER}:${SERVICE_GROUP} ${_runme}
+}
+
+## Updates the uid of the user.
+## -> 1: The user.
+## -> 2: The uid.
+## <- 0/${TRUE} if the user's uid is updated successfully; 1/${FALSE} otherwise.
+## Example:
+## updateUserUid "guest" 1001
+function updateUserUid() {
+  local _user="${1}";
+  local _uid="${2}";
+  local _rescode;
+
+  logInfo -n "Changing ${_user}'s uid to ${_uid}";
+  usermod -u ${_uid} ${_user} > /dev/null 2>&1
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logInfoResult SUCCESS "done";
+  else
+    logInfoResult FAILURE "failed";
+    exitWithErrorCode CANNOT_CHANGE_UID "${_user}";
+  fi
+
+  return ${_rescode};
+}
+
+## Updates the gid of the user.
+## -> 1: The user.
+## -> 2: The gid.
+## <- 0/${TRUE} if the user's gid is updated successfully; 1/${FALSE} otherwise.
+## Example:
+## updateUserGid "guest" 103
+function updateUserGid() {
+  local _user="${1}";
+  local _gid="${2}";
+  local _rescode;
+
+  logInfo -n "Changing ${_user}'s primary group as ${_gid}";
+  usermod -g ${_gid} ${_user} > /dev/null 2>&1
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logInfoResult SUCCESS "done";
+  else
+    logInfoResult FAILURE "unneeded";
+  fi
+
+  return ${_rescode};
+}
+
+## Updates the gid of the group.
+## -> 1: The group.
+## -> 2: The gid.
+## <- 0/${TRUE} if the group's gid is updated successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## updateUserGid "guests" 103
+function updateGroupGid() {
+  local _group="${1}";
+  local _gid="${2}";
+  local _rescode;
+
+  logInfo -n "Changing ${_group}'s gid to ${_gid}";
+  groupmod -g ${_gid} ${_group} > /dev/null 2>&1
+  _rescode=$?;
+  if [ ${_rescode} -eq ${TRUE} ]; then
+    logInfoResult SUCCESS "done";
+  else
+    logInfoResult FAILURE "failed";
+    exitWithErrorCode CANNOT_CHANGE_GID "${_group}";
+  fi
+
+  return ${_rescode};
+}
+
+## Adds given user to a group.
+## -> 1: The user.
+## -> 2: The group.
+## <- 0/${TRUE} if the user gets added to the group successfully; 1/${FALSE} otherwise.
+##
+## Example:
+##   if addUserToGroup guest users; then
+##     echo "User guest added to group users";
+##   fi
+function addUserToGroup() {
+  local _user="${1}";
+  local _group="${2}";
+  local _rescode;
+
+  gpasswd -a ${_user} ${_group} > /dev/null;
+  _rescode=$?;
+
+  return ${_rescode};
 }
 
 ## Checks input common to all scripts.
@@ -3500,7 +3592,7 @@ function _main() {
 # NOTE: For assigning multiple variables, use 'upvars'.  Do NOT
 #       use multiple 'upvar' calls, since one 'upvar' call might
 #       reassign a variable to be used by another 'upvar' call.
-# Example: 
+# Example:
 #
 #    f() { local b; g b; echo $b; }
 #    g() { local "$1" && upvar $1 bar; }
@@ -3518,7 +3610,7 @@ upvar() {
 
 
 # Assign variables one scope above the caller
-# Usage: local varname [varname ...] && 
+# Usage: local varname [varname ...] &&
 #        upvars [-v varname value] | [-aN varname [value ...]] ...
 # Available OPTIONS:
 #     -aN  Assign next N values to varname as array
