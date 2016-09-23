@@ -94,13 +94,13 @@ function isEmpty() {
 ## Example:
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isDefined() {
-    local _rescode;
-    if [ -z ${1+x} ]; then
-      _rescode=${TRUE};
-    else
-        _rescode=${FALSE};
-    fi
-    return ${_rescode};
+  local _rescode;
+  if [ -z ${1+x} ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+  return ${_rescode};
 }
 
 ## PUBLIC
@@ -126,8 +126,8 @@ function isVariableDefined() {
 ##   A=( "1" "2" "3" );
 ##   _dwDebugArray "${A}"
 function __dwDebugArray() {
-    flattenArray "${1}" " + ";
-    echo "${RESULT}";
+  flattenArray "${1}" " + ";
+  echo "${RESULT}";
 }
 
 ## PUBLIC
@@ -163,12 +163,22 @@ function isFalse() {
   return ${_rescode};
 }
 
+# PRIVATE
+# Retrieves the value of given variable.
+# -> 1: The variable name.
+# <- RESULT: The variable value.
 function _evalVar() {
   local _varName="${1}";
   local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh)";
   export RESULT="${_result}";
 }
 
+# PUBLIC
+# Declares a new environment variable.
+# -> 1: The variable name.
+# -> 2: The variable description.
+# -> 3: The default value.
+# -> 4: The command to retrieve the actual value (optional).
 function defineEnvVar() {
   local _varName="${1}";
   local _varDescription="${2}";
@@ -224,6 +234,10 @@ function defineEnvVar() {
   fi
 }
 
+# PUBLIC
+# Overrides the value of an environment variable.
+# -> 1: The variable name.
+# -> 2: The variable value.
 function overrideEnvVar() {
   local _varName="${1}";
   local _varDefault="${2}";
@@ -232,17 +246,30 @@ function overrideEnvVar() {
   _evalEnvVar ${_varName};
 }
 
+# PRIVATE
+# Annotates given environment variable.
+# -> 1: The variable name.
+# -> 2: The value.
 function _addEnvVar() {
   local _varName="${1}";
   local _varValue="${2:-}";
 
-  if ! _isEnvVarDefined "${_varName}"; then
+  if ! isEnvVarDefined "${_varName}"; then
     appendEnvVariable ${_varName} ENV_VARIABLES;
     upvar "${_varName}" "${_varValue}";
   fi
 }
 
-function _isEnvVarDefined() {
+# Checks whether giver variable is defined.
+# -> 1: The variable name.
+# <- 0/${TRUE} if the variable is defined; 1/${FALSE} otherwise.
+function isEnvVarDefined() {
+  cache _uncachedIsEnvVarDefined $*;
+}
+
+# PRIVATE
+# See isEnvVarDefined()
+function _uncachedIsEnvVarDefined() {
   local _varName="${1}";
   local e;
   local _oldIFS="${IFS}";
@@ -254,6 +281,8 @@ function _isEnvVarDefined() {
   return 1;
 }
 
+# Evaluates given environment variable.
+# -> 1: the variable name.
 function _evalEnvVar() {
   local _varName="${1}";
   _evalVar "${_varName}_DEFAULT";
@@ -311,23 +340,29 @@ function evalEnvVars() {
 ##  evalConstant "${_MYVAR}";
 ##  echo "${_MYVAR}->${RESULT}" # _OTHERVAR->works
 function evalConstant() {
-    local _constant="${1}";
+  cache _uncachedEvalConstant $*;
+}
 
-    local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
+# PRIVATE
+# See evalConstant()
+function _uncachedEvalConstant() {
+  local _constant="${1}";
 
-    if isEmpty "${_result}" ; then
-      _result="${2}";
-    fi
+  local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
 
-    if isEmpty "${_result}" ; then
-      _result="${_constant}";
-    fi
-    #  if [ "${DEBUG}" == "1" ]; then
-    #    echo "";
-    #    echo "${_constant} converts to ${_result}";
-    #  fi
+  if isEmpty "${_result}" ; then
+    _result="${2}";
+  fi
 
-    export RESULT="${_result}";
+  if isEmpty "${_result}" ; then
+    _result="${_constant}";
+  fi
+  #  if [ "${DEBUG}" == "1" ]; then
+  #    echo "";
+  #    echo "${_constant} converts to ${_result}";
+  #  fi
+
+  export RESULT="${_result}";
 }
 
 ## PUBLIC
@@ -676,7 +711,16 @@ function logFlag() {
   logTrace "Parsed ${_flag} ${_value}. Shifting ${_placeholders} placeholder(s).${_remaining}";
 }
 
+# Finds a given file within a PATH variable.
+# -> 1: The file name to look for.
+# <- (stdin) the file path.
 function findInPath() {
+  cache _uncachedFindInPath $*;
+}
+
+# PRIVATE
+# See findInPath()
+function _uncachedFindInPath() {
   local _result="";
   local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
 #  local _paths="$(echo "$PATH:." | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
@@ -692,7 +736,16 @@ function findInPath() {
   echo ${_result};
 }
 
+# Checks whether given keyword represents a success.
+# -> 1: The keyword.
+# <- 0/${TRUE} if the keyword is considered a success; 1/${FALSE} otherwise.
 function isSuccessKeyword() {
+  cache _uncachedIsSuccessKeyword $*;
+}
+
+# PRIVATE
+# See isSuccessKeyword()
+function _uncachedIsSuccessKeyword() {
   local _keyword="${1}";
   local _result=1;
 
@@ -729,9 +782,18 @@ function isSuccessKeyword() {
   return ${_result};
 }
 
+# Checks whether given keyword represents a failure.
+# -> 1: The keyword.
+# <- 0/${TRUE} if the keyword is considered a failure; 1/${FALSE} otherwise.
 function isFailureKeyword() {
+  cache _uncachedIsFailureKeyword $*;
+}
+
+# PRIVATE
+# See isFailureKeyword()
+function _uncachedIsFailureKeyword() {
   local _keyword="${1}";
-  local _result=1;
+  local _result=${FALSE};
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
@@ -892,12 +954,28 @@ function _printUsage() {
 }
 
 function _trapSignals() {
-  trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP
+  trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP EXIT
+}
+
+function _debugVariable() {
+  local _name="${1}";
+  shift;
+  local _value="${@}";
+
+  declare -t "${_name}"="${_value}";
+  trap "echo ${_name} is being used here." DEBUG
 }
 
 # Converts given date (in days) to a formatted date.
+# -> 1: The day-based timestamp.
+# <- RESULT: year month day
 function jd2date() {
+  cache _uncachedJd2date $*;
+}
 
+# PRIVATE
+# See jd2date()
+function _uncachedJd2date() {
   local _standardJd;
   local _temp1;
   local _temp2;
@@ -924,7 +1002,17 @@ function jd2date() {
 }
 
 # Converts given formatted date to a day-based one.
+# -> 1: The year.
+# -> 2: The month.
+# -> 3: The day.
+# <- RESULT: The day-based timestamp.
 function date2jd() {
+  cache _uncachedDate2jd $*;
+}
+
+# PRIVATE
+# See date2jd()
+function _uncachedDate2jd() {
   local _result=0;
 
   local _year=$1;
@@ -942,8 +1030,15 @@ function date2jd() {
 }
 
 # Converts given date (in seconds) to a formatted date.
+# -> 1: The timestamp, in seconds.
+# <- RESULT: days hour minute second
 function jds2date() {
+  cache _uncachedJds2date $*;
+}
 
+# PRIVATE
+# See jds2date()
+function _uncachedJds2date() {
   local _year;
   local _month;
   local _day;
@@ -968,7 +1063,20 @@ function jds2date() {
 }
 
 # Converts given formatted date to a second-based one.
+# -> 1: The year.
+# -> 2: The month.
+# -> 3: The day.
+# -> 4: The hour.
+# -> 5: The minute.
+# -> 6: The second.
+# <- RESULT: The number of seconds.
 function date2jds() {
+  cache _uncachedDate2jds $*;
+}
+
+# PRIVATE
+# See date2jds()
+function _uncachedDate2jds() {
   local _result=0;
 
   local _year=$1;
@@ -987,7 +1095,15 @@ function date2jds() {
   export RESULT=${_result};
 }
 
+# Retrieves the TERM variable
+# <- RESULT: the TERM variable.
 function retrieveTERM() {
+  cache _uncachedRetrieveTERM $*;
+}
+
+# PRIVATE
+# See retrieveTERM()
+function _uncachedRetrieveTERM() {
   local _result="${TERM}";
 
   if [ "x${_result}" == "x" ]; then
@@ -1023,6 +1139,11 @@ function _retrieveTermWidthFromEnvVar() {
 # <- 0: if the calculation
 # <- RESULT: the term width.
 function getTermWidth() {
+#  cache _uncachedGetTermWidth $*;
+#}
+#
+## See getTermWidth
+#function _uncachedGetTermWidth() {
   local -i _rescode;
   local _term;
 
@@ -1048,6 +1169,11 @@ function getTermWidth() {
 # <- 0: if the calculation is performed successfully.
 # <- RESULT: the term width.
 function getTermWidthForTerm() {
+  cache _uncachedGetTermWidthForTerm $*;
+}
+
+## See getTermWidthForTerm
+function _uncachedGetTermWidthForTerm() {
   local -i _rescode;
   local _result;
   local _term="${1}";
@@ -1213,7 +1339,14 @@ export LOG_OUTCOME_TOKENS=(\
 
 export LOG_OUTCOME_TEXT_POSITION=1;
 
+## Checks whether the terminal allows colors or not.
+## <- 0/${TRUE} if the terminal supports colors; 1/${FALSE} otherwise.
 function allowsColors() {
+  cache _uncachedAllowsColors $*;
+}
+
+## See allowsColors
+function _uncachedAllowsColors() {
   local _result;
 
   $(tput colors > /dev/null 2>&1);
@@ -1271,7 +1404,16 @@ function findOutKeyword() {
   return ${_result};
 }
 
+# Checks whether given tag is defined.
+# -> 1: The tag to check.
+# <- 0/${TRUE} if the tag is defined; 1/${FALSE} otherwise.
 function definedTag() {
+  cache _uncachedDefinedTag $*;
+}
+
+# PRIVATE
+# See definedTag()
+function _uncachedDefinedTag() {
   local _result;
 
   case "${1}" in
@@ -1284,6 +1426,10 @@ function definedTag() {
   return ${_result};
 }
 
+# Retrieves the verbosity flag.
+# <- RESULT: -vv if trace is enabled;
+#            -v if debug is enabled;
+#            empty string otherwise.
 function resolveVerbosity() {
   local _result="";
 
@@ -1298,7 +1444,13 @@ function resolveVerbosity() {
   export RESULT="${_result}";
 }
 
+# Checks whether trace is enabled.
+# <- 0/${TRUE} if trace is enabled; 1/${FALSE} otherwise.
 function isTraceEnabled() {
+  cache _uncachedIsTraceEnabled $*;
+}
+
+function _uncachedIsTraceEnabled() {
   local _rescode=${FALSE};
 
   if isDebugEnabled; then
@@ -1310,30 +1462,45 @@ function isTraceEnabled() {
   return ${_rescode};
 }
 
+# Enables the trace level.
 function setTraceEnabled() {
   _DRY_WIT_LOG_TRACE=${TRUE};
   setDebugEnabled;
 }
 
+# Logs given message under the "trace" level.
+# -> 1: The message to log.
 function logTrace() {
   if isTraceEnabled; then
     _logStuff TRACE "$@";
   fi
 }
 
+# Logs given text as a log result, under the "trace" level.
+# -> 1: The result message to log.
 function logTraceResult() {
   if isTraceEnabled; then
     _logStuffResult TRACE "$@";
   fi
 }
 
+# Logs the contents of given file, under the "trace" level.
+# -> 1: The file to log.
 function logTraceFile() {
   if isTraceEnabled; then
     cat "${1}" 2> /dev/null | while IFS='' read -r line; do _logStuff TRACE "${line}"; done
   fi
 }
 
+# Checks whether the debug level is enabled.
+# <- 0/${TRUE} if debug is allowed; 1/${FALSE} otherwise.
 function isDebugEnabled() {
+  cache _uncachedIsDebugEnabled $*;
+}
+
+# PRIVATE
+# See isDebugEnabled()
+function _uncachedIsDebugEnabled() {
   local _rescode=${FALSE};
 
   if isInfoEnabled; then
@@ -1345,29 +1512,38 @@ function isDebugEnabled() {
   return ${_rescode};
 }
 
+# Enables the debug level.
 function setDebugEnabled() {
   _DRY_WIT_LOG_DEBUG=${TRUE};
   setInfoEnabled;
 }
 
+# Logs the contents of given file, under the "debug" level.
+# -> 1: The file to log.
 function logDebugFile() {
   if isDebugEnabled; then
     cat "${1}" | while IFS='' read -r line; do _logStuff DEBUG "${line}"; done
   fi
 }
 
+# Logs given message under the "debug" level.
+# -> 1: The message to log.
 function logDebug() {
   if isDebugEnabled; then
     _logStuff DEBUG "$@";
   fi
 }
 
+# Logs given outcome under the "debug" level.
+# -> 1: The outcome to log.
 function logDebugResult() {
   if isDebugEnabled; then
     _logStuffResult DEBUG "$@";
   fi
 }
 
+# Checks whether the enabled log level is lower than "info".
+# <- 0/${TRUE} in such case; 1/${FALSE} otherwise.
 function isLowerThanInfoEnabled() {
   if isDebugEnabled || isTraceEnabled; then
     return ${TRUE};
@@ -3672,6 +3848,38 @@ There is NO WARRANTY, to the extent permitted by law."
         return 1 ;;
     esac
   done
+}
+
+# From http://unix.stackexchange.com/questions/38101/does-bash-have-a-built-in-caching-command-available-sort-of-like-mktemp-or-spon
+typeset -A output_cache
+typeset -A result_cache
+typeset -A rescode_cache
+function cache() {
+  $*
+}
+
+function doCache() {
+  local IFS='
+  ' rescode;
+  if [[ -z ${output_cache["$*"]} ]]; then
+    output_cache["$*"]=$(unset IFS; "$@")
+    rescode=$?
+    rescode_cache["$*"]=${ret};
+    result_cache["$*"]="${RESULT}";
+  else
+    rescode=${rescode_cache["$*"]};
+  fi
+  echo "${output_cache["$*"]}"
+  export RESULT="${result_cache[$*]}";
+  return $rescode
+}
+
+function uncache() {
+  local IFS='
+  '
+  unset output_cache["$*"]
+  unset result_cache["$*"]
+  unset rescode_cahe["$*"]
 }
 
 source $@;
