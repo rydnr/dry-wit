@@ -327,6 +327,7 @@ function defineEnvVar() {
   local _upcasedVarName;
   local _defaultValue;
   local _description;
+  local _command;
 
   if isEmpty "${_varName}"; then
     exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
@@ -350,15 +351,11 @@ function defineEnvVar() {
     fi
   fi
 
-  if ! isEmpty "${_varDefault}"; then
-    _evalVar "${_upcasedVarName}_DEFAULT";
-    _defaultValue="${RESULT}";
-    _defaultValue="${_varDefault}";
-  fi
-
   if isEmpty "${_varDefault}"; then
     _evalVar "${_upcasedVarName}_DEFAULT";
     _defaultValue="${RESULT}";
+  else
+    _defaultValue="${_varDefault}";
   fi
 
   if ! isEmpty ${_defaultValue}; then
@@ -370,10 +367,8 @@ function defineEnvVar() {
   _addEnvVar "${_upcasedVarName}" "${_varValue}";
 
   if ! isEmpty "${_varCommand}"; then
-#    echo -n "${_varName}_DEFAULT_COMMAND->${_varCommand}";
     _evalVar "${_upcasedVarName}_DEFAULT_COMMAND";
-    local _command="${RESULT}";
-#    echo "${_command}";
+    _command="${RESULT}";
     if isEmpty "${_command}"; then
       export ${_upcasedVarName}_DEFAULT_COMMAND="${_varCommand}";
     fi
@@ -408,9 +403,9 @@ function _addEnvVar() {
 
   if ! isEnvVarDefined "${_varName}"; then
     appendEnvVariable ${_varName} ENV_VARIABLES;
-    upvar "${_varName}" "${_varValue}";
-    export "${_varName}"="${_varValue}";
   fi
+  upvar "${_varName}" "${_varValue}";
+  export "${_varName}"="${_varValue}";
 }
 
 # Checks whether giver variable is defined.
@@ -419,6 +414,7 @@ function _addEnvVar() {
 function isEnvVarDefined() {
   local _varName="${1}";
   local e;
+  local _rescode=${FALSE};
 
   if isEmpty "${_varName}"; then
     exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
@@ -427,10 +423,15 @@ function isEnvVarDefined() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
 #  set +o nounset
-  for e in ${#ENV_VARIABLES[@]}; do [[ "${e}" == "${_varName}" ]] && return 0; done
+  for e in ${#ENV_VARIABLES[@]}; do
+    if [[ "${e}" == "${_varName}" ]]; then
+      _rescode=${TRUE};
+      break;
+    fi
+  done
   # TODO set -o nounset
   IFS="${_oldIFS}";
-  return 1;
+  return ${_rescode};
 }
 
 # Evaluates given environment variable.
@@ -748,10 +749,10 @@ function logFlag() {
   local _placeholders=$3;
   local _remaining="$4";
 
-  if [ "x${_value}" != "x" ]; then
+  if ! isEmpty "${_value}"; then
     _value=" ${_value}";
   fi
-  if [ "x${_remaining}" != "x" ]; then
+  if ! isEmpty "${_remaining}"; then
     _remaining=" Remaining ${_remaining}";
   fi
   logTrace "Parsed ${_flag} ${_value}. Shifting ${_placeholders} placeholder(s).${_remaining}";
@@ -769,7 +770,7 @@ function findInPath() {
 function _uncachedFindInPath() {
   local _result="";
   local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
-#  local _paths="$(echo "$PATH:." | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
+
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _path in $_paths; do
@@ -2023,7 +2024,7 @@ function  _retrieveLogOutcomeTokens() {
 ##    _retrieveLogOutcomeColors SUCCESS "done";
 ##    source ${RESULT};
 ##    echo "${_DRY_WIT_LOG_OUTCOME_COLORS[*]}"
-function  _retrieveLogOutcomeColors() {
+function _retrieveLogOutcomeColors() {
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
     exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
@@ -2236,6 +2237,9 @@ function _echoLogOutcome() {
   _inProgressMessage="${RESULT}";
   _peekLogCategory;
   _category="${RESULT}";
+  if isEmpty "${_category}"; then
+    exitWithErrorCode POSTCONDITION_NOT_SATISFIED "_peekLogCaterory must not return an empty string";
+  fi
   _peekLogLevel;
   _level="${RESULT}";
   _retrieveLogPrefix "${_category}" "${_level}";
@@ -3870,11 +3874,13 @@ function sourceFileIfExists() {
     exitWithErrorCode UNACCEPTABLE_API_CALL "'file' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 
+  logTrace -n "Reading ${_file}";
   if [ -e "${_file}" ]; then
-    logTrace -n "Reading ${_file}";
     _rescode=${TRUE};
     source "${_file}";
     logTraceResult SUCCESS "done";
+  else
+    logTraceResult SUCCESS "not found";
   fi
 
   return ${_rescode};
