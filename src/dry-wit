@@ -22,6 +22,11 @@
 set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
 #set -o xtrace   # trace what gets executed
 
+export TRUE=0;
+export FALSE=1;
+
+_dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
+
 # IFS stuff
 _OLD_IFS="${IFS}";
 export IFS=$'\n\t\040';
@@ -50,8 +55,6 @@ declare -a ERROR_MESSAGES;
 export SUCCESS=0;
 export FAILURE=1;
 export IN_PROGRESS=2;
-export TRUE=0;
-export FALSE=1;
 export UNDEFINED=255;
 
 export _DRY_WIT_LOG_STACK=();
@@ -70,6 +73,134 @@ export NESTED_TASK_IN_PROGRESS="....";
 export LOG_TIMESTAMP="+%Y/%m/%d %H:%M:%S";
 export LOG_OUTCOME_SEPARATOR=" ";
 export LOG_NESTED_INDENTATION="  ";
+
+# Bash: Passing variables by reference
+# Copyright (C) 2010 Freddy Vulto
+# Version: upvars-0.9.dev
+# See: http://fvue.nl/wiki/Bash:_Passing_variables_by_reference
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# Assign variable one scope above the caller
+# Usage: local "$1" && upvar $1 "value(s)"
+# Param: $1  Variable name to assign value to
+# Param: $*  Value(s) to assign.  If multiple values, an array is
+#            assigned, otherwise a single value is assigned.
+# NOTE: For assigning multiple variables, use 'upvars'.  Do NOT
+#       use multiple 'upvar' calls, since one 'upvar' call might
+#       reassign a variable to be used by another 'upvar' call.
+# Example:
+#
+#    f() { local b; g b; echo $b; }
+#    g() { local "$1" && upvar $1 bar; }
+#    f  # Ok: b=bar
+#
+function upvar() {
+    if unset -v "$1"; then           # Unset & validate varname
+        if (( $# == 2 )); then
+            eval $1=\"\$2\"          # Return single value
+        else
+            eval $1=\(\"\${@:2}\"\)  # Return array
+        fi
+    fi
+}
+
+
+# Assign variables one scope above the caller
+# Usage: local varname [varname ...] &&
+#        upvars [-v varname value] | [-aN varname [value ...]] ...
+# Available OPTIONS:
+#     -aN  Assign next N values to varname as array
+#     -v   Assign single value to varname
+# Return: 1 if error occurs
+# Example:
+#
+#    f() { local a b; g a b; declare -p a b; }
+#    g() {
+#        local c=( foo bar )
+#        local "$1" "$2" && upvars -v $1 A -a${#c[@]} $2 "${c[@]}"
+#    }
+#    f  # Ok: a=A, b=(foo bar)
+#
+function upvars() {
+  local _flag="${1}";
+
+  if isEmpty "${_flag}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
+  fi
+
+  while (( $# )); do
+    case $1 in
+      -a*)
+        # Error checking
+        [[ ${1#-a} ]] || { echo "bash: ${FUNCNAME[0]}: \`$1': missing"\
+                                "number specifier" 1>&2; return 1; }
+        printf %d "${1#-a}" &> /dev/null || { echo "bash:"\
+                                                   "${FUNCNAME[0]}: \`$1': invalid number specifier" 1>&2
+                                              return 1; }
+        # Assign array of -aN elements
+        [[ "$2" ]] && unset -v "$2" && eval $2=\(\"\${@:3:${1#-a}}\"\) && \
+          shift $((${1#-a} + 2)) || { exitWithErrorCode UNACCEPTABLE_API_CALL "\`$1${2+ }$2': missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"; }
+        ;;
+      -v)
+        # Assign single value
+        [[ "$2" ]] && unset -v "$2" && eval $2=\"\$3\" && \
+          shift 3 || { exitWithErrorCode UNACCEPTABLE_API_CALL "$1: missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"; }
+        ;;
+      --help) echo "\
+Usage: local varname [varname ...] &&
+   ${FUNCNAME[0]} [-v varname value] | [-aN varname [value ...]] ...
+Available OPTIONS:
+-aN VARNAME [value ...]   assign next N values to varname as array
+-v VARNAME value          assign single value to varname
+--help                    display this help and exit
+--version                 output version information and exit"
+              return 0 ;;
+      --version) echo "\
+${FUNCNAME[0]}-0.9.dev
+Copyright (C) 2010 Freddy Vulto
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law."
+                 return 0 ;;
+      *)
+        exitWithErrorCode UNACCEPTABLE_API_CALL "$1: invalid option to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    esac
+  done
+}
+
+## PRIVATE
+## Traces the API call to the default log file using in development.
+## Example:
+##   traceApiCall;
+function _traceApiCall() {
+  echo -n "${FUNCNAME[0]}" >> ${_dryWitDevLogFile};
+  local _i=0;
+  while caller $i >> ${_dryWitDevLogFile}; do
+    i=$((i+1))
+  done
+}
+
+## PRIVATE
+## Echoes a line to stdout. Useful for locating them easily when debugging.
+## -> 1: The message to print.
+## Example:
+##   debugEcho "message";
+function _debugEcho() {
+  echo $* >> ${_dryWitDevLogFile};
+}
 
 ## PUBLIC
 ## Checks whether given value is empty.
@@ -110,11 +241,20 @@ function isDefined() {
 ## Example:
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isVariableDefined() {
+  local _var="${1}";
   local _rescode;
-  set +o nounset  # allow unset variables
-  eval "[ -v \${$1} ] 2> /dev/null"
-  _rescode=$?;
-  # TODO set -o nounset  # terminate on any unset variable
+#  set +o nounset  # allow unset variables
+#  eval "[ -v \${$1} ] 2> /dev/null"
+  #  eval "[ -v ${1} ] 2> /dev/null"
+  if isEmpty "${_var}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'var' (1) cannot be empty when calling 'isVariableDefined'. Review ${FUNCNAME[1]}";
+  fi
+  if [ -v "${_var}" ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+#  set -o nounset  # terminate on any unset variable
 
   return ${_rescode};
 }
@@ -177,7 +317,7 @@ function _evalVar() {
 # Declares a new environment variable.
 # -> 1: The variable name.
 # -> 2: The variable description.
-# -> 3: The default value.
+# -> 3: The default value (optional).
 # -> 4: The command to retrieve the actual value (optional).
 function defineEnvVar() {
   local _varName="${1}";
@@ -188,32 +328,40 @@ function defineEnvVar() {
   local _defaultValue;
   local _description;
 
+  if isEmpty "${_varName}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  elif isEmpty "${_varDescription}" && [ "${FUNCNAME[1]}" != "overrideEnvVar" ]; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'description' (2) for '${_varName}' cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
 
-  local _varValue="$(echo 'echo $'$(echo ${_varName}) | sh)";
+  _evalVar "${_varName}"
+  local _varValue="${RESULT}";
+  export ${_upcasedVarName}="${_varValue}";
 
-  if [[ -n ${_varDescription} ]]; then
+  if ! isEmpty "${_varDescription}"; then
     _evalVar "${_upcasedVarName}_DESCRIPTION";
     _description="${RESULT}";
 
-    if [[ -z "${_description}" ]]; then
+    if isEmpty "${_description}"; then
       export ${_varName}_DESCRIPTION="${_varDescription}";
     fi
   fi
 
-  if [[ -n "${_varDefault}" ]]; then
+  if ! isEmpty "${_varDefault}"; then
     _evalVar "${_upcasedVarName}_DEFAULT";
     _defaultValue="${RESULT}";
     _defaultValue="${_varDefault}";
   fi
 
-  if [[ -z "${_varDefault}" ]]; then
+  if isEmpty "${_varDefault}"; then
     _evalVar "${_upcasedVarName}_DEFAULT";
     _defaultValue="${RESULT}";
   fi
 
-  if [[ -n ${_defaultValue} ]]; then
+  if ! isEmpty ${_defaultValue}; then
     export ${_upcasedVarName}_DEFAULT="${_defaultValue}";
     _evalVar "${_upcasedVarName}_DEFAULT";
     _defaultValue="${RESULT}";
@@ -221,12 +369,12 @@ function defineEnvVar() {
 
   _addEnvVar "${_upcasedVarName}" "${_varValue}";
 
-  if [[ -n ${_varCommand} ]]; then
+  if ! isEmpty "${_varCommand}"; then
 #    echo -n "${_varName}_DEFAULT_COMMAND->${_varCommand}";
     _evalVar "${_upcasedVarName}_DEFAULT_COMMAND";
     local _command="${RESULT}";
 #    echo "${_command}";
-    if [[ ! -n ${_command} ]]; then
+    if isEmpty "${_command}"; then
       export ${_upcasedVarName}_DEFAULT_COMMAND="${_varCommand}";
     fi
     _evalVar "${_upcasedVarName}_DEFAULT_COMMAND";
@@ -254,9 +402,14 @@ function _addEnvVar() {
   local _varName="${1}";
   local _varValue="${2:-}";
 
+  if isEmpty "${_varName}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   if ! isEnvVarDefined "${_varName}"; then
     appendEnvVariable ${_varName} ENV_VARIABLES;
     upvar "${_varName}" "${_varValue}";
+    export "${_varName}"="${_varValue}";
   fi
 }
 
@@ -264,17 +417,16 @@ function _addEnvVar() {
 # -> 1: The variable name.
 # <- 0/${TRUE} if the variable is defined; 1/${FALSE} otherwise.
 function isEnvVarDefined() {
-  cache _uncachedIsEnvVarDefined $*;
-}
-
-# PRIVATE
-# See isEnvVarDefined()
-function _uncachedIsEnvVarDefined() {
   local _varName="${1}";
   local e;
+
+  if isEmpty "${_varName}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  set +o nounset
+#  set +o nounset
   for e in ${#ENV_VARIABLES[@]}; do [[ "${e}" == "${_varName}" ]] && return 0; done
   # TODO set -o nounset
   IFS="${_oldIFS}";
@@ -285,6 +437,11 @@ function _uncachedIsEnvVarDefined() {
 # -> 1: the variable name.
 function _evalEnvVar() {
   local _varName="${1}";
+
+  if isEmpty "${_varName}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   _evalVar "${_varName}_DEFAULT";
   local _defaultValue="${RESULT}";
   _evalVar "${_varName}";
@@ -361,121 +518,6 @@ function _uncachedEvalConstant() {
   #    echo "";
   #    echo "${_constant} converts to ${_result}";
   #  fi
-
-  export RESULT="${_result}";
-}
-
-## PUBLIC
-## Converts given |-separated text into an array (after
-## sourcing a temporary file.
-## -> 1: The name of the array variable to set.
-## -> 2: The string with the "exported" array.
-## <- RESULT: Either the empty string, if the array
-##            already existed globally, or the name
-##            of a temporary file to source to be able
-##            to use the array, if it's new.
-## Example:
-##    pipe2Array "MY_ARRAY" "a|b and c|d";
-##    source "${RESULT}";
-##    echo "${MY_ARRAY[0]}" # a
-##    echo "${MY_ARRAY[1]}" # b and c
-##    echo "${MY_ARRAY[2]}" # d
-function pipe2Array() {
-  local _name="${1}";
-  shift;
-  if ! isVariableDefined "${_name}"; then
-    declare -a "${_name}";
-  fi
-
-  if isVariableDefined "${_name}"; then
-    _pipe2ExistingArray "${_name}" "$@";
-  else
-    echo "${_name} not defined"
-    exit 1
-    _pipe2ArrayWithTempFile "${_name}" "$@";
-  fi
-  export "${_name}";
-}
-
-## PRIVATE
-## Updates the values of an array, with the given |-separated text.
-## -> 1: The name of the array variable to update.
-## -> 2: The string with the "exported" array.
-## Example:
-##    declare -a MY_ARRAY;
-##    pipe2Array "MY_ARRAY" "a|b and c|d";
-##    source "${RESULT}";
-##    echo "${MY_ARRAY[0]}" # a
-##    echo "${MY_ARRAY[1]}" # b and c
-##    echo "${MY_ARRAY[2]}" # d
-function _pipe2ExistingArray() {
-  local _name="${1}";
-  local _value="${2}";
-  local -i _i=0;
-  local _len=$(echo "${_value}" | sed 's/|/\n|\n/g' | grep -c '|');
-  mapfile -t "${_name}" < <(echo "${_value}" | sed 's/|/\n/g' | sed 's/^\s+//g' | sed 's/\s+$//g' | sed 's/^"//g' | sed 's/"$//g');
-#
-#  local _oldIFS=$IFS
-#  IFS=$(echo -en "\n\b")
-#  local _valueLines="$(echo "${_value}" | sed 's/|/\n/g' | sed 's/^\s+//g' | sed 's/\s+$//g' | sed 's/^"//g' | sed 's/"$//g')";
-#  eval "export ${_name}=();"
-#  for _line in ${_valueLines}; do
-#    eval "${_name}[${_i}]=\"${_line}\"";
-#    echo "${_name}[${_i}]=\"${_line}\"";
-#    _i=$((${_i}+1))
-#  done
-#  declare -a ${_name};
-#  export ${_name};
-#  # restore $IFS
-#  IFS=${_oldIFS};
-  export RESULT="";
-}
-
-## PRIVATE
-## Converts given |-separated text into an array (after
-## sourcing a temporary file.
-## -> 1: The name of the array variable to set.
-## -> 2: The string with the "exported" array.
-## <- RESULT: Either the empty string, if the array
-##            already existed globally, or the name
-##            of a temporary file to source to be able
-##            to use the array, if it's new.
-## Example:
-##    pipe2Array "MY_ARRAY" "a|b and c|d";
-##    source "${RESULT}";
-##    echo "${MY_ARRAY[0]}" # a
-##    echo "${MY_ARRAY[1]}" # b and c
-##    echo "${MY_ARRAY[2]}" # d
-function _pipe2ArrayWithTempFile() {
-  local _name="${1}";
-  local _value="${2}";
-  local _result="${3}";
-  local _temp="";
-  if isEmpty "${_result}"; then
-    createTempFile;
-    _result="${RESULT}";
-    _temp="${4}";
-  fi
-  if isEmpty "${_temp}"; then
-    createTempFile;
-    _temp="${RESULT}";
-  fi
-  echo "declare -a ${_name};" >> ${_result};
-  local -i _i=0;
-  local _len=$(echo "${_value}" | sed 's/|/\n|\n/g' | grep -c '|');
-  local _valueLines="$(echo "${_value}" | sed 's/|/\n/g' | sed 's/^\s+//g' | sed 's/\s+$//g' | sed 's/^"//g' | sed 's/"$//g')";
-  echo "temp -> ${_temp}";
-  cat <<EOF > ${_temp}
-${_valueLines}
-EOF
-  local _oldIFS="${IFS}";
-  IFS=$' \t\n';
-  for _i in $(seq 0 ${_len}); do
-    echo "${_name}[${_i}]=\"$(cat -n "${_temp}" | grep -e "^\s*$((${_i} + 1))\s" | awk '{if (NF>1) {for (i=2;i<NF;i++) {printf("%s ", $i);}; printf("%s", $NF);}}';)\";" >> ${_result};
-    _i=$((${_i}+1));
-  done
-  IFS="${_oldIFS}";
-  echo "export ${_name};" >> ${_result};
 
   export RESULT="${_result}";
 }
@@ -631,9 +673,11 @@ function appendEnvVariable() {
 
   if declare -p ENV_VARIABLES > /dev/null 2>&1; then
     upvars -a$((${#ENV_VARIABLES[@]}+1)) ENV_VARIABLES "${ENV_VARIABLES[@]}" "${_variable}";
+    export ENV_VARIABLES;
   else
     export -a ENV_VARIABLES=();
     upvars -a1 ENV_VARIABLES "${_variable}";
+    export ENV_VARIABLES;
   fi
 }
 
@@ -643,9 +687,11 @@ function addFileToCleanup() {
 
   if declare -p _CLEANUP_FILES > /dev/null 2>&1; then
     upvars -a$((${#_CLEANUP_FILES[@]}+1)) _CLEANUP_FILES "${_CLEANUP_FILES[@]}" "${_file}";
+    export _CLEANUP_FILES;
   else
     export -a _CLEANUP_FILES=();
     upvars -a1 _CLEANUP_FILES "${_file}";
+    export _CREANUP_FILES;
   fi
 
 #  local _oldIFS="${IFS}";
@@ -833,7 +879,7 @@ function printErrorMessage() {
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  set +o nounset  # allow unset variables
+#  set +o nounset  # allow unset variables
   for i in ${BUILTIN_ERRORS[@]}; do
     _result=$((_result+1));
     if [ "x${i}" == "x${1}" ]; then
@@ -954,7 +1000,8 @@ function _printUsage() {
 }
 
 function _trapSignals() {
-  trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP EXIT
+  trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP;
+#  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
 }
 
 function _debugVariable() {
@@ -1106,7 +1153,7 @@ function retrieveTERM() {
 function _uncachedRetrieveTERM() {
   local _result="${TERM}";
 
-  if [ "x${_result}" == "x" ]; then
+  if isEmpty "${_result}"; then
     _result="dumb";
   fi
 
@@ -1117,19 +1164,29 @@ function _uncachedRetrieveTERM() {
   esac
 
   export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # PRIVATE
 # Retrieves the column width, from an environment
 # variable.
-# <- [int]: the column width; -1 if the environment variable
+# <- RESULT: the column width; -1 if the environment variable
 #           is not specified.
+# <- 0/${TRUE} if the term width is specified via an environment variable;
+#    1/${FALSE} otherwise.
 # Example:
-#   retrieveTermWidthFromEnvVar;
-#   _width=$?;f
+#   if retrieveTermWidthFromEnvVar; then
+#     _width=${RESULT};
+#   fi
 function _retrieveTermWidthFromEnvVar() {
-  local _result="${DW_TERM_WIDTH:-0}";
-  return $((${_result}));
+  local _rescode=${FALSE};
+  if ! isEmpty "${DW_TERM_WIDTH}"; then
+    _rescode=${TRUE};
+    export RESULT="${DW_TERM_WIDTH}";
+  fi
+
+  return ${_rescode};
 }
 
 # PRIVATE
@@ -1139,24 +1196,21 @@ function _retrieveTermWidthFromEnvVar() {
 # <- 0: if the calculation
 # <- RESULT: the term width.
 function getTermWidth() {
-#  cache _uncachedGetTermWidth $*;
-#}
-#
+  cache _uncachedGetTermWidth $*;
+}
+
 ## See getTermWidth
-#function _uncachedGetTermWidth() {
+function _uncachedGetTermWidth() {
   local -i _rescode;
   local _term;
 
   _retrieveTermWidthFromEnvVar;
   _rescode=$?;
-  if [ ${_rescode} == 0 ]; then
+  if ! isTrue ${_rescode}; then
     retrieveTERM;
     _term="${RESULT}";
-
     getTermWidthForTerm "${_term}";
     _rescode=$?;
-  else
-    _rescode=${_aux};
   fi
 
   return ${_rescode};
@@ -1178,10 +1232,14 @@ function _uncachedGetTermWidthForTerm() {
   local _result;
   local _term="${1}";
 
+  if isEmpty "${_term}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'term' (1) is mandatory when calling ${FUNCNAME[2]}. Review ${FUNCNAME[3]}";
+  fi
+
   $(tput cols &> /dev/null > /dev/null 2>&1);
   _rescode=$?;
 
-  if [ ${_rescode} -eq 0 ]; then
+  if isTrue ${_rescode}; then
     _result=$(tput cols);
   fi
 
@@ -1192,7 +1250,7 @@ function _uncachedGetTermWidthForTerm() {
 
       $(tput -T ${_term} cols > /dev/null 2>&1);
 
-      if [ ${_rescode} -eq 0 ]; then
+      if isTrue ${_rescode}; then
         _result=$(tput -T ${_term} cols);
       fi
     fi
@@ -1224,79 +1282,59 @@ function getLogCategory() {
   export RESULT="${LOG_CATEGORY}";
 }
 
-## Retrieves given color.
-## -> 1: The first color modifier.
-## -> 2: The second color modifier (optional).
-## <- RESULT: The color string.
+## Builds a new color.
+## -> 1: The color name.
+## -> 2: The foreground value.
+## -> 3: The background value.
 ## Example:
-##   retrieveColor "setaf 2" "bold";
-##   _green="${RESULT}"
+##   buildColor "GREEN" "32" "42";
 function buildColor() {
   local _color="${1}";
-  shift
-  local _len="$#";
+  local _fgValue="${2}";
+  local _bgValue="${3}";
   local _result="";
-  local _modifier;
 
-  local _oldIFS="${IFS}";
-  IFS=$' \t\n';
-  for _i in $(seq 1 ${_len}); do
-    _modifier="${1}";
-    shift;
-    _result="${_result}|tput ${_modifier}";
-  done
-  IFS="${_oldIFS}";
-  _result="${_result#|}";
-
-  pipe2Array "${_color}_TPUT" "${_result}";
+  upvar "${_color}" "\033[0;${_fgValue}m";
+  export "${_color}";
+  upvar "${_color}_FG" "\033[0;${_fgValue}m";
+  export "${_color}_FG";
+  upvar "${_color}_BG" "\033[${_bgValue}m";
+  export "${_color}_BG";
+  upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
+  export "LIGHT_${_color}_FG";
+  upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
+  export "UNDERSCORE_${_color}_FG";
+  upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
+  export "BLINK_${_color}_FG";
+  upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
+  export "INVERSE_${_color}_FG";
+  upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
+  export "CONCEALED_${_color}_FG";
 }
 
-declare -a BLACK_TPUT;
-buildColor BLACK "setaf 0";
-declare -a BLACK_B_TPUT;
-buildColor BLACK_B "setaf 0" "bold";
-declare -a RED_TPUT;
-buildColor RED "setaf 1";
-declare -a RED_B_TPUT;
-buildColor RED_B "setaf 1" "bold";
-declare -a RED_S_TPUT;
-buildColor RED_S "setaf 1" "smul";
-declare -a GREEN_TPUT;
-buildColor GREEN "setaf 2" "bold";
-declare -a GREEN_B_TPUT;
-buildColor GREEN_B "setaf 2" "bold";
-declare -a YELLOW_TPUT;
-buildColor YELLOW "setaf 3";
-declare -a YELLOW_B_TPUT;
-buildColor YELLOW_B "setaf 3" "bold";
-declare -a BLUE_TPUT;
-buildColor BLUE "setaf 4";
-declare -a BLUE_B_TPUT;
-buildColor BLUE_B "bold" "setaf 4" "dim";
-declare -a MAGENTA_TPUT;
-buildColor MAGENTA "setaf 5";
-declare -a MAGENTA_B_TPUT;
-buildColor MAGENTA_B "setaf 5" "bold";
-declare -a CYAN_TPUT;
-buildColor CYAN "setaf 6";
-declare -a CYAN_B_TPUT;
-buildColor CYAN_B "setaf 6" "bold";
-declare -a GREY_TPUT;
-buildColor GREY "setaf 7";
-declare -a WHITE_TPUT;
-buildColor WHITE "setaf 7" "bold";
-declare -a WHITE_B_TPUT;
-buildColor WHITE_B "setaf 9" "bold";
-declare -a NO_COLOR_TPUT;
-buildColor NO_COLOR "sgr0";
+#for c in "BLACK" "BLACK_B" "RED" "RED_B" "RED_S" "GREEN" "GREEN_B" "YELLOW" "YELLOW_B" "BLUE" "BLUE_B" "MAGENTA" "MAGENTA_B" "CYAN" "CYAN_B" "GREY" "WHITE" "WHITE_B" "NO_COLOR"; do
+#  upvars -a1 "${c}_TPUT" "";
+#  upvar "${c}" "";
+#  ${c}_TPUT=();
+#done
 
-export SUCCESS_COLOR=GREEN_B;
-export FAILURE_COLOR=RED_B;
+buildColor "NO_COLOR" "0";
+buildColor "BLACK" "30" "0";
+buildColor "RED" "31" "41";
+buildColor "GREEN" "32" "42";
+buildColor "YELLOW" "33" "43";
+buildColor "BLUE" "34" "44";
+buildColor "MAGENTA" "35" "45";
+buildColor "CYAN" "36" "46";
+buildColor "GRAY" "37" "47";
+
+export SUCCESS_COLOR=GREEN;
+export FAILURE_COLOR=RED;
 export IN_PROGRESS_COLOR=BLUE;
 export UNDEFINED_COLOR=GREY;
-export DEFAULT_LOG_PREFIX_COLOR=WHITE_B;
-export DEFAULT_LOG_OUTCOME_COLOR=GREY;
-export DEFAULT_LOG_RESUMING_TASK_COLOR=GREY;
+export DEFAULT_LOG_PREFIX_COLOR=GRAY;
+export DEFAULT_LOG_OUTCOME_COLOR=GRAY;
+export DEFAULT_LOG_RESUMING_TASK_COLOR=GRAY;
 
 export LOG_PREFIX_COLORS=(\
   BLUE   \
@@ -1304,7 +1342,7 @@ export LOG_PREFIX_COLORS=(\
   RED    \
   YELLOW \
   RED \
-  GREY \
+  GRAY \
   BLUE   \
 );
 
@@ -1371,7 +1409,7 @@ function _uncachedAllowsColors() {
 
 function getColor() {
   local _colorConstant="${1}";
-  local _defaultColor="${2:${UNDEFINED_COLOR}}"
+  local _defaultColor="${2:-${UNDEFINED_COLOR}}"
   local _result;
 
   if allowsColors; then
@@ -1447,10 +1485,6 @@ function resolveVerbosity() {
 # Checks whether trace is enabled.
 # <- 0/${TRUE} if trace is enabled; 1/${FALSE} otherwise.
 function isTraceEnabled() {
-  cache _uncachedIsTraceEnabled $*;
-}
-
-function _uncachedIsTraceEnabled() {
   local _rescode=${FALSE};
 
   if isDebugEnabled; then
@@ -1495,12 +1529,6 @@ function logTraceFile() {
 # Checks whether the debug level is enabled.
 # <- 0/${TRUE} if debug is allowed; 1/${FALSE} otherwise.
 function isDebugEnabled() {
-  cache _uncachedIsDebugEnabled $*;
-}
-
-# PRIVATE
-# See isDebugEnabled()
-function _uncachedIsDebugEnabled() {
   local _rescode=${FALSE};
 
   if isInfoEnabled; then
@@ -1553,11 +1581,13 @@ function isLowerThanInfoEnabled() {
 }
 
 function isInfoEnabled() {
+  local _rescode=${TRUE};
+
   if isTrue ${_DRY_WIT_LOG_QUIET}; then
-    return ${FALSE};
-  else
-    return ${TRUE};
+    _rescode=${FALSE};
   fi
+
+  return ${_rescode};
 }
 
 function setInfoEnabled() {
@@ -1600,6 +1630,9 @@ function logFile() {
 
 function _logStuff() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
   local _minusN="${1}";
   if [ "-n" == "${_minusN}" ]; then
@@ -1614,8 +1647,11 @@ function _logStuff() {
 }
 
 function _logStuffResult() {
-   local _level="${1}";
-   shift;
+  local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+ shift;
   _logCompleted "${_level}" "$@";
 }
 
@@ -1644,14 +1680,14 @@ function _pushLog() {
 ## Pushes given category to the log category stack.
 ## -> 1: The category to push.
 function _pushLogCategory() {
-    _DRY_WIT_LOG_CATEGORY_STACK[${#_DRY_WIT_LOG_CATEGORY_STACK[@]}]="$*";
+  _DRY_WIT_LOG_CATEGORY_STACK[${#_DRY_WIT_LOG_CATEGORY_STACK[@]}]="$*";
 }
 
 ## PRIVATE
 ## Pushes given level to the log level stack.
 ## -> 1: The level to push.
 function _pushLogLevel() {
-    _DRY_WIT_LOG_LEVEL_STACK[${#_DRY_WIT_LOG_LEVEL_STACK[@]}]="$*";
+  _DRY_WIT_LOG_LEVEL_STACK[${#_DRY_WIT_LOG_LEVEL_STACK[@]}]="$*";
 }
 
 ## PRIVATE
@@ -1724,18 +1760,18 @@ function _peekLog() {
 ##     echo "Last log category: ${RESULT}";
 ##   fi
 function _popLogCategory() {
-    local _rescode;
-    local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
-    local -i _newLen;
-    if [ ${_len} -gt 0 ]; then
-      _newLen=$((${_len} - 1));
-      export RESULT="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
-      eval "unset _DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]";
-      _rescode=$?;
-    else
-        _rescode=1;
-    fi
-    return ${_rescode};
+  local _rescode;
+  local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
+  local -i _newLen;
+  if [ ${_len} -gt 0 ]; then
+    _newLen=$((${_len} - 1));
+    export RESULT="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
+    eval "unset _DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]";
+    _rescode=$?;
+  else
+    _rescode=${FALSE};
+  fi
+  return ${_rescode};
 }
 
 ## PRIVATE
@@ -1747,19 +1783,21 @@ function _popLogCategory() {
 ##     echo "Last log category: ${RESULT}";
 ##   fi
 function _peekLogCategory() {
-    local _rescode;
-    local _result="";
-    local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
-    local -i _newLen;
-    if [ ${_len} -gt 0 ]; then
-      _newLen=$((${_len} - 1));
-      _result="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
-      _rescode=$?;
-    else
-        _rescode=1;
-    fi
-    export RESULT="${_result}";
-    return ${_rescode};
+  local _rescode;
+  local _result="";
+  local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
+  local -i _newLen;
+
+  if [ ${_len} -gt 0 ]; then
+    _newLen=$((${_len} - 1));
+    _result="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
+    _rescode=$?;
+  else
+    _rescode=${FALSE};
+  fi
+
+  export RESULT="${_result}";
+  return ${_rescode};
 }
 
 ## PRIVATE
@@ -1771,18 +1809,20 @@ function _peekLogCategory() {
 ##     echo "Last log level: ${RESULT}";
 ##   fi
 function _popLogLevel() {
-    local _rescode;
-    local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
-    local -i _newLen;
-    if [ ${_len} -gt 0 ]; then
-      _newLen=$((${_len} - 1));
-      export RESULT="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
-      eval "unset _DRY_WIT_LOG_LEVEL_STACK[${_newLen}]";
-      _rescode=$?;
-    else
-        _rescode=1;
-    fi
-    return ${_rescode};
+  local _rescode;
+  local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
+  local -i _newLen;
+
+  if [ ${_len} -gt 0 ]; then
+    _newLen=$((${_len} - 1));
+    export RESULT="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
+    eval "unset _DRY_WIT_LOG_LEVEL_STACK[${_newLen}]";
+    _rescode=$?;
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 ## PRIVATE
@@ -1798,13 +1838,15 @@ function _peekLogLevel() {
   local _result="";
   local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
   local -i _newLen;
+
   if [ ${_len} -gt 0 ]; then
     _newLen=$((${_len} - 1));
     _result="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
     _rescode=$?;
   else
-    _rescode=1;
+    _rescode=${FALSE};
   fi
+
   export RESULT="${_result}";
   return ${_rescode};
 }
@@ -1893,15 +1935,17 @@ function _retrieveOutcomeTextPositionInLogOutcome() {
 ## Retrieves the tokens composing the log prefix.
 ## -> 1: The log category.
 ## -> 2: The log level (optional).
-## <- RESULT: The output file to source to be able to use
-##            _DRY_WIT_LOG_PREFIX_TOKENS array.
 ## Example:
 ##    _retrieveLogPrefixTokens "a:b:c" DEBUG;
-##    source ${RESULT};
 ##    echo "${_DRY_WIT_LOG_PREFIX_TOKENS[*]}"
 function  _retrieveLogPrefixTokens() {
   local _category="${1}";
+  if isEmpty "${_category}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _levelVar="${2}";
+
   evalConstant "${_levelVar}_LOG_PREFIX_TOKEN" "${INFO_LOG_PREFIX_TOKEN}";
   local _level="${RESULT}";
   local _result=();
@@ -1917,11 +1961,9 @@ function  _retrieveLogPrefixTokens() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
-    _aux="${_aux}|${LOG_PREFIX_TOKENS[${_i}]}";
+    _DRY_WIT_LOG_PREFIX_TOKENS[${_i}]="${LOG_PREFIX_TOKENS[${_i}]}";
   done
   IFS="${_oldIFS}";
-  _aux="${_aux#|}";
-  pipe2Array _DRY_WIT_LOG_PREFIX_TOKENS "${_aux}";
 
   _retrieveLogTimestamp;
   _timestamp="${RESULT}";
@@ -1947,6 +1989,10 @@ function  _retrieveLogPrefixTokens() {
 ##    echo "${_DRY_WIT_LOG_OUTCOME_TOKENS[*]}"
 function  _retrieveLogOutcomeTokens() {
   local _text="${1}";
+  if isEmpty "${_text}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _result=();
   local _aux="";
   local _timestamp;
@@ -1958,11 +2004,9 @@ function  _retrieveLogOutcomeTokens() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
-    _aux="${_aux}|${LOG_OUTCOME_TOKENS[${_i}]}";
+    _DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]="${LOG_OUTCOME_TOKENS[${_i}]}";
   done
   IFS="${_oldIFS}";
-  _aux="${_aux#|}";
-  pipe2Array "_DRY_WIT_LOG_OUTCOME_TOKENS" "${_aux}";
 
   _retrieveOutcomeTextPositionInLogOutcome;
   _outcomeTextPosition=${RESULT};
@@ -1981,6 +2025,10 @@ function  _retrieveLogOutcomeTokens() {
 ##    echo "${_DRY_WIT_LOG_OUTCOME_COLORS[*]}"
 function  _retrieveLogOutcomeColors() {
   local _keyword="${1}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _result=();
   local _aux="";
   _retrieveKeywordColor "${_keyword}";
@@ -1993,11 +2041,9 @@ function  _retrieveLogOutcomeColors() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
-    _aux="${_aux}|${LOG_OUTCOME_COLORS[${_i}]}";
+    _DRY_WIT_LOG_OUTCOME_COLORS[${_i}]="${LOG_OUTCOME_COLORS[${_i}]}";
   done
   IFS="${_oldIFS}";
-  _aux="${_aux#|}";
-  pipe2Array "_DRY_WIT_LOG_OUTCOME_COLORS" "${_aux}";
 
   _retrieveOutcomeTextPositionInLogOutcome;
   _outcomeTextPosition=${RESULT};
@@ -2014,19 +2060,22 @@ function  _retrieveLogOutcomeColors() {
 ##   echo "Color -> ${RESULT}"
 function _retrieveKeywordColor() {
   local _keyword="${1}";
-  local _defaultColor="${2}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+  local _defaultColor="${2:-${NO_COLOR}}";
 
   local _result;
 
   case ${_keyword} in
-      SUCCESS | "${SUCCESS}") _result="${SUCCESS_COLOR}";
-                              ;;
-      FAILURE | "${FAILURE}" | "FAILED" | "failed" | "FAIL" | "fail") _result="${FAILURE_COLOR}";
-                                                                      ;;
-      IN_PROGRESS | "${IN_PROGRESS}") _result="${IN_PROGRESS_COLOR}";
-                                      ;;
-      *) _result="${_defaultColor}";
-         ;;
+    SUCCESS | "${SUCCESS}") _result="${SUCCESS_COLOR}";
+                            ;;
+    FAILURE | "${FAILURE}" | "FAILED" | "failed" | "FAIL" | "fail") _result="${FAILURE_COLOR}";
+                                                                    ;;
+    IN_PROGRESS | "${IN_PROGRESS}") _result="${IN_PROGRESS_COLOR}";
+                                    ;;
+    *) _result="${_defaultColor}";
+       ;;
   esac
 
   export RESULT="${_result}";
@@ -2040,7 +2089,15 @@ function _retrieveKeywordColor() {
 ##   _echoLogPrefix "cat" DEBUG
 function _echoLogPrefix() {
   local _category="${1}";
+  if isEmpty "${_category}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _level="${2}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _allowsColors;
   allowsColors;
   _allowsColors=$?;
@@ -2056,7 +2113,15 @@ function _echoLogPrefix() {
 ##   echo "log prefix -> ${RESULT}";
 function _retrieveLogPrefix() {
   local _category="${1}";
+  if isEmpty "${_category}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _level="${2}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _result="$(_echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
   export RESULT="${_result}";
 }
@@ -2070,8 +2135,20 @@ function _retrieveLogPrefix() {
 ##   _echoColorAwareLogPrefix "cat" ${TRUE} DEBUG
 function _echoColorAwareLogPrefix() {
   local _category="${1}";
+  if isEmpty "${_category}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _allowsColors=${2};
+  if isEmpty "${_allowsColors}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'allowsColors' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _level="${3}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (3) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _len;
   local _colors;
 
@@ -2128,9 +2205,17 @@ function _retrieveLogNamespace() {
 ##   _echoLogOutcome DEBUG SUCCESS "sample"
 function _echoLogOutcome() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _keyword="${1}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _text="${@}";
   local _len;
   local _allowsColors;
@@ -2162,6 +2247,7 @@ function _echoLogOutcome() {
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     if isTrue ${_allowsColors}; then
+      echo echoInColor \"-n\" "\"${_DRY_WIT_LOG_OUTCOME_COLORS[${_i}]}\"" "\"${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}\"" >> /tmp/echo.txt;
       echoInColor -n "${_DRY_WIT_LOG_OUTCOME_COLORS[${_i}]}" "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
     else
       echo -n "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
@@ -2183,9 +2269,17 @@ function _echoLogOutcome() {
 ##   _echoLogOutcome DEBUG SUCCESS "sample"
 function _echoLogOutcomeNested() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _keyword="${1}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _text="${@}";
   local _inProgressMessage;
   local _alreadyInProgressMessage;
@@ -2219,7 +2313,15 @@ function _echoLogOutcomeNested() {
 ##  _alignRight "Finishing work" "done";
 function _alignRight() {
   local _logLineMessage="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _outcome="${2}";
+  if isEmpty "${_outcome}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'outcome' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _logMessage;
 
   local -i _termWidth;
@@ -2238,7 +2340,10 @@ function _alignRight() {
 
   getTermWidth;
   if isTrue $?; then
-    _termWidth=$RESULT;
+    _termWidth=${RESULT};
+    if [ ${_termWidth} -le 0 ]; then
+      exitWithErrorCode POSTCONDITION_NOT_SATISFIED "getTermWidth() must not return successfully providing 0 as output";
+    fi
     _index=0;
     allowsColors;
     _allowsColors=$?;
@@ -2272,19 +2377,36 @@ function echoInColor() {
     _flagMinusN=${FALSE};
   fi
   local _color="${1}";
-  local _text="${2}";
-
-  if ! isEmpty "${_color}_TPUT"; then
-    flattenArray "${_color}_TPUT" " && ";
-    _colorAux="${RESULT}";
-#    echo "${BLUE_TPUT}, coloraux -> ${_colorAux}"
+  if isEmpty "${_color}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'color' (1) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
   fi
+  local _text="${2}";
+  if isEmpty "${_text}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (2) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
+  fi
+  local _colorAux="";
+  local _inColor=${FALSE};
+
+  if allowsColors; then
+    if isVariableDefined "${_color}"; then
+      _inColor=${TRUE};
+      _evalVar "${_color}";
+      _colorAux="${RESULT}";
+    fi
+  fi
+
   if isTrue ${_flagMinusN}; then
-    echo -n "$(${_colorAux} > /dev/null 2>&1)${_text}";
-#    echo -n "${_text}";
+    if isTrue ${_inColor}; then
+      echo -en "${_colorAux}${_text}${NO_COLOR}";
+    else
+      echo -n "${_text}";
+    fi
   else
-    echo "$(${_colorAux} > /dev/null 2>&1)${_text}";
-#    echo "${_text}";
+    if isTrue ${_inColor}; then
+        echo -e "${_colorAux}${_text}${NO_COLOR}";
+    else
+      echo "${_text}";
+    fi
   fi
 }
 
@@ -2294,7 +2416,7 @@ function echoInColor() {
 ## -> 2: The color.
 ## -> 3: The text to echo.
 function resetColor() {
-  ${NO_COLOR};
+  echo -en ${NO_COLOR};
 }
 
 ## PUBLIC
@@ -2307,7 +2429,7 @@ function resetColor() {
 function echoColorizedText() {
   local _text="${1}";
   local _keyword="${2}";
-  local _defaultColor="${3:${UNDEFINED_COLOR}}";
+  local _defaultColor="${3:-${UNDEFINED_COLOR}}";
   local _color="";
   allowsColors;
   _allowsColors=$?;
@@ -2383,8 +2505,14 @@ function echoColorizedTextWithColor() {
 ##   # [...] A message to log
 function _logMessage() {
   local _level="${1}";
+
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   shift;
   local _message="$@";
+
   _logInProgress "${_level}" "${_message}";
   echo;
 }
@@ -2397,7 +2525,11 @@ function _logMessage() {
 ##   # [...] Calculating ...
 function _logInProgress() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _message="$@";
   local -i nestedTasks;
   local _category;
@@ -2424,9 +2556,17 @@ function _logInProgress() {
 ##   # [...<cat>|o] Calculating ...
 function _logInProgressNested() {
   local _category="${1}";
+  if isEmpty "${_category}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _message="$@";
   local _logPrefix;
   _pushLog "${_message}";
@@ -2454,9 +2594,17 @@ function _logInProgressNested() {
 ##   # [...<cat|.>] Calculating ...
 function _logInProgressNoNested() {
   local _category="${1}";
+  if isEmpty "${_category}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _message="$@";
   local _logPrefix;
 
@@ -2464,7 +2612,6 @@ function _logInProgressNoNested() {
   _pushLogCategory "${_category}";
   _pushLog "${_message}";
   _pushLogLevel "${_level}";
-  _retrieveLogPrefix "${_category}" "${_level}";
   _echoLogPrefix "${_category}" "${_level}";
   echoColorizedText "${_message}" "" "${DEFAULT_LOG_PREFIX_COLOR}";
 }
@@ -2478,8 +2625,15 @@ function _logInProgressNoNested() {
 ##   _logCompleted INFO SUCCESS "done";
 function _logCompleted() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _keyword="${1}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
   local _text="${@}";
   local -i nestedTasks;
@@ -2502,9 +2656,17 @@ function _logCompleted() {
 ##   _logCompletedNoNested INFO SUCCESS "done";
 function _logCompletedNoNested() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _keyword="${1}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _text="${@}";
   _echoLogOutcome "${_level}" "${_keyword}" "${_text}";
   _popLog;
@@ -2522,9 +2684,17 @@ function _logCompletedNoNested() {
 ##   _logCompletedNested INFO SUCCESS "done";
 function _logCompletedNested() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _keyword="${1}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift
+
   local _message="$@";
   local _nestedTask;
   local _nestedTaskCategory;
@@ -2553,8 +2723,15 @@ function _logCompletedNested() {
 ##   _logCompletedNested SUCCESS "done";
 function _logCompletedNestedNoPop() {
   local _level="${1}";
+  if isEmpty "${_level}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift;
+
   local _keyword="${1}";
+  if isEmpty "${_keyword}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   shift
   local _message="$@";
   _echoLogOutcomeNested "${_level}" "${_keyword}" "${_message}";
@@ -2562,6 +2739,9 @@ function _logCompletedNestedNoPop() {
 
 function urlEncode() {
   local _text="$1";
+  if isEmpty "${_text}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
 
     echo "${_text}"  \
   | sed 's % %25 g'  \
@@ -2591,8 +2771,19 @@ function urlEncode() {
 # %3F  %25  %23  %5B  %5D
 }
 
+## PUBLIC
+## Reads given configuration file.
+## -> 1: The config file.
+## <- 0/${TRUE} if the file is read successfully; 1/${FALSE} otherwise.
+## Example:
+##   if readConfFile "/tmp/app.conf"; then
+##     echo "/tmp/app.conf read successfully";
+##   fi
 function readConfFile() {
   local _confFile="${1}";
+  if isEmpty "${_confFile}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'confFile' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   local result=${TRUE};
 
   [ ! -e "${_confFile}" ] && result=${FALSE};
@@ -2626,7 +2817,7 @@ function checkPasswordlessSudo() {
   which sudo > /dev/null 2>&1;
   _result=$?;
 
-  if [ ${_result} == 0 ]; then
+  if isTrue ${_result}; then
     local _tmp="${TEMP}";
     if [ ! -r "${_tmp}" ]; then
       _tmp="/tmp";
@@ -3028,6 +3219,7 @@ function appendErrorMessage() {
 
   if declare -p ERROR_MESSAGES > /dev/null 2>&1; then
     upvars -a$((${#ERROR_MESSAGES[@]}+1)) ERROR_MESSAGES "${ERROR_MESSAGES[@]}" "${_error}";
+    export ERROR_MESSAGES;
   else
     export -a ERROR_MESSAGES=();
     upvars -a1 ERROR_MESSAGES "${_error}";
@@ -3056,6 +3248,7 @@ function _appendBuiltInError() {
 
   if declare -p BUILTIN_ERRORS > /dev/null 2>&1; then
     upvars -a$((${#BUILTIN_ERRORS[@]}+1)) BUILTIN_ERRORS "${BUILTIN_ERRORS[@]}" "${_error}";
+    export BUILTIN_ERRORS;
   else
     export -a BUILTIN_ERRORS=();
     upvars -a1 BUILTIN_ERRORS "${_error}";
@@ -3082,6 +3275,9 @@ function _defineDryWitErrorMessages() {
   _addBuiltInError "MISSING_MANDATORY_VARIABLES" "Script not complete, since it doesn't define all mandatory variables";
   _addBuiltInError "MISSING_MANDATORY_FUNCTIONS" "Script not complete, since it doesn't define all mandatory functions";
   _addBuiltInError "UNKNOWN_ERROR" "The script has finished due to an unexpected error";
+  _addBuiltInError "UNACCEPTABLE_API_CALL" "Unacceptable call to dry-wit API: ";
+  _addBuiltInError "POSTCONDITION_NOT_SATISFIED" "Postcondition not satisfied: ";
+  _addBuiltInError "UNACCEPTABLE_ENVIRONMENT_VARIABLE" "Unacceptable environment variable: ";
 }
 
 ## Annotates a new error describing a missing dependency.
@@ -3660,16 +3856,43 @@ function _checkScript() {
   logTraceResult SUCCESS "Done";
 }
 
+## PUBLIC
+## Sources given file, if it exists.
+## -> 1: The file to source.
+## <- 0/${TRUE} if the file is sourced; 1/${FALSE} otherwise.
+## Example:
+##   sourceFileIfExists "/tmp/my-env";
+function sourceFileIfExists() {
+  local _file="${1}";
+  local _rescode=${FALSE};
+
+  if isEmpty "${_file}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'file' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if [ -e "${_file}" ]; then
+    logTrace -n "Reading ${_file}";
+    _rescode=${TRUE};
+    source "${_file}";
+    logTraceResult SUCCESS "done";
+  fi
+
+  return ${_rescode};
+}
+
 function _setup() {
   _trapSignals;
-  [ -e "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
-      source "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh";
-  [ -e "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
-      source "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh";
-  [ -e "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
-      source "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
-  [ -e "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ] && \
-      source "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"
+  local _f;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  for _f in "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+            "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+            "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+            "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+    sourceFileIfExists "${_f}";
+  done
+  IFS="${_oldIFS}";
+
   evalEnvVars;
 }
 
@@ -3687,9 +3910,9 @@ function _main() {
   export DRY_WIT_SCRIPT_PATH="${RESULT}";
   export DRY_WIT_SCRIPT_FOLDER="$(dirname ${DRY_WIT_SCRIPT_PATH})";
 
-  _setup "${_script}";
-
   _defineDryWitErrorMessages;
+
+  _setup "${_script}";
 
   if _functionPresent defineErrors "${_script}"; then
     defineErrors;
@@ -3741,143 +3964,36 @@ function _main() {
   main;
 }
 
-# Bash: Passing variables by reference
-# Copyright (C) 2010 Freddy Vulto
-# Version: upvars-0.9.dev
-# See: http://fvue.nl/wiki/Bash:_Passing_variables_by_reference
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Adapted from http://unix.stackexchange.com/questions/38101/does-bash-have-a-built-in-caching-command-available-sort-of-like-mktemp-or-spon
+typeset -A result_cache;
+typeset -A rescode_cache;
 
-
-# Assign variable one scope above the caller
-# Usage: local "$1" && upvar $1 "value(s)"
-# Param: $1  Variable name to assign value to
-# Param: $*  Value(s) to assign.  If multiple values, an array is
-#            assigned, otherwise a single value is assigned.
-# NOTE: For assigning multiple variables, use 'upvars'.  Do NOT
-#       use multiple 'upvar' calls, since one 'upvar' call might
-#       reassign a variable to be used by another 'upvar' call.
-# Example:
-#
-#    f() { local b; g b; echo $b; }
-#    g() { local "$1" && upvar $1 bar; }
-#    f  # Ok: b=bar
-#
-upvar() {
-    if unset -v "$1"; then           # Unset & validate varname
-        if (( $# == 2 )); then
-            eval $1=\"\$2\"          # Return single value
-        else
-            eval $1=\(\"\${@:2}\"\)  # Return array
-        fi
-    fi
-}
-
-
-# Assign variables one scope above the caller
-# Usage: local varname [varname ...] &&
-#        upvars [-v varname value] | [-aN varname [value ...]] ...
-# Available OPTIONS:
-#     -aN  Assign next N values to varname as array
-#     -v   Assign single value to varname
-# Return: 1 if error occurs
-# Example:
-#
-#    f() { local a b; g a b; declare -p a b; }
-#    g() {
-#        local c=( foo bar )
-#        local "$1" "$2" && upvars -v $1 A -a${#c[@]} $2 "${c[@]}"
-#    }
-#    f  # Ok: a=A, b=(foo bar)
-#
-upvars() {
-  if ! (( $# )); then
-    echo "${FUNCNAME[0]}: usage: ${FUNCNAME[0]} [-v varname"\
-         "value] | [-aN varname [value ...]] ..." 1>&2
-    return 2
-  fi
-  while (( $# )); do
-    case $1 in
-      -a*)
-        # Error checking
-        [[ ${1#-a} ]] || { echo "bash: ${FUNCNAME[0]}: \`$1': missing"\
-                                "number specifier" 1>&2; return 1; }
-        printf %d "${1#-a}" &> /dev/null || { echo "bash:"\
-                                                   "${FUNCNAME[0]}: \`$1': invalid number specifier" 1>&2
-                                              return 1; }
-        # Assign array of -aN elements
-        [[ "$2" ]] && unset -v "$2" && eval $2=\(\"\${@:3:${1#-a}}\"\) && \
-          shift $((${1#-a} + 2)) || { echo "bash: ${FUNCNAME[0]}:"\
-                                           "\`$1${2+ }$2': missing argument(s)" 1>&2; return 1; }
-        ;;
-      -v)
-        # Assign single value
-        [[ "$2" ]] && unset -v "$2" && eval $2=\"\$3\" && \
-          shift 3 || { echo "bash: ${FUNCNAME[0]}: $1: missing"\
-                            "argument(s)" 1>&2; return 1; }
-        ;;
-      --help) echo "\
-Usage: local varname [varname ...] &&
-   ${FUNCNAME[0]} [-v varname value] | [-aN varname [value ...]] ...
-Available OPTIONS:
--aN VARNAME [value ...]   assign next N values to varname as array
--v VARNAME value          assign single value to varname
---help                    display this help and exit
---version                 output version information and exit"
-              return 0 ;;
-      --version) echo "\
-${FUNCNAME[0]}-0.9.dev
-Copyright (C) 2010 Freddy Vulto
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law."
-                 return 0 ;;
-      *)
-        echo "bash: ${FUNCNAME[0]}: $1: invalid option" 1>&2
-        return 1 ;;
-    esac
-  done
-}
-
-# From http://unix.stackexchange.com/questions/38101/does-bash-have-a-built-in-caching-command-available-sort-of-like-mktemp-or-spon
-typeset -A output_cache
-typeset -A result_cache
-typeset -A rescode_cache
 function cache() {
-  $*
-}
-
-function doCache() {
   local IFS='
-  ' rescode;
-  if [[ -z ${output_cache["$*"]} ]]; then
-    output_cache["$*"]=$(unset IFS; "$@")
-    rescode=$?
-    rescode_cache["$*"]=${ret};
-    result_cache["$*"]="${RESULT}";
+  ';
+  local _key="$*";
+  local _rescode;
+  local _result;
+  local _cachedRescode=${rescode_cache["${_key}"]:--1};
+
+  if [ ${_cachedRescode} -lt 0 ]; then
+    ${_key};
+    _rescode=$?;
+    _result="${RESULT}";
+    result_cache["${_key}"]="${_result}";
+    _result="${result_cache[${_key}]}";
+    rescode_cache["${_key}"]=${_rescode};
   else
-    rescode=${rescode_cache["$*"]};
+    _rescode=${rescode_cache["${_key}"]};
+    _result="${result_cache[${_key}]}";
   fi
-  echo "${output_cache["$*"]}"
-  export RESULT="${result_cache[$*]}";
-  return $rescode
+  export RESULT="${_result}";
+  return ${_rescode};
 }
 
 function uncache() {
   local IFS='
-  '
-  unset output_cache["$*"]
+  ';
   unset result_cache["$*"]
   unset rescode_cahe["$*"]
 }
