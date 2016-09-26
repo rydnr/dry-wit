@@ -1202,6 +1202,7 @@ function getTermWidth() {
 
 ## See getTermWidth
 function _uncachedGetTermWidth() {
+  local _result;
   local -i _rescode;
   local _term;
 
@@ -1211,9 +1212,12 @@ function _uncachedGetTermWidth() {
     retrieveTERM;
     _term="${RESULT}";
     getTermWidthForTerm "${_term}";
+    _result="${RESULT}";
+    export RESULT="${_result}";
     _rescode=$?;
   fi
 
+  _debugEcho "term witdh -> ${_RESULT}";
   return ${_rescode};
 }
 
@@ -1652,7 +1656,13 @@ function _logStuffResult() {
   if isEmpty "${_level}"; then
     exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
- shift;
+  shift;
+  local -i _nestedTasks;
+  _numberOfNestedInProgressTasks;
+  _nestedTasks=$?;
+  if [ ${_nestedTasks} -eq 0 ]; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
+  fi
   _logCompleted "${_level}" "$@";
 }
 
@@ -1693,7 +1703,7 @@ function _pushLogLevel() {
 
 ## PRIVATE
 ## Retrieves the number of "in-progress" tasks pending.
-## <- : Such count.
+## <- Such count.
 ## Example:
 ##   _numberOfNestedInProgressTasks;
 ##   _count=$?
@@ -3209,7 +3219,32 @@ function _functionPresent() {
 ##   local _upcased="${RESULT}";
 function toUpper() {
   local _text="${1}";
+  if isEmpty "${_text}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   local _result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${_result}";
+}
+
+## PUBLIC
+## Normalizes given string: converts non-alphanumeric characters to underscore, and converts it to upper case.
+## -> 1: The string to convert.
+## <- RESULT: The normalized string.
+##
+## Example:
+##   normalize "a_b.C" # returns "A_B_C";
+function normalize() {
+  cache _uncachedNormalize $*;
+}
+
+## PRIVATE
+## See normalize()
+function _uncachedNormalize() {
+  local _text="${1}";
+  if isEmpty "${_text}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[3]}";
+  fi
+  local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
   export RESULT="${_result}";
 }
 
@@ -3236,8 +3271,10 @@ function appendErrorMessage() {
 function addError() {
   local _errorName="${1}";
   local _message="${2}";
-
-  appendErrorMessage "${_errorName}";
+  local _normalizedErrorName;
+  normalize "${_errorName}";
+  _normalizedErrorName="${RESULT}";
+  appendErrorMessage "${_normalizedErrorName}";
   upvar "${_errorName}" "${_message}";
   export "${_errorName}"="${_message}";
 }
