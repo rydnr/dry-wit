@@ -3275,8 +3275,8 @@ function addError() {
   normalize "${_errorName}";
   _normalizedErrorName="${RESULT}";
   appendErrorMessage "${_normalizedErrorName}";
-  upvar "${_errorName}" "${_message}";
-  export "${_errorName}"="${_message}";
+  upvar "${_normalizedErrorName}" "${_message}";
+  export "${_normalizedErrorName}"="${_message}";
 }
 
 ## Appends a new built-in error to BUILTIN_ERRORS.
