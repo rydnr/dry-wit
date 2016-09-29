@@ -615,7 +615,7 @@ function createTempFile() {
   local _result="$(mktemp -p "${_dirname}"  -t ".${_prefix}.XXXXXXXXXX")";
   local _aux=$?;
   rm -f ${_result} > /dev/null
-  if [ $_aux -ne 0 ]; then
+  if isFalse ${_aux} ; then
      _result="$(mktemp -t ".${_prefix}.XXXXXXXXXX")";
      _aux=$?;
   fi
@@ -3453,7 +3453,7 @@ function uidAlreadyExists() {
   getent passwd ${_uid} > /dev/null;
   _rescode=$?;
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
@@ -3478,7 +3478,7 @@ function gidAlreadyExists() {
   getent group ${_gid} > /dev/null;
   _rescode=$?;
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
@@ -3503,7 +3503,7 @@ function userAlreadyExists() {
   getent passwd ${_user} > /dev/null;
   _rescode=$?;
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
@@ -3528,7 +3528,7 @@ function groupAlreadyExists() {
   getent group ${_group} > /dev/null;
   _rescode=$?;
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
@@ -3572,8 +3572,8 @@ function retrieveGroupFromGid() {
   _result=$(getent group ${_gid} | cut -d':' -f1);
   _rescode=$?;
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
-      export RESULT="${_result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};
@@ -3594,7 +3594,7 @@ function retrieveUidFromUser() {
   logDebug -n "Retrieving uid of user ${_user}";
   _result=$(getent passwd ${_user} | cut -d':' -f3);
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "${_result}";
     export RESULT="${_result}";
   else
@@ -3619,7 +3619,7 @@ function retrieveGidFromGroup() {
   logDebug -n "Retrieving gid of group ${_group}";
   _result=$(getent group ${_group} | cut -d':' -f3);
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "${_result}";
     export RESULT="${_result}";
   else
@@ -3645,7 +3645,7 @@ function createUser() {
 
   useradd -M -N -l "${_userName}";
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
@@ -3670,10 +3670,10 @@ function createGroup() {
 
   groupadd "${_groupName}";
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "done";
   else
-      logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed";
   fi
 
   return ${_rescode};
@@ -3695,7 +3695,7 @@ function deleteUser() {
 
   userdel "${_userName}";
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
@@ -3720,7 +3720,7 @@ function deleteGroup() {
 
   groupdel "${_groupName}";
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
@@ -3782,11 +3782,11 @@ function updateUserUid() {
   logInfo -n "Changing ${_user}'s uid to ${_uid}";
   usermod -u ${_uid} ${_user} > /dev/null 2>&1
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logInfoResult SUCCESS "done";
   else
     logInfoResult FAILURE "failed";
-    exitWithErrorCode CANNOT_CHANGE_UID "${_user}";
+    usermod -u ${_uid} ${_user} 2>&1
   fi
 
   return ${_rescode};
@@ -3806,7 +3806,7 @@ function updateUserGid() {
   logInfo -n "Changing ${_user}'s primary group as ${_gid}";
   usermod -g ${_gid} ${_user} > /dev/null 2>&1
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logInfoResult SUCCESS "done";
   else
     logInfoResult FAILURE "unneeded";
@@ -3830,11 +3830,11 @@ function updateGroupGid() {
   logInfo -n "Changing ${_group}'s gid to ${_gid}";
   groupmod -g ${_gid} ${_group} > /dev/null 2>&1
   _rescode=$?;
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if isTrue ${_rescode}; then
     logInfoResult SUCCESS "done";
   else
     logInfoResult FAILURE "failed";
-    exitWithErrorCode CANNOT_CHANGE_GID "${_group}";
+    groupmod -g ${_gid} ${_group} 2>&1
   fi
 
   return ${_rescode};
