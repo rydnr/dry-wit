@@ -3737,12 +3737,10 @@ function deleteGroup() {
 ## Example:
 ##  runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"
 function runCommandAsUidGid() {
-  local _user="${1}";
-  local _uid="${2}";
-  local _gid="${3}";
-  local _folder="${4}";
-  local _command="${5}";
-  shift
+  local _uid="${1}";
+  local _gid="${2}";
+  local _folder="${3}";
+  local _command="${4}";
   shift
   shift
   shift
@@ -3751,21 +3749,37 @@ function runCommandAsUidGid() {
   local _exports="$(export)";
 
   createTempFile
-  local _runme="${RESULT}";
+  local _script="${RESULT}";
 
   cat << EOF > ${_runme}
 #!/bin/bash
 
 ${_exports}
-declare -x HOME="/home/${_user}"
 cd ${_folder}
 ${_command} ${_args}
 EOF
+
+  logInfo "Running ${_command} as ${user} in ${_folder}";
+  runScriptAsUidGid "${_uid}" "${_gid}" "${_script}";
+}
+
+## Runs a script in a folder, under a given user.
+## -> 1: The user id.
+## -> 2: The group id.
+## -> 3: the script file.
+## Example:
+##  echo "ls -ltriha /tmp" > /tmp/script
+##  runScriptUidGid 1000 100 /tmp /tmp/script
+function runScriptAsUidGid() {
+  local _uid="${1}";
+  local _gid="${2}";
+  local _script="${3}";
+
   chmod +x ${_runme}
 
-  logDebug "Running ${_command} ${_args} as ${SERVICE_USER}:${SERVICE_GROUP}";
+  logDebug "Running ${_script} as ${_uid}:${_gid}";
   exec 2>&1
-  chpst -u ${SERVICE_USER}:${SERVICE_GROUP} -U ${SERVICE_USER}:${SERVICE_GROUP} ${_runme}
+  chpst -u :${_uid}:${_gid} -U :${_uid}:${_gid} ${_runme}
 }
 
 ## Updates the uid of the user.
