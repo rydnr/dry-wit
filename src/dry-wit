@@ -931,10 +931,15 @@ function printErrorMessage() {
 
 function exitWithErrorCode() {
   local _rescode;
-  printErrorMessage $@;
-  _rescode=$?;
-  cleanup;
-  exit ${_rescode};
+  if isDryWitTest; then
+      # This function is in dry-wit-test
+      fail $@;
+  else
+    printErrorMessage $@;
+    _rescode=$?;
+    cleanup;
+    exit ${_rescode};
+  fi
 }
 
 # Internal functions
@@ -4055,6 +4060,24 @@ function uncache() {
   unset rescode_cahe["$*"]
 }
 
-source $@;
-_main $@;
-cleanup;
+## Checks whether dry-wit is running within dry-wit-test.
+## <- 0/${TRUE} if we are running in test mode; 1/${FALSE} otherwise.
+function inDryWitTest() {
+  local _rescode;
+  if [ "${FUNCNAME[2]}" == "_sourceDryWit" ]; then
+      _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+if inDryWitTest; then
+    source ${SCRIPT_NAME};
+    _test;
+else
+  source $@;
+  _main $@;
+  cleanup;
+fi
