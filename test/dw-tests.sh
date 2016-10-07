@@ -1,4 +1,4 @@
-#!/bin/bash dry-wit-test
+#!/bin/bash ../src/dry-wit-test
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
@@ -25,11 +25,19 @@ EOF
 ## dry-wit hook
 function defineErrors() {
   addError "PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H" "The _parseCommonInput method does not support -h";
+  addError "PARSECOMMONINPUT_DOES_SUPPORT_SMALL_X" "The _parseCommonInput method does support -x";
 }
 
 ## Tests for dry-wit's _parseCommonInput.
 function _parseCommonInput_test() {
 
   _parseCommonInput "-h";
-  assertTrue [ 1 == 1 ], CHECK_INPUT_DOES_NOT_SUPPORT_SMALL_H;
+  assertNoErrorThrown CHECK_INPUT_DOES_NOT_SUPPORT_SMALL_H;
+
+  _parseCommonInput "-x";
+  assertErrorThrown CHECK_INPUT_DOES_SUPPORT_SMALL_X;
+}
+
+function _other_test_() {
+  echo "other test";
 }

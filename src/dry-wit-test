@@ -4,43 +4,23 @@
 
 # set -o xtrace
 
+# The tests
+export -a TESTS;
+
+# The associative arrays
+declare -A TEST_ERRORS; export TEST_ERRORS;
+declare -A TEST_FAILURES; export TEST_FAILURES;
+declare -A TEST_SUCCESSES; export TEST_SUCCESSES;
+declare -A TEST_ASSERTION_FAILURES; export TEST_ASSERTION_FAILURES;
+declare -A TEST_ASSERTION_SUCCESSES; export TEST_ASSERTION_SUCCESSES;
+declare -A TEST_ASSERTION_LINE_NUMBERS; export TEST_ASSERTION_LINE_NUMBERS;
+declare -A TEST_ASSERTION_ERROR_MESSAGES; export TEST_ASSERTION_ERROR_MESSAGES;
+
 ## Defines the errors.
 ## dry-wit hook
 function defineErrors() {
   addError "TEST_FAILURE" "Test failure";
   addError "NO_TESTS_FOUND" "No tests found";
-}
-
-## Annotates a new failed test.
-## -> 1: The test name.
-## Example:
-##   addTestFailure "my_test";
-function addTestFailure() {
-  local _test="${1}";
-
-  if declare -p TEST_FAILURES > /dev/null 2>&1; then
-      upvars -a$((${#TEST_FAILURES[@]}+1)) TEST_FAILURES "${TEST_FAILURES[@]}" "${_test}";
-      export TEST_FAILURES;
-  else
-    export -a TEST_FAILURES=();
-    upvars -a1 TEST_FAILURES "${_test}";
-  fi
-}
-
-## Annotates a new passed test.
-## -> 1: The test name.
-## Example:
-##   addTestSuccess "my_test";
-function addTestSuccess() {
-  local _test="${1}";
-
-  if declare -p TEST_SUCCESSES > /dev/null 2>&1; then
-      upvars -a$((${#TEST_SUCCESSES[@]}+1)) TEST_SUCCESSES "${TEST_SUCCESSES[@]}" "${_test}";
-      export TEST_SUCCESSES;
-  else
-    export -a TEST_SUCCESSES=();
-    upvars -a1 TEST_SUCCESSES "${_test}";
-  fi
 }
 
 ## Retrieves all available tests.
@@ -51,18 +31,153 @@ function addTestSuccess() {
 ##   echo "Tests found: ${RESULT}";
 function retrieveTests() {
   local _script="${1}";
+  local _functions="$(typeset -f | awk '!/^main[ (]/ && /^[^ {}]+ *\(\)/ { gsub(/[()]/, "", $1); print $1}')";
 
-  export RESULT="_parseCommonInput_test";
+  if isEmpty "${_functions}"; then
+    exitWithErrorCode NO_TESTS_FOUND;
+  fi
+
+  for _f in ${_functions}; do
+    if [ "${_f%*_test}" != "${_f}" ] && [ "${_f}" != "_test" ]; then
+      TESTS[${#TESTS[@]}]="${_f}";
+    fi
+  done
+
+  if isEmpty "${TESTS[@]}"; then
+    exitWithErrorCode NO_TESTS_FOUND;
+  fi
+
+  export RESULT="${TESTS[@]}";
 }
 
-## Retrieves the test assertions' results.
-## -> 1: The test name.
-## <- 2: The space-separated list of assertion names.
+## Annotates a new error when executing a test.
+## Note: This function is used by dry-wit itself.
 ## Example:
-##   retrieveTestAssertions "my_test";
-function retrieveTestAssertions() {
-  # TODO
-  echo -n "";
+##   addTestError "my_test";
+function addTestError() {
+  local _count;
+  local _testName;
+
+  if [ "${_testName}" == "exitWithErrorCode" ]; then
+    _testName="${FUNCNAME[2]}";
+  else
+    _testName="${FUNCNAME[1]}";
+  fi
+
+  _count=${TEST_ERRORS["${_testName}"]};
+  if isEmpty "${_count}"; then
+    _count=0;
+  fi
+  _count=$((_count+1));
+
+  TEST_ERRORS["${_testName}"]=${_count};
+}
+
+## Annotates a new failed test.
+## -> 1: The test name.
+## Example:
+##   addTestFailure "my_test";
+function addTestFailure() {
+  local _test="${1}";
+  local _count;
+
+  _count=${TEST_FAILURES["${_test}"]};
+  if isEmpty "${_count}"; then
+    _count=0;
+  fi
+  _count=$((_count+1));
+
+  TEST_FAILURES["${_test}"]=${_count};
+}
+
+## Annotates a new passed test.
+## -> 1: The test name.
+## Example:
+##   addTestSuccess "my_test";
+function addTestSuccess() {
+  local _test="${1}";
+  local _count;
+
+  _count=${TEST_SUCCESSES["${_test}"]};
+  if isEmpty "${_count}"; then
+    _count=0;
+  fi
+  _count=$((_count+1));
+
+  TEST_SUCCESSES["${_test}"]=${_count};
+}
+
+## Annotates a new failed test assertion.
+## -> 1: The test name.
+## -> 2: The error message.
+## -> 3: The line number.
+## Example:
+##   addTestAssertionFailure "my_test" "Should not fail" 103;
+function addTestAssertionFailure() {
+  local _test="${1}";
+  local _message="${2}";
+  local _lineNumber="${3}";
+  local _count;
+
+  _count=${TEST_ASSERTION_FAILURES["${_test}"]};
+  if isEmpty "${_count}"; then
+    _count=0;
+  fi
+
+  TEST_ASSERTION_FAILURES["${_test}"]=${_count};
+  TEST_ASSERTION_LINE_NUMBERS["${_test}:${_count}"]=${_lineNumber};
+  TEST_ASSERTION_ERROR_MESSAGES["${_test}:${_count}"]="${_message}";
+
+  _count=$((_count+1));
+}
+
+## Annotates a new passed test assertion.
+## -> 1: The test name.
+## Example:
+##   addTestAssertionSuccess "my_test";
+function addTestAssertionSuccess() {
+  local _test="${1}";
+  local _count;
+
+  _count=${TEST_ASSERTION_SUCCESSES["${_test}"]};
+  if isEmpty "${_count}"; then
+    _count=0;
+  fi
+  _count=$((_count+1));
+  TEST_ASSERTION_SUCCESSES["${_test}"]=${_count};
+}
+
+## Retrieves the number of passing assertions for given test.
+## -> 1: The test name.
+## Example:
+##   retrievePassingTestAssertions "my_test";
+##   echo "my_test: ${RESULT} assertions passed"
+function retrievePassingTestAssertions() {
+  local _test="${1}";
+  local _result;
+
+  _result=${TEST_ASSERTION_SUCCESSES["${_test}"]};
+  if isEmpty "${_result}"; then
+    _result=0;
+  fi
+
+  export RESULT="${_result}";
+}
+
+## Retrieves the number of failed assertions for given test.
+## -> 1: The test name.
+## Example:
+##   retrieveFailedTestAssertions "my_test";
+function retrieveFailedTestAssertions() {
+  local _test="${1}";
+  local _result;
+
+  _result=${TEST_ASSERTION_FAILURES["${_test}"]};
+  if isEmpty "${_result}"; then
+    _result=0;
+  fi
+
+  export RESULT="${_result}";
 }
 
 ## Checks whether all assertions passed for given test.
@@ -74,12 +189,43 @@ function retrieveTestAssertions() {
 ##   fi
 function allAssertionsPassed() {
   local _test="${1}";
-  local _assertions;
+  local -i _failed;
+  local -i _rescode;
 
-  retrieveTestAssertions "${_test}";
-  _assertions="${RESULT}";
+  retrieveFailedTestAssertions "${_test}";
+  _failed=${RESULT};
 
-  # TODO
+  if [ ${_failed} -eq 0 ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether all assertions passed for given test.
+## -> 1: The test.
+## <- 0/${TRUE} if all assertions passed; 1/${FALSE} otherwise.
+## Example:
+##   if noAssertionsPassed "my_test"; then
+##     echo "Too bad!";
+##   fi
+function noAssertionsPassed() {
+  local _test="${1}";
+  local -i _passing;
+  local -i _rescode;
+
+  retrievePassingTestAssertions "${_test}";
+  _passing=${RESULT};
+
+  if [ ${_passing} -eq 0 ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 ## Checks whether given test defined no assertions.
@@ -91,29 +237,21 @@ function allAssertionsPassed() {
 ##   fi
 function noAssertionsDefined() {
   local _test="${1}";
-  local _assertions;
+  local -i _failed;
+  local _i _passing;
+  local -i _rescode;
 
-  retrieveTestAssertions "${_test}";
-  _assertions="${RESULT}";
+  if allAssertionsPassed "${_test}"; then
+    if noAssertionsPassed "${_test}"; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=${FALSE};
+  fi
 
-  # TODO
-}
-
-## Retrieves the first failing assertion for given test.
-## -> 1: The test.
-## <- 0/${TRUE} if the test includes at least one failing assertion; 1/${FALSE} otherwise.
-## <- RESULT: The first failing assertion.
-## Example:
-##   retrieveFirstFailingAssertion "my_test";
-##   echo "The test failed: ${RESULT}";
-function retrieveFirstFailingAssertion() {
-  local _test="${1}";
-  local _assertions;
-
-  retrieveTestAssertions "${_test}";
-  _assertions="${RESULT}";
-
-  # TODO
+  return ${_rescode};
 }
 
 ## Runs given test.
@@ -127,45 +265,26 @@ function retrieveFirstFailingAssertion() {
 function runTest() {
   local _test="${1}";
   local _assertions;
+  local _rescode;
 
-  ${_test};
-
-  if allAssertionsPassed "${_test}"; then
+#  ${_test} > /dev/null 2>&1;
+  ${_test}
+  if isTrue $?; then
+    if noAssertionsDefined "${_test}"; then
+      addTestFailure "${FUNCNAME[1]}" NO_ASSERTIONS_DEFINED;
+      _rescode=${FALSE};
+    elif allAssertionsPassed "${_test}"; then
       addTestSuccess "${FUNCNAME[1]}";
-  elif noAssertionsDefined "${_test}"; then
-     addTestFailure "${FUNCNAME[1]}" NO_ASSERTIONS_DEFINED;
+      _rescode=${TRUE};
+    else
+      addTestFailure "${FUNCNAME[1]}" "${_test}";
+      _rescode=${FALSE};
+    fi
   else
-    retrieveFirstFailingAssertion "${_test}";
-    addTestFailure "${FUNCNAME[1]}" "${RESULT}";
+    addTestError "${_test}";
   fi
-}
 
-## Asserts given condition holds true.
-## -> 1: the condition to check.
-## -> 2: the error message.
-## Example:
-##   assertTrue [ 1 == 1 ], ONE_DOES_NOT_EQUAL_ONE_ERROR;
-function assertTrue() {
-  local _condition=${1};
-  local _error="${2}";
-
-  if isFalse ${_condition}; then
-      addTestFailure "${FUNCNAME[1]}" "${_error}";
-  fi
-}
-
-## Annotates a test failure.
-## -> 1: The function name.
-## -> 2: the test error.
-## Example:
-##   fail "my_test" "PARAMETER_GREATER_THAN_1";
-function fail() {
-  local _message="${1}";
-  local _testName="${FUNCNAME[1]}";
-  if [ "${_testName}" == "exitWithErrorCode" ]; then
-      _testName="${FUNCNAME[2]}";
-  fi
-  addTestFailure "${_testName}" "${_message}";
+  return ${_rescode};
 }
 
 ## Annotates a test success.
@@ -176,27 +295,184 @@ function annotateTestSuccess() {
   addTestSuccess "${_test}";
 }
 
+### ASSERTIONS ###
+
+## Asserts given condition holds true.
+## -> 1: the condition to check.
+## -> 2: the error message.
+## Example:
+##   assertTrue [ 1 == 1 ], ONE_DOES_NOT_EQUAL_ONE_ERROR;
+function assertTrue() {
+  local _condition=${1};
+  local _error="${2}";
+
+  if isTrue ${_condition}; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_error}";
+  fi
+}
+
+## Asserts no error has been thrown so far in current test.
+## -> 1: The error message.
+## Example:
+##   [call functionX]
+##   assertNoErrorThrown FUNCTION_X_SHOULD_NOT_THROW_ANY_ERROR;
+function assertNoErrorThrown() {
+  local _message="${1}";
+  local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
+  if isEmpty "${_errors}"; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}";
+  fi
+}
+
+## Asserts an error has been thrown so far in current test.
+## -> 1: The error message.
+## Example:
+##   [call functionX]
+##   assertErrorThrown FUNCTION_X_SHOULD_THROW_SOME_ERROR;
+function assertErrorThrown() {
+  local _message="${1}";
+  local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
+  if isEmpty "${_errors}"; then
+    addTestAssertionFailure "${FUNCNAME[1]}";
+  else
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  fi
+}
+
+## Fails the test directly.
+## Example:
+##   fail "my_test";
+function fail() {
+  addTestFailure "${FUNCNAME[1]}";
+}
+
+## Retrieves tests with issues of some kind.
+## <- RESULT: The space-separated names of the tests with some issues.
+## Example:
+##   retrieveTestsWithIssues;
+##   echo "Tests with issues: ${RESULT}";
+function retrieveTestsWithIssues() {
+  local _result="";
+  local _test;
+  local _errors;
+  local _failures;
+  local _successes;
+  local _assertionFailures;
+  local _assertionSuccesses;
+
+  for _test in ${TESTS[@]}; do
+    _errors="${TEST_ERRORS[${_test}]}";
+    _failures="${TEST_FAILURES[${_test}]}";
+    _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
+
+    if ! isEmpty "${_errors}" || ! isEmpty "${_failures}" || ! isEmpty "${_assertionFailures}"; then
+      _result="${_result} ${_test}";
+    fi
+  done
+
+  export RESULT="${_result}";
+}
+
+## Logs a summary of the tests.
+## Example:
+##   logTestSummary;
+function logSummary() {
+  for _test in ${TESTS[@]}; do
+    logTestSummary "${_test}";
+  done
+}
+
+## Logs the failed assertions for given test.
+## -> 1: the test name.
+## Example:
+##   logFailedAssertions "my_test";
+function logFailedAssertions() {
+  local _test="${1}";
+  local _count=${TEST_ASSERTION_FAILURES[${_test}]};
+  local -i _i=0;
+
+  for _i in $(seq 0 ${_count}); do
+    logInfo -n "${TEST_ASSERTION_ERROR_MESSAGES[${_test}:${_i}]}";
+    logInfoResult FAILURE "${_test}:${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}"
+  done
+}
+
+## Logs a summary of given test.
+## -> 1: The test name.
+## Example:
+##   logTestSummary "my_test";
+function logTestSummary() {
+  local _test="${1}";
+  local _errors;
+  local _failures;
+  local _successes;
+  local _assertionFailures;
+  local _assertionSuccesses;
+
+  _errors="${TEST_ERRORS[${_test}]}";
+  if ! isEmpty "${_errors}"; then
+    logInfo -n "Test ${_test}: errors";
+    logInfoResult FAILURE "${_errors}";
+  else
+    _failures="${TEST_FAILURES[${_test}]}";
+    if ! isEmpty "${_failures}"; then
+      logInfo -n "Test ${_test}: failures";
+      logInfoResult FAILURE "${_failures}";
+    else
+      _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
+      if ! isEmpty "${_assertionFailures}"; then
+        logInfo -n "Test ${_test}: assertions failed";
+        logInfoResult FAILURE "${_assertionFailures}";
+        logFailedAssertions "${_test}";
+      else
+        logInfo -n "Test ${_test}: assertions passed";
+        _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
+        if isEmpty "${_assertionSuccesses}"; then
+          logInfoResult FAILURE "0";
+        else
+          logInfoResult SUCCESS "${_successes}";
+        fi
+      fi
+    fi
+  fi
+}
+
 ## dry-wit hook
-function _test() {
+function __dwtest() {
   local _tests;
+  local _failedTests;
+
   logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
   retrieveTests ${SCRIPT_NAME};
   _tests="${RESULT}";
+
   if isEmpty "${_tests}"; then
-      logInfoResult FAILURE "0";
-      exitWithErrorCode NO_TESTS_FOUND;
+    logInfoResult FAILURE "0";
+    exitWithErrorCode NO_TESTS_FOUND;
   else
     logInfoResult SUCCESS "$(echo "${_tests}" | awk -F' ' '{print $NF+1;}')";
   fi
+
   for _t in ${_tests}; do
     logInfo -n "Running ${_t}";
     if runTest "${_t}"; then
-        logInfoResult SUCCESS "pass";
+      logInfoResult SUCCESS "pass";
     else
       logInfoResult FAILURE "failed";
     fi
-
   done
+
+  retrieveTestsWithIssues;
+  _failedTests="${RESULT}";
+  if ! isEmpty "${_failedTests}"; then
+    for _t in ${_failedTests}; do
+      logTestSummary "${_t}";
+    done
+  fi
 }
 
 ## Calling dry-wit from a well-known place

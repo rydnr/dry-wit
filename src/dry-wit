@@ -931,9 +931,9 @@ function printErrorMessage() {
 
 function exitWithErrorCode() {
   local _rescode;
-  if isDryWitTest; then
-      # This function is in dry-wit-test
-      fail $@;
+  if inDryWitTest; then
+    # This function is in dry-wit-test
+    addTestError $@;
   else
     printErrorMessage $@;
     _rescode=$?;
@@ -1610,9 +1610,17 @@ function logInfoFile() {
   fi
 }
 
+## Logs a message under the INFO category.
+## -> 1: The message.
+## Example:
+##   logInfo "Working";
 function logInfo() {
+  local _message="$@";
+  if isEmpty "${_message}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   if isInfoEnabled; then
-    _logStuff INFO "$@";
+    _logStuff INFO "${_message}";
   fi
 }
 
@@ -1638,6 +1646,12 @@ function logFile() {
   cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
 }
 
+## Auxiliary function to log a message under a certain category.
+## -> 1: The log level.
+## -> 2: -n to specify a message waiting for an outcome. (optional)
+## -> 3: The message.
+## Example:
+##   _logStuff INFO -n "Working";
 function _logStuff() {
   local _level="${1}";
   if isEmpty "${_level}"; then
@@ -1648,7 +1662,11 @@ function _logStuff() {
   if [ "-n" == "${_minusN}" ]; then
     shift;
   fi
-  _logInProgress "${_level}" "$@";
+  local _message="$@";
+  if isEmpty "${_message}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2/3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+  _logInProgress "${_level}" "${_message}";
   if [ "-n" != "${_minusN}" ]; then
     echo;
     _popLog;
@@ -2441,7 +2459,7 @@ function resetColor() {
 ## PUBLIC
 ## Echoes given text, colorized.
 ## -> 1: The text to colorize.
-## -> 2: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text).
+## -> 2: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text) (optional).
 ## -> 3: The default color (optional).
 ## Example:
 ##   echoColorizeText "done" SUCCESS;
@@ -2449,6 +2467,11 @@ function echoColorizedText() {
   local _text="${1}";
   local _keyword="${2}";
   local _defaultColor="${3:-${UNDEFINED_COLOR}}";
+
+  if isEmpty "${_text}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _color="";
   allowsColors;
   _allowsColors=$?;
@@ -2538,7 +2561,8 @@ function _logMessage() {
 
 ## PRIVATE
 ## Prints a log message, indicating some uncompleted task.
-## -> 1: The message.
+## -> 1: The log level.
+## -> 2: The message.
 ## Example:
 ##   _logInProgress "Calculating ...";
 ##   # [...] Calculating ...
@@ -2550,6 +2574,10 @@ function _logInProgress() {
   shift;
 
   local _message="$@";
+  if isEmpty "${_message}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local -i nestedTasks;
   local _category;
   _retrieveLogNamespace;
@@ -2625,6 +2653,10 @@ function _logInProgressNoNested() {
   shift;
 
   local _message="$@";
+  if isEmpty "${_message}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _logPrefix;
 
   _logPrefix="${RESULT}";
@@ -4075,7 +4107,7 @@ function inDryWitTest() {
 
 if inDryWitTest; then
     source ${SCRIPT_NAME};
-    _test;
+    __dwtest;
 else
   source $@;
   _main $@;
