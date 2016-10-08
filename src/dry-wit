@@ -25,7 +25,7 @@ set -o pipefail # In a pipe, the exit status of the last command that threw a no
 export TRUE=0;
 export FALSE=1;
 
-_dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
+declare _dryWitDevLogFile;
 
 # IFS stuff
 _OLD_IFS="${IFS}";
@@ -57,7 +57,7 @@ export FAILURE=1;
 export IN_PROGRESS=2;
 export UNDEFINED=255;
 
-export _DRY_WIT_LOG_STACK=();
+export -a _DRY_WIT_LOG_STACK=();
 export _DRY_WIT_LOG_CATEGORY_STACK=();
 export LOG_CATEGORY_NAMESPACE="";
 export _DRY_WIT_LOG_LEVEL_STACK=();
@@ -138,7 +138,7 @@ function upvars() {
   local _flag="${1}";
 
   if isEmpty "${_flag}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   while (( $# )); do
@@ -152,12 +152,12 @@ function upvars() {
                                               return 1; }
         # Assign array of -aN elements
         [[ "$2" ]] && unset -v "$2" && eval $2=\(\"\${@:3:${1#-a}}\"\) && \
-          shift $((${1#-a} + 2)) || { exitWithErrorCode UNACCEPTABLE_API_CALL "\`$1${2+ }$2': missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"; }
+        shift $((${1#-a} + 2)) || { exitWithErrorCode UNACCEPTABLE_API_CALL "\`$1${2+ }$2': missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}"; }
         ;;
       -v)
         # Assign single value
         [[ "$2" ]] && unset -v "$2" && eval $2=\"\$3\" && \
-          shift 3 || { exitWithErrorCode UNACCEPTABLE_API_CALL "$1: missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"; }
+        shift 3 || { exitWithErrorCode UNACCEPTABLE_API_CALL "$1: missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}"; }
         ;;
       --help) echo "\
 Usage: local varname [varname ...] &&
@@ -176,7 +176,7 @@ This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law."
                  return 0 ;;
       *)
-        exitWithErrorCode UNACCEPTABLE_API_CALL "$1: invalid option to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+        exitWithErrorCode UNACCEPTABLE_API_CALL "$1: invalid option to ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
     esac
   done
 }
@@ -200,6 +200,13 @@ function _traceApiCall() {
 ##   debugEcho "message";
 function _debugEcho() {
   echo $* >> ${_dryWitDevLogFile};
+}
+
+## PRIVATE
+## Alias for _debugEcho.
+## See _debugEcho.
+function _echoDebug() {
+  _debugEcho $*;
 }
 
 ## PUBLIC
@@ -247,7 +254,7 @@ function isVariableDefined() {
 #  eval "[ -v \${$1} ] 2> /dev/null"
   #  eval "[ -v ${1} ] 2> /dev/null"
   if isEmpty "${_var}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'var' (1) cannot be empty when calling 'isVariableDefined'. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'var' (1) cannot be empty when calling 'isVariableDefined'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   if [ -v "${_var}" ]; then
     _rescode=${TRUE};
@@ -330,9 +337,9 @@ function defineEnvVar() {
   local _command;
 
   if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   elif isEmpty "${_varDescription}" && [ "${FUNCNAME[1]}" != "overrideEnvVar" ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'description' (2) for '${_varName}' cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'description' (2) for '${_varName}' cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   toUpper "${_varName}";
@@ -398,7 +405,7 @@ function _addEnvVar() {
   local _varValue="${2:-}";
 
   if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   if ! isEnvVarDefined "${_varName}"; then
@@ -417,7 +424,7 @@ function isEnvVarDefined() {
   local _rescode=${FALSE};
 
   if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _oldIFS="${IFS}";
@@ -440,7 +447,7 @@ function _evalEnvVar() {
   local _varName="${1}";
 
   if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   _evalVar "${_varName}_DEFAULT";
@@ -1243,7 +1250,7 @@ function _uncachedGetTermWidthForTerm() {
   local _term="${1}";
 
   if isEmpty "${_term}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'term' (1) is mandatory when calling ${FUNCNAME[2]}. Review ${FUNCNAME[3]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'term' (1) is mandatory when calling ${FUNCNAME[2]}. Review ${FUNCNAME[3]} in ${BASH_SOURCE[3]}:${BASH_LINENO[2]}";
   fi
 
   $(tput cols &> /dev/null > /dev/null 2>&1);
@@ -1617,16 +1624,21 @@ function logInfoFile() {
 function logInfo() {
   local _message="$@";
   if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   if isInfoEnabled; then
-    _logStuff INFO "${_message}";
+    _logStuff INFO "$@";
   fi
 }
 
+## Logs the outcome of the current operation, under the INFO category.
+## -> 1: The outcome message.
+## Example:
+##   logInfo -n "Computing 1+1";
+##   logInfoResult SUCCESS "2";
 function logInfoResult() {
   if isInfoEnabled; then
-    _logStuffResult INFO "$@";
+      _logStuffResult INFO "$@";
   fi
 }
 
@@ -1655,7 +1667,7 @@ function logFile() {
 function _logStuff() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
   local _minusN="${1}";
@@ -1664,7 +1676,7 @@ function _logStuff() {
   fi
   local _message="$@";
   if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2/3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2/3+) is mandatory when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]} in ${BASH_SOURCE[2]}:${BASH_LINENO[1]}";
   fi
   _logInProgress "${_level}" "${_message}";
   if [ "-n" != "${_minusN}" ]; then
@@ -1674,17 +1686,21 @@ function _logStuff() {
   fi
 }
 
+## PRIVATE
+## Auxiliary function to log the outcome of the current operation, under certain log level.
+## -> 1: The log level.
+## -> 2+: See _logCompleted parameters.
 function _logStuffResult() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
   local -i _nestedTasks;
   _numberOfNestedInProgressTasks;
   _nestedTasks=$?;
   if [ ${_nestedTasks} -eq 0 ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]} in ${BASH_SOURCE[2]}:${BASH_LINENO[1]}";
   fi
   _logCompleted "${_level}" "$@";
 }
@@ -1729,7 +1745,7 @@ function _pushLogLevel() {
 ## <- Such count.
 ## Example:
 ##   _numberOfNestedInProgressTasks;
-##   _count=$?
+##   _count=$?;
 function _numberOfNestedInProgressTasks() {
   local _rescode;
   _rescode=${#_DRY_WIT_LOG_STACK[@]};
@@ -1975,7 +1991,7 @@ function _retrieveOutcomeTextPositionInLogOutcome() {
 function  _retrieveLogPrefixTokens() {
   local _category="${1}";
   if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _levelVar="${2}";
@@ -2024,7 +2040,7 @@ function  _retrieveLogPrefixTokens() {
 function  _retrieveLogOutcomeTokens() {
   local _text="${1}";
   if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _result=();
@@ -2060,7 +2076,7 @@ function  _retrieveLogOutcomeTokens() {
 function _retrieveLogOutcomeColors() {
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _result=();
@@ -2095,7 +2111,7 @@ function _retrieveLogOutcomeColors() {
 function _retrieveKeywordColor() {
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   local _defaultColor="${2:-${NO_COLOR}}";
 
@@ -2124,12 +2140,12 @@ function _retrieveKeywordColor() {
 function _echoLogPrefix() {
   local _category="${1}";
   if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _level="${2}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _allowsColors;
@@ -2148,12 +2164,12 @@ function _echoLogPrefix() {
 function _retrieveLogPrefix() {
   local _category="${1}";
   if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _level="${2}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _result="$(_echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
@@ -2170,17 +2186,17 @@ function _retrieveLogPrefix() {
 function _echoColorAwareLogPrefix() {
   local _category="${1}";
   if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _allowsColors=${2};
   if isEmpty "${_allowsColors}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'allowsColors' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'allowsColors' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _level="${3}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (3) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (3) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _len;
@@ -2240,17 +2256,20 @@ function _retrieveLogNamespace() {
 function _echoLogOutcome() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _text="${@}";
+  if isEmpty "${_text}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
   local _len;
   local _allowsColors;
   local _colors;
@@ -2307,13 +2326,13 @@ function _echoLogOutcome() {
 function _echoLogOutcomeNested() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
@@ -2351,12 +2370,12 @@ function _echoLogOutcomeNested() {
 function _alignRight() {
   local _logLineMessage="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _outcome="${2}";
   if isEmpty "${_outcome}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'outcome' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'outcome' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _logMessage;
@@ -2415,11 +2434,11 @@ function echoInColor() {
   fi
   local _color="${1}";
   if isEmpty "${_color}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'color' (1) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'color' (1) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   local _text="${2}";
   if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (2) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (2) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   local _colorAux="";
   local _inColor=${FALSE};
@@ -2469,7 +2488,7 @@ function echoColorizedText() {
   local _defaultColor="${3:-${UNDEFINED_COLOR}}";
 
   if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _color="";
@@ -2549,7 +2568,7 @@ function _logMessage() {
   local _level="${1}";
 
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   shift;
@@ -2569,13 +2588,13 @@ function _logMessage() {
 function _logInProgress() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _message="$@";
   if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local -i nestedTasks;
@@ -2604,13 +2623,13 @@ function _logInProgress() {
 function _logInProgressNested() {
   local _category="${1}";
   if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
@@ -2642,19 +2661,19 @@ function _logInProgressNested() {
 function _logInProgressNoNested() {
   local _category="${1}";
   if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _message="$@";
   if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   local _logPrefix;
@@ -2677,16 +2696,19 @@ function _logInProgressNoNested() {
 function _logCompleted() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
   local _text="${@}";
+  if isEmpty "${_text}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (3+) is mandatory when calling ${FUNCNAME[2]}. Review ${FUNCNAME[3]} in ${BASH_SOURCE[3]}:${BASH_LINENO[2]}";
+  fi
   local -i nestedTasks;
 
   _numberOfNestedInProgressTasks;
@@ -2708,17 +2730,20 @@ function _logCompleted() {
 function _logCompletedNoNested() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _text="${@}";
+  if isEmpty "${_text}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
   _echoLogOutcome "${_level}" "${_keyword}" "${_text}";
   _popLog;
   _popLogCategory;
@@ -2736,13 +2761,13 @@ function _logCompletedNoNested() {
 function _logCompletedNested() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift
 
@@ -2775,13 +2800,13 @@ function _logCompletedNested() {
 function _logCompletedNestedNoPop() {
   local _level="${1}";
   if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift;
 
   local _keyword="${1}";
   if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   shift
   local _message="$@";
@@ -2791,7 +2816,7 @@ function _logCompletedNestedNoPop() {
 function urlEncode() {
   local _text="$1";
   if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
     echo "${_text}"  \
@@ -2833,7 +2858,7 @@ function urlEncode() {
 function readConfFile() {
   local _confFile="${1}";
   if isEmpty "${_confFile}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'confFile' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'confFile' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   local result=${TRUE};
 
@@ -3059,9 +3084,9 @@ function uncompress() {
     logInfo -n "Uncompressing ${_file}";
     tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
     if [ $? == 0 ]; then
-      logInfoResult "Done";
+      logInfoResult SUCCESS "Done";
     else
-      logInfoResult "Failed";
+      logInfoResult FAILURE "Failed";
       logDebugFile "${_errorOutput}";
       _result=2;
     fi
@@ -3257,7 +3282,7 @@ function _functionPresent() {
 function toUpper() {
   local _text="${1}";
   if isEmpty "${_text}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   local _result=$(echo "${_text}" | awk '{print toupper($0);}');
   export RESULT="${_result}";
@@ -3279,7 +3304,7 @@ function normalize() {
 function _uncachedNormalize() {
   local _text="${1}";
   if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[3]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[3]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
   local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
   export RESULT="${_result}";
@@ -3959,7 +3984,7 @@ function sourceFileIfExists() {
   local _rescode=${FALSE};
 
   if isEmpty "${_file}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'file' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'file' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
   logTrace -n "Reading ${_file}";
@@ -4011,7 +4036,7 @@ function _main() {
   if _functionPresent defineErrors "${_script}"; then
     defineErrors;
   else
-    export ERROR_MESSAGES=();
+    export -a ERROR_MESSAGES=();
   fi
 
   if _functionPresent defineEnvDefaults "${_script}"; then
@@ -4106,9 +4131,14 @@ function inDryWitTest() {
 }
 
 if inDryWitTest; then
+    _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.$(basename ${BASH_SOURCE[1]}).log;
     source ${SCRIPT_NAME};
+    if _functionPresent __dwCallback "${BASH_SOURCE[1]}"; then
+        __dwCallback;
+    fi
     __dwtest;
 else
+  _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
   source $@;
   _main $@;
   cleanup;

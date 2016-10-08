@@ -25,19 +25,15 @@ EOF
 ## dry-wit hook
 function defineErrors() {
   addError "PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H" "The _parseCommonInput method does not support -h";
-  addError "PARSECOMMONINPUT_DOES_SUPPORT_SMALL_X" "The _parseCommonInput method does support -x";
 }
 
 ## Tests for dry-wit's _parseCommonInput.
 function _parseCommonInput_test() {
 
   _parseCommonInput "-h";
-  assertNoErrorThrown CHECK_INPUT_DOES_NOT_SUPPORT_SMALL_H;
-
-  _parseCommonInput "-x";
-  assertErrorThrown CHECK_INPUT_DOES_SUPPORT_SMALL_X;
+  assertNoErrorThrown PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H;
 }
 
-function _other_test_() {
+function _other_test() {
   echo "other test";
 }

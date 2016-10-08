@@ -11,6 +11,7 @@ export -a TESTS;
 declare -A TEST_ERRORS; export TEST_ERRORS;
 declare -A TEST_FAILURES; export TEST_FAILURES;
 declare -A TEST_SUCCESSES; export TEST_SUCCESSES;
+declare -A TEST_ERROR_MESSAGES; export TEST_ERROR_MESSAGES;
 declare -A TEST_ASSERTION_FAILURES; export TEST_ASSERTION_FAILURES;
 declare -A TEST_ASSERTION_SUCCESSES; export TEST_ASSERTION_SUCCESSES;
 declare -A TEST_ASSERTION_LINE_NUMBERS; export TEST_ASSERTION_LINE_NUMBERS;
@@ -18,9 +19,10 @@ declare -A TEST_ASSERTION_ERROR_MESSAGES; export TEST_ASSERTION_ERROR_MESSAGES;
 
 ## Defines the errors.
 ## dry-wit hook
-function defineErrors() {
-  addError "TEST_FAILURE" "Test failure";
-  addError "NO_TESTS_FOUND" "No tests found";
+function _defineErrors() {
+  addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
+  addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
+  addError NO_TESTS_FOUND "No tests found";
 }
 
 ## Retrieves all available tests.
@@ -75,19 +77,29 @@ function addTestError() {
 
 ## Annotates a new failed test.
 ## -> 1: The test name.
+## -> 2: The message.
 ## Example:
-##   addTestFailure "my_test";
+##   addTestFailure "my_test" "Failed assertions";
 function addTestFailure() {
   local _test="${1}";
-  local _count;
+  local _message="${2}";
+
+  if isEmpty "${_message}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+
+  local -i _count;
+  local -i _index;
 
   _count=${TEST_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
-    _count=0;
+      _count=0;
   fi
+  _index=${_count};
   _count=$((_count+1));
 
   TEST_FAILURES["${_test}"]=${_count};
+  TEST_ERROR_MESSAGES["${_test}:${_index}"]="${_message}";
 }
 
 ## Annotates a new passed test.
@@ -116,19 +128,25 @@ function addTestSuccess() {
 function addTestAssertionFailure() {
   local _test="${1}";
   local _message="${2}";
-  local _lineNumber="${3}";
-  local _count;
+  local _lineNumber="${BASH_LINENO[1]}";
+
+  if isEmpty "${_message}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+
+  local -i _count;
+  local -i _index;
 
   _count=${TEST_ASSERTION_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
-    _count=0;
+      _count=0;
   fi
+  _index=${_count};
+  _count=$((_count+1));
 
   TEST_ASSERTION_FAILURES["${_test}"]=${_count};
-  TEST_ASSERTION_LINE_NUMBERS["${_test}:${_count}"]=${_lineNumber};
-  TEST_ASSERTION_ERROR_MESSAGES["${_test}:${_count}"]="${_message}";
-
-  _count=$((_count+1));
+  TEST_ASSERTION_LINE_NUMBERS["${_test}:${_index}"]=${_lineNumber};
+  TEST_ASSERTION_ERROR_MESSAGES["${_test}:${_index}"]="${_message}";
 }
 
 ## Annotates a new passed test assertion.
@@ -271,13 +289,13 @@ function runTest() {
   ${_test}
   if isTrue $?; then
     if noAssertionsDefined "${_test}"; then
-      addTestFailure "${FUNCNAME[1]}" NO_ASSERTIONS_DEFINED;
+      addTestFailure "${_test}" TEST_WITH_NO_ASSERTIONS;
       _rescode=${FALSE};
     elif allAssertionsPassed "${_test}"; then
-      addTestSuccess "${FUNCNAME[1]}";
+      addTestSuccess "${_test}";
       _rescode=${TRUE};
     else
-      addTestFailure "${FUNCNAME[1]}" "${_test}";
+      addTestFailure "${_test}" TEST_WITH_FAILED_ASSERTIONS;
       _rescode=${FALSE};
     fi
   else
@@ -337,7 +355,7 @@ function assertErrorThrown() {
   local _message="${1}";
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
-    addTestAssertionFailure "${FUNCNAME[1]}";
+      addTestAssertionFailure "${FUNCNAME[1]}" "${1}";
   else
     addTestAssertionSuccess "${FUNCNAME[1]}";
   fi
@@ -386,6 +404,29 @@ function logSummary() {
   done
 }
 
+## Logs the detailed information about why a given test has failed.
+## -> 1: the test name.
+## Example:
+##   logFailureReasons "my_test";
+function logFailureReasons() {
+  local _test="${1}";
+  local _count=${TEST_FAILURES[${_test}]};
+  local -i _i=0;
+  local _error;
+  local _message;
+  local _lineNumber;
+
+  if [ ${_count} -gt 0 ]; then
+      for _i in $(seq 0 $((_count-1))); do
+        _error="${TEST_ERROR_MESSAGES[${_test}:${_i}]}";
+        evalConstant "${_error}" "${_error}";
+        _message="${RESULT}";
+        logInfo -n "${_message}";
+        logInfoResult FAILURE "${_test}";
+      done
+  fi
+}
+
 ## Logs the failed assertions for given test.
 ## -> 1: the test name.
 ## Example:
@@ -394,11 +435,20 @@ function logFailedAssertions() {
   local _test="${1}";
   local _count=${TEST_ASSERTION_FAILURES[${_test}]};
   local -i _i=0;
+  local _error;
+  local _message;
+  local _lineNumber;
 
-  for _i in $(seq 0 ${_count}); do
-    logInfo -n "${TEST_ASSERTION_ERROR_MESSAGES[${_test}:${_i}]}";
-    logInfoResult FAILURE "${_test}:${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}"
-  done
+  if [ ${_count} -gt 0 ]; then
+      for _i in $(seq 0 $((_count-1))); do
+        _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
+        _error="${TEST_ASSERTION_ERROR_MESSAGES[${_test}:${_i}]}";
+        evalConstant "${_error}" "${_error}";
+        _message="${RESULT}";
+        logInfo -n "${_message}";
+        logInfoResult FAILURE "${_test}:${_lineNumber}";
+      done
+  fi
 }
 
 ## Logs a summary of given test.
@@ -422,9 +472,10 @@ function logTestSummary() {
     if ! isEmpty "${_failures}"; then
       logInfo -n "Test ${_test}: failures";
       logInfoResult FAILURE "${_failures}";
+      logFailureReasons "${_test}";
     else
       _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
-      if ! isEmpty "${_assertionFailures}"; then
+      if ! isEmpty "${_assertionFailures}" && [ ${_assertionFailures} -gt 0 ]; then
         logInfo -n "Test ${_test}: assertions failed";
         logInfoResult FAILURE "${_assertionFailures}";
         logFailedAssertions "${_test}";
@@ -434,7 +485,7 @@ function logTestSummary() {
         if isEmpty "${_assertionSuccesses}"; then
           logInfoResult FAILURE "0";
         else
-          logInfoResult SUCCESS "${_successes}";
+          logInfoResult SUCCESS "${_assertionSuccesses}";
         fi
       fi
     fi
@@ -449,17 +500,16 @@ function __dwtest() {
   logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
   retrieveTests ${SCRIPT_NAME};
   _tests="${RESULT}";
-
   if isEmpty "${_tests}"; then
     logInfoResult FAILURE "0";
     exitWithErrorCode NO_TESTS_FOUND;
   else
-    logInfoResult SUCCESS "$(echo "${_tests}" | awk -F' ' '{print $NF+1;}')";
+    logInfoResult SUCCESS "$(echo "${_tests}" | wc -w)";
   fi
 
   for _t in ${_tests}; do
     logInfo -n "Running ${_t}";
-    if runTest "${_t}"; then
+    if runTest "${_t}" > /dev/null 2&>1; then
       logInfoResult SUCCESS "pass";
     else
       logInfoResult FAILURE "failed";
@@ -477,7 +527,18 @@ function __dwtest() {
 
 ## Calling dry-wit from a well-known place
 function _sourceDryWit() {
-  source $(which dry-wit) $*;
+  source $(which dry-wit);
+}
+
+function __dwCallback() {
+  _defineDryWitErrorMessages;
+  _defineErrors;
+  if _functionPresent defineErrors "${SCRIPT_NAME}"; then
+      defineErrors;
+  else
+    export -a ERROR_MESSAGES=();
+  fi
 }
 
 _sourceDryWit $*;
+
