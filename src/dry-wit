@@ -25,7 +25,7 @@ set -o pipefail # In a pipe, the exit status of the last command that threw a no
 export TRUE=0;
 export FALSE=1;
 
-declare _dryWitDevLogFile;
+export _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
 
 # IFS stuff
 _OLD_IFS="${IFS}";
@@ -199,14 +199,14 @@ function _traceApiCall() {
 ## Example:
 ##   debugEcho "message";
 function _debugEcho() {
-  echo $* >> ${_dryWitDevLogFile};
+  echo "$*" >> ${_dryWitDevLogFile};
 }
 
 ## PRIVATE
 ## Alias for _debugEcho.
 ## See _debugEcho.
 function _echoDebug() {
-  _debugEcho $*;
+  _debugEcho "$*";
 }
 
 ## PUBLIC
@@ -457,10 +457,8 @@ function _evalEnvVar() {
 
   if [[ ! -n ${_varValue} ]]; then
     if [[ -n "${DRY_WIT_EVAL_DEFAULTS_FLAG:-}" ]]; then
-#      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
       _evalVar "${_varName}_DEFAULT_COMMAND";
       local _defaultCommand="${RESULT}";
-#      echo "${_defaultCommand}";
       if [[ -n ${_defaultCommand} ]]; then
         logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
         local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
@@ -940,7 +938,7 @@ function exitWithErrorCode() {
   local _rescode;
   if inDryWitTest; then
     # This function is in dry-wit-test
-    addTestError $@;
+    addTestError "${FUNCNAME[2]}" $@;
   else
     printErrorMessage $@;
     _rescode=$?;
@@ -3628,6 +3626,9 @@ function retrieveUserFromUid() {
 ##   echo "The name of group 1 is ${RESULT}";
 function retrieveGroupFromGid() {
   local _gid="${1}";
+  if isEmpty "${_gid}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'gid' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
   local _result;
   local _rescode;
 
@@ -4121,7 +4122,9 @@ function uncache() {
 ## <- 0/${TRUE} if we are running in test mode; 1/${FALSE} otherwise.
 function inDryWitTest() {
   local _rescode;
-  if [ "${FUNCNAME[2]}" == "_sourceDryWit" ]; then
+
+  if [ "${FUNCNAME[2]}" == "_sourceDryWit" ] || \
+     [ "${BASH_SOURCE[4]##*/}" == "dry-wit-test" ]; then
       _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -4131,14 +4134,14 @@ function inDryWitTest() {
 }
 
 if inDryWitTest; then
-    _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.$(basename ${BASH_SOURCE[1]}).log;
+    export _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.$(basename ${BASH_SOURCE[1]}).log;
     source ${SCRIPT_NAME};
     if _functionPresent __dwCallback "${BASH_SOURCE[1]}"; then
         __dwCallback;
     fi
     __dwtest;
 else
-  _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
+  export _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
   source $@;
   _main $@;
   cleanup;

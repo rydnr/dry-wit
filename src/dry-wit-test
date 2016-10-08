@@ -9,13 +9,15 @@ export -a TESTS;
 
 # The associative arrays
 declare -A TEST_ERRORS; export TEST_ERRORS;
+declare -A TEST_ERROR_MESSAGES; export TEST_ERROR_MESSAGES;
 declare -A TEST_FAILURES; export TEST_FAILURES;
 declare -A TEST_SUCCESSES; export TEST_SUCCESSES;
-declare -A TEST_ERROR_MESSAGES; export TEST_ERROR_MESSAGES;
+declare -A TEST_FAILURE_MESSAGES; export TEST_FAILURE_MESSAGES;
 declare -A TEST_ASSERTION_FAILURES; export TEST_ASSERTION_FAILURES;
 declare -A TEST_ASSERTION_SUCCESSES; export TEST_ASSERTION_SUCCESSES;
 declare -A TEST_ASSERTION_LINE_NUMBERS; export TEST_ASSERTION_LINE_NUMBERS;
-declare -A TEST_ASSERTION_ERROR_MESSAGES; export TEST_ASSERTION_ERROR_MESSAGES;
+declare -A TEST_ASSERTION_FAILURE_MESSAGES; export TEST_ASSERTION_FAILURE_MESSAGES;
+declare -A TEST_ASSERTION_FAILURE_CONTEXT; export TEST_ASSERTION_FAILURE_CONTEXT;
 
 ## Defines the errors.
 ## dry-wit hook
@@ -57,22 +59,50 @@ function retrieveTests() {
 ## Example:
 ##   addTestError "my_test";
 function addTestError() {
-  local _count;
-  local _testName;
+  local _test="${1}";
+  if isEmpty "${_test}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'test' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  local _message="${2}";
 
-  if [ "${_testName}" == "exitWithErrorCode" ]; then
-    _testName="${FUNCNAME[2]}";
-  else
-    _testName="${FUNCNAME[1]}";
+  if isEmpty "${_message}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
-  _count=${TEST_ERRORS["${_testName}"]};
+  local -i _count;
+  local -i _index;
+
+  _count=${TEST_ERRORS[${_test}]};
   if isEmpty "${_count}"; then
-    _count=0;
+      _count=0;
   fi
+  _index=${_count};
   _count=$((_count+1));
 
-  TEST_ERRORS["${_testName}"]=${_count};
+  TEST_ERRORS["${_test}"]=${_count};
+  TEST_ERROR_MESSAGES["${_test}:${_index}"]="${_message}";
+}
+
+## PRIVATE
+## Removes a detected error for a given test, since it expected in an assertErrorThrown.
+## Example:
+##   _removeTestError "my_test";
+function _removeTestError() {
+  local _test="${1}";
+  if isEmpty "${_test}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'test' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+
+  local -i _count;
+  local -i _index;
+
+  _count=${TEST_ERRORS[${_test}]};
+  if ! isEmpty "${_count}"; then
+      _index=${_count};
+      _count=$((_count-1));
+      TEST_ERRORS["${_test}"]=${_count};
+      TEST_ERROR_MESSAGES["${_test}:${_index}"]="";
+  fi
 }
 
 ## Annotates a new failed test.
@@ -99,7 +129,7 @@ function addTestFailure() {
   _count=$((_count+1));
 
   TEST_FAILURES["${_test}"]=${_count};
-  TEST_ERROR_MESSAGES["${_test}:${_index}"]="${_message}";
+  TEST_FAILURE_MESSAGES["${_test}:${_index}"]="${_message}";
 }
 
 ## Annotates a new passed test.
@@ -122,18 +152,22 @@ function addTestSuccess() {
 ## Annotates a new failed test assertion.
 ## -> 1: The test name.
 ## -> 2: The error message.
-## -> 3: The line number.
+## -> 3: Additional context information (optional).
 ## Example:
-##   addTestAssertionFailure "my_test" "Should not fail" 103;
+##   addTestAssertionFailure "my_test" "Should not fail";
 function addTestAssertionFailure() {
   local _test="${1}";
-  local _message="${2}";
-  local _lineNumber="${BASH_LINENO[1]}";
+  if isEmpty "${_test}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'test' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
 
+  local _message="${2}";
   if isEmpty "${_message}"; then
       exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
   fi
 
+  local _extra="${3}";
+  local _lineNumber="${BASH_LINENO[1]}";
   local -i _count;
   local -i _index;
 
@@ -146,7 +180,10 @@ function addTestAssertionFailure() {
 
   TEST_ASSERTION_FAILURES["${_test}"]=${_count};
   TEST_ASSERTION_LINE_NUMBERS["${_test}:${_index}"]=${_lineNumber};
-  TEST_ASSERTION_ERROR_MESSAGES["${_test}:${_index}"]="${_message}";
+  TEST_ASSERTION_FAILURE_MESSAGES["${_test}:${_index}"]="${_message}";
+  if ! isEmpty "${_extra}"; then
+      TEST_ASSERTION_FAILURE_CONTEXT["${_test}:${_index}"]="${_extra}";
+  fi
 }
 
 ## Annotates a new passed test assertion.
@@ -313,61 +350,6 @@ function annotateTestSuccess() {
   addTestSuccess "${_test}";
 }
 
-### ASSERTIONS ###
-
-## Asserts given condition holds true.
-## -> 1: the condition to check.
-## -> 2: the error message.
-## Example:
-##   assertTrue [ 1 == 1 ], ONE_DOES_NOT_EQUAL_ONE_ERROR;
-function assertTrue() {
-  local _condition=${1};
-  local _error="${2}";
-
-  if isTrue ${_condition}; then
-    addTestAssertionSuccess "${FUNCNAME[1]}";
-  else
-    addTestAssertionFailure "${FUNCNAME[1]}" "${_error}";
-  fi
-}
-
-## Asserts no error has been thrown so far in current test.
-## -> 1: The error message.
-## Example:
-##   [call functionX]
-##   assertNoErrorThrown FUNCTION_X_SHOULD_NOT_THROW_ANY_ERROR;
-function assertNoErrorThrown() {
-  local _message="${1}";
-  local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
-  if isEmpty "${_errors}"; then
-    addTestAssertionSuccess "${FUNCNAME[1]}";
-  else
-    addTestAssertionFailure "${FUNCNAME[1]}";
-  fi
-}
-
-## Asserts an error has been thrown so far in current test.
-## -> 1: The error message.
-## Example:
-##   [call functionX]
-##   assertErrorThrown FUNCTION_X_SHOULD_THROW_SOME_ERROR;
-function assertErrorThrown() {
-  local _message="${1}";
-  local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
-  if isEmpty "${_errors}"; then
-      addTestAssertionFailure "${FUNCNAME[1]}" "${1}";
-  else
-    addTestAssertionSuccess "${FUNCNAME[1]}";
-  fi
-}
-
-## Fails the test directly.
-## Example:
-##   fail "my_test";
-function fail() {
-  addTestFailure "${FUNCNAME[1]}";
-}
-
 ## Retrieves tests with issues of some kind.
 ## <- RESULT: The space-separated names of the tests with some issues.
 ## Example:
@@ -395,6 +377,8 @@ function retrieveTestsWithIssues() {
   export RESULT="${_result}";
 }
 
+### REPORTING
+
 ## Logs a summary of the tests.
 ## Example:
 ##   logTestSummary;
@@ -402,6 +386,29 @@ function logSummary() {
   for _test in ${TESTS[@]}; do
     logTestSummary "${_test}";
   done
+}
+
+## Logs the detailed information about why a given test has thrown errors.
+## -> 1: the test name.
+## Example:
+##   logErrorReasons "my_test";
+function logErrorReasons() {
+  local _test="${1}";
+  local _count=${TEST_ERRORS[${_test}]};
+  local -i _i=0;
+  local _error;
+  local _message;
+  local _lineNumber;
+
+  if [ ${_count} -gt 0 ]; then
+      for _i in $(seq 0 $((_count-1))); do
+        _error="${TEST_ERROR_MESSAGES[${_test}:${_i}]}";
+        evalConstant "${_error}" "${_error}";
+        _message="${RESULT}";
+        logInfo -n "${_message}";
+        logInfoResult FAILURE "${_test}";
+      done
+  fi
 }
 
 ## Logs the detailed information about why a given test has failed.
@@ -418,7 +425,7 @@ function logFailureReasons() {
 
   if [ ${_count} -gt 0 ]; then
       for _i in $(seq 0 $((_count-1))); do
-        _error="${TEST_ERROR_MESSAGES[${_test}:${_i}]}";
+        _error="${TEST_FAILURE_MESSAGES[${_test}:${_i}]}";
         evalConstant "${_error}" "${_error}";
         _message="${RESULT}";
         logInfo -n "${_message}";
@@ -438,14 +445,20 @@ function logFailedAssertions() {
   local _error;
   local _message;
   local _lineNumber;
+  local _context;
 
   if [ ${_count} -gt 0 ]; then
       for _i in $(seq 0 $((_count-1))); do
         _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
-        _error="${TEST_ASSERTION_ERROR_MESSAGES[${_test}:${_i}]}";
+        _error="${TEST_ASSERTION_FAILURE_MESSAGES[${_test}:${_i}]}";
         evalConstant "${_error}" "${_error}";
         _message="${RESULT}";
-        logInfo -n "${_message}";
+        _context="${TEST_ASSERTION_FAILURE_CONTEXT[${_test}:${_i}]}";
+        if isEmpty "${_context}"; then
+            logInfo -n "${_message}";
+        else
+          logInfo -n "${_message}: ${_context}";
+        fi
         logInfoResult FAILURE "${_test}:${_lineNumber}";
       done
   fi
@@ -464,31 +477,29 @@ function logTestSummary() {
   local _assertionSuccesses;
 
   _errors="${TEST_ERRORS[${_test}]}";
-  if ! isEmpty "${_errors}"; then
-    logInfo -n "Test ${_test}: errors";
-    logInfoResult FAILURE "${_errors}";
-  else
+  if isEmpty "${_errors}" || [ ${_errors} -eq 0 ]; then
     _failures="${TEST_FAILURES[${_test}]}";
-    if ! isEmpty "${_failures}"; then
-      logInfo -n "Test ${_test}: failures";
-      logInfoResult FAILURE "${_failures}";
-      logFailureReasons "${_test}";
-    else
-      _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
-      if ! isEmpty "${_assertionFailures}" && [ ${_assertionFailures} -gt 0 ]; then
-        logInfo -n "Test ${_test}: assertions failed";
-        logInfoResult FAILURE "${_assertionFailures}";
-        logFailedAssertions "${_test}";
-      else
+    _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
+    if isEmpty "${_assertionFailures}" || [ ${_assertionFailures} -eq 0 ]; then
         logInfo -n "Test ${_test}: assertions passed";
         _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
         if isEmpty "${_assertionSuccesses}"; then
-          logInfoResult FAILURE "0";
+            logInfoResult FAILURE "0";
         else
           logInfoResult SUCCESS "${_assertionSuccesses}";
         fi
-      fi
+    else
+      logInfo -n "Test ${_test}: assertions failed";
+      logInfoResult FAILURE "${_assertionFailures}";
+      logFailedAssertions "${_test}";
+      logInfo -n "Test ${_test}: failures";
+      logInfoResult FAILURE "${_failures}";
+      logFailureReasons "${_test}";
     fi
+  else
+    logInfo -n "Test ${_test}: errors";
+    logInfoResult FAILURE "${_errors}";
+    logErrorReasons "${_test}";
   fi
 }
 
@@ -509,7 +520,7 @@ function __dwtest() {
 
   for _t in ${_tests}; do
     logInfo -n "Running ${_t}";
-    if runTest "${_t}" > /dev/null 2&>1; then
+    if runTest "${_t}"; then
       logInfoResult SUCCESS "pass";
     else
       logInfoResult FAILURE "failed";
@@ -540,5 +551,150 @@ function __dwCallback() {
   fi
 }
 
+### ASSERTIONS ###
+
+## Asserts given condition holds true.
+## -> 1: the condition to check.
+## -> 2: the error message.
+## Example:
+##   assertTrue [ 1 == 1 ], ONE_DOES_NOT_EQUAL_ONE;
+function assertTrue() {
+  local _condition=${1};
+  if isEmpty "${_condition}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'condition' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  local _error="${2}";
+  if isEmpty "${_error}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'error' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  local _conditionResult="${RESULT}";
+
+  if isTrue ${_condition}; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_error}";
+  fi
+
+  export RESULT="${_conditionResult}";
+}
+
+## Asserts given condition holds true.
+## -> 1: the condition to check.
+## -> 2: the error message.
+## Example:
+##   assertFalse [ 1 != 1 ], ONE_DOES_NOT_EQUAL_ONE;
+function assertFalse() {
+  local _condition=${1};
+  if isEmpty "${_condition}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'condition' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  local _error="${2}";
+  if isEmpty "${_error}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'error' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  assertTrue [! ${_condition} ] ${_error};
+}
+
+## Asserts no error has been thrown so far in current test.
+## -> 1: The error message.
+## Example:
+##   [call functionX]
+##   assertNoErrorThrown FUNCTION_X_SHOULD_NOT_THROW_ANY_ERROR;
+function assertNoErrorThrown() {
+  local _message="${1}";
+  if isEmpty "${_message}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+
+  local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
+  if isEmpty "${_errors}"; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_message}";
+  fi
+}
+
+## Asserts an error has been thrown so far in current test.
+## -> 1: The error message.
+## Example:
+##   [call functionX]
+##   assertErrorThrown FUNCTION_X_SHOULD_THROW_SOME_ERROR;
+function assertErrorThrown() {
+  local _message="${1}";
+  if isEmpty "${_message}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+
+  local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
+  if isEmpty "${_errors}"; then
+      addTestAssertionFailure "${FUNCNAME[1]}" "${1}";
+  else
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+    _removeTestError "${FUNCNAME[1]}";
+  fi
+}
+
+## Asserts both values are equal.
+## -> 1: The expected value.
+## -> 2: The actual value.
+## -> 3: The error message.
+## Example:
+##   assertEquals 1 1 "1 does not equal 1";
+function assertEquals() {
+  local _expected="${1}";
+  local _actual="${2}";
+  local _message="${3}";
+  if isEmpty "${_expected}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'expected' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  if isEmpty "${_actual}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'actual' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  if isEmpty "${_message}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+
+  if [ "x${_expected}" == "x${_actual}" ]; then
+      addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} != ${_actual})";
+  fi
+}
+
+## Asserts both values are different.
+## -> 1: The expected value.
+## -> 2: The actual value.
+## -> 3: The error message.
+## Example:
+##   assertEquals 1 2 "1 is equal to 2";
+function assertNotEquals() {
+  local _expected="${1}";
+  local _actual="${2}";
+  local _message="${3}";
+  if isEmpty "${_expected}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'expected' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  if isEmpty "${_actual}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'actual' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+  if isEmpty "${_message}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+  fi
+
+  if [ "x${_expected}" != "x${_actual}" ]; then
+      addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} == ${_actual})";
+  fi
+}
+
+## Fails the test directly.
+## Example:
+##   fail "my_test";
+function fail() {
+  addTestFailure "${FUNCNAME[1]}";
+}
+
 _sourceDryWit $*;
+
 
