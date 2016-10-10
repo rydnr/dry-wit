@@ -25,7 +25,7 @@ set -o pipefail # In a pipe, the exit status of the last command that threw a no
 export TRUE=0;
 export FALSE=1;
 
-export _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
+_dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
 
 # IFS stuff
 _OLD_IFS="${IFS}";
@@ -57,7 +57,7 @@ export FAILURE=1;
 export IN_PROGRESS=2;
 export UNDEFINED=255;
 
-export -a _DRY_WIT_LOG_STACK=();
+export _DRY_WIT_LOG_STACK=();
 export _DRY_WIT_LOG_CATEGORY_STACK=();
 export LOG_CATEGORY_NAMESPACE="";
 export _DRY_WIT_LOG_LEVEL_STACK=();
@@ -138,7 +138,7 @@ function upvars() {
   local _flag="${1}";
 
   if isEmpty "${_flag}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
   fi
 
   while (( $# )); do
@@ -152,12 +152,12 @@ function upvars() {
                                               return 1; }
         # Assign array of -aN elements
         [[ "$2" ]] && unset -v "$2" && eval $2=\(\"\${@:3:${1#-a}}\"\) && \
-        shift $((${1#-a} + 2)) || { exitWithErrorCode UNACCEPTABLE_API_CALL "\`$1${2+ }$2': missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}"; }
+          shift $((${1#-a} + 2)) || { exitWithErrorCode UNACCEPTABLE_API_CALL "\`$1${2+ }$2': missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"; }
         ;;
       -v)
         # Assign single value
         [[ "$2" ]] && unset -v "$2" && eval $2=\"\$3\" && \
-        shift 3 || { exitWithErrorCode UNACCEPTABLE_API_CALL "$1: missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}"; }
+          shift 3 || { exitWithErrorCode UNACCEPTABLE_API_CALL "$1: missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"; }
         ;;
       --help) echo "\
 Usage: local varname [varname ...] &&
@@ -176,7 +176,7 @@ This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law."
                  return 0 ;;
       *)
-        exitWithErrorCode UNACCEPTABLE_API_CALL "$1: invalid option to ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
+        exitWithErrorCode UNACCEPTABLE_API_CALL "$1: invalid option to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
     esac
   done
 }
@@ -199,14 +199,7 @@ function _traceApiCall() {
 ## Example:
 ##   debugEcho "message";
 function _debugEcho() {
-  echo "$*" >> ${_dryWitDevLogFile};
-}
-
-## PRIVATE
-## Alias for _debugEcho.
-## See _debugEcho.
-function _echoDebug() {
-  _debugEcho "$*";
+  echo $* >> ${_dryWitDevLogFile};
 }
 
 ## PUBLIC
@@ -223,6 +216,30 @@ function isEmpty() {
     _rescode=${FALSE};
   fi
   return ${_rescode};
+}
+
+## PUBLIC
+## Performs a precondition check on given parameter.
+## -> 1: The parameter name.
+## -> 2: The parameter value.
+## -> 3: The parameter index.
+## Example:
+##   checkNotEmpty "user" "${user}" 1 # -> throws an error if the first (1) parameter ("user") is empty.
+function checkNotEmpty() {
+  local _name="${1}";
+  _debugEcho "Checking ${_name} for ${FUNCNAME[1]}";
+  if isEmpty "${_name}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'uid' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+  local _value="${2}";
+  local _index="${3}";
+  if isEmpty "${_index}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_value}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
 }
 
 ## PUBLIC
@@ -253,9 +270,8 @@ function isVariableDefined() {
 #  set +o nounset  # allow unset variables
 #  eval "[ -v \${$1} ] 2> /dev/null"
   #  eval "[ -v ${1} ] 2> /dev/null"
-  if isEmpty "${_var}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'var' (1) cannot be empty when calling 'isVariableDefined'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "var" "${_var}" 1
+
   if [ -v "${_var}" ]; then
     _rescode=${TRUE};
   else
@@ -283,6 +299,8 @@ function __dwDebugArray() {
 ## <- 0: if the value is true; 1 otherwise.
 function isTrue() {
   local _value="${1}";
+#  checkNotEmpty "value" "${_value}" 1;
+
   local _rescode;
   if [ "${_value}" == "${TRUE}" ]; then
     _rescode=${TRUE};
@@ -302,6 +320,8 @@ function isTrue() {
 ## <- 0: if the value is false; 1 otherwise.
 function isFalse() {
   local _rescode;
+  checkNotEmpty "value" "${1}" 1;
+
   if isTrue $*; then
     _rescode=${FALSE};
   else
@@ -316,6 +336,7 @@ function isFalse() {
 # <- RESULT: The variable value.
 function _evalVar() {
   local _varName="${1}";
+  checkNotEmpty "varName" "${_varName}" 1;
   local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh)";
   export RESULT="${_result}";
 }
@@ -323,7 +344,7 @@ function _evalVar() {
 # PUBLIC
 # Declares a new environment variable.
 # -> 1: The variable name.
-# -> 2: The variable description.
+# -> 2: The variable description (optional).
 # -> 3: The default value (optional).
 # -> 4: The command to retrieve the actual value (optional).
 function defineEnvVar() {
@@ -336,11 +357,7 @@ function defineEnvVar() {
   local _description;
   local _command;
 
-  if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  elif isEmpty "${_varDescription}" && [ "${FUNCNAME[1]}" != "overrideEnvVar" ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'description' (2) for '${_varName}' cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "varName" "${_varName}" 1;
 
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
@@ -404,9 +421,7 @@ function _addEnvVar() {
   local _varName="${1}";
   local _varValue="${2:-}";
 
-  if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "varName" "${_varName}" 1;
 
   if ! isEnvVarDefined "${_varName}"; then
     appendEnvVariable ${_varName} ENV_VARIABLES;
@@ -423,9 +438,7 @@ function isEnvVarDefined() {
   local e;
   local _rescode=${FALSE};
 
-  if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "varName" "${_varName}" 1;
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
@@ -446,9 +459,7 @@ function isEnvVarDefined() {
 function _evalEnvVar() {
   local _varName="${1}";
 
-  if isEmpty "${_varName}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "varName" "${_varName}" 1;
 
   _evalVar "${_varName}_DEFAULT";
   local _defaultValue="${RESULT}";
@@ -457,8 +468,10 @@ function _evalEnvVar() {
 
   if [[ ! -n ${_varValue} ]]; then
     if [[ -n "${DRY_WIT_EVAL_DEFAULTS_FLAG:-}" ]]; then
+#      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
       _evalVar "${_varName}_DEFAULT_COMMAND";
       local _defaultCommand="${RESULT}";
+#      echo "${_defaultCommand}";
       if [[ -n ${_defaultCommand} ]]; then
         logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
         local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
@@ -719,11 +732,11 @@ function createTempFolder() {
   fi
   local result=$(mktemp -p "${_dirname}" -d -t ".${_prefix}.XXXXXX");
   local _aux=$?;
-  if [ $_aux -ne 0 ]; then
+  if isFalse $_aux; then
     result=$(mktemp -d -t ".${_prefix}.XXXXXX");
     _aux=$?;
   fi
-  if [ $_aux -ne 0 ]; then
+  if isFalse $_aux; then
      exitWithErrorCode $1;
   fi
   addFileToCleanup "${result}";
@@ -936,15 +949,10 @@ function printErrorMessage() {
 
 function exitWithErrorCode() {
   local _rescode;
-  if inDryWitTest; then
-    # This function is in dry-wit-test
-    addTestError "${FUNCNAME[2]}" $@;
-  else
-    printErrorMessage $@;
-    _rescode=$?;
-    cleanup;
-    exit ${_rescode};
-  fi
+  printErrorMessage $@;
+  _rescode=$?;
+  cleanup;
+  exit ${_rescode};
 }
 
 # Internal functions
@@ -1247,9 +1255,7 @@ function _uncachedGetTermWidthForTerm() {
   local _result;
   local _term="${1}";
 
-  if isEmpty "${_term}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'term' (1) is mandatory when calling ${FUNCNAME[2]}. Review ${FUNCNAME[3]} in ${BASH_SOURCE[3]}:${BASH_LINENO[2]}";
-  fi
+  checkNotEmpty "term" "${_term}" 1;
 
   $(tput cols &> /dev/null > /dev/null 2>&1);
   _rescode=$?;
@@ -1615,28 +1621,15 @@ function logInfoFile() {
   fi
 }
 
-## Logs a message under the INFO category.
-## -> 1: The message.
-## Example:
-##   logInfo "Working";
 function logInfo() {
-  local _message="$@";
-  if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
   if isInfoEnabled; then
     _logStuff INFO "$@";
   fi
 }
 
-## Logs the outcome of the current operation, under the INFO category.
-## -> 1: The outcome message.
-## Example:
-##   logInfo -n "Computing 1+1";
-##   logInfoResult SUCCESS "2";
 function logInfoResult() {
   if isInfoEnabled; then
-      _logStuffResult INFO "$@";
+    _logStuffResult INFO "$@";
   fi
 }
 
@@ -1656,27 +1649,15 @@ function logFile() {
   cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
 }
 
-## Auxiliary function to log a message under a certain category.
-## -> 1: The log level.
-## -> 2: -n to specify a message waiting for an outcome. (optional)
-## -> 3: The message.
-## Example:
-##   _logStuff INFO -n "Working";
 function _logStuff() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
   local _minusN="${1}";
   if [ "-n" == "${_minusN}" ]; then
     shift;
   fi
-  local _message="$@";
-  if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2/3+) is mandatory when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]} in ${BASH_SOURCE[2]}:${BASH_LINENO[1]}";
-  fi
-  _logInProgress "${_level}" "${_message}";
+  _logInProgress "${_level}" "$@";
   if [ "-n" != "${_minusN}" ]; then
     echo;
     _popLog;
@@ -1684,21 +1665,15 @@ function _logStuff() {
   fi
 }
 
-## PRIVATE
-## Auxiliary function to log the outcome of the current operation, under certain log level.
-## -> 1: The log level.
-## -> 2+: See _logCompleted parameters.
 function _logStuffResult() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
   local -i _nestedTasks;
   _numberOfNestedInProgressTasks;
   _nestedTasks=$?;
   if [ ${_nestedTasks} -eq 0 ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]} in ${BASH_SOURCE[2]}:${BASH_LINENO[1]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
   fi
   _logCompleted "${_level}" "$@";
 }
@@ -1743,7 +1718,7 @@ function _pushLogLevel() {
 ## <- Such count.
 ## Example:
 ##   _numberOfNestedInProgressTasks;
-##   _count=$?;
+##   _count=$?
 function _numberOfNestedInProgressTasks() {
   local _rescode;
   _rescode=${#_DRY_WIT_LOG_STACK[@]};
@@ -1988,9 +1963,7 @@ function _retrieveOutcomeTextPositionInLogOutcome() {
 ##    echo "${_DRY_WIT_LOG_PREFIX_TOKENS[*]}"
 function  _retrieveLogPrefixTokens() {
   local _category="${1}";
-  if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "category" "${_category}" 1;
 
   local _levelVar="${2}";
 
@@ -2037,10 +2010,8 @@ function  _retrieveLogPrefixTokens() {
 ##    echo "${_DRY_WIT_LOG_OUTCOME_TOKENS[*]}"
 function  _retrieveLogOutcomeTokens() {
   local _text="${1}";
-  if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
+  checkNotEmpty "text" "${_text}" 1;
+  
   local _result=();
   local _aux="";
   local _timestamp;
@@ -2073,9 +2044,7 @@ function  _retrieveLogOutcomeTokens() {
 ##    echo "${_DRY_WIT_LOG_OUTCOME_COLORS[*]}"
 function _retrieveLogOutcomeColors() {
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 1;
 
   local _result=();
   local _aux="";
@@ -2108,9 +2077,7 @@ function _retrieveLogOutcomeColors() {
 ##   echo "Color -> ${RESULT}"
 function _retrieveKeywordColor() {
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 1;
   local _defaultColor="${2:-${NO_COLOR}}";
 
   local _result;
@@ -2137,14 +2104,10 @@ function _retrieveKeywordColor() {
 ##   _echoLogPrefix "cat" DEBUG
 function _echoLogPrefix() {
   local _category="${1}";
-  if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "category" "${_category}" 1;
 
   local _level="${2}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 2;
 
   local _allowsColors;
   allowsColors;
@@ -2161,14 +2124,10 @@ function _echoLogPrefix() {
 ##   echo "log prefix -> ${RESULT}";
 function _retrieveLogPrefix() {
   local _category="${1}";
-  if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "category" "${_category}" 1;
 
   local _level="${2}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 2;
 
   local _result="$(_echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
   export RESULT="${_result}";
@@ -2183,19 +2142,13 @@ function _retrieveLogPrefix() {
 ##   _echoColorAwareLogPrefix "cat" ${TRUE} DEBUG
 function _echoColorAwareLogPrefix() {
   local _category="${1}";
-  if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "category" "${_category}" 1;
 
   local _allowsColors=${2};
-  if isEmpty "${_allowsColors}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'allowsColors' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "allowsColors" "${_allowsColors}" 2;
 
   local _level="${3}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (3) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 3;
 
   local _len;
   local _colors;
@@ -2253,21 +2206,14 @@ function _retrieveLogNamespace() {
 ##   _echoLogOutcome DEBUG SUCCESS "sample"
 function _echoLogOutcome() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
 
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 2;
   shift;
 
   local _text="${@}";
-  if isEmpty "${_text}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
   local _len;
   local _allowsColors;
   local _colors;
@@ -2323,15 +2269,11 @@ function _echoLogOutcome() {
 ##   _echoLogOutcome DEBUG SUCCESS "sample"
 function _echoLogOutcomeNested() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
 
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 2;
   shift;
 
   local _text="${@}";
@@ -2367,14 +2309,10 @@ function _echoLogOutcomeNested() {
 ##  _alignRight "Finishing work" "done";
 function _alignRight() {
   local _logLineMessage="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "message" "${_logLineMessage}" 1;
 
   local _outcome="${2}";
-  if isEmpty "${_outcome}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'outcome' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "outcome" "${_outcome}" 2;
 
   local _logMessage;
 
@@ -2431,13 +2369,10 @@ function echoInColor() {
     _flagMinusN=${FALSE};
   fi
   local _color="${1}";
-  if isEmpty "${_color}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'color' (1) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "color" "${_color}" 1;
+
   local _text="${2}";
-  if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (2) is mandatory when calling '${FUNCNAME[0]}'. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "text" "${_text}" 2;
   local _colorAux="";
   local _inColor=${FALSE};
 
@@ -2476,7 +2411,7 @@ function resetColor() {
 ## PUBLIC
 ## Echoes given text, colorized.
 ## -> 1: The text to colorize.
-## -> 2: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text) (optional).
+## -> 2: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text).
 ## -> 3: The default color (optional).
 ## Example:
 ##   echoColorizeText "done" SUCCESS;
@@ -2484,11 +2419,6 @@ function echoColorizedText() {
   local _text="${1}";
   local _keyword="${2}";
   local _defaultColor="${3:-${UNDEFINED_COLOR}}";
-
-  if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
   local _color="";
   allowsColors;
   _allowsColors=$?;
@@ -2564,37 +2494,27 @@ function echoColorizedTextWithColor() {
 ##   # [...] A message to log
 function _logMessage() {
   local _level="${1}";
-
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
 
   shift;
   local _message="$@";
-
+  checkNotEmpty "message" "${_message}" 2;
   _logInProgress "${_level}" "${_message}";
   echo;
 }
 
 ## PRIVATE
 ## Prints a log message, indicating some uncompleted task.
-## -> 1: The log level.
-## -> 2: The message.
+## -> 1: The message.
 ## Example:
 ##   _logInProgress "Calculating ...";
 ##   # [...] Calculating ...
 function _logInProgress() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
 
   local _message="$@";
-  if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
   local -i nestedTasks;
   local _category;
   _retrieveLogNamespace;
@@ -2620,18 +2540,16 @@ function _logInProgress() {
 ##   # [...<cat>|o] Calculating ...
 function _logInProgressNested() {
   local _category="${1}";
-  if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "category" "${_category}" 1;
   shift;
 
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 2;
   shift;
 
   local _message="$@";
+  checkNotEmpty "message" "${_message}" 3;
+
   local _logPrefix;
   _pushLog "${_message}";
   _pushLogCategory "${_category}";
@@ -2658,22 +2576,15 @@ function _logInProgressNested() {
 ##   # [...<cat|.>] Calculating ...
 function _logInProgressNoNested() {
   local _category="${1}";
-  if isEmpty "${_category}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'category' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "category" "${_category}" 1;
   shift;
 
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 2;
   shift;
 
   local _message="$@";
-  if isEmpty "${_message}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
+  checkNotEmpty "message" "${_message}" 3;
   local _logPrefix;
 
   _logPrefix="${RESULT}";
@@ -2693,20 +2604,15 @@ function _logInProgressNoNested() {
 ##   _logCompleted INFO SUCCESS "done";
 function _logCompleted() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
 
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 2;
   shift;
   local _text="${@}";
-  if isEmpty "${_text}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (3+) is mandatory when calling ${FUNCNAME[2]}. Review ${FUNCNAME[3]} in ${BASH_SOURCE[3]}:${BASH_LINENO[2]}";
-  fi
+  checkNotEmpty "text" "${_text}" 3;
+
   local -i nestedTasks;
 
   _numberOfNestedInProgressTasks;
@@ -2727,21 +2633,16 @@ function _logCompleted() {
 ##   _logCompletedNoNested INFO SUCCESS "done";
 function _logCompletedNoNested() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
 
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 2;
   shift;
 
   local _text="${@}";
-  if isEmpty "${_text}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (3+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "text" "${_text}" 3;
+
   _echoLogOutcome "${_level}" "${_keyword}" "${_text}";
   _popLog;
   _popLogCategory;
@@ -2758,18 +2659,16 @@ function _logCompletedNoNested() {
 ##   _logCompletedNested INFO SUCCESS "done";
 function _logCompletedNested() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
 
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 2;
   shift
 
   local _message="$@";
+  checkNotEmpty "message" "${_message}" 3;
+
   local _nestedTask;
   local _nestedTaskCategory;
   local _logPrefix;
@@ -2797,25 +2696,21 @@ function _logCompletedNested() {
 ##   _logCompletedNested SUCCESS "done";
 function _logCompletedNestedNoPop() {
   local _level="${1}";
-  if isEmpty "${_level}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'level' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "level" "${_level}" 1;
   shift;
 
   local _keyword="${1}";
-  if isEmpty "${_keyword}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'keyword' (2) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "keyword" "${_keyword}" 2;
   shift
   local _message="$@";
+  checkNotEmpty "message" "${_message}" 3;
+
   _echoLogOutcomeNested "${_level}" "${_keyword}" "${_message}";
 }
 
 function urlEncode() {
   local _text="$1";
-  if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "text" "${_text}" 1;
 
     echo "${_text}"  \
   | sed 's % %25 g'  \
@@ -2855,9 +2750,7 @@ function urlEncode() {
 ##   fi
 function readConfFile() {
   local _confFile="${1}";
-  if isEmpty "${_confFile}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'confFile' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "confFile" "${_confFile}" 1;
   local result=${TRUE};
 
   [ ! -e "${_confFile}" ] && result=${FALSE};
@@ -3082,9 +2975,9 @@ function uncompress() {
     logInfo -n "Uncompressing ${_file}";
     tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
     if [ $? == 0 ]; then
-      logInfoResult SUCCESS "Done";
+      logInfoResult "Done";
     else
-      logInfoResult FAILURE "Failed";
+      logInfoResult "Failed";
       logDebugFile "${_errorOutput}";
       _result=2;
     fi
@@ -3279,9 +3172,7 @@ function _functionPresent() {
 ##   local _upcased="${RESULT}";
 function toUpper() {
   local _text="${1}";
-  if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "text" "${_text}" 1;
   local _result=$(echo "${_text}" | awk '{print toupper($0);}');
   export RESULT="${_result}";
 }
@@ -3301,9 +3192,7 @@ function normalize() {
 ## See normalize()
 function _uncachedNormalize() {
   local _text="${1}";
-  if isEmpty "${_text}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'text' (1) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[3]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "text" "${_text}" 1;
   local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
   export RESULT="${_result}";
 }
@@ -3457,7 +3346,7 @@ function _parseCommonInput() {
          ;;
       -X:e | --X:eval-defaults)
           export DRY_WIT_EVAL_DEFAULTS_FLAG=1;
-         ;;
+          ;;
     esac
   done
   IFS="${_oldIFS}";
@@ -3606,6 +3495,8 @@ function groupAlreadyExists() {
 ##   echo "The name of user 1 is ${RESULT}";
 function retrieveUserFromUid() {
   local _uid="${1}";
+  checkNotEmpty "uid" "${_uid}" 1;
+
   local _result;
   local _rescode;
 
@@ -3620,15 +3511,15 @@ function retrieveUserFromUid() {
 ## Retrieves the group id of given group.
 ## -> 1: The group name.
 ## <- RESULT: The group id.
-##
+## <- 0/${TRUE} if the gid is processed successfully; 1/${FALSE} otherwise.
 ## Example:
-##   retrieveGroupFromGid "100";
-##   echo "The name of group 1 is ${RESULT}";
+##   if retrieveGroupFromGid "100"; then
+##     echo "The name of group 1 is ${RESULT}";
+##   fi
 function retrieveGroupFromGid() {
   local _gid="${1}";
-  if isEmpty "${_gid}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'gid' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "gid" "${_gid}" 1;
+
   local _result;
   local _rescode;
 
@@ -3651,6 +3542,7 @@ function retrieveGroupFromGid() {
 ##   echo "The name of user root is ${RESULT}";
 function retrieveUidFromUser() {
   local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
   local _result;
   local _rescode;
 
@@ -3676,6 +3568,8 @@ function retrieveUidFromUser() {
 ##   echo "The name of group admin is ${RESULT}";
 function retrieveGidFromGroup() {
   local _group="${1}";
+  checkNotEmpty "group" "${_group}" 1;
+
   local _result;
   local _rescode;
 
@@ -3702,6 +3596,7 @@ function retrieveGidFromGroup() {
 ## fi
 function createUser() {
   local _userName="${1}";
+  checkNotEmpty "userName" "${_userName}" 1;
   local _rescode;
 
   logDebug -n "Creating user ${_userName}";
@@ -3727,6 +3622,8 @@ function createUser() {
 ## fi
 function createGroup() {
   local _groupName="${1}";
+  checkNotEmpty "group" "${_groupName}" 1;
+
   local _rescode;
 
   logDebug -n "Creating group ${_groupName}";
@@ -3752,6 +3649,7 @@ function createGroup() {
 ## fi
 function deleteUser() {
   local _userName="${1}";
+  checkNotEmpty "user" "${_userName}" 1;
   local _rescode;
 
   logDebug -n "Deleting user ${_userName}";
@@ -3777,6 +3675,7 @@ function deleteUser() {
 ## fi
 function deleteGroup() {
   local _groupName="${1}";
+  checkNotEmpty "group" "${_groupName}" 1;
   local _rescode;
 
   logDebug -n "Deleting group ${_groupName}";
@@ -3792,6 +3691,31 @@ function deleteGroup() {
   return ${_rescode};
 }
 
+## Resolves the path of a command for given user.
+## -> 1: The user.
+## -> 2: The command.
+## <- RESULT: The path of 'command' for given user.
+## <- 0/${TRUE} if the command gets resolved to a path for given user; 1/${FALSE} otherwise.
+## Example:
+##   if resolveCommandForUser "${SERVICE_USER}" "gradle"; then
+##     _command="${RESULT}";
+##   fi
+function resolveCommandForUser() {
+  local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
+  local _command="${2}";
+  checkNotEmpty "command" "${_command}" 2;
+  local _rescode;
+
+  local _result="$(su - ${_user} -c "which ${_command}" 2> /dev/null)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+      export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 ## Runs the command in a folder, under a given user.
 ## -> 1: The user id.
 ## -> 2: The group id.
@@ -3801,9 +3725,13 @@ function deleteGroup() {
 ##  runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"
 function runCommandAsUidGid() {
   local _uid="${1}";
+  checkNotEmpty "uid" "${_uid}" 1;
   local _gid="${2}";
+  checkNotEmpty "gid" "${_gid}" 2;
   local _folder="${3}";
+  checkNotEmpty "folder" "${_folder}" 3;
   local _command="${4}";
+  checkNotEmpty "command" "${_command}" 4;
   shift
   shift
   shift
@@ -3812,35 +3740,19 @@ function runCommandAsUidGid() {
   local _exports="$(export)";
 
   createTempFile
-  local _script="${RESULT}";
+  local _runme="${RESULT}";
 
   cat << EOF > ${_runme}
 #!/bin/bash
 
 ${_exports}
+declare -x HOME="/home/${_user}"
 cd ${_folder}
 ${_command} ${_args}
 EOF
-
-  logInfo "Running ${_command} as ${user} in ${_folder}";
-  runScriptAsUidGid "${_uid}" "${_gid}" "${_script}";
-}
-
-## Runs a script in a folder, under a given user.
-## -> 1: The user id.
-## -> 2: The group id.
-## -> 3: the script file.
-## Example:
-##  echo "ls -ltriha /tmp" > /tmp/script
-##  runScriptUidGid 1000 100 /tmp /tmp/script
-function runScriptAsUidGid() {
-  local _uid="${1}";
-  local _gid="${2}";
-  local _script="${3}";
-
   chmod +x ${_runme}
 
-  logDebug "Running ${_script} as ${_uid}:${_gid}";
+  logDebug "Running ${_command} ${_args} as ${SERVICE_USER}:${SERVICE_GROUP}";
   exec 2>&1
   chpst -u :${_uid}:${_gid} -U :${_uid}:${_gid} ${_runme}
 }
@@ -3853,7 +3765,11 @@ function runScriptAsUidGid() {
 ## updateUserUid "guest" 1001
 function updateUserUid() {
   local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
+
   local _uid="${2}";
+  checkNotEmpty "uid" "${_uid}" 2;
+
   local _rescode;
 
   logInfo -n "Changing ${_user}'s uid to ${_uid}";
@@ -3877,10 +3793,13 @@ function updateUserUid() {
 ## updateUserGid "guest" 103
 function updateUserGid() {
   local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
+
   local _gid="${2}";
+  checkNotEmpty "gid" "${_gid}" 2;
   local _rescode;
 
-  logInfo -n "Changing ${_user}'s primary group as ${_gid}";
+  logInfo -n "Changing ${_user}'s primary group to ${_gid}";
   usermod -g ${_gid} ${_user} > /dev/null 2>&1
   _rescode=$?;
   if isTrue ${_rescode}; then
@@ -3898,7 +3817,7 @@ function updateUserGid() {
 ## <- 0/${TRUE} if the group's gid is updated successfully; 1/${FALSE} otherwise.
 ##
 ## Example:
-## updateUserGid "guests" 103
+## updateGroupGid "guests" 103
 function updateGroupGid() {
   local _group="${1}";
   local _gid="${2}";
@@ -3984,9 +3903,7 @@ function sourceFileIfExists() {
   local _file="${1}";
   local _rescode=${FALSE};
 
-  if isEmpty "${_file}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'file' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+  checkNotEmpty "file" "${_file}" 1;
 
   logTrace -n "Reading ${_file}";
   if [ -e "${_file}" ]; then
@@ -4037,7 +3954,7 @@ function _main() {
   if _functionPresent defineErrors "${_script}"; then
     defineErrors;
   else
-    export -a ERROR_MESSAGES=();
+    export ERROR_MESSAGES=();
   fi
 
   if _functionPresent defineEnvDefaults "${_script}"; then
@@ -4118,31 +4035,6 @@ function uncache() {
   unset rescode_cahe["$*"]
 }
 
-## Checks whether dry-wit is running within dry-wit-test.
-## <- 0/${TRUE} if we are running in test mode; 1/${FALSE} otherwise.
-function inDryWitTest() {
-  local _rescode;
-
-  if [ "${FUNCNAME[2]}" == "_sourceDryWit" ] || \
-     [ "${BASH_SOURCE[4]##*/}" == "dry-wit-test" ]; then
-      _rescode=${TRUE};
-  else
-    _rescode=${FALSE};
-  fi
-
-  return ${_rescode};
-}
-
-if inDryWitTest; then
-    export _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.$(basename ${BASH_SOURCE[1]}).log;
-    source ${SCRIPT_NAME};
-    if _functionPresent __dwCallback "${BASH_SOURCE[1]}"; then
-        __dwCallback;
-    fi
-    __dwtest;
-else
-  export _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
-  source $@;
-  _main $@;
-  cleanup;
-fi
+source $@;
+_main $@;
+cleanup;
