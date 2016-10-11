@@ -2011,7 +2011,7 @@ function  _retrieveLogPrefixTokens() {
 function  _retrieveLogOutcomeTokens() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
-  
+
   local _result=();
   local _aux="";
   local _timestamp;
@@ -2972,12 +2972,12 @@ function uncompress() {
   fi
 
   if [ ${_result} == 0 ]; then
-    logInfo -n "Uncompressing ${_file}";
+    logDebug -n "Uncompressing ${_file}";
     tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
     if [ $? == 0 ]; then
-      logInfoResult "Done";
+      logDebugResult "Done";
     else
-      logInfoResult "Failed";
+      logDebugResult "Failed";
       logDebugFile "${_errorOutput}";
       _result=2;
     fi
@@ -3614,6 +3614,7 @@ function createUser() {
 
 ## Creates a new group.
 ## -> 1: The group name.
+## -> 2: The group id (optional).
 ## <- 0/${TRUE} if the group gets created successfully; 1/${FALSE} otherwise.
 ##
 ## Example:
@@ -3623,13 +3624,19 @@ function createUser() {
 function createGroup() {
   local _groupName="${1}";
   checkNotEmpty "group" "${_groupName}" 1;
+  local _gid="${2}";
 
   local _rescode;
 
   logDebug -n "Creating group ${_groupName}";
 
-  groupadd "${_groupName}";
-  _rescode=$?;
+  if isEmpty "${_gid}"; then
+    groupadd "${_groupName}";
+    _rescode=$?;
+  else
+    groupadd -g "${_gid}" "${_groupName}";
+    _rescode=$?;
+  fi
   if isTrue ${_rescode}; then
     logDebugResult SUCCESS "done";
   else
@@ -3772,13 +3779,13 @@ function updateUserUid() {
 
   local _rescode;
 
-  logInfo -n "Changing ${_user}'s uid to ${_uid}";
+  logDebug -n "Changing ${_user}'s uid to ${_uid}";
   usermod -u ${_uid} ${_user} > /dev/null 2>&1
   _rescode=$?;
   if isTrue ${_rescode}; then
-    logInfoResult SUCCESS "done";
+    logDebugResult SUCCESS "done";
   else
-    logInfoResult FAILURE "failed";
+    logDebugResult FAILURE "failed";
     usermod -u ${_uid} ${_user} 2>&1
   fi
 
@@ -3799,13 +3806,14 @@ function updateUserGid() {
   checkNotEmpty "gid" "${_gid}" 2;
   local _rescode;
 
-  logInfo -n "Changing ${_user}'s primary group to ${_gid}";
+  logDebug -n "Changing ${_user}'s primary group to ${_gid}";
   usermod -g ${_gid} ${_user} > /dev/null 2>&1
   _rescode=$?;
   if isTrue ${_rescode}; then
-    logInfoResult SUCCESS "done";
+    logDebugResult SUCCESS "done";
   else
-    logInfoResult FAILURE "unneeded";
+    logDebugResult FAILURE "unneeded";
+    usermod -g ${_gid} ${_user} 2>&1
   fi
 
   return ${_rescode};
@@ -3823,13 +3831,13 @@ function updateGroupGid() {
   local _gid="${2}";
   local _rescode;
 
-  logInfo -n "Changing ${_group}'s gid to ${_gid}";
+  logDebug -n "Changing ${_group}'s gid to ${_gid}";
   groupmod -g ${_gid} ${_group} > /dev/null 2>&1
   _rescode=$?;
   if isTrue ${_rescode}; then
-    logInfoResult SUCCESS "done";
+    logDebugResult SUCCESS "done";
   else
-    logInfoResult FAILURE "failed";
+    logDebugResult FAILURE "failed";
     groupmod -g ${_gid} ${_group} 2>&1
   fi
 
