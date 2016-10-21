@@ -227,7 +227,6 @@ function isEmpty() {
 ##   checkNotEmpty "user" "${user}" 1 # -> throws an error if the first (1) parameter ("user") is empty.
 function checkNotEmpty() {
   local _name="${1}";
-  _debugEcho "Checking ${_name} for ${FUNCNAME[1]}";
   if isEmpty "${_name}"; then
       exitWithErrorCode UNACCEPTABLE_API_CALL "'uid' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
@@ -1235,7 +1234,7 @@ function _uncachedGetTermWidth() {
     _rescode=$?;
   fi
 
-  _debugEcho "term witdh -> ${_RESULT}";
+#  _debugEcho "term witdh -> ${_RESULT}";
   return ${_rescode};
 }
 
