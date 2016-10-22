@@ -352,6 +352,7 @@ function defineEnvVar() {
   local _varDefault="${3}";
   local _varCommand="${4:-}";
   local _upcasedVarName;
+  local _varValue;
   local _defaultValue;
   local _description;
   local _command;
@@ -361,42 +362,52 @@ function defineEnvVar() {
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
 
-  _evalVar "${_varName}"
-  local _varValue="${RESULT}";
-  export ${_upcasedVarName}="${_varValue}";
-
   if ! isEmpty "${_varDescription}"; then
     _evalVar "${_upcasedVarName}_DESCRIPTION";
     _description="${RESULT}";
 
-    if isEmpty "${_description}"; then
-      export ${_varName}_DESCRIPTION="${_varDescription}";
+    if ! isEmpty "${_description}"; then
+      _addEnvVar "${_upcasedVarName}_DESCRIPTION" "${_varDescription}";
     fi
   fi
 
-  if isEmpty "${_varDefault}"; then
-    _evalVar "${_upcasedVarName}_DEFAULT";
-    _defaultValue="${RESULT}";
+  _evalVar "${_upcasedVarName}"
+  local _varValue="${RESULT}";
+
+  if isEmpty "${_varValue}"; then
+
+    if isEmpty "${_varDefault}"; then
+      _evalVar "${_upcasedVarName}_DEFAULT";
+      _defaultValue="${RESULT}";
+    else
+      _defaultValue="${_varDefault}";
+    fi
+
+    if ! isEmpty "${_defaultValue}"; then
+      _addEnvVar "${_upcasedVarName}_DEFAULT" "${_defaultValue}";
+      _evalVar "${_upcasedVarName}_DEFAULT";
+      _defaultValue="${RESULT}";
+
+      if ! isEmpty "${_defaultValue}"; then
+        _varValue="${_defaultValue}";
+        _addEnvVar "${_upcasedVarName}_DEFAULT" "${_defaultValue}";
+        _addEnvVar "${_upcasedVarName}" "${_varValue}";
+      elif ! isEmpty "${_varCommand}"; then
+        _addEnvVar "${_upcasedVarName}_COMMAND" "${_varCommand}";
+        _evalVar "${_upcasedVarName}_COMMAND";
+        _command="${RESULT}";
+        if ! isEmpty "${_command}"; then
+          _addEnvVar "${_upcasedVarName}_COMMAND" "${_command}";
+        fi
+        _evalVar "${_upcasedVarName}_COMMAND";
+        _varValue="${RESULT}";
+        if ! isEmpty "${_varValue}"; then
+          _addEnvVar "${_upcasedVarName}" "${_varValue}";
+        fi
+      fi
+    fi
   else
-    _defaultValue="${_varDefault}";
-  fi
-
-  if ! isEmpty ${_defaultValue}; then
-    export ${_upcasedVarName}_DEFAULT="${_defaultValue}";
-    _evalVar "${_upcasedVarName}_DEFAULT";
-    _defaultValue="${RESULT}";
-  fi
-
-  _addEnvVar "${_upcasedVarName}" "${_varValue}";
-
-  if ! isEmpty "${_varCommand}"; then
-    _evalVar "${_upcasedVarName}_DEFAULT_COMMAND";
-    _command="${RESULT}";
-    if isEmpty "${_command}"; then
-      export ${_upcasedVarName}_DEFAULT_COMMAND="${_varCommand}";
-    fi
-    _evalVar "${_upcasedVarName}_DEFAULT_COMMAND";
-    local _command="${RESULT}";
+    _addEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
 }
 
@@ -406,10 +417,14 @@ function defineEnvVar() {
 # -> 2: The variable value.
 function overrideEnvVar() {
   local _varName="${1}";
-  local _varDefault="${2}";
+  local _varValue="${2}";
+  local _upcasedVarName;
 
-  defineEnvVar "${_varName}" "" "${_varDefault}" "";
-  _evalEnvVar ${_varName};
+  checkNotEmpty "varName" "${_varName}" 1;
+
+  toUpper "${_varName}";
+  _upcasedVarName="${RESULT}";
+  _addEnvVar "${_upcasedVarName}" "${_varValue}";
 }
 
 # PRIVATE
@@ -426,6 +441,7 @@ function _addEnvVar() {
     appendEnvVariable ${_varName} ENV_VARIABLES;
   fi
   upvar "${_varName}" "${_varValue}";
+  _debugEcho "${_varName}=${_varValue}";
   export "${_varName}"="${_varValue}";
 }
 
