@@ -3122,8 +3122,8 @@ function runCommandLongOutput() {
   logDebug "${_command}";
 
   if isDebugEnabled; then
-      $@ 2>&1 | tee "${_result}";
-      _resultCode=${PIPESTATUS[0]};
+    $@ 2>&1 | tee "${_result}";
+    _resultCode=${PIPESTATUS[0]};
   else
     $@ > "${_result}" 2>&1;
     _resultCode=$?;
