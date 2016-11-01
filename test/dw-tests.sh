@@ -20,7 +20,7 @@ Common flags:
     * -q | --quiet: Be silent.
 EOF
 }
-
+v
 ## Defines the errors.
 ## dry-wit hook
 function defineErrors() {
@@ -55,3 +55,16 @@ function retrieveGroupFromGid_test() {
   local _actualGroup=${RESULT};
   assertEquals "root" ${_actualGroup} RETRIEVEGROUPFROMGID_FAILED_FOR_GROUP_ROOT;
 }
+
+function _retrieveSettingsFiles_test() {
+  local _settingsFiles;
+  _retrieveSettingsFiles;
+  _settingsFiles="${RESULT}";
+  for _f in "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+                "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+                "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+                "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+    assertContains "${_settingsFiles}" "${_f}" "unexpected settings files";
+  done
+}
+

@@ -695,6 +695,24 @@ function fail() {
   addTestFailure "${FUNCNAME[1]}";
 }
 
+## Checks a substring is contained in given text.
+## -> 1: The text.
+## -> 2: The substring.
+## -> 3: The error message.
+## Example:
+##   assertContains "sample text" "sample" "'sample text' does not contain 'sample'";
+function assertContains() {
+  local _text="${1}";
+  local _substring="${2}";
+  local _errorMessage="${3}";
+
+  if [ "${text#${_substring}}" != "${text}" ]; then
+      addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_text}' does not contain  '${_actual}')";
+  fi
+}
+
 _sourceDryWit $*;
 
 

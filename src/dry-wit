@@ -22,8 +22,14 @@
 set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
 #set -o xtrace   # trace what gets executed
 
-export TRUE=0;
-export FALSE=1;
+export _DW_TRUE=0;
+if [ -z ${TRUE+x} ]; then
+    export TRUE=${_DW_TRUE};
+fi
+export _DW_FALSE=1;
+if [ -z ${FALSE+x} ]; then
+    export FALSE=${_DW_FALSE};
+fi
 
 _dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
 
@@ -33,16 +39,38 @@ export IFS=$'\n\t\040';
 
 export _CLEANUP_FILES=();
 
+export _DW_SUCCESS="Success";
+export _DW_DONE="done";
+export _DW_OK="ok";
+if [ -z ${SUCCESS+x} ]; then
+    export SUCCESS="${_DW_SUCCESS}";
+fi
+if [ -z ${DONE+x} ]; then
+    export DONE="${_DW_DONE}";
+fi
+
 export BUILTIN_SUCCESS_KEYWORDS=(\
-  "Success" \
-  "Done" \
-  "Ok" \
+  "${_DW_SUCCESS}" \
+  "${_DW_DONE}" \
+  "${_DW_OK}" \
   );
 
+export _DW_ERROR="Error";
+export _DW_FAILURE="Failure";
+export _DW_FAILED="failed";
+export _DW_KO="ko";
+if [ -z ${FAILURE+x} ]; then
+    export FAILURE="${_DW_FAILURE}";
+fi
+if [ -z ${FAILED+x} ]; then
+    export FAILED="${_DW_FAILED}";
+fi
+
 export BUILTIN_FAILURE_KEYWORDS=(\
-  "Error" \
-  "Failure" \
-  "Ko" \
+  "${_DW_ERROR}" \
+  "${_DW_FAILURE}" \
+  "${_DW_FAILED}" \
+  "${_DW_KO}" \
   );
 
 declare -a BUILTIN_ERRORS;
@@ -494,7 +522,7 @@ function _evalEnvVar() {
           _defaultValue="${_aux}";
           logTraceResult SUCCESS "${_aux}"
         else
-          logTraceResult FAILURE "failed"
+          logTraceResult FAILURE "${_DW_FAILED}"
         fi
       fi
     fi
@@ -624,14 +652,14 @@ function cleanup() {
       logTrace -n "Deleting $i";
       rm -rf $i > /dev/null;
       if [ $? -eq 0 ]; then
-        logTraceResult SUCCESS "done";
+        logTraceResult SUCCESS "${_DW_DONE}";
       else
-        logTraceResult FAILURE "failed";
+        logTraceResult FAILURE "${_DW_FAILED}";
       fi
     done
     IFS="${_oldIFS}";
 
-    logDebugResult SUCCESS "done";
+    logDebugResult SUCCESS "${_DW_DONE}";
   fi
 }
 
@@ -1461,9 +1489,9 @@ function findOutKeyword() {
   local _result;
 
   case "${_value}" in
-    "SUCCESS") _result=${SUCCESS};
+    "${_DW_SUCCESS}") _result=${SUCCESS};
                ;;
-    "FAILURE") _result=${FAILURE};
+    "${_DW_FAILURE}") _result=${FAILURE};
                ;;
     *) if isSuccessKeyword "${_value}"; then
          _result=${SUCCESS};
@@ -1491,7 +1519,7 @@ function _uncachedDefinedTag() {
   local _result;
 
   case "${1}" in
-    "SUCCESS" | "FAILURE") _result=${TRUE};
+    "${_DW_SUCCESS}" | "${_DW_FAILURE}") _result=${TRUE};
        ;;
     *) _result=${FALSE};
        ;;
@@ -2100,7 +2128,7 @@ function _retrieveKeywordColor() {
   case ${_keyword} in
     SUCCESS | "${SUCCESS}") _result="${SUCCESS_COLOR}";
                             ;;
-    FAILURE | "${FAILURE}" | "FAILED" | "failed" | "FAIL" | "fail") _result="${FAILURE_COLOR}";
+    FAILURE | "${FAILURE}" | "${_DW_FAILURE}" | "${_DW_FAILED}" | "FAILED" | "failed" | "FAIL" | "fail") _result="${FAILURE_COLOR}";
                                                                     ;;
     IN_PROGRESS | "${IN_PROGRESS}") _result="${IN_PROGRESS_COLOR}";
                                     ;;
@@ -2262,7 +2290,6 @@ function _echoLogOutcome() {
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     if isTrue ${_allowsColors}; then
-      echo echoInColor \"-n\" "\"${_DRY_WIT_LOG_OUTCOME_COLORS[${_i}]}\"" "\"${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}\"" >> /tmp/echo.txt;
       echoInColor -n "${_DRY_WIT_LOG_OUTCOME_COLORS[${_i}]}" "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
     else
       echo -n "${_DRY_WIT_LOG_OUTCOME_TOKENS[${_i}]}";
@@ -2990,7 +3017,7 @@ function uncompress() {
     logDebug -n "Uncompressing ${_file}";
     tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
     if [ $? == 0 ]; then
-      logDebugResult "Done";
+      logDebugResult "done";
     else
       logDebugResult "Failed";
       logDebugFile "${_errorOutput}";
@@ -3904,7 +3931,7 @@ function _checkScript() {
       exitWithErrorCode MISSING_MANDATORY_VARIABLES $v;
     fi
   done
-  logTraceResult SUCCESS "Done";
+  logTraceResult SUCCESS "done";
   logTrace -n "Checking mandatory functions";
   for f in usage main; do
     _functionPresent $f $_script;
@@ -3913,7 +3940,7 @@ function _checkScript() {
     fi
   done
   IFS="${_oldIFS}";
-  logTraceResult SUCCESS "Done";
+  logTraceResult SUCCESS "${_DW_DONE}";
 }
 
 ## PUBLIC
@@ -3938,6 +3965,12 @@ function sourceFileIfExists() {
   fi
 
   return ${_rescode};
+}
+
+## PRIVATE
+## Retrieves the settings files
+function _retrieveSettingsFiles() {
+  echo 1;
 }
 
 function _setup() {
@@ -4008,7 +4041,7 @@ function _main() {
   if _functionPresent checkRequirements "${_script}"; then
     logTrace -n "Checking declared requirements";
     checkRequirements;
-    logTraceResult SUCCESS "Done";
+    logTraceResult SUCCESS "${_DW_DONE}";
   fi
 
   if _functionPresent checkInput "${_script}"; then
