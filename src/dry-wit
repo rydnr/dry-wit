@@ -394,7 +394,7 @@ function defineEnvVar() {
     _evalVar "${_upcasedVarName}_DESCRIPTION";
     _description="${RESULT}";
 
-    if ! isEmpty "${_description}"; then
+    if isEmpty "${_description}"; then
       _addEnvVar "${_upcasedVarName}_DESCRIPTION" "${_varDescription}";
     fi
   fi
