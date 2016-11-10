@@ -3363,8 +3363,9 @@ function _defineDryWitRequirements() {
 ## the help flag.
 ## -> *: The arguments.
 function _parseCommonInput() {
+  local _help=${FALSE};
+  local _argsToPassToWrappedLogic=${FALSE};
 
-  local _help=${TRUE};
   setInfoEnabled;
 
   local _flags=$(extractFlags $@);
@@ -3372,24 +3373,32 @@ function _parseCommonInput() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _flag in ${_flags}; do
-    _flagCount=$((_flagCount+1));
-    case ${_flag} in
-      -h | --help)
-         _help=1;
-         ;;
-      -v)
-         setDebugEnabled;
-         ;;
-      -vv)
-         setTraceEnabled;
-         ;;
-      -q)
-         setQuietMode;
-         ;;
-      -X:e | --X:eval-defaults)
+    if isTrue ${_argsToPassToWrappedLogic}; then
+      DRY_WIT_REMAINING_ARGS="${DRY_WIT_REMAINING_ARGS} ${_flag}";
+    else
+      _flagCount=$((_flagCount+1));
+      case ${_flag} in
+        -h | --help)
+          _help=${TRUE};
+          ;;
+        -v)
+          setDebugEnabled;
+          ;;
+        -vv)
+          setTraceEnabled;
+          ;;
+        -q)
+          setQuietMode;
+          ;;
+        -X:e | --X:eval-defaults)
           export DRY_WIT_EVAL_DEFAULTS_FLAG=1;
           ;;
-    esac
+        --)
+          _argsToPassToWrappedLogic=${TRUE};
+          shift;
+          ;;
+      esac
+    fi
   done
   IFS="${_oldIFS}";
   shift ${_flagCount};
@@ -3909,7 +3918,7 @@ function addUserToGroup() {
 ## Checks input common to all scripts.
 function _checkCommonInput() {
 
-  if [ ${DRY_WIT_HELP_FLAG} == 1 ]; then
+  if isTrue ${DRY_WIT_HELP_FLAG}; then
     _printHelp;
     exit 0;
   fi
