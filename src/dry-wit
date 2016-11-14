@@ -2557,6 +2557,8 @@ function _logInProgress() {
   shift;
 
   local _message="$@";
+  checkNotEmpty "message" "${_message}" 2;
+
   local -i nestedTasks;
   local _category;
   _retrieveLogNamespace;
