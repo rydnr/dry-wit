@@ -459,6 +459,11 @@ function overrideEnvVar() {
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
   _addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
+
+
+  if ! isEmpty "${_varValue}"; then
+      _addEnvVar "${_upcasedVarName}" "${_varValue}";
+  fi
 }
 
 ## PUBLIC
@@ -526,6 +531,7 @@ function _addOverriddenEnvVar() {
 
   if isEnvVarDefined "${_varName}"; then
       OVERRIDDEN_ENV_VARIABLES["${_varName}"]="${_varValue}";
+      _addEnvVar "${_varName}" "${_varValue}";
   fi
 }
 
@@ -913,7 +919,6 @@ function createTempFileNoCleanup() {
   fi
   _result="$(mktemp -p "${_dirname}"  -t ".${_prefix}.XXXXXXXXXX")";
   _rescode=$?;
-  rm -f ${_result} > /dev/null 2>&1
 
   if isFalse ${_rescode} ; then
      _result="$(mktemp -t ".${_prefix}.XXXXXXXXXX")";
@@ -941,6 +946,7 @@ function createTempFile() {
   local _result;
 
   if createTempFileNoCleanup; then
+      _result="${RESULT}";
       addFileToCleanup "${_result}";
       _rescode=${TRUE};
       export RESULT="${_result}";
