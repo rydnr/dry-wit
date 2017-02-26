@@ -75,6 +75,10 @@ export BUILTIN_FAILURE_KEYWORDS=(\
 
 declare -a BUILTIN_ERRORS;
 declare -a ENV_VARIABLES;
+declare -A OVERRIDDEN_ENV_VARIABLES;
+declare -A ENVIRONMENT_VARIABLES_DEFAULTS;
+declare -A ENVIRONMENT_VARIABLES_DESCRIPTIONS;
+declare -A ENVIRONMENT_VARIABLES_COMMANDS;
 declare -a ERROR_MESSAGES;
 
 #export SUCCESS_KEYWORDS;
@@ -276,16 +280,17 @@ function isNotEmpty() {
 function checkNotEmpty() {
   local _name="${1}";
   if isEmpty "${_name}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'uid' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
   local _value="${2}";
+
+  if isEmpty "${_value}"; then
+      exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
+
   local _index="${3}";
   if isEmpty "${_index}"; then
       exitWithErrorCode UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
-  fi
-
-  if isEmpty "${_value}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
 }
 
@@ -405,56 +410,37 @@ function defineEnvVar() {
   local _description;
   local _command;
 
-  checkNotEmpty "varName" "${_varName}" 1;
+  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty "description" "${_varDescription}" 2;
 
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
 
-  if ! isEmpty "${_varDescription}"; then
-    _evalVar "${_upcasedVarName}_DESCRIPTION";
-    _description="${RESULT}";
-
-    if isEmpty "${_description}"; then
-      _addEnvVar "${_upcasedVarName}_DESCRIPTION" "${_varDescription}";
-    fi
+  if _evalVarDescription "${_upcasedVarName}"; then
+      _description="${RESULT}";
   fi
 
-  _evalVar "${_upcasedVarName}"
-  local _varValue="${RESULT}";
+  if isEmpty "${_description}"; then
+    _addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
+  fi
 
-  if isEmpty "${_varValue}"; then
+  if ! isEmpty "${_varDefault}"; then
+      _addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
+      if _evalVarDefault "${_upcasedVarName}"; then
+          _defaultValue="${RESULT}";
 
-    if isEmpty "${_varDefault}"; then
-      _evalVar "${_upcasedVarName}_DEFAULT";
-      _defaultValue="${RESULT}";
-    else
-      _defaultValue="${_varDefault}";
-    fi
-
-    if ! isEmpty "${_defaultValue}"; then
-      _addEnvVar "${_upcasedVarName}_DEFAULT" "${_defaultValue}";
-      _evalVar "${_upcasedVarName}_DEFAULT";
-      _defaultValue="${RESULT}";
-
-      if ! isEmpty "${_defaultValue}"; then
-        _varValue="${_defaultValue}";
-        _addEnvVar "${_upcasedVarName}_DEFAULT" "${_defaultValue}";
-        _addEnvVar "${_upcasedVarName}" "${_varValue}";
-      elif ! isEmpty "${_varCommand}"; then
-        _addEnvVar "${_upcasedVarName}_COMMAND" "${_varCommand}";
-        _evalVar "${_upcasedVarName}_COMMAND";
-        _command="${RESULT}";
-        if ! isEmpty "${_command}"; then
-          _addEnvVar "${_upcasedVarName}_COMMAND" "${_command}";
-        fi
-        _evalVar "${_upcasedVarName}_COMMAND";
-        _varValue="${RESULT}";
-        if ! isEmpty "${_varValue}"; then
-          _addEnvVar "${_upcasedVarName}" "${_varValue}";
-        fi
+          if ! isEmpty "${_defaultValue}"; then
+              _varValue="${_defaultValue}";
+          elif ! isEmpty "${_varCommand}"; then
+              _addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
+              if _evalVarCommand "${_upcasedVarName}"; then
+                  _varValue="${RESULT}";
+              fi
+          fi
       fi
-    fi
-  else
+  fi
+
+  if ! isEmpty "${_varValue}"; then
     _addEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
 }
@@ -472,7 +458,42 @@ function overrideEnvVar() {
 
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
-  _addOverridenEnvVar "${_upcasedVarName}" "${_varValue}";
+  _addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
+}
+
+## PUBLIC
+## Defines an environment variable, if it's not already defined.
+## -> 1: the variable name.
+## -> 2: The variable description.
+## -> 3: The default value.
+## -> 4: An optional command to provide the variable value at runtime.
+## Example:
+##   if defineButDoNotOverrideEnvVar "MY_VAR" "MY_VAR is used for this and that" "dummy";
+##      echo "MY_VAR defined";
+##   else
+##      echo "MY_VAR already defined. Not overridden"
+##   fi
+function defineButDoNotOverrideEnvVar() {
+  local _varName="${1}";
+  local _varDescription="${2}";
+  local _varDefault="${3}";
+  local _varCommand="${4}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty "description" "${_varDescription}" 2;
+
+  echo "echo \${${_varName}:?no}" | bash 2>&1 > /dev/null;
+  _rescode=$?;
+
+  if isEnvVarDefined ${_rescode}; then
+      logTrace -n "Skipping already-defined ${_varName}";
+      logTraceResult SUCCESS "skipped";
+  else
+    defineEnvVar "${_varName}" "${_varDescription}" "${_varDefault}" "${_varCommand}";
+  fi
+
+  return ${_rescode};
 }
 
 # PRIVATE
@@ -494,23 +515,60 @@ function _addEnvVar() {
 }
 
 # PRIVATE
-# Annotates given environment variable as overriden.
+# Annotates given environment variable as overridden.
 # -> 1: The variable name.
 # -> 2: The value.
-function _addOverridenEnvVar() {
+function _addOverriddenEnvVar() {
   local _varName="${1}";
   local _varValue="${2:-}";
 
   checkNotEmpty "varName" "${_varName}" 1;
 
-  if ! isEnvVarDefined "${_varName}"; then
-      appendEnvVariable ${_varName} OVERRIDEN_ENV_VARIABLES;
+  if isEnvVarDefined "${_varName}"; then
+      OVERRIDDEN_ENV_VARIABLES["${_varName}"]="${_varValue}";
   fi
-  upvar "_overriden_${_varName}" "${_varValue}";
+}
 
-  export "_overriden_${_varName}"="${_varValue}";
+# PRIVATE
+# Annotates the description of given environment variable.
+# -> 1: The variable name.
+# -> 2: The description.
+function _addEnvVarDescription() {
+  local _varName="${1}";
+  local _varDescription="${2}";
 
-  _addEnvVar "${_varName}" "${_varValue}";
+  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty "description" "${_varDescription}" 1;
+
+  ENVIRONMENT_VARIABLES_DESCRIPTIONS["${_varName}"]="${_varDescription}";
+}
+
+# PRIVATE
+# Annotates the default value of given environment variable.
+# -> 1: The variable name.
+# -> 2: The default value.
+function _addEnvVarDefault() {
+  local _varName="${1}";
+  local _varDefault="${2}";
+
+  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty "default" "${_varDefault}" 1;
+
+  ENVIRONMENT_VARIABLES_DEFAULTS["${_varName}"]="${_varDefault}";
+}
+
+# PRIVATE
+# Annotates the command of given environment variable.
+# -> 1: The variable name.
+# -> 2: The command.
+function _addEnvVarCommand() {
+  local _varName="${1}";
+  local _varCommand="${2}";
+
+  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty "command" "${_varCommand}" 1;
+
+  ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]="${_varCommand}";
 }
 
 # Checks whether giver variable is defined.
@@ -523,17 +581,30 @@ function isEnvVarDefined() {
 
   checkNotEmpty "varName" "${_varName}" 1;
 
-  local _oldIFS="${IFS}";
-  IFS=$' \t\n';
-#  set +o nounset
-  for e in ${#ENV_VARIABLES[@]}; do
-    if [[ "${e}" == "${_varName}" ]]; then
-      _rescode=${TRUE};
-      break;
-    fi
-  done
-  # TODO set -o nounset
-  IFS="${_oldIFS}";
+#  echo "Callee: ${FUNCNAME[1]}"
+#  echo "var -> ${_varName}";
+#  echo -n "val -> ";
+#  echo "echo \${${_varName}}" | bash;
+  echo "echo \${${_varName}:?no}" | bash > /dev/null 2>&1;
+  _rescode=$?;
+
+#  if isTrue ${_rescode}; then
+#      echo "${_variable} already defined";
+#      exit 1;
+#  fi
+
+#  local _oldIFS="${IFS}";
+#  IFS=$' \t\n';
+##  set +o nounset
+#  for e in ${#ENV_VARIABLES[@]}; do
+#    if [[ "${e}" == "${_varName}" ]]; then
+#      _rescode=${TRUE};
+#      break;
+#    fi
+#  done
+#  # TODO set -o nounset
+#  IFS="${_oldIFS}";
+
   return ${_rescode};
 }
 
@@ -544,25 +615,21 @@ function _evalEnvVar() {
 
   checkNotEmpty "varName" "${_varName}" 1;
 
-  _evalVar "${_varName}_DEFAULT";
+  _evalVarDefault "${_varName}";
   local _defaultValue="${RESULT}";
-  _evalVar "_overriden_${_varName}";
+  _evalVar "${_varName}";
   local _varValue="${RESULT}";
-  if [ -z "${_varValue}" ]; then
-      _evalVar "${_varName}";
-      _varValue="${RESULT}";
-  fi
 
-  if [[ -z ${_varValue} ]]; then
-    if [[ -n "${DRY_WIT_EVAL_DEFAULTS_FLAG:-}" ]]; then
+  if isEmpty "${_varValue}"; then
+    if ! isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
 #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
-      _evalVar "${_varName}_DEFAULT_COMMAND";
+      _evalVarCommand "${_varName}";
       local _defaultCommand="${RESULT}";
 #      echo "${_defaultCommand}";
-      if [[ -n ${_defaultCommand} ]]; then
+      if ! isEmpty "${_defaultCommand}"; then
         logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
         local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
-        if [[ -n ${_aux} ]]; then
+        if ! isEmpty "${_aux}"; then
           _defaultValue="${_aux}";
           logTraceResult SUCCESS "${_aux}"
         else
@@ -573,15 +640,16 @@ function _evalEnvVar() {
     _varValue="${_defaultValue}";
   fi
 
-  if [[ -n ${_varValue} ]] && [[ -z "${DRY_WIT_EVAL_DEFAULTS_FLAG:-}" ]]; then
+  if ! isEmpty ${_varValue} && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
     while [[ "${_varValue}" =~ .*'$'.* ]]; do
       _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
     done
   fi
 
-  if [[ -n ${_varValue} ]]; then
+  if ! isEmpty "${_varValue}"; then
     export ${_varName}="${_varValue}";
   fi
+  export RESULT="${_varValue}";
 }
 
 function evalEnvVars() {
@@ -591,6 +659,110 @@ function evalEnvVars() {
     _evalEnvVar ${var};
   done
   IFS="${_oldIFS}";
+}
+
+## Evaluates given overridden variable.
+## -> 1: The overridden variable.
+## <- 0/${TRUE} if the variable is indeed overridden; 1/${FALSE} otherwise.
+## <- RESULT: The value of the overridden variable.
+## Example:
+##   if _evalOverriddenVar "myVar"; then
+##     echo "myVar -> ${RESULT}";
+##   fi
+function _evalOverriddenVar() {
+  local _varName="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_varName}" 1;
+
+  _result="${OVERRIDDEN_ENV_VARIABLES[${_varName}]}";
+  if isEmpty "${_result}"; then
+      _rescode=${FALSE};
+  else
+    export RESULT="${_result}";
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the variable description.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the variable description is defined; 1/${FALSE} otherwise.
+## <- RESULT: The variable description.
+## Example:
+##   if _evalVarDescription "myVar"; then
+##     echo "myVar -> ${RESULT}";
+##   fi
+function _evalVarDescription() {
+  local _varName="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_varName}" 1;
+
+  _result="${ENVIRONMENT_VARIABLES_DESCRIPTIONS[${_varName}]}";
+  if isEmpty "${_result}"; then
+      _rescode=${FALSE};
+  else
+    export RESULT="${_result}";
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the default value for given variable.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the default value is defined; 1/${FALSE} otherwise.
+## <- RESULT: The default value..
+## Example:
+##   if _evalVarDefault "myVar"; then
+##     echo "myVar -> ${RESULT}";
+##   fi
+function _evalVarDefault() {
+  local _varName="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_varName}" 1;
+
+  _result="${ENVIRONMENT_VARIABLES_DEFAULTS[${_varName}]}";
+  if isEmpty "${_result}"; then
+      _rescode=${FALSE};
+  else
+    export RESULT="${_result}";
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the command defined to retrieve a variable's default value.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the command is defined; 1/${FALSE} otherwise.
+## <- RESULT: The command.
+## Example:
+##   if _evalVarCommand "myVar"; then
+##     echo "myVar -> ${RESULT}";
+##   fi
+function _evalVarCommand() {
+  local _varName="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_varName}" 1;
+
+  _result="${ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]}";
+  if isEmpty "${_result}"; then
+      _rescode=${FALSE};
+  else
+    export RESULT="${_result}";
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
 }
 
 ## PUBLIC
@@ -685,6 +857,11 @@ function _flagEnabled() {
 # AUXILIARY GENERAL-PURPOSE FUNCTIONS
 
 function cleanup() {
+  local -i _deletedCount;
+  local -i _notDeletedCount;
+  local _deleted;
+  local _notDeleted;
+
   if [ "${#_CLEANUP_FILES}" != "0" ]; then
     setLogCategory "post-process";
 
@@ -694,27 +871,34 @@ function cleanup() {
     IFS=$' \t\n';
     for i in ${_CLEANUP_FILES[*]}; do
       IFS="${_oldIFS}";
-      logTrace -n "Deleting $i";
       rm -rf $i > /dev/null 2>&1;
       if isTrue $?; then
-          logTraceResult SUCCESS "${_DW_DONE}";
+          _deleted="${_deleted} ${i}";
+          _deletedCount=$((_deletedCount + 1));
       else
-        logTraceResult FAILURE "${_DW_FAILED}";
+        _notDeleted="${_notDeleted} ${i}";
+        _notDeletedCount=$((_notDeletedCount + 1));
       fi
     done
 
-    logDebugResult SUCCESS "${_DW_DONE}";
+    if [[ ${_notDeletedCount} -eq 0 ]]; then
+        logDebugResult SUCCESS "${_deletedCount}";
+        logTrace "Deleted:${_deleted}";
+    else
+      logDebugResult FAILURE "${_notDeletedCount}";
+      logTrace "Not deleted:${_notDeleted}";
+    fi
   fi
 }
 
-## Creates a new temporary file.
+## Creates a new temporary file, without managing its cleanup.
 ## <- 0/${TRUE} if the file gets created successfully; 1/${FALSE} otherwise.
 ## <- RESULT: The name of the temporary file.
 ## Example:
-##   if createTempFile; then
+##   if createTempFileNoCleanup; then
 ##     echo "Temp file: ${RESULT}";
 ##   fi
-function createTempFile() {
+function createTempFileNoCleanup() {
   local -i _rescode;
   local _result;
 
@@ -730,15 +914,41 @@ function createTempFile() {
   _result="$(mktemp -p "${_dirname}"  -t ".${_prefix}.XXXXXXXXXX")";
   _rescode=$?;
   rm -f ${_result} > /dev/null 2>&1
+
   if isFalse ${_rescode} ; then
      _result="$(mktemp -t ".${_prefix}.XXXXXXXXXX")";
      _rescode=$?;
   fi
-  addFileToCleanup "${_result}";
 
   if isTrue ${_rescode}; then
       export RESULT="${_result}";
+  else
+    rm -f "${_result}" > /dev/null 2>&1;
   fi
+
+  return ${_rescode};
+}
+
+## Creates a new temporary file.
+## <- 0/${TRUE} if the file gets created successfully; 1/${FALSE} otherwise.
+## <- RESULT: The name of the temporary file.
+## Example:
+##   if createTempFile; then
+##     echo "Temp file: ${RESULT}";
+##   fi
+function createTempFile() {
+  local -i _rescode;
+  local _result;
+
+  if createTempFileNoCleanup; then
+      addFileToCleanup "${_result}";
+      _rescode=${TRUE};
+      export RESULT="${_result}";
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 ## Checks if given file is writeable
@@ -1012,7 +1222,7 @@ function printErrorMessage() {
   local _result=${TRUE};
   local _message;
   local _error;
-  local _interruption=${TRUE};
+  local -i _interruption=${TRUE};
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
@@ -1039,7 +1249,7 @@ function printErrorMessage() {
   fi
   IFS="${_oldIFS}";
 
-  if [ "x${_message}" == "x" ]; then
+  if isEmpty "${_message}"; then
     _error="Error $1, but no error message defined. Fix this script";
     _result=-1;
     shift;
@@ -1054,7 +1264,7 @@ function printErrorMessage() {
     _error="${_error} ($@)";
   fi
 
-  if [ ${_result} == 1 ]; then
+  if isFalse ${_result}; then
     _error="${_error}. Finishing..";
   fi
   if isDebugEnabled; then
@@ -1080,20 +1290,47 @@ function _printError() {
 }
 
 function _printEnvironment() {
-  local i=0;
+  local -i i=0;
+  local _varName;
+  local _varValue;
+  local _description;
+  local _tempFile;
 
-  if [ -n "${ENV_VARIABLES:-}" ] \
-     && isTraceEnabled; then
+  if ! isEmpty "${ENV_VARIABLES}" && isTraceEnabled; then
     cat <<EOF
 Environment variables:
 EOF
+    if createTempFileNoCleanup; then
+        _tempFile="${RESULT}";
+    fi
+
     local _oldIFS="${IFS}";
     IFS=$' \t\n';
     for ((i = 0; i < ${#ENV_VARIABLES[@]}; i++)); do
-      echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s{%s}): %s{%s_DESCRIPTION}%s.\n", quote, dollar, $0, dollar, $0, quote);}' | sh)";
-#      echo "  ${ENV_VARIABLES[$i]} $(echo ${ENV_VARIABLES[$i]} | awk -v dollar="$" -v quote="\"" '{printf("echo %s(%s%s%s{%s}): %s%s%s{%s_DESCRIPTION}%s%s.%s\n", quote, quote, quote, dollar, $0, quote, quote, dollar, $0, quote, quote, quote);}' | sh)";
+      _varName="${ENV_VARIABLES[$i]}";
+      if _evalOverriddenVar "${_varName}"; then
+          _varValue="${RESULT}";
+      else
+        _evalVar "${_varName}";
+        _varValue="${RESULT}";
+      fi
+      if _evalVarDescription "${_varName}"; then
+          _description=": ${RESULT}.";
+      else
+        _description="";
+      fi
+      if isEmpty "${_tempFile}"; then
+          echo "  ${_varName} (${_varValue})${_description}";
+      else
+        echo "  ${_varName} (${_varValue})${_description}" >> "${_tempFile}";
+      fi
     done
     IFS="${_oldIFS}";
+
+    if ! isEmpty "${_tempFile}"; then
+        cat "${_tempFile}" | sort;
+        rm -f "${_tempFile}" > /dev/null 2>&1;
+    fi
   fi
 }
 
@@ -1611,11 +1848,11 @@ function resolveVerbosity() {
   local _result="";
 
   if isTraceEnabled; then
-    _result="-vv";
+      _result="-vv";
   elif isDebugEnabled; then
-    _result="-v";
+      _result="-v";
   elif isInfoEnabled; then
-    _result="";
+      _result="";
   fi;
 
   export RESULT="${_result}";
@@ -1645,7 +1882,8 @@ function setTraceEnabled() {
 # -> 1: The message to log.
 function logTrace() {
   if isTraceEnabled; then
-    _logStuff TRACE "$@";
+      checkNotEmpty "outcome" "${1}" 1;
+      _logStuff TRACE "$@";
   fi
 }
 
@@ -1653,7 +1891,8 @@ function logTrace() {
 # -> 1: The result message to log.
 function logTraceResult() {
   if isTraceEnabled; then
-    _logStuffResult TRACE "$@";
+      checkNotEmpty "message" "${1}" 1;
+      _logStuffResult TRACE "$@";
   fi
 }
 
@@ -1661,7 +1900,8 @@ function logTraceResult() {
 # -> 1: The file to log.
 function logTraceFile() {
   if isTraceEnabled; then
-    cat "${1}" 2> /dev/null | while IFS='' read -r line; do _logStuff TRACE "${line}"; done
+      checkNotEmpty "file" "${1}" 1;
+      cat "${1}" 2> /dev/null | while IFS='' read -r line; do _logStuff TRACE "${line}"; done
   fi
 }
 
@@ -1689,7 +1929,8 @@ function setDebugEnabled() {
 # -> 1: The file to log.
 function logDebugFile() {
   if isDebugEnabled; then
-    cat "${1}" | while IFS='' read -r line; do _logStuff DEBUG "${line}"; done
+      checkNotEmpty "file" "${1}" 1;
+      cat "${1}" | while IFS='' read -r line; do _logStuff DEBUG "${line}"; done
   fi
 }
 
@@ -1697,7 +1938,8 @@ function logDebugFile() {
 # -> 1: The message to log.
 function logDebug() {
   if isDebugEnabled; then
-    _logStuff DEBUG "$@";
+      checkNotEmpty "message" "${1}" 1;
+      _logStuff DEBUG "$@";
   fi
 }
 
@@ -1705,7 +1947,8 @@ function logDebug() {
 # -> 1: The outcome to log.
 function logDebugResult() {
   if isDebugEnabled; then
-    _logStuffResult DEBUG "$@";
+      checkNotEmpty "outcome" "${1}" 1;
+      _logStuffResult DEBUG "$@";
   fi
 }
 
@@ -1735,19 +1978,22 @@ function setInfoEnabled() {
 
 function logInfoFile() {
   if isInfoEnabled; then
-    cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
+      checkNotEmpty "file" "${1}" 1;
+      cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
   fi
 }
 
 function logInfo() {
   if isInfoEnabled; then
-    _logStuff INFO "$@";
+      checkNotEmpty "message" "${1}" 1;
+      _logStuff INFO "$@";
   fi
 }
 
 function logInfoResult() {
   if isInfoEnabled; then
-    _logStuffResult INFO "$@";
+      checkNotEmpty "outcome" "${1}" 1;
+      _logStuffResult INFO "$@";
   fi
 }
 
@@ -1756,14 +2002,17 @@ function setQuietMode() {
 }
 
 function log() {
+  checkNotEmpty "message" "${1}" 1;
   _logInfo "$@";
 }
 
 function logResult() {
+  checkNotEmpty "outcome" "${1}" 1;
   _logInfoResult "$@";
 }
 
 function logFile() {
+  checkNotEmpty "file" "${1}" 1;
   cat "${1}" | while IFS='' read -r line; do _logStuff INFO "${line}"; done
 }
 
@@ -1785,8 +2034,12 @@ function _logStuff() {
 
 function _logStuffResult() {
   local _level="${1}";
+
   checkNotEmpty "level" "${_level}" 1;
   shift;
+
+  checkNotEmpty "text" "${1}" 2;
+
   local -i _nestedTasks;
   _numberOfNestedInProgressTasks;
   _nestedTasks=$?;
@@ -4114,8 +4367,8 @@ function _main() {
   _parseCommonInput $@;
 
   if _functionPresent parseInput "${_script}"; then
-    evalEnvVars;
-    parseInput $@;
+      evalEnvVars;
+      parseInput $@;
   fi
 
   _checkCommonInput $@;
@@ -4131,12 +4384,12 @@ function _main() {
   fi
 
   if _functionPresent checkInput "${_script}"; then
-    evalEnvVars;
-    checkInput $@;
+      evalEnvVars;
+      checkInput $@;
 
-    if _functionPresent postCheckInput "${_script}"; then
-      postCheckInput $@;
-    fi
+      if _functionPresent postCheckInput "${_script}"; then
+          postCheckInput $@;
+      fi
   fi
 
   setLogCategory "main";
@@ -4180,4 +4433,3 @@ function uncache() {
 source $@;
 _main $@;
 cleanup;
-
