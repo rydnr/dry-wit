@@ -388,9 +388,17 @@ function isFalse() {
 # <- RESULT: The variable value.
 function _evalVar() {
   local _varName="${1}";
+  local -i _rescode;
+  
   checkNotEmpty "varName" "${_varName}" 1;
-  local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh)";
-  export RESULT="${_result}";
+
+  local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+      export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
 }
 
 # PUBLIC
@@ -614,48 +622,84 @@ function isEnvVarDefined() {
   return ${_rescode};
 }
 
+# Removes the ${..} envelope.
+# -> 1: The variable name.
+# <- 0/${TRUE} if the envelope was removed; 1/${FALSE} otherwise.
+# <- RESULT: the variable name, without envelope, if existed. Unset otherwise.
+# Example:
+#  if _removeDollarSquareBrackets '${_bla}'; then
+#    echo "result -> ${RESULT}" # _bla
+#  fi
+function _removeDollarSquareBrackets() {
+  local _varName="${1}";
+  local -i _rescode;
+  local _result;
+  
+  if [ "${_varName#$\{}" == "${_varName}" ]; then
+      _rescode=${FALSE};
+  elif [ "${_varName%\}}" == "${_varName}" ]; then
+      _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    _result="${_varName#$\{}";
+    _result="${_result%\}}";
+    export RESULT="${_result}";
+  fi
+  return ${_rescode};
+}
+  
 # Evaluates given environment variable.
 # -> 1: the variable name.
 function _evalEnvVar() {
   local _varName="${1}";
+  local -i _rescode;
 
   checkNotEmpty "varName" "${_varName}" 1;
 
-  _evalVarDefault "${_varName}";
-  local _defaultValue="${RESULT}";
-  _evalVar "${_varName}";
-  local _varValue="${RESULT}";
+  if _removeDollarSquareBrackets "${_varName}"; then
+      _evalEnvVar "${RESULT}";
+  else
+    _evalVarDefault "${_varName}";
+    local _defaultValue="${RESULT}";
+    _evalVar "${_varName}";
+    local _varValue="${RESULT}";
 
-  if isEmpty "${_varValue}"; then
-    if ! isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
-#      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
-      _evalVarCommand "${_varName}";
-      local _defaultCommand="${RESULT}";
-#      echo "${_defaultCommand}";
-      if ! isEmpty "${_defaultCommand}"; then
-        logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
-        local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
-        if ! isEmpty "${_aux}"; then
-          _defaultValue="${_aux}";
-          logTraceResult SUCCESS "${_aux}"
-        else
-          logTraceResult FAILURE "${_DW_FAILED}"
+    if isEmpty "${_varValue}"; then
+        if ! isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
+            #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
+            _evalVarCommand "${_varName}";
+            local _defaultCommand="${RESULT}";
+            #      echo "${_defaultCommand}";
+            if ! isEmpty "${_defaultCommand}"; then
+                logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
+                local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
+                if ! isEmpty "${_aux}"; then
+                    _defaultValue="${_aux}";
+                    logTraceResult SUCCESS "${_aux}"
+                else
+                  logTraceResult FAILURE "${_DW_FAILED}"
+                fi
+            fi
         fi
-      fi
+        _varValue="${_defaultValue}";
     fi
-    _varValue="${_defaultValue}";
+
+    if ! isEmpty ${_varValue} && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
+        while [[ "${_varValue}" =~ .*'$'.* ]]; do
+          _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
+        done
+    fi
+
+    if ! isEmpty "${_varValue}"; then
+        export ${_varName}="${_varValue}";
+        export RESULT="${_varValue}";
+        _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
   fi
 
-  if ! isEmpty ${_varValue} && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
-    while [[ "${_varValue}" =~ .*'$'.* ]]; do
-      _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
-    done
-  fi
-
-  if ! isEmpty "${_varValue}"; then
-    export ${_varName}="${_varValue}";
-  fi
-  export RESULT="${_varValue}";
+  return ${_rescode};
 }
 
 function evalEnvVars() {
