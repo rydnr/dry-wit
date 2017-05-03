@@ -4131,24 +4131,29 @@ function runCommandAsUidGid() {
   shift
   shift
   local _args="${@}";
+  retrieveUserFromUid "${_uid}";
+  local _user="${RESULT}";
+  retrieveGroupFromGid "${_gid}";
+  local _group="${RESULT}";
   local _exports="$(export)";
 
   createTempFile
   local _runme="${RESULT}";
 
-  cat << EOF > ${_runme}
+  cat << EOF > "${_runme}"
 #!/bin/bash
 
 ${_exports}
-declare -x HOME="/home/${_user}"
+declare -x HOME="$(eval echo ~${_user})"
 cd ${_folder}
 ${_command} ${_args}
 EOF
-  chmod +x ${_runme}
+  chmod +x "${_runme}"
 
-  logDebug "Running ${_command} ${_args} as ${SERVICE_USER}:${SERVICE_GROUP}";
+  logDebug "Running ${_command} ${_args} as ${_user}:${_group}";
+  chown ${_user}:${_group} "${_runme}"
   exec 2>&1
-  chpst -u :${_uid}:${_gid} -U :${_uid}:${_gid} ${_runme}
+  chpst -u ${_user}:${_group} "${_runme}"
 }
 
 ## Updates the uid of the user.
