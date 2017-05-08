@@ -634,7 +634,7 @@ function _evalEnvVar() {
 #      echo "${_defaultCommand}";
       if ! isEmpty "${_defaultCommand}"; then
         logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
-        local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
+        local _aux="$(set noglob; echo "${_defaultCommand}" | sh 2> /dev/null)";
         if ! isEmpty "${_aux}"; then
           _defaultValue="${_aux}";
           logTraceResult SUCCESS "${_aux}"
@@ -648,12 +648,12 @@ function _evalEnvVar() {
 
   if ! isEmpty ${_varValue} && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
     while [[ "${_varValue}" =~ .*'$'.* ]]; do
-      _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
+      _varValue="$(set noglob; echo "echo ${_varValue}" | sh 2> /dev/null)";
     done
   fi
 
   if ! isEmpty "${_varValue}"; then
-    export ${_varName}="${_varValue}";
+    export ${_varName}="${_varValue}" 2> /dev/null;
   fi
   export RESULT="${_varValue}";
 }
