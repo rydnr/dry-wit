@@ -389,7 +389,7 @@ function isFalse() {
 function _evalVar() {
   local _varName="${1}";
   local -i _rescode;
-  
+
   checkNotEmpty "varName" "${_varName}" 1;
 
   local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null)";
@@ -634,7 +634,7 @@ function _removeDollarSquareBrackets() {
   local _varName="${1}";
   local -i _rescode;
   local _result;
-  
+
   if [ "${_varName#$\{}" == "${_varName}" ]; then
       _rescode=${FALSE};
   elif [ "${_varName%\}}" == "${_varName}" ]; then
@@ -647,7 +647,7 @@ function _removeDollarSquareBrackets() {
   fi
   return ${_rescode};
 }
-  
+
 # Evaluates given environment variable.
 # -> 1: the variable name.
 function _evalEnvVar() {
@@ -4192,7 +4192,8 @@ declare -x HOME="$(eval echo ~${_user})"
 cd ${_folder}
 ${_command} ${_args}
 EOF
-  chmod +x "${_runme}"
+  chmod a+r "${_runme}"
+  chmod a+x "${_runme}"
 
   logDebug "Running ${_command} ${_args} as ${_user}:${_group}";
   chown ${_user}:${_group} "${_runme}"
