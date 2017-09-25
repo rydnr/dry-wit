@@ -941,6 +941,66 @@ function cleanup() {
   fi
 }
 
+## Runs mktemp variants in Linux and MacOSX, for creating a temporary file.
+## 1 -> the base folder.
+## 2 -> The file format.
+## <- RESULT: The file name.
+## <- 0/${TRUE} if the file is created correctly; 1/${FALSE} otherwise.
+## Example:
+##   if _mktempFile /tmp .removeme.XXXX; then
+##     echo "Temp file: ${RESULT}";
+##   fi
+function _mktempFile() {
+  local _baseFolder="${1}";
+  local _format="${2}"
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
+  checkNotEmpty "format" "${_format}" 2;
+
+  if _isMacOSX; then
+    _result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
+    _rescode=$?;
+  else
+    _result="$(mktemp -p ${_baseFolder} -t ${_format})"
+    _rescode=$?;
+  fi
+
+  export RESULT="${_result}";
+  return ${_rescode};
+}
+
+## Runs mktemp variants in Linux and MacOSX, for creating a temporary folder.
+## 1 -> the base folder.
+## 2 -> The file format.
+## <- RESULT: The file name.
+## <- 0/${TRUE} if the file is created correctly; 1/${FALSE} otherwise.
+## Example:
+##   if _mktempFolder /tmp .removeme.XXXX; then
+##     echo "Temp folder: ${RESULT}";
+##   fi
+function _mktempFolder() {
+  local _baseFolder="${1}";
+  local _format="${2}"
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
+  checkNotEmpty "format" "${_format}" 2;
+
+  if _isMacOSX; then
+    _result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
+    _rescode=$?;
+  else
+    _result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
+    _rescode=$?;
+  fi
+
+  export RESULT="${_result}";
+  return ${_rescode};
+}
+
 ## Creates a new temporary file, without managing its cleanup.
 ## <- 0/${TRUE} if the file gets created successfully; 1/${FALSE} otherwise.
 ## <- RESULT: The name of the temporary file.
@@ -961,17 +1021,16 @@ function createTempFileNoCleanup() {
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  _result="$(mktemp -p "${_dirname}"  -t ".${_prefix}.XXXXXXXXXX")";
+  _mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
   _rescode=$?;
 
   if isFalse ${_rescode} ; then
-     _result="$(mktemp -t ".${_prefix}.XXXXXXXXXX")";
+     _mktempFile "${PWD}" ".${_prefix}.XXXXXXXXXX";
      _rescode=$?;
   fi
 
-  if isTrue ${_rescode}; then
-      export RESULT="${_result}";
-  else
+  if isFalse ${_rescode}; then
+    export RESULT="";
     rm -f "${_result}" > /dev/null 2>&1;
   fi
 
@@ -1100,16 +1159,18 @@ function createTempFolder() {
   else
     _dirname="${PWD}/../${_dirname#\.\.}";
   fi
-  _result=$(mktemp -p "${_dirname}" -d -t ".${_prefix}.XXXXXX");
+  _mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
   _rescode=$?;
   if isFalse ${_rescode}; then
-      _result=$(mktemp -d -t ".${_prefix}.XXXXXX");
+      _mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
       _rescode=$?;
   fi
   addFileToCleanup "${_result}";
-  if isTrue ${_rescode}; then
-      export RESULT="${_result}";
+  if isFalse ${_rescode}; then
+      export RESULT="";
   fi
+
+  return ${_rescode};
 }
 
 ## Extracts the flags from the arguments.
