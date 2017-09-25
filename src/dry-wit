@@ -3554,7 +3554,8 @@ function logDebugFileContents() {
 ## <- RESULT: The absolute path.
 function _retrieveAbsolutePath() {
   local _relativePath="${1}";
-  export RESULT="$(readlink -f "${_relativePath}")";
+  _readlink -f "${_relativePath}";
+  return $?;
 }
 
 ## Checks if the system is a MacOSX.
@@ -3582,7 +3583,6 @@ function _isMacOSX() {
 ##     echo "readlink result: ${RESULT}"
 ##   fi
 function _readlink() {
-  local _args="$@";
   local -i _rescode;
   local _result;
   if _isMacOSX; then
