@@ -3557,6 +3557,45 @@ function _retrieveAbsolutePath() {
   export RESULT="$(readlink -f "${_relativePath}")";
 }
 
+## Checks if the system is a MacOSX.
+## <- 0/${TRUE} if the system is MacOSX; 1/${FALSE} otherwise.
+## Example:
+##   if _isMacOSX; then
+##     echo "I'm running on a MacOSX";
+##   fi
+function _isMacOSX() {
+  local -i _rescode;
+  if [ "$(uname -s)" == "Darwin" ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+  return ${_rescode};
+}
+
+## Runs readlink (differs in Linux and in MacOSX).
+## -> @: The readlink parameters.
+## <- RESULT: The output of readlink.
+## <- the result code of readlink.
+## Example:
+##   if _readlink -f "/bin/bash"; then
+##     echo "readlink result: ${RESULT}"
+##   fi
+function _readlink() {
+  local _args="$@";
+  local -i _rescode;
+  local _result;
+  if _isMacOSX; then
+    _result="$(greadlink $@)";
+    _rescode=$?;
+  else
+    _result="$(readlink $@)";
+    _rescode=$?;
+  fi
+  export RESULT="${_result}";
+  return ${_rescode};
+}
+
 function _functionPresent() {
   local _function=$1;
   local _script=$2;
