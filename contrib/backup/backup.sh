@@ -249,10 +249,10 @@ function main() {
         exitWithErrorCode CANNOT_REMOVE_OLDEST_BACKUP "${DESTINATION_FOLDER}/${BACKUP_FOLDER_NAME_PREFIX}${MAX_BACKUPS}";
       fi
     fi
-    for i in $(seq 1 ${MAX_BACKUPS}); do
+    for i in $(seq ${MAX_BACKUPS} 1); do
       if [ -e "${DESTINATION_FOLDER}/${BACKUP_FOLDER_NAME_PREFIX}${i}" ]; then
         if ! moveFolder "${DESTINATION_FOLDER}/${BACKUP_FOLDER_NAME_PREFIX}${i}" "${DESTINATION_FOLDER}/${BACKUP_FOLDER_NAME_PREFIX}$((i+1))"; then
-          exitWithErrorCode CANNOT_RENAME_OLD_BACKUP "${DESTINATION_FOLDER}/${BACKUP_FOLDER_NAME_PREFIX}$((i+1))";
+          exitWithErrorCode CANNOT_RENAME_OLD_BACKUP "${DESTINATION_FOLDER}/${BACKUP_FOLDER_NAME_PREFIX}${i}";
         fi
       fi
     done
