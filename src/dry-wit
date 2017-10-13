@@ -2000,9 +2000,14 @@ function logTrace() {
 # Logs given text as a log result, under the "trace" level.
 # -> 1: The result message to log.
 function logTraceResult() {
+  local _outcome="${1}";
+  shift;
+  local _message="${@}";
+
   if isTraceEnabled; then
-      checkNotEmpty "message" "${1}" 1;
-      _logStuffResult TRACE "$@";
+      checkNotEmpty "outcome" "${_outcome}" 1;
+      checkNotEmpty "message" "${_message}" 2;
+      _logStuffResult TRACE "${_outcome}" "${_message}";
   fi
 }
 
@@ -2056,9 +2061,14 @@ function logDebug() {
 # Logs given outcome under the "debug" level.
 # -> 1: The outcome to log.
 function logDebugResult() {
+  local _outcome="${1}";
+  shift;
+  local _message="${@}";
+
   if isDebugEnabled; then
-      checkNotEmpty "outcome" "${1}" 1;
-      _logStuffResult DEBUG "$@";
+      checkNotEmpty "outcome" "${_outcome}" 1;
+      checkNotEmpty "message" "${_message}" 2;
+      _logStuffResult DEBUG "${_outcome}" "${_message}";
   fi
 }
 
@@ -2101,9 +2111,14 @@ function logInfo() {
 }
 
 function logInfoResult() {
+  local _outcome="${1}";
+  shift;
+  local _message="${@}";
+
   if isInfoEnabled; then
-      checkNotEmpty "outcome" "${1}" 1;
-      _logStuffResult INFO "$@";
+      checkNotEmpty "outcome" "${_outcome}" 1;
+      checkNotEmpty "message" "${_message}" 2;
+      _logStuffResult INFO "${_outcome}" "${_message}";
   fi
 }
 
@@ -2117,8 +2132,11 @@ function log() {
 }
 
 function logResult() {
-  checkNotEmpty "outcome" "${1}" 1;
-  _logInfoResult "$@";
+  local _outcome="${1}";
+  shift;
+  local _message="${@}";
+
+  logInfoResult "${_outcome}" "${_message}";
 }
 
 function logFile() {
@@ -2144,11 +2162,15 @@ function _logStuff() {
 
 function _logStuffResult() {
   local _level="${1}";
+  local _outcome="${2}";
 
   checkNotEmpty "level" "${_level}" 1;
   shift;
 
-  checkNotEmpty "text" "${1}" 2;
+  checkNotEmpty "outcome" "${_outcome}" 2;
+  shift;
+
+  checkNotEmpty "text" "${@}" 3;
 
   local -i _nestedTasks;
   _numberOfNestedInProgressTasks;
@@ -2156,7 +2178,7 @@ function _logStuffResult() {
   if [ ${_nestedTasks} -eq 0 ]; then
     exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
   fi
-  _logCompleted "${_level}" "$@";
+  _logCompleted "${_level}" "${_outcome}" "$@";
 }
 
 ## PRIVATE
