@@ -468,7 +468,6 @@ function overrideEnvVar() {
   _upcasedVarName="${RESULT}";
   _addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
 
-
   if ! isEmpty "${_varValue}"; then
       _addEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
@@ -496,7 +495,7 @@ function defineButDoNotOverrideEnvVar() {
   checkNotEmpty "name" "${_varName}" 1;
   checkNotEmpty "description" "${_varDescription}" 2;
 
-  echo "echo \${${_varName}:?no}" | bash 2>&1 > /dev/null;
+  echo "echo \${${_varName}:?no}" | bash > /dev/null 2>&1;
   _rescode=$?;
 
   if isEnvVarDefined ${_rescode}; then
