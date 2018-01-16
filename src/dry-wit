@@ -1157,26 +1157,33 @@ function createTempFolder() {
 
   if isEmpty "${_dirname}"; then
     _dirname="$(dirname ${SCRIPT_NAME})";
+    if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
+      _dirname="${PWD}/${_dirname#\.}";
+    else
+      _dirname="${PWD}/../${_dirname#\.\.}";
+    fi
   fi
 
   if isEmpty "${_prefix}"; then
     _prefix="$(echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}')";
   fi
 
-  if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
-    _dirname="${PWD}/${_dirname#\.}";
-  else
-    _dirname="${PWD}/../${_dirname#\.\.}";
-  fi
   _mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
   _rescode=$?;
-  if isFalse ${_rescode}; then
-      _mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
-      _rescode=$?;
+  if isTrue ${_rescode}; then
+    _result="${RESULT}";
+  else
+    _mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+      _result="${RESULT}";
+    fi
   fi
-  addFileToCleanup "${_result}";
-  if isFalse ${_rescode}; then
-      export RESULT="";
+  if isTrue ${_rescode}; then
+    addFileToCleanup "${_result}";
+    export RESULT="${_result}";
+  else
+    export RESULT="";
   fi
 
   return ${_rescode};
