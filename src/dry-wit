@@ -1141,6 +1141,8 @@ function addFileToCleanup() {
 }
 
 ## Creates a temporary folder.
+## -> The parent folder. Optional.
+## -> The folder name prefix. Optional
 ## <- 0/${TRUE} if the folder gets created successfully; 1/${FALSE} otherwise.
 ## <- RESULT: the new folder.
 ## Example:
@@ -1148,11 +1150,19 @@ function addFileToCleanup() {
 ##     echo "New folder: ${RESULT}";
 ##   fi
 function createTempFolder() {
+  local _dirname="${1}";
+  local _prefix="${2}";
   local -i _rescode;
   local _result;
 
-  local _prefix="$(echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}')";
-  local _dirname="$(dirname ${SCRIPT_NAME})";
+  if isEmpty "${_dirname}"; then
+    _dirname="$(dirname ${SCRIPT_NAME})";
+  fi
+
+  if isEmpty "${_prefix}"; then
+    _prefix="$(echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}')";
+  fi
+
   if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
     _dirname="${PWD}/${_dirname#\.}";
   else
