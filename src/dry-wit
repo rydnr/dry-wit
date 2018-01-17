@@ -940,6 +940,28 @@ function cleanup() {
   fi
 }
 
+## Checks whether given folder exists and it's not a symbolic link.
+## -> The folder to check.
+## <- 0/${TRUE} if the folder exists; 1/${FALSE} otherwise.
+## Example:
+##   if folderExists "/tmp"; then
+##     rm -rf /tmp/*;
+##   fi
+function folderExistsAndIsNotASymlink() {
+  local _folder="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "folder" "${_folder}" 1;
+
+  if [[ -d "${_folder}" && ! -L "${_folder}" ]]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
 ## Runs mktemp variants in Linux and MacOSX, for creating a temporary file.
 ## 1 -> the base folder.
 ## 2 -> The file format.
