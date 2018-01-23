@@ -219,7 +219,7 @@ There is NO WARRANTY, to the extent permitted by law."
 ##   traceApiCall;
 function _traceApiCall() {
   echo -n "${FUNCNAME[0]}" >> ${_dryWitDevLogFile};
-  local _i=0;
+  local -i _i=0;
   while caller $i >> ${_dryWitDevLogFile}; do
     i=$((i+1))
   done
@@ -609,7 +609,8 @@ function isEnvVarDefined() {
 #  local _oldIFS="${IFS}";
 #  IFS=$' \t\n';
 ##  set +o nounset
-#  for e in ${#ENV_VARIABLES[@]}; do
+#  local _e;
+#  for _e in ${#ENV_VARIABLES[@]}; do
 #    if [[ "${e}" == "${_varName}" ]]; then
 #      _rescode=${TRUE};
 #      break;
@@ -703,6 +704,7 @@ function _evalEnvVar() {
 
 function evalEnvVars() {
   local _oldIFS="${IFS}";
+  local var;
   IFS=$' \t\n';
   for var in "${ENV_VARIABLES[@]}"; do
     _evalEnvVar ${var};
@@ -866,6 +868,8 @@ function flattenArray() {
   local _aux="$(echo "\${#${_arrayName}[@]}")";
   local _len=$((-1+$(eval echo "${_aux}")));
   local _oldIFS="${IFS}";
+  local -i _i;
+
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
@@ -910,7 +914,7 @@ function cleanup() {
   local -i _notDeletedCount;
   local _deleted;
   local _notDeleted;
-
+  local _i;
   if [ "${#_CLEANUP_FILES}" != "0" ]; then
     setLogCategory "post-process";
 
@@ -918,14 +922,14 @@ function cleanup() {
 
     local _oldIFS="${IFS}";
     IFS=$' \t\n';
-    for i in ${_CLEANUP_FILES[*]}; do
+    for _i in ${_CLEANUP_FILES[*]}; do
       IFS="${_oldIFS}";
-      rm -rf $i > /dev/null 2>&1;
+      rm -rf ${_i} > /dev/null 2>&1;
       if isTrue $?; then
-          _deleted="${_deleted} ${i}";
+          _deleted="${_deleted} ${_i}";
           _deletedCount=$((_deletedCount + 1));
       else
-        _notDeleted="${_notDeleted} ${i}";
+        _notDeleted="${_notDeleted} ${_i}";
         _notDeletedCount=$((_notDeletedCount + 1));
       fi
     done
@@ -944,7 +948,7 @@ function cleanup() {
 ## -> The folder to check.
 ## <- 0/${TRUE} if the folder exists; 1/${FALSE} otherwise.
 ## Example:
-##   if folderExists "/tmp"; then
+##   if folderExistsAndIsNotASymlink "/tmp"; then
 ##     rm -rf /tmp/*;
 ##   fi
 function folderExistsAndIsNotASymlink() {
@@ -953,8 +957,12 @@ function folderExistsAndIsNotASymlink() {
 
   checkNotEmpty "folder" "${_folder}" 1;
 
-  if [[ -d "${_folder}" && ! -L "${_folder}" ]]; then
-    _rescode=${TRUE};
+  if [ -d "${_folder}" ]; then
+      if [ -L "${_folder}" ]; then
+          _rescode=${FALSE};
+      else
+        _rescode=${TRUE};
+      fi
   else
     _rescode=${FALSE};
   fi
@@ -1265,6 +1273,7 @@ function findInPath() {
 function _uncachedFindInPath() {
   local _result="";
   local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
+  local _path;
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
@@ -1289,39 +1298,39 @@ function isSuccessKeyword() {
 # See isSuccessKeyword()
 function _uncachedIsSuccessKeyword() {
   local _keyword="${1}";
-  local _result=1;
-
+  local _rescode=${FALSE};
+  local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   if    [ "x${SUCCESS_KEYWORDS}" != "x" ] \
      && [  ${SUCCESS_KEYWORDS[*]} != "" ]; then
-    for i in ${SUCCESS_KEYWORDS[*]}; do
-      if    [ "x${i}" == "x${_keyword}" ] \
+    for _i in ${SUCCESS_KEYWORDS[*]}; do
+      if    [ "x${_i}" == "x${_keyword}" ] \
          || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-             == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-#         || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
-#             == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _result=${TRUE};
+             == "x$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+#         || [   "x$(echo "${_keyword}"   | tr [:upper:] [:lower:] 2> /dev/null)" \
+#             == "x$(echo "${_i}"         | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+        _rescode=${TRUE};
         break;
       fi;
     done
   fi
 
-  if [ ${_result} == 1 ]; then
-    for i in ${BUILTIN_SUCCESS_KEYWORDS[*]}; do
-      if [ "x${i}" == "x${1}" ] \
+  if isFalse ${_rescode}; then
+    for _i in ${BUILTIN_SUCCESS_KEYWORDS[*]}; do
+      if [ "x${_i}" == "x${1}" ] \
           || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-              == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+              == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #          || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
-#              == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _result=${TRUE};
+#              == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+        _rescode=${TRUE};
         break;
       fi;
     done
   fi
   IFS="${_oldIFS}";
 
-  return ${_result};
+  return ${_rescode};
 }
 
 # Checks whether given keyword represents a failure.
@@ -1335,51 +1344,51 @@ function isFailureKeyword() {
 # See isFailureKeyword()
 function _uncachedIsFailureKeyword() {
   local _keyword="${1}";
-  local _result=${FALSE};
-
+  local _rescode=${FALSE};
+  local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for i in ${FAILURE_KEYWORDS[*]}; do
-    if    [ "x${i}" == "x${1}" ] \
+  for _i in ${FAILURE_KEYWORDS[*]}; do
+    if    [ "x${_i}" == "x${1}" ] \
        || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-           == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+           == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #      || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
-#           == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-      _result=${TRUE};
+#           == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+      _rescode=${TRUE};
       break;
     fi;
   done
 
-  if [ ${_result} != 0 ]; then
-    for i in ${BUILTIN_FAILURE_KEYWORDS[*]}; do
-      if [ "x${i}" == "x${1}" ] \
+  if isFalse ${_rescode}; then
+    for _i in ${BUILTIN_FAILURE_KEYWORDS[*]}; do
+      if [ "x${_i}" == "x${1}" ] \
         || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-            == "x$(echo \"${i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+            == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #        || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
-#            == "x$(echo "${i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _result=${TRUE};
+#            == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+        _rescode=${TRUE};
         break;
       fi;
     done
   fi
   IFS="${_oldIFS}";
 
-  return ${_result};
+  return ${_rescode};
 }
 
 function printErrorMessage() {
-  local _result=${TRUE};
+  local _rescode=${TRUE};
   local _message;
   local _error;
   local -i _interruption=${TRUE};
-
+  local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
 #  set +o nounset  # allow unset variables
-  for i in ${BUILTIN_ERRORS[@]}; do
-    _result=$((_result+1));
-    if [ "x${i}" == "x${1}" ]; then
-      _message="$i";
+  for _i in ${BUILTIN_ERRORS[@]}; do
+    _rescode=$((_rescode+1));
+    if [ "x${_i}" == "x${1}" ]; then
+      _message="${_i}";
       break;
     fi;
   done
@@ -1387,11 +1396,11 @@ function printErrorMessage() {
 
   if [ "x${_message}" == "x" ]; then
     # IFS issue
-#    _result=${TRUE};
-    for i in ${ERROR_MESSAGES[@]}; do
-      _result=$((_result+1));
-      if [ "x${i}" == "x${1}" ]; then
-        _message="$i";
+#    _rescode=${TRUE};
+    for _i in ${ERROR_MESSAGES[@]}; do
+      _rescode=$((_rescode+1));
+      if [ "x${_i}" == "x${1}" ]; then
+        _message="${_i}";
         break;
       fi;
     done
@@ -1413,7 +1422,7 @@ function printErrorMessage() {
     _error="${_error} ($@)";
   fi
 
-  if isFalse ${_result}; then
+  if isFalse ${_rescode}; then
     _error="${_error}. Finishing..";
   fi
   if isDebugEnabled; then
@@ -1421,7 +1430,7 @@ function printErrorMessage() {
   fi
   _printError "${_error}";
 
-  return ${_result};
+  return ${_rescode};
 }
 
 function exitWithErrorCode() {
@@ -1484,8 +1493,8 @@ EOF
 }
 
 function _printExitValues() {
-  local i=0;
-  local j=0;
+  local -i i=0;
+  local -i j=0;
 
   if isTraceEnabled; then
     cat <<EOF
@@ -2276,7 +2285,7 @@ function _numberOfNestedInProgressTasks() {
 ##     echo "Last log: ${RESULT}";
 ##   fi
 function _popLog() {
-  local _rescode;
+  local -i _rescode;
   local _result="";
   local -i _len=${#_DRY_WIT_LOG_STACK[@]};
   local -i _newLen;
@@ -2286,7 +2295,7 @@ function _popLog() {
     eval "unset _DRY_WIT_LOG_STACK[${_newLen}]";
     _rescode=$?;
   else
-    _rescode=1;
+    _rescode=${FALSE};
   fi
   export RESULT="${_result}";
   return ${_rescode};
@@ -2686,7 +2695,7 @@ function _echoColorAwareLogPrefix() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
 
-  local _allowsColors=${2};
+  local -i _allowsColors=${2};
   checkNotEmpty "allowsColors" "${_allowsColors}" 2;
 
   local _level="${3}";
@@ -2694,9 +2703,9 @@ function _echoColorAwareLogPrefix() {
 
   local _len;
   local _colors;
+  local -i _i;
 
   _retrieveLogPrefixTokens "${_category}" "${_level}";
-#  source ${RESULT};
 
   _len=$((${#_DRY_WIT_LOG_PREFIX_TOKENS[@]} - 1));
   local _oldIFS="${IFS}";
@@ -2761,6 +2770,7 @@ function _echoLogOutcome() {
   local _colors;
   local _inProgressMessage;
   local _logPrefix;
+  local -i i;
 
   _retrieveLogOutcomeTokens "${_text}";
 
@@ -2862,6 +2872,7 @@ function _alignRight() {
   local -i _offset=0;
   local -i _end;
   local _allowsColors;
+  local _token;
 
   _retrieveLogOutcomeTokens "${_outcome}";
   local _oldIFS="${IFS}";
@@ -3066,7 +3077,7 @@ function _logInProgress() {
   _numberOfNestedInProgressTasks;
   _nestedTasks=$?;
   if [ ${_nestedTasks} -gt 0 ]; then
-    _logInProgressNested "${_category}" "${_level}" "${_message}";
+      _logInProgressNested "${_category}" "${_level}" "${_message}";
   else
     _logInProgressNoNested "${_category}" "${_level}" "${_message}";
   fi
@@ -3728,6 +3739,7 @@ function _functionPresent() {
   fi
   if [ ${_rescode} -ne 0 ]; then
     local _oldIFS="${IFS}";
+    local _inc;
     IFS=$' \t\n';
     for _inc in "./$(basename ${_script} .sh).inc.sh" \
                 "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
@@ -3911,6 +3923,7 @@ function _parseCommonInput() {
   local _flags=$(extractFlags $@);
   local _flagCount=0;
   local _oldIFS="${IFS}";
+  local _flag;
   IFS=$' \t\n';
   for _flag in ${_flags}; do
     if isTrue ${_argsToPassToWrappedLogic}; then
@@ -4474,24 +4487,24 @@ function _checkCommonInput() {
 ## -> 1: The script.
 function _checkScript() {
   local _script=$1;
-  local v;
-  local f;
+  local _v;
+  local _f;
 
   setLogCategory "sanity-check";
   logTrace -n "Checking mandatory constants";
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for v in ${ERROR_MESSAGES[@]}; do
-    if [ -z "${v}" ]; then
-      exitWithErrorCode MISSING_MANDATORY_VARIABLES $v;
+  for _v in ${ERROR_MESSAGES[@]}; do
+    if [ -z "${_v}" ]; then
+      exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
     fi
   done
   logTraceResult SUCCESS "done";
   logTrace -n "Checking mandatory functions";
-  for f in usage main; do
-    _functionPresent $f $_script;
+  for _f in usage main; do
+    _functionPresent ${_f} ${_script};
     if [ $? != 0 ]; then
-      exitWithErrorCode MISSING_MANDATORY_FUNCTIONS $f;
+      exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
     fi
   done
   IFS="${_oldIFS}";
