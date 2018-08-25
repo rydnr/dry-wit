@@ -241,15 +241,15 @@ function _debugEcho() {
 ## Example:
 ##   if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
 function isEmpty() {
-  local -i _rescode;
+  local -i rescode;
 
   if [ -z "${1}" ]; then
-      _rescode=${TRUE};
+      rescode=${TRUE};
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PUBLIC
@@ -259,15 +259,15 @@ function isEmpty() {
 ## Example:
 ##   if isNotEmpty "${MYVAR}"; then echo "MYVAR is not empty"; fi
 function isNotEmpty() {
-  local -i _rescode;
+  local -i rescode;
 
   if isEmpty "${1}"; then
-      _rescode=${FALSE};
+      rescode=${FALSE};
   else
-    _rescode=${TRUE};
+    rescode=${TRUE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PUBLIC
@@ -301,13 +301,13 @@ function checkNotEmpty() {
 ## Example:
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isDefined() {
-  local _rescode;
+  local rescode;
   if [ -z ${1+x} ]; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PUBLIC
@@ -318,20 +318,20 @@ function isDefined() {
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isVariableDefined() {
   local _var="${1}";
-  local _rescode;
+  local rescode;
 #  set +o nounset  # allow unset variables
 #  eval "[ -v \${$1} ] 2> /dev/null"
   #  eval "[ -v ${1} ] 2> /dev/null"
   checkNotEmpty "var" "${_var}" 1
 
   if [ -v "${_var}" ]; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 #  set -o nounset  # terminate on any unset variable
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PRIVATE/DEBUG
@@ -353,17 +353,17 @@ function isTrue() {
   local _value="${1}";
 #  checkNotEmpty "value" "${_value}" 1;
 
-  local _rescode;
+  local rescode;
   if [ "${_value}" == "${TRUE}" ]; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
   elif [ "${_value}" == TRUE ]; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
   elif [ "${_value}" == "true" ]; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PUBLIC
@@ -371,15 +371,15 @@ function isTrue() {
 ## -> 1: The value.
 ## <- 0: if the value is false; 1 otherwise.
 function isFalse() {
-  local _rescode;
+  local rescode;
   checkNotEmpty "value" "${1}" 1;
 
   if isTrue $*; then
-    _rescode=${FALSE};
+    rescode=${FALSE};
   else
-    _rescode=${TRUE};
+    rescode=${TRUE};
   fi
-  return ${_rescode};
+  return ${rescode};
 }
 
 # PRIVATE
@@ -388,17 +388,17 @@ function isFalse() {
 # <- RESULT: The variable value.
 function _evalVar() {
   local _varName="${1}";
-  local -i _rescode;
+  local -i rescode;
 
   checkNotEmpty "varName" "${_varName}" 1;
 
-  local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-      export RESULT="${_result}";
+  local result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null)";
+  rescode=$?;
+  if isTrue ${rescode}; then
+      export RESULT="${result}";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # PUBLIC
@@ -490,22 +490,22 @@ function defineButDoNotOverrideEnvVar() {
   local _varDescription="${2}";
   local _varDefault="${3}";
   local _varCommand="${4}";
-  local -i _rescode;
+  local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
   checkNotEmpty "description" "${_varDescription}" 2;
 
   echo "echo \${${_varName}:?no}" | bash > /dev/null 2>&1;
-  _rescode=$?;
+  rescode=$?;
 
-  if isEnvVarDefined ${_rescode}; then
+  if isEnvVarDefined ${rescode}; then
       logTrace -n "Skipping already-defined ${_varName}";
       logTraceResult SUCCESS "skipped";
   else
     defineEnvVar "${_varName}" "${_varDescription}" "${_varDefault}" "${_varCommand}";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # PRIVATE
@@ -590,7 +590,7 @@ function _addEnvVarCommand() {
 function isEnvVarDefined() {
   local _varName="${1}";
   local e;
-  local _rescode=${FALSE};
+  local rescode=${FALSE};
 
   checkNotEmpty "varName" "${_varName}" 1;
 
@@ -599,9 +599,9 @@ function isEnvVarDefined() {
 #  echo -n "val -> ";
 #  echo "echo \${${_varName}}" | bash;
   echo "echo \${${_varName}:?no}" | bash > /dev/null 2>&1;
-  _rescode=$?;
+  rescode=$?;
 
-#  if isTrue ${_rescode}; then
+#  if isTrue ${rescode}; then
 #      echo "${_variable} already defined";
 #      exit 1;
 #  fi
@@ -612,14 +612,14 @@ function isEnvVarDefined() {
 #  local _e;
 #  for _e in ${#ENV_VARIABLES[@]}; do
 #    if [[ "${e}" == "${_varName}" ]]; then
-#      _rescode=${TRUE};
+#      rescode=${TRUE};
 #      break;
 #    fi
 #  done
 #  # TODO set -o nounset
 #  IFS="${_oldIFS}";
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # Removes the ${..} envelope.
@@ -632,27 +632,27 @@ function isEnvVarDefined() {
 #  fi
 function _removeDollarSquareBrackets() {
   local _varName="${1}";
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
 
   if [ "${_varName#$\{}" == "${_varName}" ]; then
-      _rescode=${FALSE};
+      rescode=${FALSE};
   elif [ "${_varName%\}}" == "${_varName}" ]; then
-      _rescode=${FALSE};
+      rescode=${FALSE};
   else
-    _rescode=${TRUE};
-    _result="${_varName#$\{}";
-    _result="${_result%\}}";
-    export RESULT="${_result}";
+    rescode=${TRUE};
+    result="${_varName#$\{}";
+    result="${result%\}}";
+    export RESULT="${result}";
   fi
-  return ${_rescode};
+  return ${rescode};
 }
 
 # Evaluates given environment variable.
 # -> 1: the variable name.
 function _evalEnvVar() {
   local _varName="${1}";
-  local -i _rescode;
+  local -i rescode;
 
   checkNotEmpty "varName" "${_varName}" 1;
 
@@ -693,13 +693,13 @@ function _evalEnvVar() {
     if ! isEmpty "${_varValue}"; then
         export ${_varName}="${_varValue}";
         export RESULT="${_varValue}";
-        _rescode=${TRUE};
+        rescode=${TRUE};
     else
-      _rescode=${FALSE};
+      rescode=${FALSE};
     fi
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 function evalEnvVars() {
@@ -722,20 +722,20 @@ function evalEnvVars() {
 ##   fi
 function _evalOverriddenVar() {
   local _varName="${1}";
-  local _result;
-  local -i _rescode;
+  local result;
+  local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  _result="${OVERRIDDEN_ENV_VARIABLES[${_varName}]}";
-  if isEmpty "${_result}"; then
-      _rescode=${FALSE};
+  result="${OVERRIDDEN_ENV_VARIABLES[${_varName}]}";
+  if isEmpty "${result}"; then
+      rescode=${FALSE};
   else
-    export RESULT="${_result}";
-    _rescode=${TRUE};
+    export RESULT="${result}";
+    rescode=${TRUE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Retrieves the variable description.
@@ -748,20 +748,20 @@ function _evalOverriddenVar() {
 ##   fi
 function _evalVarDescription() {
   local _varName="${1}";
-  local _result;
-  local -i _rescode;
+  local result;
+  local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  _result="${ENVIRONMENT_VARIABLES_DESCRIPTIONS[${_varName}]}";
-  if isEmpty "${_result}"; then
-      _rescode=${FALSE};
+  result="${ENVIRONMENT_VARIABLES_DESCRIPTIONS[${_varName}]}";
+  if isEmpty "${result}"; then
+      rescode=${FALSE};
   else
-    export RESULT="${_result}";
-    _rescode=${TRUE};
+    export RESULT="${result}";
+    rescode=${TRUE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Retrieves the default value for given variable.
@@ -774,20 +774,20 @@ function _evalVarDescription() {
 ##   fi
 function _evalVarDefault() {
   local _varName="${1}";
-  local _result;
-  local -i _rescode;
+  local result;
+  local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  _result="${ENVIRONMENT_VARIABLES_DEFAULTS[${_varName}]}";
-  if isEmpty "${_result}"; then
-      _rescode=${FALSE};
+  result="${ENVIRONMENT_VARIABLES_DEFAULTS[${_varName}]}";
+  if isEmpty "${result}"; then
+      rescode=${FALSE};
   else
-    export RESULT="${_result}";
-    _rescode=${TRUE};
+    export RESULT="${result}";
+    rescode=${TRUE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Retrieves the command defined to retrieve a variable's default value.
@@ -800,20 +800,20 @@ function _evalVarDefault() {
 ##   fi
 function _evalVarCommand() {
   local _varName="${1}";
-  local _result;
-  local -i _rescode;
+  local result;
+  local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  _result="${ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]}";
-  if isEmpty "${_result}"; then
-      _rescode=${FALSE};
+  result="${ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]}";
+  if isEmpty "${result}"; then
+      rescode=${FALSE};
   else
-    export RESULT="${_result}";
-    _rescode=${TRUE};
+    export RESULT="${result}";
+    rescode=${TRUE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PUBLIC
@@ -834,21 +834,21 @@ function evalConstant() {
 function _uncachedEvalConstant() {
   local _constant="${1}";
 
-  local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
+  local result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
 
-  if isEmpty "${_result}" ; then
-    _result="${2}";
+  if isEmpty "${result}" ; then
+    result="${2}";
   fi
 
-  if isEmpty "${_result}" ; then
-    _result="${_constant}";
+  if isEmpty "${result}" ; then
+    result="${_constant}";
   fi
   #  if [ "${DEBUG}" == "1" ]; then
   #    echo "";
-  #    echo "${_constant} converts to ${_result}";
+  #    echo "${_constant} converts to ${result}";
   #  fi
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 ## PUBLIC
@@ -863,7 +863,7 @@ function _uncachedEvalConstant() {
 function flattenArray() {
   local _arrayName="${1}";
   local _separator="${2}";
-  local _result="";
+  local result="";
 
   local _aux="$(echo "\${#${_arrayName}[@]}")";
   local _len=$((-1+$(eval echo "${_aux}")));
@@ -874,11 +874,11 @@ function flattenArray() {
   for _i in $(seq 0 ${_len}); do
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");
-    _result="${_result}${_separator}${_item}";
+    result="${result}${_separator}${_item}";
   done
   IFS="${_oldIFS}";
-  _result="${_result#${_separator}}";
-  export RESULT="${_result}";
+  result="${result#${_separator}}";
+  export RESULT="${result}";
 }
 
 # Checks whether a given flag is enabled
@@ -895,16 +895,16 @@ function flattenArray() {
 function _flagEnabled() {
   local _flagVar="${1}";
   local _flagVal;
-  local _result;
+  local result;
   _evalVar "${_flagVar}";
   _flagVal="${RESULT}";
   if    [ "x${_flagVal}" == "x${TRUE}" ] \
      || [ "x${_flagVal}" == "xTRUE" ]; then
-    _result=${TRUE};
+    result=${TRUE};
   else
-    _result=${FALSE};
+    result=${FALSE};
   fi
-  return ${_result};
+  return ${result};
 }
 
 # AUXILIARY GENERAL-PURPOSE FUNCTIONS
@@ -953,21 +953,21 @@ function cleanup() {
 ##   fi
 function folderExistsAndIsNotASymlink() {
   local _folder="${1}";
-  local -i _rescode;
+  local -i rescode;
 
   checkNotEmpty "folder" "${_folder}" 1;
 
   if [ -d "${_folder}" ]; then
       if [ -L "${_folder}" ]; then
-          _rescode=${FALSE};
+          rescode=${FALSE};
       else
-        _rescode=${TRUE};
+        rescode=${TRUE};
       fi
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Runs mktemp variants in Linux and MacOSX, for creating a temporary file.
@@ -982,22 +982,22 @@ function folderExistsAndIsNotASymlink() {
 function _mktempFile() {
   local _baseFolder="${1}";
   local _format="${2}"
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
 
   checkNotEmpty "baseFolder" "${_baseFolder}" 1;
   checkNotEmpty "format" "${_format}" 2;
 
   if _isMacOSX; then
-    _result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
-    _rescode=$?;
+    result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
+    rescode=$?;
   else
-    _result="$(mktemp -p ${_baseFolder} -t ${_format})"
-    _rescode=$?;
+    result="$(mktemp -p ${_baseFolder} -t ${_format})"
+    rescode=$?;
   fi
 
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 ## Runs mktemp variants in Linux and MacOSX, for creating a temporary folder.
@@ -1012,22 +1012,22 @@ function _mktempFile() {
 function _mktempFolder() {
   local _baseFolder="${1}";
   local _format="${2}"
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
 
   checkNotEmpty "baseFolder" "${_baseFolder}" 1;
   checkNotEmpty "format" "${_format}" 2;
 
   if _isMacOSX; then
-    _result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
-    _rescode=$?;
+    result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
+    rescode=$?;
   else
-    _result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
-    _rescode=$?;
+    result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
+    rescode=$?;
   fi
 
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 ## Creates a new temporary file, without managing its cleanup.
@@ -1038,8 +1038,8 @@ function _mktempFolder() {
 ##     echo "Temp file: ${RESULT}";
 ##   fi
 function createTempFileNoCleanup() {
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
 
   local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
   local _dirname="$(dirname \"${SCRIPT_NAME}\")";
@@ -1051,19 +1051,19 @@ function createTempFileNoCleanup() {
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
   _mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
-  _rescode=$?;
+  rescode=$?;
 
-  if isFalse ${_rescode} ; then
+  if isFalse ${rescode} ; then
      _mktempFile "${PWD}" ".${_prefix}.XXXXXXXXXX";
-     _rescode=$?;
+     rescode=$?;
   fi
 
-  if isFalse ${_rescode}; then
+  if isFalse ${rescode}; then
     export RESULT="";
-    rm -f "${_result}" > /dev/null 2>&1;
+    rm -f "${result}" > /dev/null 2>&1;
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Creates a new temporary file.
@@ -1074,28 +1074,96 @@ function createTempFileNoCleanup() {
 ##     echo "Temp file: ${RESULT}";
 ##   fi
 function createTempFile() {
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
 
   if createTempFileNoCleanup; then
-      _result="${RESULT}";
-      addFileToCleanup "${_result}";
-      _rescode=${TRUE};
-      export RESULT="${_result}";
+      result="${RESULT}";
+      addFileToCleanup "${result}";
+      rescode=${TRUE};
+      export RESULT="${result}";
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
-## Checks if given file is writeable
+## Checks if given file exists.
 ## -> 1: the file to check.
-## <- 0: the file is writeable; 1 otherwise.
-function fileIsWriteable() {
+## <- 0/${TRUE} if the file exists; 1/${FALSE} otherwise.
+## Example:
+##  if fileExists "/tmp/test.txt"; then
+##    echo "/tmp/test.txt exists.";
+##  fi
+function fileExists() {
   local _file="${1}";
-  if [[ -n ${_file} ]] && [[ -w ${_file} ]]; then
+  if isNotEmpty "${_file}" && [[ -e ${_file} ]]; then
     return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+## Checks if given file is readable.
+## -> 1: the file to check.
+## <- 0/${TRUE} if the file is readable; 1/${FALSE} otherwise.
+## Example:
+##  if fileIsReadable "/tmp/test.txt"; then
+##    echo "/tmp/test.txt is readable.";
+##  fi
+function fileIsReadable() {
+  local _file="${1}";
+  if isNotEmpty "${_file}" && [[ -r ${_file} ]]; then
+      return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+## Checks if given file is writable.
+## -> 1: the file to check.
+## <- 0/${TRUE} if the file is writable; 1/${FALSE} otherwise.
+## Example:
+##  if fileIsWritable "/tmp/test.txt"; then
+##    echo "/tmp/test.txt is writable.";
+##  fi
+function fileIsWritable() {
+  local _file="${1}";
+  if isNotEmpty "${_file}" && [[ -w ${_file} ]]; then
+      return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+## Checks if given file is a regular file.
+## -> 1: the file to check.
+## <- 0/${TRUE} if the file is a regular file; 1/${FALSE} otherwise.
+## Example:
+##  if fileIsRegularFile "/tmp/test.txt"; then
+##    echo "/tmp/test.txt is a regular file.";
+##  fi
+function fileIsRegularFile() {
+  local _file="${1}";
+  if isNotEmpty "${_file}" && [[ -f ${_file} ]]; then
+      return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+## Checks if given file is not empty.
+## -> 1: the file to check.
+## <- 0/${TRUE} if the file is not empty; 1/${FALSE} otherwise.
+## Example:
+##  if fileIsNotEmpty "/tmp/test.txt"; then
+##    echo "/tmp/test.txt is not empty.";
+##  fi
+function fileIsNotEmpty() {
+  local _file="${1}";
+  if isNotEmpty "${_file}" && [[ -s ${_file} ]]; then
+      return ${TRUE};
   else
     return ${FALSE};
   fi
@@ -1182,8 +1250,8 @@ function addFileToCleanup() {
 function createTempFolder() {
   local _dirname="${1}";
   local _prefix="${2}";
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
 
   if isEmpty "${_dirname}"; then
     _dirname="$(dirname ${SCRIPT_NAME})";
@@ -1199,24 +1267,24 @@ function createTempFolder() {
   fi
 
   _mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    _result="${RESULT}";
+  rescode=$?;
+  if isTrue ${rescode}; then
+    result="${RESULT}";
   else
     _mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
-    _rescode=$?;
-    if isTrue ${_rescode}; then
-      _result="${RESULT}";
+    rescode=$?;
+    if isTrue ${rescode}; then
+      result="${RESULT}";
     fi
   fi
-  if isTrue ${_rescode}; then
-    addFileToCleanup "${_result}";
-    export RESULT="${_result}";
+  if isTrue ${rescode}; then
+    addFileToCleanup "${result}";
+    export RESULT="${result}";
   else
     export RESULT="";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Extracts the flags from the arguments.
@@ -1271,7 +1339,7 @@ function findInPath() {
 # PRIVATE
 # See findInPath()
 function _uncachedFindInPath() {
-  local _result="";
+  local result="";
   local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
   local _path;
 
@@ -1279,12 +1347,12 @@ function _uncachedFindInPath() {
   IFS=$' \t\n';
   for _path in $_paths; do
     if [ -f "${_path}/$1" ]; then
-      _result="${_path}/$1";
+      result="${_path}/$1";
       break;
     fi
   done
   IFS="${_oldIFS}";
-  echo ${_result};
+  echo ${result};
 }
 
 # Checks whether given keyword represents a success.
@@ -1298,7 +1366,7 @@ function isSuccessKeyword() {
 # See isSuccessKeyword()
 function _uncachedIsSuccessKeyword() {
   local _keyword="${1}";
-  local _rescode=${FALSE};
+  local rescode=${FALSE};
   local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
@@ -1310,27 +1378,27 @@ function _uncachedIsSuccessKeyword() {
              == "x$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #         || [   "x$(echo "${_keyword}"   | tr [:upper:] [:lower:] 2> /dev/null)" \
 #             == "x$(echo "${_i}"         | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _rescode=${TRUE};
+        rescode=${TRUE};
         break;
       fi;
     done
   fi
 
-  if isFalse ${_rescode}; then
+  if isFalse ${rescode}; then
     for _i in ${BUILTIN_SUCCESS_KEYWORDS[*]}; do
       if [ "x${_i}" == "x${1}" ] \
           || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
               == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #          || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
 #              == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _rescode=${TRUE};
+        rescode=${TRUE};
         break;
       fi;
     done
   fi
   IFS="${_oldIFS}";
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # Checks whether given keyword represents a failure.
@@ -1344,7 +1412,7 @@ function isFailureKeyword() {
 # See isFailureKeyword()
 function _uncachedIsFailureKeyword() {
   local _keyword="${1}";
-  local _rescode=${FALSE};
+  local rescode=${FALSE};
   local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
@@ -1354,30 +1422,30 @@ function _uncachedIsFailureKeyword() {
            == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #      || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
 #           == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-      _rescode=${TRUE};
+      rescode=${TRUE};
       break;
     fi;
   done
 
-  if isFalse ${_rescode}; then
+  if isFalse ${rescode}; then
     for _i in ${BUILTIN_FAILURE_KEYWORDS[*]}; do
       if [ "x${_i}" == "x${1}" ] \
         || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
             == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
 #        || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
 #            == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-        _rescode=${TRUE};
+        rescode=${TRUE};
         break;
       fi;
     done
   fi
   IFS="${_oldIFS}";
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 function printErrorMessage() {
-  local _rescode=${TRUE};
+  local rescode=${TRUE};
   local _message;
   local _error;
   local -i _interruption=${TRUE};
@@ -1386,7 +1454,7 @@ function printErrorMessage() {
   IFS=$' \t\n';
 #  set +o nounset  # allow unset variables
   for _i in ${BUILTIN_ERRORS[@]}; do
-    _rescode=$((_rescode+1));
+    rescode=$((rescode+1));
     if [ "x${_i}" == "x${1}" ]; then
       _message="${_i}";
       break;
@@ -1396,9 +1464,9 @@ function printErrorMessage() {
 
   if [ "x${_message}" == "x" ]; then
     # IFS issue
-#    _rescode=${TRUE};
+#    rescode=${TRUE};
     for _i in ${ERROR_MESSAGES[@]}; do
-      _rescode=$((_rescode+1));
+      rescode=$((rescode+1));
       if [ "x${_i}" == "x${1}" ]; then
         _message="${_i}";
         break;
@@ -1409,7 +1477,7 @@ function printErrorMessage() {
 
   if isEmpty "${_message}"; then
     _error="Error $1, but no error message defined. Fix this script";
-    _result=-1;
+    result=-1;
     shift;
   else
     shift;
@@ -1422,7 +1490,7 @@ function printErrorMessage() {
     _error="${_error} ($@)";
   fi
 
-  if isFalse ${_rescode}; then
+  if isFalse ${rescode}; then
     _error="${_error}. Finishing..";
   fi
   if isDebugEnabled; then
@@ -1430,15 +1498,15 @@ function printErrorMessage() {
   fi
   _printError "${_error}";
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 function exitWithErrorCode() {
-  local _rescode;
+  local rescode;
   printErrorMessage $@;
-  _rescode=$?;
+  rescode=$?;
   cleanup;
-  exit ${_rescode};
+  exit ${rescode};
 }
 
 # Internal functions
@@ -1592,7 +1660,7 @@ function date2jd() {
 # PRIVATE
 # See date2jd()
 function _uncachedDate2jd() {
-  local _result=0;
+  local result=0;
 
   local _year=$1;
   local _month=$2;
@@ -1603,9 +1671,9 @@ function _uncachedDate2jd() {
        + 367 * (_month - 2 + (14 - _month)/12*12)/12
        - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
 
-  _result=$((_standardJd-2400001));
+  result=$((_standardJd-2400001));
 
-  export RESULT=${_result};
+  export RESULT=${result};
 }
 
 # Converts given date (in seconds) to a formatted date.
@@ -1656,7 +1724,7 @@ function date2jds() {
 # PRIVATE
 # See date2jds()
 function _uncachedDate2jds() {
-  local _result=0;
+  local result=0;
 
   local _year=$1;
   local _month=$2;
@@ -1666,12 +1734,12 @@ function _uncachedDate2jds() {
   local _second=$6;
 
   date2jd ${_year} ${_month} ${_day};
-  _result=${RESULT};
-  _result=$((_result*24+_hour));
-  _result=$((_result*60+_minute));
-  _result=$((_result*60+_second));
+  result=${RESULT};
+  result=$((result*24+_hour));
+  result=$((result*60+_minute));
+  result=$((result*60+_second));
 
-  export RESULT=${_result};
+  export RESULT=${result};
 }
 
 # Retrieves the TERM variable
@@ -1683,19 +1751,19 @@ function retrieveTERM() {
 # PRIVATE
 # See retrieveTERM()
 function _uncachedRetrieveTERM() {
-  local _result="${TERM}";
+  local result="${TERM}";
 
-  if isEmpty "${_result}"; then
-    _result="dumb";
+  if isEmpty "${result}"; then
+    result="dumb";
   fi
 
-  case ${_result} in
-    dumb) _result="$(uname | tr '[:upper:]' '[:lower:]')";
+  case ${result} in
+    dumb) result="$(uname | tr '[:upper:]' '[:lower:]')";
          ;;
       *) ;;
   esac
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 
   return ${TRUE};
 }
@@ -1712,13 +1780,13 @@ function _uncachedRetrieveTERM() {
 #     _width=${RESULT};
 #   fi
 function _retrieveTermWidthFromEnvVar() {
-  local _rescode=${FALSE};
+  local rescode=${FALSE};
   if ! isEmpty "${DW_TERM_WIDTH}"; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
     export RESULT="${DW_TERM_WIDTH}";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # PRIVATE
@@ -1733,23 +1801,23 @@ function getTermWidth() {
 
 ## See getTermWidth
 function _uncachedGetTermWidth() {
-  local _result;
-  local -i _rescode;
+  local result;
+  local -i rescode;
   local _term;
 
   _retrieveTermWidthFromEnvVar;
-  _rescode=$?;
-  if ! isTrue ${_rescode}; then
+  rescode=$?;
+  if ! isTrue ${rescode}; then
     retrieveTERM;
     _term="${RESULT}";
     getTermWidthForTerm "${_term}";
-    _result="${RESULT}";
-    export RESULT="${_result}";
-    _rescode=$?;
+    result="${RESULT}";
+    export RESULT="${result}";
+    rescode=$?;
   fi
 
-#  _debugEcho "term witdh -> ${_RESULT}";
-  return ${_rescode};
+#  _debugEcho "term witdh -> ${RESULT}";
+  return ${rescode};
 }
 
 # Retrieves the width of the term.
@@ -1764,38 +1832,38 @@ function getTermWidthForTerm() {
 
 ## See getTermWidthForTerm
 function _uncachedGetTermWidthForTerm() {
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
   local _term="${1}";
 
   checkNotEmpty "term" "${_term}" 1;
 
   $(tput cols &> /dev/null > /dev/null 2>&1);
-  _rescode=$?;
+  rescode=$?;
 
-  if isTrue ${_rescode}; then
-    _result=$(tput cols);
+  if isTrue ${rescode}; then
+    result=$(tput cols);
   fi
 
-  if    isEmpty ${_result} \
-     || [ $((_result)) -le 0 ]; then
+  if    isEmpty ${result} \
+     || [ $((result)) -le 0 ]; then
 
     if ! isEmpty "${_term}"; then
 
       $(tput -T ${_term} cols > /dev/null 2>&1);
 
-      if isTrue ${_rescode}; then
-        _result=$(tput -T ${_term} cols);
+      if isTrue ${rescode}; then
+        result=$(tput -T ${_term} cols);
       fi
     fi
   fi
-  if    isEmpty ${_result} \
-     || [ $((_result)) -le 0 ]; then
-    _result=${_DRY_WIT_DEFAULT_TERM_WIDTH};
+  if    isEmpty ${result} \
+     || [ $((result)) -le 0 ]; then
+    result=${_DRY_WIT_DEFAULT_TERM_WIDTH};
   fi
-  export RESULT=${_result};
+  export RESULT=${result};
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # Logging functions
@@ -1826,7 +1894,7 @@ function buildColor() {
   local _color="${1}";
   local _fgValue="${2}";
   local _bgValue="${3}";
-  local _result="";
+  local result="";
 
   upvar "${_color}" "\033[0;${_fgValue}m";
   export "${_color}";
@@ -1919,7 +1987,7 @@ function allowsColors() {
 
 ## See allowsColors
 function _uncachedAllowsColors() {
-  local _result;
+  local result;
 
   $(tput colors > /dev/null 2>&1);
   if isTrue $?; then
@@ -1927,53 +1995,53 @@ function _uncachedAllowsColors() {
     if [ ${_colors} -ge 8 ]; then
       env | grep -e '^_=' | grep env > /dev/null 2>&1;
       if isTrue $?; then
-        _result=${TRUE};
+        result=${TRUE};
       else
         result=${FALSE};
       fi
     else
-      _result=${FALSE};
+      result=${FALSE};
     fi
   else
-    _result=${FALSE};
+    result=${FALSE};
   fi;
 
-  return ${_result};
+  return ${result};
 }
 
 function getColor() {
   local _colorConstant="${1}";
   local _defaultColor="${2:-${UNDEFINED_COLOR}}"
-  local _result;
+  local result;
 
   if allowsColors; then
     evalConstant "${_colorConstant}" "${_defaultColor}";
-    _result="${RESULT}";
+    result="${RESULT}";
   fi
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 function findOutKeyword() {
   local _value="${1}";
-  local _result;
+  local result;
 
   case "${_value}" in
-    "${_DW_SUCCESS}") _result=${SUCCESS};
+    "${_DW_SUCCESS}") result=${SUCCESS};
                ;;
-    "${_DW_FAILURE}") _result=${FAILURE};
+    "${_DW_FAILURE}") result=${FAILURE};
                ;;
     *) if isSuccessKeyword "${_value}"; then
-         _result=${SUCCESS};
+         result=${SUCCESS};
        elif isFailureKeyword "${_value}"; then
-         _result=${FAILURE};
+         result=${FAILURE};
        else
-         _result=${UNDEFINED};
+         result=${UNDEFINED};
        fi
        ;;
   esac
 
-  return ${_result};
+  return ${result};
 }
 
 # Checks whether given tag is defined.
@@ -1986,16 +2054,16 @@ function definedTag() {
 # PRIVATE
 # See definedTag()
 function _uncachedDefinedTag() {
-  local _result;
+  local result;
 
   case "${1}" in
-    "${_DW_SUCCESS}" | "${_DW_FAILURE}") _result=${TRUE};
+    "${_DW_SUCCESS}" | "${_DW_FAILURE}") result=${TRUE};
        ;;
-    *) _result=${FALSE};
+    *) result=${FALSE};
        ;;
   esac
 
-  return ${_result};
+  return ${result};
 }
 
 # Retrieves the verbosity flag.
@@ -2003,31 +2071,31 @@ function _uncachedDefinedTag() {
 #            -v if debug is enabled;
 #            empty string otherwise.
 function resolveVerbosity() {
-  local _result="";
+  local result="";
 
   if isTraceEnabled; then
-      _result="-vv";
+      result="-vv";
   elif isDebugEnabled; then
-      _result="-v";
+      result="-v";
   elif isInfoEnabled; then
-      _result="";
+      result="";
   fi;
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 # Checks whether trace is enabled.
 # <- 0/${TRUE} if trace is enabled; 1/${FALSE} otherwise.
 function isTraceEnabled() {
-  local _rescode=${FALSE};
+  local rescode=${FALSE};
 
   if isDebugEnabled; then
     if isTrue ${_DRY_WIT_LOG_TRACE}; then
-      _rescode=${TRUE};
+      rescode=${TRUE};
     fi
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # Enables the trace level.
@@ -2071,15 +2139,15 @@ function logTraceFile() {
 # Checks whether the debug level is enabled.
 # <- 0/${TRUE} if debug is allowed; 1/${FALSE} otherwise.
 function isDebugEnabled() {
-  local _rescode=${FALSE};
+  local rescode=${FALSE};
 
   if isInfoEnabled; then
     if isTrue ${_DRY_WIT_LOG_DEBUG}; then
-      _rescode=${TRUE};
+      rescode=${TRUE};
     fi
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 # Enables the debug level.
@@ -2131,13 +2199,13 @@ function isLowerThanInfoEnabled() {
 }
 
 function isInfoEnabled() {
-  local _rescode=${TRUE};
+  local rescode=${TRUE};
 
   if isTrue ${_DRY_WIT_LOG_QUIET}; then
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 function setInfoEnabled() {
@@ -2271,9 +2339,9 @@ function _pushLogLevel() {
 ##   _numberOfNestedInProgressTasks;
 ##   _count=$?
 function _numberOfNestedInProgressTasks() {
-  local _rescode;
-  _rescode=${#_DRY_WIT_LOG_STACK[@]};
-  return ${_rescode};
+  local rescode;
+  rescode=${#_DRY_WIT_LOG_STACK[@]};
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -2285,20 +2353,20 @@ function _numberOfNestedInProgressTasks() {
 ##     echo "Last log: ${RESULT}";
 ##   fi
 function _popLog() {
-  local -i _rescode;
-  local _result="";
+  local -i rescode;
+  local result="";
   local -i _len=${#_DRY_WIT_LOG_STACK[@]};
   local -i _newLen;
   if [ ${_len} -gt 0 ]; then
     _newLen=$((${_len} - 1));
-    _result="${_DRY_WIT_LOG_STACK[${_newLen}]}";
+    result="${_DRY_WIT_LOG_STACK[${_newLen}]}";
     eval "unset _DRY_WIT_LOG_STACK[${_newLen}]";
-    _rescode=$?;
+    rescode=$?;
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -2310,19 +2378,19 @@ function _popLog() {
 ##     echo "Last log: ${RESULT}";
 ##   fi
 function _peekLog() {
-  local _rescode;
-  local _result="";
+  local rescode;
+  local result="";
   local -i _len=${#_DRY_WIT_LOG_STACK[@]};
   local -i _newLen;
   if [ ${_len} -gt 0 ]; then
     _newLen=$((${_len} - 1));
-    _result="${_DRY_WIT_LOG_STACK[${_newLen}]}";
-    _rescode=$?;
+    result="${_DRY_WIT_LOG_STACK[${_newLen}]}";
+    rescode=$?;
   else
-    _rescode=1;
+    rescode=1;
   fi
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -2334,18 +2402,18 @@ function _peekLog() {
 ##     echo "Last log category: ${RESULT}";
 ##   fi
 function _popLogCategory() {
-  local _rescode;
+  local rescode;
   local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
   local -i _newLen;
   if [ ${_len} -gt 0 ]; then
     _newLen=$((${_len} - 1));
     export RESULT="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
     eval "unset _DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]";
-    _rescode=$?;
+    rescode=$?;
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -2357,21 +2425,21 @@ function _popLogCategory() {
 ##     echo "Last log category: ${RESULT}";
 ##   fi
 function _peekLogCategory() {
-  local _rescode;
-  local _result="";
+  local rescode;
+  local result="";
   local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
   local -i _newLen;
 
   if [ ${_len} -gt 0 ]; then
     _newLen=$((${_len} - 1));
-    _result="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
-    _rescode=$?;
+    result="${_DRY_WIT_LOG_CATEGORY_STACK[${_newLen}]}";
+    rescode=$?;
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -2383,7 +2451,7 @@ function _peekLogCategory() {
 ##     echo "Last log level: ${RESULT}";
 ##   fi
 function _popLogLevel() {
-  local _rescode;
+  local rescode;
   local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
   local -i _newLen;
 
@@ -2391,12 +2459,12 @@ function _popLogLevel() {
     _newLen=$((${_len} - 1));
     export RESULT="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
     eval "unset _DRY_WIT_LOG_LEVEL_STACK[${_newLen}]";
-    _rescode=$?;
+    rescode=$?;
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -2408,21 +2476,21 @@ function _popLogLevel() {
 ##     echo "Last log level: ${RESULT}";
 ##   fi
 function _peekLogLevel() {
-  local _rescode;
-  local _result="";
+  local rescode;
+  local result="";
   local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
   local -i _newLen;
 
   if [ ${_len} -gt 0 ]; then
     _newLen=$((${_len} - 1));
-    _result="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
-    _rescode=$?;
+    result="${_DRY_WIT_LOG_LEVEL_STACK[${_newLen}]}";
+    rescode=$?;
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
 
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -2520,7 +2588,7 @@ function  _retrieveLogPrefixTokens() {
 
   evalConstant "${_levelVar}_LOG_PREFIX_TOKEN" "${INFO_LOG_PREFIX_TOKEN}";
   local _level="${RESULT}";
-  local _result=();
+  local result=();
   local _aux="";
   local _timestamp;
   local -i _i;
@@ -2563,7 +2631,7 @@ function  _retrieveLogOutcomeTokens() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
 
-  local _result=();
+  local result=();
   local _aux="";
   local _timestamp;
   local -i _i;
@@ -2597,7 +2665,7 @@ function _retrieveLogOutcomeColors() {
   local _keyword="${1}";
   checkNotEmpty "keyword" "${_keyword}" 1;
 
-  local _result=();
+  local result=();
   local _aux="";
   _retrieveKeywordColor "${_keyword}";
   local _keywordColor="${RESULT}";
@@ -2631,20 +2699,20 @@ function _retrieveKeywordColor() {
   checkNotEmpty "keyword" "${_keyword}" 1;
   local _defaultColor="${2:-${NO_COLOR}}";
 
-  local _result;
+  local result;
 
   case ${_keyword} in
-    SUCCESS | "${SUCCESS}") _result="${SUCCESS_COLOR}";
+    SUCCESS | "${SUCCESS}") result="${SUCCESS_COLOR}";
                             ;;
-    FAILURE | "${FAILURE}" | "${_DW_FAILURE}" | "${_DW_FAILED}" | "FAILED" | "failed" | "FAIL" | "fail") _result="${FAILURE_COLOR}";
+    FAILURE | "${FAILURE}" | "${_DW_FAILURE}" | "${_DW_FAILED}" | "FAILED" | "failed" | "FAIL" | "fail") result="${FAILURE_COLOR}";
                                                                     ;;
-    IN_PROGRESS | "${IN_PROGRESS}") _result="${IN_PROGRESS_COLOR}";
+    IN_PROGRESS | "${IN_PROGRESS}") result="${IN_PROGRESS_COLOR}";
                                     ;;
-    *) _result="${_defaultColor}";
+    *) result="${_defaultColor}";
        ;;
   esac
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 ## PRIVATE
@@ -2680,8 +2748,8 @@ function _retrieveLogPrefix() {
   local _level="${2}";
   checkNotEmpty "level" "${_level}" 2;
 
-  local _result="$(_echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
-  export RESULT="${_result}";
+  local result="$(_echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
+  export RESULT="${result}";
 }
 
 ## PRIVATE
@@ -2731,21 +2799,21 @@ function _echoColorAwareLogPrefix() {
 function _retrieveLogNamespace() {
   local _namespace="${LOG_CATEGORY_NAMESPACE}";
   local _category="${LOG_CATEGORY}";
-  local _result;
+  local result;
 
   if isEmpty "${_namespace}"; then
     if isEmpty "${SCRIPT_NAME}" ; then
-      _result="?";
+      result="?";
     else
-      _result="$(basename ${SCRIPT_NAME} .sh)";
+      result="$(basename ${SCRIPT_NAME} .sh)";
     fi
   fi
 
   if ! isEmpty ${_category} ; then
-    _result="${_result}:${_category}";
+    result="${result}:${_category}";
   fi
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 ## PRIVATE
@@ -3017,7 +3085,7 @@ function echoColorizedTextWithColor() {
   evalConstant "${1}";
   local _color="${RESULT}";
   local _text="${2}";
-  local _result;
+  local result;
 
   local _allowsColors;
   allowsColors;
@@ -3333,12 +3401,12 @@ function readConfFile() {
 }
 
 function checkPasswordlessSudo() {
-  local _result=${TRUE};
+  local result=${TRUE};
 
   which sudo > /dev/null 2>&1;
-  _result=$?;
+  result=$?;
 
-  if isTrue ${_result}; then
+  if isTrue ${result}; then
     local _tmp="${TEMP}";
     if [ ! -r "${_tmp}" ]; then
       _tmp="/tmp";
@@ -3348,13 +3416,13 @@ function checkPasswordlessSudo() {
     fi
     if [ -r "${_tmp}" ]; then
       echo "" | sudo -S sudo ls "${_tmp}" 2> /dev/null > /dev/null
-      _result=$?;
+      result=$?;
     else
-      _result=1;
+      result=1;
     fi
   fi
 
-  return ${_result};
+  return ${result};
 }
 
 function findRelativePathBetweenFolders() {
@@ -3375,7 +3443,7 @@ function findRelativePathBetweenFolders() {
   local _pathBb;
   local _d;
   local _p;
-  local _result;
+  local result;
 
   findGreatestCommonParentFolder "${_pathA}" "${_pathB}";
   _parent="${RESULT}";
@@ -3395,15 +3463,15 @@ function findRelativePathBetweenFolders() {
   replaceNRightmostTokens "${_p}" "" $((_aux-_d-1)) "/";
   _p="${RESULT}";
 
-  _result="${_p}/${_pathBb}";
+  result="${_p}/${_pathBb}";
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 function findGreatestCommonParentFolder() {
   local _pathA="$1";
   local _pathB="$2";
-  local _result="";
+  local result="";
 
   local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
   local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
@@ -3421,21 +3489,21 @@ function findGreatestCommonParentFolder() {
     _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
     _index=$((_index+1));
     if [ "${_auxA}" == "${_auxB}" ]; then
-      _result="${_result}/${_auxA}";
+      result="${result}/${_auxA}";
     else
       break;
     fi
   done
 
-  _result=$(echo "${_result}" | sed 's ^/  g');
+  result=$(echo "${result}" | sed 's ^/  g');
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 function findFolderDistance() {
   local _pathA="$1";
   local _pathB="$2";
-  local _result=-1;
+  local result=-1;
 
   local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
   local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
@@ -3455,25 +3523,25 @@ function findFolderDistance() {
     _indexB=$((_maxB-_max+_index));
     if    [ $((_indexA)) -eq 0 ] \
        || [ $((_indexB)) -eq 0 ]; then
-      _result=$((_max-_index));
+      result=$((_max-_index));
       break;
     fi
     _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_indexA} '{printf("%s", $indx);}');
     _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_indexB} '{printf("%s", $indx);}');
     _index=$((_index-1));
     if [ "${_auxA}" != "${_auxB}" ]; then
-      _result=${TRUE};
+      result=${TRUE};
       break;
     fi
   done
 
-#  if [ $((_result)) -ge 0 ]; then
-#    _result=$((_max-_result));
+#  if [ $((result)) -ge 0 ]; then
+#    result=$((_max-result));
 #  else
-#    _result=${TRUE};
+#    result=${TRUE};
 #  fi
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 function replaceNLeftmostTokens() {
@@ -3481,8 +3549,8 @@ function replaceNLeftmostTokens() {
   local _newToken="$2";
   local _number=$(($3));
   local _separator="$4";
-  local _result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
-  export RESULT="${_result}";
+  local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
+  export RESULT="${result}";
 }
 
 function replaceNRightmostTokens() {
@@ -3490,8 +3558,8 @@ function replaceNRightmostTokens() {
   local _newToken="$2";
   local _number=$(($3));
   local _separator="$4";
-  local _result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
-  export RESULT="${_result}";
+  local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
+  export RESULT="${result}";
 }
 
 ###
@@ -3505,7 +3573,7 @@ function replaceNRightmostTokens() {
 function uncompress() {
   local _file="${1}";
   local _destination="${2}";
-  local _result=${TRUE};
+  local result=${TRUE};
 
   createTempFile;
   local _errorOutput="${RESULT}";
@@ -3522,10 +3590,10 @@ function uncompress() {
   elif file "${_file}" | cut -d ":" -f 2 | grep tar /dev/null 2>&1; then
     _flags="xf";
   else
-    _result=1;
+    result=1;
   fi
 
-  if [ ${_result} == 0 ]; then
+  if [ ${result} == 0 ]; then
     logDebug -n "Uncompressing ${_file}";
     tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
     if [ $? == 0 ]; then
@@ -3533,35 +3601,35 @@ function uncompress() {
     else
       logDebugResult "Failed";
       logDebugFile "${_errorOutput}";
-      _result=2;
+      result=2;
     fi
   fi
 
-  return ${_result};
+  return ${result};
 }
 
 function removeExtension() {
   local _file="$1";
-  local _result="$(basename ${_file}$)";
-  _result="${_result%.*}";
+  local result="$(basename ${_file}$)";
+  result="${result%.*}";
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 function remoteSshCommand() {
-  local _result;
-  local _resultCode=${TRUE};
+  local result;
+  local resultCode=${TRUE};
   local _user="$1";
   local _server="$2";
   local _command="$3";
 
-  _result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
-  _resultCode=$?;
-  if [ ${_resultCode} == 0 ]; then
-    export RESULT="${_result}";
+  result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
+  resultCode=$?;
+  if [ ${resultCode} == 0 ]; then
+    export RESULT="${result}";
   fi
 
-  return ${_resultCode};
+  return ${resultCode};
 }
 
 # Retrieves the disk space available in the filesystem containing
@@ -3569,8 +3637,8 @@ function remoteSshCommand() {
 # the space could be calculated.
 # - folder: the folder.
 function retrieveFreeDiskSpaceUnderFolder() {
-  local _result;
-  local _resultCode=1;
+  local result;
+  local resultCode=1;
   local _folder="$1";
   local _aux="${_folder}";
 
@@ -3581,22 +3649,22 @@ function retrieveFreeDiskSpaceUnderFolder() {
     done;
 
     mountpoint -q "${_aux}";
-    _resultCode=$?;
+    resultCode=$?;
 
-    if [ ${_resultCode} -eq 0 ]; then
-      _result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
-      _resultCode=$?;
+    if [ ${resultCode} -eq 0 ]; then
+      result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
+      resultCode=$?;
     fi
   fi
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 
-  return ${_resultCode};
+  return ${resultCode};
 }
 
 function remoteSshCommandPipe() {
-  local _result;
-  local _resultCode=${TRUE};
+  local result;
+  local resultCode=${TRUE};
   local _user="$1";
   local _server="$2";
   local _command="$3";
@@ -3607,13 +3675,13 @@ function remoteSshCommandPipe() {
 
 #  echo "_previousPipe=${_previousPipe}";
 #  echo "_command=${_command}";
-  _result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
-  _resultCode=$?;
-  if [ ${_resultCode} == 0 ]; then
-    export RESULT="${_result}";
+  result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
+  resultCode=$?;
+  if [ ${resultCode} == 0 ]; then
+    export RESULT="${result}";
   fi
 
-  return ${_resultCode};
+  return ${resultCode};
 }
 
 # Runs a command supporting logging of command-line and output.
@@ -3623,24 +3691,24 @@ function remoteSshCommandPipe() {
 # - Command: The command to run.
 function runCommand() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
-  local _result;
-  local _resultCode;
+  local result;
+  local resultCode;
 
   getLogCategory;
   local _previousLogCategory="${RESULT}";
   setLogCategory "${_previousLogCategory}:($1)";
 
   logDebug "${_command}";
-  _result=$($@ 2>&1);
-  _resultCode=$?;
+  result=$($@ 2>&1);
+  resultCode=$?;
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 
   setLogCategory "${_previousLogCategory}";
-  return ${_resultCode};
+  return ${resultCode};
 }
 
-# TODO: find out why this fails. _result gets modified
+# TODO: find out why this fails. result gets modified
 # externally in the getLogCategory/setLogCategory/logDebug block
 # Runs a command supporting logging of command-line and output,
 # even if it's long, since it uses a temporary file to store it.
@@ -3648,11 +3716,11 @@ function runCommand() {
 # - Command: The command to run.
 function runCommandLongOutput() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
-  local _result;
-  local _resultCode;
+  local result;
+  local resultCode;
 
   createTempFile;
-  _result="${RESULT}";
+  result="${RESULT}";
 
   getLogCategory;
   local _previousLogCategory="${RESULT}";
@@ -3661,18 +3729,18 @@ function runCommandLongOutput() {
   logDebug "${_command}";
 
   if isDebugEnabled; then
-    $@ 2>&1 | tee "${_result}";
-    _resultCode=${PIPESTATUS[0]};
+    $@ 2>&1 | tee "${result}";
+    resultCode=${PIPESTATUS[0]};
   else
-    $@ > "${_result}" 2>&1;
-    _resultCode=$?;
+    $@ > "${result}" 2>&1;
+    resultCode=$?;
   fi
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 
   setLogCategory "${_previousLogCategory}";
 
-  return ${_resultCode};
+  return ${resultCode};
 }
 
 function logDebugFileContents() {
@@ -3697,13 +3765,13 @@ function _retrieveAbsolutePath() {
 ##     echo "I'm running on a MacOSX";
 ##   fi
 function _isMacOSX() {
-  local -i _rescode;
+  local -i rescode;
   if [ "$(uname -s)" == "Darwin" ]; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
   else
-    _rescode=${FALSE};
+    rescode=${FALSE};
   fi
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Runs readlink (differs in Linux and in MacOSX).
@@ -3715,29 +3783,29 @@ function _isMacOSX() {
 ##     echo "readlink result: ${RESULT}"
 ##   fi
 function _readlink() {
-  local -i _rescode;
-  local _result;
+  local -i rescode;
+  local result;
   if _isMacOSX; then
-    _result="$(greadlink $@)";
-    _rescode=$?;
+    result="$(greadlink $@)";
+    rescode=$?;
   else
-    _result="$(readlink $@)";
-    _rescode=$?;
+    result="$(readlink $@)";
+    rescode=$?;
   fi
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 function _functionPresent() {
   local _function=$1;
   local _script=$2;
   type ${_function} 2> /dev/null | grep -q 'shell function'
-  local _rescode=$?;
-  if [ ${_rescode} -ne 0 ]; then
+  local rescode=$?;
+  if [ ${rescode} -ne 0 ]; then
     grep " ${_function}()" "${_script}" > /dev/null 2>&1;
-    _rescode=$?;
+    rescode=$?;
   fi
-  if [ ${_rescode} -ne 0 ]; then
+  if [ ${rescode} -ne 0 ]; then
     local _oldIFS="${IFS}";
     local _inc;
     IFS=$' \t\n';
@@ -3745,15 +3813,15 @@ function _functionPresent() {
                 "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
       if [ -e "${_inc}" ]; then
         _functionPresent "${_function}" "${_inc}";
-        _rescode=$?;
-	      if [ ${_rescode} -eq 0 ]; then
+        rescode=$?;
+	      if [ ${rescode} -eq 0 ]; then
           break;
 	      fi
       fi
     done
     IFS="${_oldIFS}";
   fi
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Converts given string to upper case.
@@ -3767,8 +3835,8 @@ function _functionPresent() {
 function toUpper() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
-  local _result=$(echo "${_text}" | awk '{print toupper($0);}');
-  export RESULT="${_result}";
+  local result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${result}";
 }
 
 ## PUBLIC
@@ -3787,8 +3855,8 @@ function normalize() {
 function _uncachedNormalize() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
-  local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
-  export RESULT="${_result}";
+  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
+  export RESULT="${result}";
 }
 
 ## Appends a new error to ERROR_MESSAGES.
@@ -3887,8 +3955,8 @@ function checkDependency() {
   fi
 
   which ${_req} > /dev/null 2>&1;
-  _rescode=$?;
-  [ ${_rescode} -ne ${TRUE} ] && exitWithErrorCode ${_errorCode};
+  rescode=$?;
+  [ ${rescode} -ne ${TRUE} ] && exitWithErrorCode ${_errorCode};
 }
 
 ## Performs the checks for a required dependency.
@@ -3968,11 +4036,11 @@ function _parseCommonInput() {
 ##   echo "The id of the owner of /tmp is ${RESULT}";
 function retrieveOwnerUid() {
   local _file="${1}"
-  local _result;
+  local result;
 
-  _result="$(stat -c '%u' "${_file}")";
+  result="$(stat -c '%u' "${_file}")";
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 ## Retrieves the id of the owner group of given file or folder.
@@ -3983,11 +4051,11 @@ function retrieveOwnerUid() {
 ##   echo "The id of the group of /tmp is ${RESULT}";
 function retrieveOwnerGid() {
   local _file="${1}"
-  local _result;
+  local result;
 
-  _result="$(stat -c '%g' "${_file}")";
+  result="$(stat -c '%g' "${_file}")";
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 }
 
 ## Checks whether given uid already exists.
@@ -4000,19 +4068,19 @@ function retrieveOwnerGid() {
 ##   fi
 function uidAlreadyExists() {
   local _uid="${1}";
-  local _rescode;
+  local rescode;
 
   logDebug -n "Checking if uid ${_uid} is already used";
   getent passwd ${_uid} > /dev/null;
-  _rescode=$?;
+  rescode=$?;
 
-  if isTrue ${_rescode}; then
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Checks whether given gid already exists.
@@ -4025,19 +4093,19 @@ function uidAlreadyExists() {
 ##   fi
 function gidAlreadyExists() {
   local _gid="${1}";
-  local _rescode;
+  local rescode;
 
   logDebug -n "Checking if gid ${_gid} already exists";
   getent group ${_gid} > /dev/null;
-  _rescode=$?;
+  rescode=$?;
 
-  if isTrue ${_rescode}; then
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Checks whether given user already exists.
@@ -4050,19 +4118,19 @@ function gidAlreadyExists() {
 ##   fi
 function userAlreadyExists() {
   local _user="${1}";
-  local _rescode;
+  local rescode;
 
   logDebug -n "Checking if user ${_user} is already used";
   getent passwd ${_user} > /dev/null;
-  _rescode=$?;
+  rescode=$?;
 
-  if isTrue ${_rescode}; then
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Checks whether given group already exists.
@@ -4075,19 +4143,19 @@ function userAlreadyExists() {
 ##   fi
 function groupAlreadyExists() {
   local _group="${1}";
-  local _rescode;
+  local rescode;
 
   logDebug -n "Checking if group ${_group} already exists";
   getent group ${_group} > /dev/null;
-  _rescode=$?;
+  rescode=$?;
 
-  if isTrue ${_rescode}; then
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "true";
   else
     logDebugResult FAILURE "false";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Retrieves the user id of given user.
@@ -4101,15 +4169,15 @@ function retrieveUserFromUid() {
   local _uid="${1}";
   checkNotEmpty "uid" "${_uid}" 1;
 
-  local _result;
-  local _rescode;
+  local result;
+  local rescode;
 
-  _result=$(getent passwd ${_uid} | cut -d':' -f1);
-  _rescode=$?;
+  result=$(getent passwd ${_uid} | cut -d':' -f1);
+  rescode=$?;
 
-  export RESULT="${_result}";
+  export RESULT="${result}";
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Retrieves the group id of given group.
@@ -4124,17 +4192,17 @@ function retrieveGroupFromGid() {
   local _gid="${1}";
   checkNotEmpty "gid" "${_gid}" 1;
 
-  local _result;
-  local _rescode;
+  local result;
+  local rescode;
 
-  _result=$(getent group ${_gid} | cut -d':' -f1);
-  _rescode=$?;
+  result=$(getent group ${_gid} | cut -d':' -f1);
+  rescode=$?;
 
-  if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+  if isTrue ${rescode}; then
+    export RESULT="${result}";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Retrieves the id of a given user.
@@ -4147,20 +4215,20 @@ function retrieveGroupFromGid() {
 function retrieveUidFromUser() {
   local _user="${1}";
   checkNotEmpty "user" "${_user}" 1;
-  local _result;
-  local _rescode;
+  local result;
+  local rescode;
 
   logDebug -n "Retrieving uid of user ${_user}";
-  _result=$(getent passwd ${_user} | cut -d':' -f3);
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "${_result}";
-    export RESULT="${_result}";
+  result=$(getent passwd ${_user} | cut -d':' -f3);
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "${result}";
+    export RESULT="${result}";
   else
     logDebugResult FAILURE "failed";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Retrieves the id of a given group.
@@ -4174,20 +4242,20 @@ function retrieveGidFromGroup() {
   local _group="${1}";
   checkNotEmpty "group" "${_group}" 1;
 
-  local _result;
-  local _rescode;
+  local result;
+  local rescode;
 
   logDebug -n "Retrieving gid of group ${_group}";
-  _result=$(getent group ${_group} | cut -d':' -f3);
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "${_result}";
-    export RESULT="${_result}";
+  result=$(getent group ${_group} | cut -d':' -f3);
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "${result}";
+    export RESULT="${result}";
   else
     logDebugResult FAILURE "failed";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Creates a new user.
@@ -4201,19 +4269,19 @@ function retrieveGidFromGroup() {
 function createUser() {
   local _userName="${1}";
   checkNotEmpty "userName" "${_userName}" 1;
-  local _rescode;
+  local rescode;
 
   logDebug -n "Creating user ${_userName}";
 
   useradd -M -N -l "${_userName}";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
+  rescode=$?;
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Creates a new group.
@@ -4230,24 +4298,24 @@ function createGroup() {
   checkNotEmpty "group" "${_groupName}" 1;
   local _gid="${2}";
 
-  local _rescode;
+  local rescode;
 
   logDebug -n "Creating group ${_groupName}";
 
   if isEmpty "${_gid}"; then
     groupadd "${_groupName}";
-    _rescode=$?;
+    rescode=$?;
   else
     groupadd -g "${_gid}" "${_groupName}";
-    _rescode=$?;
+    rescode=$?;
   fi
-  if isTrue ${_rescode}; then
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Deletes given user.
@@ -4261,19 +4329,19 @@ function createGroup() {
 function deleteUser() {
   local _userName="${1}";
   checkNotEmpty "user" "${_userName}" 1;
-  local _rescode;
+  local rescode;
 
   logDebug -n "Deleting user ${_userName}";
 
   userdel "${_userName}";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
+  rescode=$?;
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Deletes given group.
@@ -4287,19 +4355,19 @@ function deleteUser() {
 function deleteGroup() {
   local _groupName="${1}";
   checkNotEmpty "group" "${_groupName}" 1;
-  local _rescode;
+  local rescode;
 
   logDebug -n "Deleting group ${_groupName}";
 
   groupdel "${_groupName}";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
+  rescode=$?;
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Resolves the path of a command for given user.
@@ -4316,15 +4384,15 @@ function resolveCommandForUser() {
   checkNotEmpty "user" "${_user}" 1;
   local _command="${2}";
   checkNotEmpty "command" "${_command}" 2;
-  local _rescode;
+  local rescode;
 
-  local _result="$(su - ${_user} -c "which ${_command}" 2> /dev/null)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-      export RESULT="${_result}";
+  local result="$(su - ${_user} -c "which ${_command}" 2> /dev/null)";
+  rescode=$?;
+  if isTrue ${rescode}; then
+      export RESULT="${result}";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Runs the command in a folder, under a given user.
@@ -4333,29 +4401,61 @@ function resolveCommandForUser() {
 ## -> 3: the folder.
 ## -> 4+: the command.
 ## Example:
-##  runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"
+##  if runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"; then
+##    echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
+##  fi
 function runCommandAsUidGid() {
   local _uid="${1}";
-  checkNotEmpty "uid" "${_uid}" 1;
   local _gid="${2}";
-  checkNotEmpty "gid" "${_gid}" 2;
   local _folder="${3}";
-  checkNotEmpty "folder" "${_folder}" 3;
   local _command="${4}";
-  checkNotEmpty "command" "${_command}" 4;
-  shift
-  shift
-  shift
-  shift
   local _args="${@}";
-  retrieveUserFromUid "${_uid}";
-  local _user="${RESULT}";
-  retrieveGroupFromGid "${_gid}";
-  local _group="${RESULT}";
+  local _user;
+  local _group;
   local _exports="$(export)";
+  local -i rescode;
 
-  createTempFile
+  retrieveUserFromUid "${_uid}";
+  _user="${RESULT}";
+  retrieveGroupFromGid "${_gid}";
+  _group="${RESULT}";
+
+  runCommandAsUserAndGroup "${_user}" "${_group}" "${_folder}" "${_command}" ${_args};
+}
+
+## Runs the command in a folder, under a given user.
+## -> 1: The user.
+## -> 2: The group.
+## -> 3: the folder.
+## -> 4+: the command.
+## Example:
+##  if runCommandAsUserAndGroup root root /tmp "ls -ltrhia"; then
+##    echo "ls -ltrhia run successfully as root/root, on /tmp";
+##  fi
+function runCommandAsUserAndGroup() {
+  local _user="${1}";
+  local _group="${2}";
+  local _folder="${3}";
+  local _command="${4}";
+  local _args="${@}";
+  local _exports="$(export)";
+  local -i rescode;
+
+  createTempFile;
   local _runme="${RESULT}";
+
+  checkNotEmpty "user" "${_user}" 1;
+  checkNotEmpty "group" "${_group}" 2;
+  checkNotEmpty "folder" "${_folder}" 3;
+  checkNotEmpty "command" "${_command}" 4;
+
+  shift
+  shift
+  shift
+  shift
+
+  createTempFile;
+  _runme="${RESULT}";
 
   cat << EOF > "${_runme}"
 #!/bin/bash
@@ -4371,7 +4471,10 @@ EOF
   logDebug "Running ${_command} ${_args} as ${_user}:${_group}";
   chown ${_user}:${_group} "${_runme}"
   exec 2>&1
-  chpst -u ${_user}:${_group} "${_runme}"
+  chpst -u ${_user}:${_group} "${_runme}";
+  rescode=$?;
+
+  return ${rescode};
 }
 
 ## Updates the uid of the user.
@@ -4387,19 +4490,19 @@ function updateUserUid() {
   local _uid="${2}";
   checkNotEmpty "uid" "${_uid}" 2;
 
-  local _rescode;
+  local rescode;
 
   logDebug -n "Changing ${_user}'s uid to ${_uid}";
   usermod -u ${_uid} ${_user} > /dev/null 2>&1
-  _rescode=$?;
-  if isTrue ${_rescode}; then
+  rescode=$?;
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
     usermod -u ${_uid} ${_user} 2>&1
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Updates the gid of the user.
@@ -4414,19 +4517,19 @@ function updateUserGid() {
 
   local _gid="${2}";
   checkNotEmpty "gid" "${_gid}" 2;
-  local _rescode;
+  local rescode;
 
   logDebug -n "Changing ${_user}'s primary group to ${_gid}";
   usermod -g ${_gid} ${_user} > /dev/null 2>&1
-  _rescode=$?;
-  if isTrue ${_rescode}; then
+  rescode=$?;
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "unneeded";
     usermod -g ${_gid} ${_user} 2>&1
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Updates the gid of the group.
@@ -4439,19 +4542,19 @@ function updateUserGid() {
 function updateGroupGid() {
   local _group="${1}";
   local _gid="${2}";
-  local _rescode;
+  local rescode;
 
   logDebug -n "Changing ${_group}'s gid to ${_gid}";
   groupmod -g ${_gid} ${_group} > /dev/null 2>&1
-  _rescode=$?;
-  if isTrue ${_rescode}; then
+  rescode=$?;
+  if isTrue ${rescode}; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
     groupmod -g ${_gid} ${_group} 2>&1
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Adds given user to a group.
@@ -4466,12 +4569,12 @@ function updateGroupGid() {
 function addUserToGroup() {
   local _user="${1}";
   local _group="${2}";
-  local _rescode;
+  local rescode;
 
   gpasswd -a ${_user} ${_group} > /dev/null;
-  _rescode=$?;
+  rescode=$?;
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## Checks input common to all scripts.
@@ -4519,20 +4622,20 @@ function _checkScript() {
 ##   sourceFileIfExists "/tmp/my-env";
 function sourceFileIfExists() {
   local _file="${1}";
-  local _rescode=${FALSE};
+  local rescode=${FALSE};
 
   checkNotEmpty "file" "${_file}" 1;
 
   logTrace -n "Reading ${_file}";
   if [ -e "${_file}" ]; then
-    _rescode=${TRUE};
+    rescode=${TRUE};
     source "${_file}";
     logTraceResult SUCCESS "done";
   else
     logTraceResult SUCCESS "not found";
   fi
 
-  return ${_rescode};
+  return ${rescode};
 }
 
 ## PRIVATE
@@ -4633,23 +4736,23 @@ function cache() {
   local IFS='
   ';
   local _key="$*";
-  local _rescode;
-  local _result;
+  local rescode;
+  local result;
   local _cachedRescode=${rescode_cache["${_key}"]:--1};
 
   if [ ${_cachedRescode} -lt 0 ]; then
     ${_key};
-    _rescode=$?;
-    _result="${RESULT}";
-    result_cache["${_key}"]="${_result}";
-    _result="${result_cache[${_key}]}";
-    rescode_cache["${_key}"]=${_rescode};
+    rescode=$?;
+    result="${RESULT}";
+    result_cache["${_key}"]="${result}";
+    result="${result_cache[${_key}]}";
+    rescode_cache["${_key}"]=${rescode};
   else
-    _rescode=${rescode_cache["${_key}"]};
-    _result="${result_cache[${_key}]}";
+    rescode=${rescode_cache["${_key}"]};
+    result="${result_cache[${_key}]}";
   fi
-  export RESULT="${_result}";
-  return ${_rescode};
+  export RESULT="${result}";
+  return ${rescode};
 }
 
 function uncache() {
