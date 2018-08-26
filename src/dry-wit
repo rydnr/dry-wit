@@ -4409,18 +4409,19 @@ function runCommandAsUidGid() {
   local _gid="${2}";
   local _folder="${3}";
   local _command="${4}";
-  local _args="${@}";
+  shift
+  shift
+  shift
+  shift
   local _user;
   local _group;
-  local _exports="$(export)";
-  local -i rescode;
 
   retrieveUserFromUid "${_uid}";
   _user="${RESULT}";
   retrieveGroupFromGid "${_gid}";
   _group="${RESULT}";
 
-  runCommandAsUserAndGroup "${_user}" "${_group}" "${_folder}" "${_command}" ${_args};
+  runCommandAsUserAndGroup "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
 }
 
 ## Runs the command in a folder, under a given user.
@@ -4437,10 +4438,14 @@ function runCommandAsUserAndGroup() {
   local _group="${2}";
   local _folder="${3}";
   local _command="${4}";
+  shift
+  shift
+  shift
+  shift
   local _args="${@}";
   local _exports="$(export)";
   local -i rescode;
-
+  local _line="${_command//$'\n'/ } ${_args//$'\n'/ }";
   createTempFile;
   local _runme="${RESULT}";
 
@@ -4449,10 +4454,6 @@ function runCommandAsUserAndGroup() {
   checkNotEmpty "folder" "${_folder}" 3;
   checkNotEmpty "command" "${_command}" 4;
 
-  shift
-  shift
-  shift
-  shift
 
   createTempFile;
   _runme="${RESULT}";
@@ -4463,7 +4464,7 @@ function runCommandAsUserAndGroup() {
 ${_exports}
 declare -x HOME="$(eval echo ~${_user})"
 cd ${_folder}
-${_command} ${_args}
+${_line}
 EOF
   chmod a+r "${_runme}"
   chmod a+x "${_runme}"
