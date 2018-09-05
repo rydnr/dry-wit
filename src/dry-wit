@@ -346,15 +346,33 @@ function __dwDebugArray() {
 }
 
 ## PUBLIC
+## Checks whether given value is zero.
+## -> 1: The value.
+## <- 0/${TRUE}: if the value is zero; 1/${FALSE} otherwise.
+function isZero() {
+  local _value="${1}";
+  #  checkNotEmpty "value" "${_value}" 1;
+
+  local  -i rescode;
+  if [[ ${_value} -eq 0 ]]; then
+      rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+  return ${rescode};
+}
+
 ## Checks whether given value is true.
 ## -> 1: The value.
-## <- 0: if the value is true; 1 otherwise.
+## <- 0/${TRUE}: if the value is true; 1/${FALSE} otherwise.
 function isTrue() {
   local _value="${1}";
 #  checkNotEmpty "value" "${_value}" 1;
 
-  local rescode;
-  if [ "${_value}" == "${TRUE}" ]; then
+  local  -i rescode;
+  if isZero ${_value}; then
+      rescode=${TRUE};
+  elif [ "${_value}" == "${TRUE}" ]; then
     rescode=${TRUE};
   elif [ "${_value}" == TRUE ]; then
     rescode=${TRUE};
@@ -363,6 +381,24 @@ function isTrue() {
   else
     rescode=${FALSE};
   fi
+
+  return ${rescode};
+}
+
+## Checks whether given value is not zero.
+## -> 1: The value.
+## <- 0/${TRUE}: if the value is zero; 1/${FALSE} otherwise.
+function isNotZero() {
+  local _value="${1}";
+  #  checkNotEmpty "value" "${_value}" 1;
+
+  local  -i rescode;
+  if [[ ${_value} -ne 0 ]]; then
+      rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+
   return ${rescode};
 }
 
@@ -380,6 +416,60 @@ function isFalse() {
     rescode=${TRUE};
   fi
   return ${rescode};
+}
+
+## PUBLIC
+## Checks whether given parameters are equal.
+## -> 1: The first value.
+## -> 2: The second value.
+## <- 0/${TRUE} if both values are equal; 1/${FALSE} otherwise.
+## Example:
+##   if areEqual "${param}" "${expected}"; then
+##     echo "param equals expected";
+##   fi
+function areEqual() {
+  local _first="${1}";
+  local _second="${2}";
+  local -i _rescode;
+
+  if isEmpty "${_first}"; then
+      if isEmpty "${_second}"; then
+          _rescode=${TRUE};
+      else
+        _rescode=${FALSE};
+      fi
+  elif isEmpty "${_second}"; then
+      _rescode=${FALSE};
+  elif [[ "${_first}" == "${_second}" ]]; then
+      _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether given parameters are not equal.
+## -> 1: The first value.
+## -> 2: The second value.
+## <- 0/${TRUE} if both values aren't equal; 1/${FALSE} otherwise.
+## Example:
+##   if areEqual "${param}" "${expected}"; then
+##     echo "param and expected are not equal";
+##   fi
+function areNotEqual() {
+  local _first="${1}";
+  local _second="${2}";
+  local -i _rescode;
+
+  if areEqual "${_first}" "${_second}"; then
+      _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
 }
 
 # PRIVATE
@@ -432,14 +522,14 @@ function defineEnvVar() {
     _addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
   fi
 
-  if ! isEmpty "${_varDefault}"; then
+  if isNotEmpty "${_varDefault}"; then
       _addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
       if _evalVarDefault "${_upcasedVarName}"; then
           _defaultValue="${RESULT}";
 
-          if ! isEmpty "${_defaultValue}"; then
+          if isNotEmpty "${_defaultValue}"; then
               _varValue="${_defaultValue}";
-          elif ! isEmpty "${_varCommand}"; then
+          elif isNotEmpty "${_varCommand}"; then
               _addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
               if _evalVarCommand "${_upcasedVarName}"; then
                   _varValue="${RESULT}";
@@ -448,9 +538,11 @@ function defineEnvVar() {
       fi
   fi
 
-  if ! isEmpty "${_varValue}"; then
+  if isNotEmpty "${_varValue}"; then
     _addEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
+
+  return ${TRUE};
 }
 
 # PUBLIC
@@ -468,7 +560,7 @@ function overrideEnvVar() {
   _upcasedVarName="${RESULT}";
   _addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
 
-  if ! isEmpty "${_varValue}"; then
+  if isNotEmpty "${_varValue}"; then
       _addEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
 }
@@ -495,14 +587,13 @@ function defineButDoNotOverrideEnvVar() {
   checkNotEmpty "name" "${_varName}" 1;
   checkNotEmpty "description" "${_varDescription}" 2;
 
-  echo "echo \${${_varName}:?no}" | bash > /dev/null 2>&1;
-  rescode=$?;
-
-  if isEnvVarDefined ${rescode}; then
+  if isEnvVarDefined ${_varName}; then
       logTrace -n "Skipping already-defined ${_varName}";
       logTraceResult SUCCESS "skipped";
+      rescode=${TRUE};
   else
     defineEnvVar "${_varName}" "${_varDescription}" "${_varDefault}" "${_varCommand}";
+    rescode=$?;
   fi
 
   return ${rescode};
@@ -665,15 +756,15 @@ function _evalEnvVar() {
     local _varValue="${RESULT}";
 
     if isEmpty "${_varValue}"; then
-        if ! isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
+        if isNotEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
             #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
             _evalVarCommand "${_varName}";
             local _defaultCommand="${RESULT}";
             #      echo "${_defaultCommand}";
-            if ! isEmpty "${_defaultCommand}"; then
+            if isNotEmpty "${_defaultCommand}"; then
                 logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
                 local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
-                if ! isEmpty "${_aux}"; then
+                if isNotEmpty "${_aux}"; then
                     _defaultValue="${_aux}";
                     logTraceResult SUCCESS "${_aux}"
                 else
@@ -684,13 +775,13 @@ function _evalEnvVar() {
         _varValue="${_defaultValue}";
     fi
 
-    if ! isEmpty ${_varValue} && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
+    if isNotEmpty ${_varValue} && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
         while [[ "${_varValue}" =~ .*'$'.* ]]; do
           _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
         done
     fi
 
-    if ! isEmpty "${_varValue}"; then
+    if isNotEmpty "${_varValue}"; then
         export ${_varName}="${_varValue}";
         export RESULT="${_varValue}";
         rescode=${TRUE};
@@ -895,15 +986,17 @@ function flattenArray() {
 function _flagEnabled() {
   local _flagVar="${1}";
   local _flagVal;
-  local result;
+  local -i result;
+
   _evalVar "${_flagVar}";
   _flagVal="${RESULT}";
-  if    [ "x${_flagVal}" == "x${TRUE}" ] \
-     || [ "x${_flagVal}" == "xTRUE" ]; then
+  if    areEqual "${_flagVal}" "${TRUE}" \
+     || areEqual "${_flagVal}" "TRUE"; then
     result=${TRUE};
   else
     result=${FALSE};
-  fi
+fi
+
   return ${result};
 }
 
@@ -918,7 +1011,7 @@ function cleanup() {
   if [ "${#_CLEANUP_FILES}" != "0" ]; then
     setLogCategory "post-process";
 
-    logDebug -n "Cleaning up temporary files";
+    logTrace -n "Cleaning up temporary files";
 
     local _oldIFS="${IFS}";
     IFS=$' \t\n';
@@ -934,14 +1027,13 @@ function cleanup() {
       fi
     done
 
-    if [[ ${_notDeletedCount} -eq 0 ]]; then
-        logDebugResult SUCCESS "${_deletedCount}";
-        logTrace "Deleted:${_deleted}";
+    if isZero ${_notDeletedCount}; then
+        logTraceResult SUCCESS "${_deletedCount}";
     else
-      logDebugResult FAILURE "${_notDeletedCount}";
-      logTrace "Not deleted:${_notDeleted}";
+      logTraceResult FAILURE "${_notDeletedCount}";
     fi
   fi
+
 }
 
 ## Checks whether given folder exists and it's not a symbolic link.
@@ -1320,10 +1412,10 @@ function logFlag() {
   local _placeholders=$3;
   local _remaining="$4";
 
-  if ! isEmpty "${_value}"; then
+  if isNotEmpty "${_value}"; then
     _value=" ${_value}";
   fi
-  if ! isEmpty "${_remaining}"; then
+  if isNotEmpty "${_remaining}"; then
     _remaining=" Remaining ${_remaining}";
   fi
   logTrace "Parsed ${_flag} ${_value}. Shifting ${_placeholders} placeholder(s).${_remaining}";
@@ -1366,18 +1458,16 @@ function isSuccessKeyword() {
 # See isSuccessKeyword()
 function _uncachedIsSuccessKeyword() {
   local _keyword="${1}";
-  local rescode=${FALSE};
+  local -i rescode=${FALSE};
   local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  if    [ "x${SUCCESS_KEYWORDS}" != "x" ] \
-     && [  ${SUCCESS_KEYWORDS[*]} != "" ]; then
+  if    isNotEmpty "${SUCCESS_KEYWORDS}" \
+     && isNotEmpty ${SUCCESS_KEYWORDS[*]}; then
     for _i in ${SUCCESS_KEYWORDS[*]}; do
-      if    [ "x${_i}" == "x${_keyword}" ] \
-         || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-             == "x$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-#         || [   "x$(echo "${_keyword}"   | tr [:upper:] [:lower:] 2> /dev/null)" \
-#             == "x$(echo "${_i}"         | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+      if    areEqual "${_i}" "${_keyword}" \
+         || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                     "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         rescode=${TRUE};
         break;
       fi;
@@ -1386,11 +1476,9 @@ function _uncachedIsSuccessKeyword() {
 
   if isFalse ${rescode}; then
     for _i in ${BUILTIN_SUCCESS_KEYWORDS[*]}; do
-      if [ "x${_i}" == "x${1}" ] \
-          || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-              == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-#          || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
-#              == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+      if    areEqual "${_i}" "${1}" \
+         || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                     "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         rescode=${TRUE};
         break;
       fi;
@@ -1412,16 +1500,14 @@ function isFailureKeyword() {
 # See isFailureKeyword()
 function _uncachedIsFailureKeyword() {
   local _keyword="${1}";
-  local rescode=${FALSE};
+  local -i rescode=${FALSE};
   local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _i in ${FAILURE_KEYWORDS[*]}; do
-    if    [ "x${_i}" == "x${1}" ] \
-       || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-           == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-#      || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
-#           == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+    if    areEqual "${_i}" "${1}" \
+       || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                   "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
       rescode=${TRUE};
       break;
     fi;
@@ -1429,11 +1515,9 @@ function _uncachedIsFailureKeyword() {
 
   if isFalse ${rescode}; then
     for _i in ${BUILTIN_FAILURE_KEYWORDS[*]}; do
-      if [ "x${_i}" == "x${1}" ] \
-        || [   "x$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-            == "x$(echo \"${_i}\"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
-#        || [   "x$(echo "${_keyword}" | tr [:upper:] [:lower:] 2> /dev/null)" \
-#            == "x$(echo "${_i}"        | tr [:upper:] [:lower:] 2> /dev/null)" ]; then
+      if   areEqual "${_i}" "${1}" \
+        || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                    "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         rescode=${TRUE};
         break;
       fi;
@@ -1444,73 +1528,98 @@ function _uncachedIsFailureKeyword() {
   return ${rescode};
 }
 
+## PUBLIC
+## Prints the error message for given label.
+## -> 1: The error label.
+## <- 0/${TRUE} if the error is found and gets printed; 1/${FALSE} otherwise.
+## Example:
+##   if printErrorMessage INVALID_OPTION; then
+##     # [..]
+##   fi
 function printErrorMessage() {
-  local rescode=${TRUE};
+  local _label="${1}";
+  shift;
+  local -i rescode=${TRUE};
   local _message;
   local _error;
   local -i _interruption=${TRUE};
   local _i;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-#  set +o nounset  # allow unset variables
+  #  set +o nounset  # allow unset variables
+
+  checkNotEmpty "label" "${_label}" 1;
+
   for _i in ${BUILTIN_ERRORS[@]}; do
     rescode=$((rescode+1));
-    if [ "x${_i}" == "x${1}" ]; then
+    if areEqual "${_i}" "${_label}"; then
+        echo "${_i} and ${_label} are equal!"
       _message="${_i}";
       break;
     fi;
   done
   # TODO set -o nounset  # disallow unset variables
 
-  if [ "x${_message}" == "x" ]; then
+  if isEmpty "${_message}"; then
     # IFS issue
 #    rescode=${TRUE};
     for _i in ${ERROR_MESSAGES[@]}; do
       rescode=$((rescode+1));
-      if [ "x${_i}" == "x${1}" ]; then
-        _message="${_i}";
-        break;
+      if areEqual "${_i}" "${_label}"; then
+          _message="${_i}";
+          break;
       fi;
     done
   fi
   IFS="${_oldIFS}";
 
   if isEmpty "${_message}"; then
-    _error="Error $1, but no error message defined. Fix this script";
-    result=-1;
-    shift;
+    _error="Error ${_label}, but no error message defined. Fix this script";
+    rescode=-1;
   else
-    shift;
-    _error="$(echo ${_message} \
-  | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
-#  | awk -v dollar="$" '{printf("echo \"%s{%s}\"\n", dollar, $0);}' | sh)";
+    _error="$(echo ${_message} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
   fi
 
   if [ ${#@} -gt 0 ]; then
-    _error="${_error} ($@)";
+      if [ ${#@} -gt 1 ]; then
+          _error="$(cat <<EOF
+${_error}
+EOF
+)";
+      else
+        _error="${_error}";
+      fi
   fi
 
-  if isFalse ${rescode}; then
-    _error="${_error}. Finishing..";
-  fi
   if isDebugEnabled; then
-    _printUsage $SCRIPT_NAME;
+    _printUsage ${SCRIPT_NAME};
   fi
   _printError "${_error}";
-
   return ${rescode};
 }
 
+## Exits with an error code associated with given error label.
+## -> 1: The error label.
+## Example:
+##   exitWithErrorCode UNKNOWN_OPTION;
 function exitWithErrorCode() {
-  local rescode;
-  printErrorMessage $@;
-  rescode=$?;
+  local _label="${1}";
+  shift;
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  printErrorMessage "${_label}" "$*";
+  _rescode=$?;
   cleanup;
-  exit ${rescode};
+  exit ${_rescode};
 }
 
 # Internal functions
-
+## Prints given error.
+## -> 1: The error message.
+## Example:
+##   _printError "My error message.";
 function _printError() {
   echo "Error: $@.";
 }
@@ -1522,7 +1631,7 @@ function _printEnvironment() {
   local _description;
   local _tempFile;
 
-  if ! isEmpty "${ENV_VARIABLES}" && isTraceEnabled; then
+  if isNotEmpty "${ENV_VARIABLES}" && isTraceEnabled; then
     cat <<EOF
 Environment variables:
 EOF
@@ -1553,7 +1662,7 @@ EOF
     done
     IFS="${_oldIFS}";
 
-    if ! isEmpty "${_tempFile}"; then
+    if isNotEmpty "${_tempFile}"; then
         cat "${_tempFile}" | sort;
         rm -f "${_tempFile}" > /dev/null 2>&1;
     fi
@@ -1781,7 +1890,7 @@ function _uncachedRetrieveTERM() {
 #   fi
 function _retrieveTermWidthFromEnvVar() {
   local rescode=${FALSE};
-  if ! isEmpty "${DW_TERM_WIDTH}"; then
+  if isNotEmpty "${DW_TERM_WIDTH}"; then
     rescode=${TRUE};
     export RESULT="${DW_TERM_WIDTH}";
   fi
@@ -1848,7 +1957,7 @@ function _uncachedGetTermWidthForTerm() {
   if    isEmpty ${result} \
      || [ $((result)) -le 0 ]; then
 
-    if ! isEmpty "${_term}"; then
+    if isNotEmpty "${_term}"; then
 
       $(tput -T ${_term} cols > /dev/null 2>&1);
 
@@ -2809,7 +2918,7 @@ function _retrieveLogNamespace() {
     fi
   fi
 
-  if ! isEmpty ${_category} ; then
+  if isNotEmpty ${_category} ; then
     result="${result}:${_category}";
   fi
 
@@ -3643,7 +3752,7 @@ function retrieveFreeDiskSpaceUnderFolder() {
   local _aux="${_folder}";
 
   if [ -d "${_folder}" ]; then
-    while [ "x${_aux}" != "x" -a "x${_aux}" != "x/" ] && \
+    while isNotEmpty "${_aux}" -a areNotEqual "${_aux}" "/" && \
           ! mountpoint -q "${_aux}"; do
       _aux="${_aux%/*}";
     done;
@@ -3651,7 +3760,7 @@ function retrieveFreeDiskSpaceUnderFolder() {
     mountpoint -q "${_aux}";
     resultCode=$?;
 
-    if [ ${resultCode} -eq 0 ]; then
+    if isTrue ${resultCode}; then
       result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
       resultCode=$?;
     fi
@@ -3785,6 +3894,7 @@ function _isMacOSX() {
 function _readlink() {
   local -i rescode;
   local result;
+
   if _isMacOSX; then
     result="$(greadlink $@)";
     rescode=$?;
@@ -3796,31 +3906,47 @@ function _readlink() {
   return ${rescode};
 }
 
+## Checks if given function is present.
+## -> 1: The function name.
+## -> 2: The script file.
+## <- 0/${RESULT} if the function is found; 1/${FALSE} otherwise.
+## Example:
+##   if _functionPresent "myFunc" "myScript.sh"; then
+##     echo "myFunc is defined in myScript.sh";
+##   fi
 function _functionPresent() {
   local _function=$1;
   local _script=$2;
-  type ${_function} 2> /dev/null | grep -q 'shell function'
+
+  checkNotEmpty "function" "${_function}" 1;
+
+  type ${_function} 2> /dev/null | grep -q 'function'
   local rescode=$?;
-  if [ ${rescode} -ne 0 ]; then
-    grep " ${_function}()" "${_script}" > /dev/null 2>&1;
-    rescode=$?;
-  fi
-  if [ ${rescode} -ne 0 ]; then
-    local _oldIFS="${IFS}";
-    local _inc;
-    IFS=$' \t\n';
-    for _inc in "./$(basename ${_script} .sh).inc.sh" \
-                "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
-      if [ -e "${_inc}" ]; then
-        _functionPresent "${_function}" "${_inc}";
-        rescode=$?;
-	      if [ ${rescode} -eq 0 ]; then
-          break;
-	      fi
+  if isFalse ${rescode}; then
+      if isNotEmpty "${_script}"; then
+          grep " ${_function}()" "${_script}" > /dev/null 2>&1;
+          rescode=$?;
       fi
-    done
+  fi
+  if isFalse ${rescode}; then
+      if isNotEmpty "${_script}"; then
+          local _oldIFS="${IFS}";
+          local _inc;
+          IFS=$' \t\n';
+          for _inc in "./$(basename ${_script} .sh).inc.sh" \
+                          "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+            if fileExists "${_inc}"; then
+                _functionPresent "${_function}" "${_inc}";
+                rescode=$?;
+	              if isTrue ${rescode}; then
+                    break;
+	              fi
+            fi
+          done
+      fi
     IFS="${_oldIFS}";
   fi
+
   return ${rescode};
 }
 
@@ -3949,14 +4075,16 @@ function checkDependency() {
   local _req="${1}";
   local _errorCode="${2}";
 
-  if [ -z "${_errorCode}" ]; then
+  if isEmpty "${_errorCode}"; then
     toUpper "${_req}_NOT_INSTALLED";
     _errorCode="${RESULT}";
   fi
 
   which ${_req} > /dev/null 2>&1;
   rescode=$?;
-  [ ${rescode} -ne ${TRUE} ] && exitWithErrorCode ${_errorCode};
+  if isFalse ${rescode}; then
+      exitWithErrorCode ${_errorCode};
+  fi
 }
 
 ## Performs the checks for a required dependency.
@@ -4607,7 +4735,7 @@ function _checkScript() {
   logTrace -n "Checking mandatory functions";
   for _f in usage main; do
     _functionPresent ${_f} ${_script};
-    if [ $? != 0 ]; then
+    if isFalse $?; then
       exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
     fi
   done
@@ -4764,6 +4892,29 @@ function uncache() {
 }
 
 # Network functions
+## Retrieves all regular (excluding localhost, VPN, Docker, VirtualBox, etc) network interfaces.
+## <- RESULT: the interface names.
+## Usage:
+##   if retrieveIfaces; then
+##     echo "Interfaces: ${RESULT}";
+##   fi
+function retrieveIfaces() {
+  local _result;
+  local -i _rescode;
+
+  logInfo -n "Finding out the names of the network interfaces";
+  _result="$(ifconfig | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth')";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+      logInfoResult SUCCESS "$(echo ${_result})";
+      export RESULT="${_result}";
+  else
+    logInfoResult FAILED "failed";
+  fi
+
+  return ${_rescode};
+}
+
 ## Retrieves the first network interface.
 ## <- RESULT: such interface name.
 ## Usage:
@@ -4772,16 +4923,17 @@ function uncache() {
 ##   fi
 function retrieveIface() {
   local _result;
-  local -i _rescode;
+  local -i _rescode=${FALSE};
 
-  logInfo -n "Finding out the name of the network interface";
-  _result="$(ifconfig | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | head -n 1)";
-  _rescode=$?;
+  if retrieveIfaces; then
+      echo "${RESULT}" | awk -F' ' '{print $1;}';
+      _rescode=$?;
+  fi
+
   if isTrue ${_rescode}; then
-      logInfoResult SUCCESS "${_result}";
       export RESULT="${_result}";
   else
-    logInfoResult FAILED "failed";
+    export RESULT="";
   fi
 
   return ${_rescode};
@@ -4802,11 +4954,46 @@ function retrieveIp() {
 
   checkNotEmpty "interface" "${_iface}" 1;
 
-  _result="$(ifconfig ${_iface} | grep 'inet ' | sed 's/ addr://g' | sed 's/inet /inet:/g' | cut -d':' -f 2 | awk '{print $1;}')";
+  _result="$(ifconfig ${_iface} | grep 'inet ' | sed 's/ addr:/:/g' | sed 's/inet /inet:/g' | cut -d':' -f 2 | awk '{print $1;}')";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
       export RESULT=${_result};
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the IP of the default interface.
+## <- 0/${TRUE} if the IP can be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The IP.
+## Example:
+##   if retrieveOwnIp; then
+##     echo "My IP is ${RESULT}";
+##   fi
+function retrieveOwnIp() {
+  local -i _rescode;
+  local _result;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+
+  if retrieveIfaces; then
+      _ifaces="${RESULT}";
+      for _iface in ${_ifaces}; do
+        if retrieveIp "${_iface}"; then
+            _result="${RESULT}";
+            break;
+        fi;
+      done;
+  fi
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_result}"; then
+      _rescode="${FALSE}";
+      export RESULT="";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};
@@ -4843,6 +5030,115 @@ function retrieveSubnet24() {
   return ${rescode};
 }
 
+## Docker helpers
+## Retrieves the status of given container.
+## -> 1: the container name.
+## <- 0/${TRUE} if the container status could be obtained; 1/${FALSE} otherwise.
+## <- RESULT: the status.
+## Example:
+##   if retrieveDockerContainerStatus mysql; then
+##     echo "mysql's status is ${RESULT}";
+##   fi
+function retrieveDockerContainerStatus() {
+  local _containerName="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "containerName" "${_containerName}" 1;
+
+  ## Note: docker is a requirement of the caller script, not dry-wit.
+  _result="$(docker inspect ${_containerName} -f {{json .State.Status}})";
+  _rescode=$?;
+
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
+
+## Checks if a container is running.
+## -> 1: the container name.
+## <- 0/${TRUE} if the container is running; 1/${FALSE} otherwise.
+## Example:
+##   if isDockerContainerRunning mysql; then
+##     echo "mysql is running";
+##   fi
+function isDockerContainerRunning() {
+  local _containerName="${1}";
+  local _status;
+  local -i _rescode;
+
+  checkNotEmpty "containerName" "${_containerName}" 1;
+
+  ## Note: docker is a requirement of the caller script, not dry-wit.
+  _status="$(docker inspect ${_containerName} -f '{{json .State.Running}}' 2>&1)";
+
+  if [[ "${_status}" == "true" ]]; then
+      _rescode=${TRUE};
+  else
+    export RESULT="${_status}";
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Copies a file to a Docker container.
+## -> 1: The file to copy.
+## -> 2: The container name.
+## -> 3: The target location.
+## <- 0/${TRUE} if the operation succeeds; 1/${FALSE} otherwise.
+## Example:
+##   if copyToDockerContainer "my-file" "container" "/tmp"; then
+##     echo "my-file copied to container:/tmp successfully";
+##   fi
+function copyToDockerContainer() {
+  local _file="${1}";
+  local _containerName="${2}";
+  local _targetLocation="${3}";
+  local -i _rescode;
+  local _output;
+
+  checkNotEmpty "file" "${_file}" 1;
+  checkNotEmpty "containerName" "${_containerName}" 2;
+  checkNotEmpty "targetLocation" "${_targetLocation}" 3;
+
+  _output="$(docker cp "${_file}" "${_containerName}":"${_targetLocation}")";
+  _rescode=$?;
+
+  if isFalse ${_rescode}; then
+      export RESULT="${_output}";
+  fi
+
+  return ${_restode};
+}
+
+## Runs a Docker command.
+## -> @: The docker command.
+## <- 0/${TRUE} if the operation succeeds; 1/${FALSE} otherwise.
+## Example:
+##   if dockerCommand create -v /config --name config busybox; then
+##     echo "config container created successfully";
+##   fi
+function dockerCommand() {
+  local _args="${@}";
+  local -i _rescode;
+  local _output;
+
+  _output="$(docker ${_args} 2>&1)"
+  _rescode=$?;
+  if isFalse ${_rescode}; then
+      export RESULT="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
 source $@;
 _main $@;
 cleanup;
+
+
+
+
+
+
