@@ -972,8 +972,8 @@ function flattenArray() {
   export RESULT="${result}";
 }
 
-# Checks whether a given flag is enabled
-# -> 1: the name of the flag variable
+# Checks whether a given flag is enabled.
+# -> 1: the name of the flag variable.
 # <- 0 if the flag is enabled, 1 otherwise.
 # Example:
 # function parseInput() {
@@ -981,20 +981,22 @@ function flattenArray() {
 #   -my | --myFlag) export MY_FLAG=${TRUE};
 #                   ;;
 # [..]
-# if _flagEnabled MY_FLAG; then
+# if flagEnabled MY_FLAG; then
 #    ..
-function _flagEnabled() {
+function flagEnabled() {
   local _flagVar="${1}";
   local _flagVal;
-  local -i result;
+  local -i rescode;
+
+  checkNotEmpty "flagVar" "${_flagVar}" 1;
 
   _evalVar "${_flagVar}";
   _flagVal="${RESULT}";
   if    areEqual "${_flagVal}" "${TRUE}" \
      || areEqual "${_flagVal}" "TRUE"; then
-    result=${TRUE};
+    rescode=${TRUE};
   else
-    result=${FALSE};
+    rescode=${FALSE};
 fi
 
   return ${result};
@@ -1036,6 +1038,50 @@ function cleanup() {
 
 }
 
+## Checks whether given folder exists.
+## -> The folder to check.
+## <- 0/${TRUE} if the folder exists; 1/${FALSE} otherwise.
+## Example:
+##   if folderExists "/tmp"; then
+##     rm -rf /tmp/*;
+##   fi
+function folderExists() {
+  local _folder="${1}";
+  local -i rescode;
+
+  checkNotEmpty "folder" "${_folder}" 1;
+
+  if [ -d "${_folder}" ]; then
+      rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+
+  return ${rescode};
+}
+
+## Checks whether given path is a symlink.
+## -> 1: The path to check.
+## <- 0/${TRUE} if the path is a symlink; 1/${FALSE} otherwise.
+## Example:
+##   if isSymlink "/tmp"; then
+##     rm -rf /tmp;
+##   fi
+function isSymlink() {
+  local _path="${1}";
+  local -i rescode;
+
+  checkNotEmpty "path" "${_path}" 1;
+
+  if [ -L "${_path}" ]; then
+      rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+
+  return ${rescode};
+}
+
 ## Checks whether given folder exists and it's not a symbolic link.
 ## -> The folder to check.
 ## <- 0/${TRUE} if the folder exists; 1/${FALSE} otherwise.
@@ -1049,8 +1095,8 @@ function folderExistsAndIsNotASymlink() {
 
   checkNotEmpty "folder" "${_folder}" 1;
 
-  if [ -d "${_folder}" ]; then
-      if [ -L "${_folder}" ]; then
+  if folderExists "${_folder}"; then
+      if isSymlink "${_folder}"; then
           rescode=${FALSE};
       else
         rescode=${TRUE};
@@ -1553,7 +1599,6 @@ function printErrorMessage() {
   for _i in ${BUILTIN_ERRORS[@]}; do
     rescode=$((rescode+1));
     if areEqual "${_i}" "${_label}"; then
-        echo "${_i} and ${_label} are equal!"
       _message="${_i}";
       break;
     fi;
@@ -1584,10 +1629,11 @@ function printErrorMessage() {
       if [ ${#@} -gt 1 ]; then
           _error="$(cat <<EOF
 ${_error}
+$@
 EOF
 )";
       else
-        _error="${_error}";
+        _error="${_error} $@";
       fi
   fi
 
@@ -1609,7 +1655,7 @@ function exitWithErrorCode() {
 
   checkNotEmpty "label" "${_label}" 1;
 
-  printErrorMessage "${_label}" "$*";
+  printErrorMessage "${_label}" "$@";
   _rescode=$?;
   cleanup;
   exit ${_rescode};
@@ -2310,7 +2356,7 @@ function isLowerThanInfoEnabled() {
 function isInfoEnabled() {
   local rescode=${TRUE};
 
-  if isTrue ${_DRY_WIT_LOG_QUIET}; then
+  if isQuietMode; then
     rescode=${FALSE};
   fi
 
@@ -2347,8 +2393,48 @@ function logInfoResult() {
   fi
 }
 
+## Sets the quiet mode on or off.
+## -> 1: The mode.
+## Example:
+##   setQuietMode ${TRUE};
 function setQuietMode() {
-  _DRY_WIT_LOG_QUIET=${TRUE};
+  local _mode="${1}";
+
+  checkNotEmpty "mode" "${_mode}" 1;
+
+  _DRY_WIT_LOG_QUIET=${_mode};
+}
+
+## Retrieves whether the quiet mode is on or off.
+## <- 0/${TRUE} if the mode is enabled; 1/${FALSE} otherwise.
+## Example:
+##   if isQuietMode; then
+##     echo "In quiet mode";
+##   fi
+function isQuietMode() {
+  local -i _rescode;
+
+  if isTrue ${_DRY_WIT_LOG_QUIET}; then
+      _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Enables quiet mode.
+## Example:
+##   enableQuietMode;
+function enableQuietMode() {
+  setQuietMode ${TRUE};
+}
+
+## Enables quiet mode.
+## Example:
+##   enableQuietMode;
+function disableQuietMode() {
+  setQuietMode ${FALSE};
 }
 
 function log() {
@@ -2400,8 +2486,10 @@ function _logStuffResult() {
   local -i _nestedTasks;
   _numberOfNestedInProgressTasks;
   _nestedTasks=$?;
-  if [ ${_nestedTasks} -eq 0 ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
+  if isZero ${_nestedTasks}; then
+      echo "A";
+      exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
+      echo "B";
   fi
   _logCompleted "${_level}" "${_outcome}" "$@";
 }
@@ -3934,7 +4022,7 @@ function _functionPresent() {
           local _inc;
           IFS=$' \t\n';
           for _inc in "./$(basename ${_script} .sh).inc.sh" \
-                          "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+                      "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
             if fileExists "${_inc}"; then
                 _functionPresent "${_function}" "${_inc}";
                 rescode=$?;
@@ -4137,7 +4225,7 @@ function _parseCommonInput() {
           setTraceEnabled;
           ;;
         -q)
-          setQuietMode;
+          enableQuietMode;
           ;;
         -X:e | --X:eval-defaults)
           export DRY_WIT_EVAL_DEFAULTS_FLAG=1;
@@ -4902,14 +4990,14 @@ function retrieveIfaces() {
   local _result;
   local -i _rescode;
 
-  logInfo -n "Finding out the names of the network interfaces";
+  logTrace -n "Finding out the names of the network interfaces";
   _result="$(ifconfig | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth')";
   _rescode=$?;
   if isTrue ${_rescode}; then
-      logInfoResult SUCCESS "$(echo ${_result})";
+      logTraceResult SUCCESS "$(echo ${_result})";
       export RESULT="${_result}";
   else
-    logInfoResult FAILED "failed";
+    logTraceResult FAILED "failed";
   fi
 
   return ${_rescode};
@@ -5031,6 +5119,32 @@ function retrieveSubnet24() {
 }
 
 ## Docker helpers
+## Checks if given container exists.
+## -> 1: The container name.
+## <- 0/${TRUE} if the container exists; 0/${FALSE} otherwise.
+## <- RESULT: The hash of the container.
+## Example:
+##   if dockerContainerExists "config"; then
+##     echo "'config' container already exists (${RESULT})";
+##   fi
+function dockerContainerExists() {
+  local _name="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _result="$(docker ps -a --no-trunc --filter name=^/${_name}$ -q)";
+  if isEmpty "${_result}"; then
+      _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 ## Retrieves the status of given container.
 ## -> 1: the container name.
 ## <- 0/${TRUE} if the container status could be obtained; 1/${FALSE} otherwise.
@@ -5136,9 +5250,4 @@ function dockerCommand() {
 source $@;
 _main $@;
 cleanup;
-
-
-
-
-
-
+#
