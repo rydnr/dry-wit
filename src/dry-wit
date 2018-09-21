@@ -4991,7 +4991,7 @@ function retrieveIfaces() {
   local -i _rescode;
 
   logTrace -n "Finding out the names of the network interfaces";
-  _result="$(ifconfig | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth')";
+  _result="$(ifconfig | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth' | grep -v -e '^br-')";
   _rescode=$?;
   if isTrue ${_rescode}; then
       logTraceResult SUCCESS "$(echo ${_result})";
@@ -5247,6 +5247,96 @@ function dockerCommand() {
   return ${_rescode};
 }
 
+## Checks if given network exists.
+## -> 1: The network name.
+## <- 0/${TRUE} if the networkctl exists; 0/${FALSE} otherwise.
+## Example:
+##   if dockerNetworkExists "bridge"; then
+##     echo "'bridge' network already exists";
+##   fi
+function dockerNetworkExists() {
+  local _name="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  docker network inspect ${_name} > /dev/null 2>&1;
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+## Creates a Docker network.
+## <- 0/${TRUE} if the network was created successfully; 1/${FALSE} otherwise.
+## Example:
+##   if createDockerNetwork bridge; then
+##     echo "bridge network created";
+##   fi
+function createDockerNetwork() {
+  local _network="${1}";
+  local -i _rescode;
+  local _output;
+
+  checkNotEmpty "network" "${_network}" 1;
+
+  if ! dockerNetworkExists ${_network}; then
+      if dockerCommand network create ${_network}; then
+        _rescode=${TRUE};
+      else
+        _rescode=${FALSE};
+      fi
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## Removes a Docker network.
+## <- 0/${TRUE} if the network was deleted successfully; 1/${FALSE} otherwise.
+## Example:
+##   if removeDockerNetwork bridge; then
+##     echo "bridge network removed";
+##   fi
+function removeDockerNetwork() {
+  local _network="${1}";
+  local -i _rescode;
+  local _output;
+
+  checkNotEmpty "network" "${_network}" 1;
+
+  if dockerNetworkExists ${_network}; then
+    if dockerCommand network rm ${_network}; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given host is reachable.
+## -> 1: The host to check.
+## <- 0/${TRUE} if the host is reachable; 1/${FALSE} otherwise.
+## Example:
+##   if hostIsReachable "www.google.com"; then
+##     echo "www.google.com is reachable";
+##   fi
+function hostIsReachable() {
+  local _host="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "host" "${_host}" 1;
+  
+  ping -c1 -W1 ${_host} > /dev/null
+  _rescode=$?;
+
+  return ${_rescode};
+}
 source $@;
 _main $@;
 cleanup;
