@@ -5054,8 +5054,13 @@ function retrieveIp() {
 
   checkNotEmpty "interface" "${_iface}" 1;
 
-  _result="$(ifconfig ${_iface} | grep 'inet ' | sed 's/ addr:/:/g' | sed 's/inet /inet:/g' | cut -d':' -f 2 | awk '{print $1;}')";
-  _rescode=$?;
+  if checkDependency "ifconfig"; then
+    _result="$(ifconfig ${_iface} 2> /dev/null | grep 'inet ' | sed 's/ addr:/:/g' | sed 's/inet /inet:/g' | cut -d':' -f 2 | awk '{print $1;}')";
+    _rescode=$?;
+  elif checkDependency "ip"; then
+    _result="$(ip -4 -o addr show dev ${_iface} 2> /dev/null | awk '{split($4,a,"/");print a[1]}')";
+    _rescode=$?;
+  fi
 
   if isTrue ${_rescode}; then
       export RESULT=${_result};
