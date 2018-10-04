@@ -997,9 +997,9 @@ function flagEnabled() {
     rescode=${TRUE};
   else
     rescode=${FALSE};
-fi
+  fi
 
-  return ${result};
+  return ${rescode};
 }
 
 # AUXILIARY GENERAL-PURPOSE FUNCTIONS
@@ -4990,14 +4990,26 @@ function retrieveIfaces() {
   local _result;
   local -i _rescode;
 
-  logTrace -n "Finding out the names of the network interfaces";
-  _result="$(ifconfig | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth' | grep -v -e '^br-')";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
+  if checkDependency "ip"; then
+    logTrace -n "Finding out the names of the network interfaces";
+    _result="$(ip addr show 2> /dev/null | awk '/inet.*brd/{print $NF}'  | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth' | grep -v -e '^br-')";
+    _rescode=$?;
+    if isTrue ${_rescode}; then
       logTraceResult SUCCESS "$(echo ${_result})";
       export RESULT="${_result}";
-  else
-    logTraceResult FAILED "failed";
+    else
+      logTraceResult FAILED "failed";
+    fi
+  elif checkDependency "ifconfig"; then
+    logTrace -n "Finding out the names of the network interfaces";
+    _result="$(ifconfig 2> /dev/null | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth' | grep -v -e '^br-')";
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+      logTraceResult SUCCESS "$(echo ${_result})";
+      export RESULT="${_result}";
+    else
+      logTraceResult FAILED "failed";
+    fi
   fi
 
   return ${_rescode};
