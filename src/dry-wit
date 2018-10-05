@@ -4184,17 +4184,14 @@ function checkDependency() {
 ##   fi
 function isInstalled() {
   local _req="${1}";
+  local -i _rescode;
 
-  if isEmpty "${_errorCode}"; then
-    toUpper "${_req}_NOT_INSTALLED";
-    _errorCode="${RESULT}";
-  fi
+  checkNotEmpty "candidate" "{_req}" 1;
 
   which ${_req} > /dev/null 2>&1;
-  rescode=$?;
-  if isFalse ${rescode}; then
-    exitWithErrorCode ${_errorCode};
-  fi
+  _rescode=$?;
+
+  return ${_rescode};
 }
 
 ## Performs the checks for a required dependency.
@@ -5082,10 +5079,13 @@ function retrieveIp() {
   elif isInstalled "ip"; then
     _result="$(ip -4 -o addr show dev ${_iface} 2> /dev/null | awk '{split($4,a,"/");print a[1]}')";
     _rescode=$?;
+  else
+    _rescode=${FALSE};
+    export RESULT="Neither ifconfig nor ip are available";
   fi
 
   if isTrue ${_rescode}; then
-      export RESULT=${_result};
+    export RESULT=${_result};
   fi
 
   return ${_rescode};
@@ -5102,6 +5102,8 @@ function retrieveOwnIp() {
   local -i _rescode;
   local _result;
   local _oldIFS="${IFS}";
+  local _iface;
+  local _ifaces;
   IFS=$' \t\n';
 
   if retrieveIfaces; then
