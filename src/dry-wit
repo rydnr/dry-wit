@@ -523,19 +523,26 @@ function defineEnvVar() {
   fi
 
   if isNotEmpty "${_varDefault}"; then
-      _addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
-      if _evalVarDefault "${_upcasedVarName}"; then
-          _defaultValue="${RESULT}";
+    _addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
+    if _evalVarDefault "${_upcasedVarName}"; then
+      _defaultValue="${RESULT}";
 
-          if isNotEmpty "${_defaultValue}"; then
-              _varValue="${_defaultValue}";
-          elif isNotEmpty "${_varCommand}"; then
-              _addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
-              if _evalVarCommand "${_upcasedVarName}"; then
-                  _varValue="${RESULT}";
-              fi
+      _evalVar "${_upcasedVarName}";
+      _varValue="${RESULT}";
+
+      if isEmpty "${_varValue}"; then
+        if isNotEmpty "${_defaultValue}"; then
+          _varValue="${_defaultValue}";
+        elif isNotEmpty "${_varCommand}"; then
+          _addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
+          if _evalVarCommand "${_upcasedVarName}"; then
+            _varValue="${RESULT}";
           fi
+        fi
+      else
+        appendEnvVariable "${_upcasedVarName}";
       fi
+    fi
   fi
 
   if isNotEmpty "${_varValue}"; then
