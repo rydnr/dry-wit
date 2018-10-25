@@ -789,7 +789,7 @@ function _evalEnvVar() {
     fi
 
     if isNotEmpty "${_varValue}"; then
-        export ${_varName}="${_varValue}";
+        export ${_varName}="${_varValue}" 2> /dev/null;
         export RESULT="${_varValue}";
         rescode=${TRUE};
     else
