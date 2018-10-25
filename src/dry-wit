@@ -2095,7 +2095,7 @@ buildColor "GRAY" "37" "47";
 export SUCCESS_COLOR=GREEN;
 export FAILURE_COLOR=RED;
 export IN_PROGRESS_COLOR=BLUE;
-export UNDEFINED_COLOR=GREY;
+export UNDEFINED_COLOR=GRAY;
 export DEFAULT_LOG_PREFIX_COLOR=GRAY;
 export DEFAULT_LOG_OUTCOME_COLOR=GRAY;
 export DEFAULT_LOG_RESUMING_TASK_COLOR=GRAY;
@@ -2103,10 +2103,10 @@ export DEFAULT_LOG_RESUMING_TASK_COLOR=GRAY;
 export LOG_PREFIX_COLORS=(\
   BLUE   \
   CYAN  \
-  RED    \
+  YELLOW \
+  MAGENTA    \
   YELLOW \
   RED \
-  GRAY \
   BLUE   \
 );
 
@@ -4865,12 +4865,12 @@ function _checkScript() {
 ##   sourceFileIfExists "/tmp/my-env";
 function sourceFileIfExists() {
   local _file="${1}";
-  local rescode=${FALSE};
+  local -i rescode=${FALSE};
 
   checkNotEmpty "file" "${_file}" 1;
 
   logTrace -n "Reading ${_file}";
-  if [ -e "${_file}" ]; then
+  if fileExists "${_file}"; then
     rescode=${TRUE};
     source "${_file}";
     logTraceResult SUCCESS "done";
@@ -4882,20 +4882,36 @@ function sourceFileIfExists() {
 }
 
 ## PRIVATE
-## Retrieves the settings files
+## Retrieves the settings files.
+## <- RESULT: a space-separated list of settings files.
+## Example:
+##   _retrieveSettingsFiles;
+##   echo "settings files: ${RESULT}";
 function _retrieveSettingsFiles() {
-  echo 1;
+  local _f;
+  local _d;
+  local _result="";
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+    for _d in "${DRY_WIT_SCRIPT_FOLDER}" "."; do
+      _result="${_result} ${_d}/${_f}";
+    done
+  done
+  IFS="${_oldIFS}";
+
+  export RESULT="${_result}";
 }
 
 function _setup() {
   _trapSignals;
   local _f;
+  _retrieveSettingsFiles;
+  local _files="${RESULT}"
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for _f in "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-            "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-            "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-            "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+
+  for _f in ${_files}; do
     sourceFileIfExists "${_f}";
   done
   IFS="${_oldIFS}";
