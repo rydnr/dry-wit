@@ -556,20 +556,23 @@ function defineEnvVar() {
 # Overrides the value of an environment variable.
 # -> 1: The variable name.
 # -> 2: The variable value.
+# -> 3: The variable description (optional).
 function overrideEnvVar() {
   local _varName="${1}";
   local _varValue="${2}";
+  local _varDescription="${3:-not provided}";
   local _upcasedVarName;
 
   checkNotEmpty "varName" "${_varName}" 1;
 
-  toUpper "${_varName}";
-  _upcasedVarName="${RESULT}";
-  _addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
-
-  if isNotEmpty "${_varValue}"; then
-      _addEnvVar "${_upcasedVarName}" "${_varValue}";
+  if isEnvVarDefined ${_varName}; then
+    toUpper "${_varName}";
+    _upcasedVarName="${RESULT}";
+    _addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
+  defineEnvVar "${_varName}" "${_varDescription}" "${_varValue}";
+
+  return ${TRUE};
 }
 
 ## PUBLIC
