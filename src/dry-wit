@@ -5071,12 +5071,12 @@ function retrieveIface() {
   local -i _rescode=${FALSE};
 
   if retrieveIfaces; then
-      echo "${RESULT}" | awk -F' ' '{print $1;}';
-      _rescode=$?;
+    _result="$(echo "${RESULT}" | awk -F' ' '{print $1;}')";
+    _rescode=$?;
   fi
 
   if isTrue ${_rescode}; then
-      export RESULT="${_result}";
+    export RESULT="${_result}";
   else
     export RESULT="";
   fi
