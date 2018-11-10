@@ -1,0 +1,24 @@
+## PUBLIC
+## Sources given file, if it exists.
+## -> 1: The file to source.
+## <- 0/${TRUE} if the file is sourced; 1/${FALSE} otherwise.
+## Example:
+##   sourceFileIfExists "/tmp/my-env";
+function sourceFileIfExists() {
+  local _file="${1}";
+  local -i rescode=${FALSE};
+
+  checkNotEmpty "file" "${_file}" 1;
+
+  logTrace -n "Reading ${_file}";
+  if fileExists "${_file}"; then
+    rescode=${TRUE};
+    source "${_file}";
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult SUCCESS "not found";
+  fi
+
+  return ${rescode};
+}
+

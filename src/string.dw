@@ -1,0 +1,80 @@
+## PUBLIC
+## Checks whether the first parameter contains the second value.
+## -> 1: The text.
+## -> 2: The substring to check.
+## <- 0/${TRUE} if the text contains the substring; 1/${FALSE} otherwise.
+## Example:
+##   if contains "abc" "b"; then
+##     echo "abc contains b";
+##   fi
+function contains() {
+  local _container="${1}";
+  local _substring="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "container" "${_container}" 1;
+  checkNotEmpty "substring" "${_substring}" 2;
+
+  if [[ "${_container}" =~ "${_substring}" ]]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether the first parameter starts with the second value.
+## -> 1: The text.
+## -> 2: The substring to check.
+## <- 0/${TRUE} if the text starts with the substring; 1/${FALSE} otherwise.
+## Example:
+##   if startsWith "abc" "a"; then
+##     echo "abc starts with a";
+##   fi
+function startsWith() {
+  local _container="${1}";
+  local _substring="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "container" "${_container}" 1;
+  checkNotEmpty "substring" "${_substring}" 2;
+
+  if areEqual "${_container#${_substring}}" "${_container}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether the first parameter ends with the second value.
+## -> 1: The text.
+## -> 2: The substring to check.
+## <- 0/${TRUE} if the text ends with the substring; 1/${FALSE} otherwise.
+## Example:
+##   if endsWith "abc" "c"; then
+##     echo "abc ends with c";
+##   fi
+function endsWith() {
+  local _container="${1}";
+  local _substring="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "container" "${_container}" 1;
+  checkNotEmpty "substring" "${_substring}" 2;
+
+  if areEqual "${_container%${_substring}}" "${_container}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+
+

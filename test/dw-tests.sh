@@ -61,25 +61,38 @@ function _retrieveSettingsFiles_test() {
 }
 
 function contains_test() {
-  String.contains "abc" "b";
+  contains "abc" "b";
   Assert.isTrue $? "contains 'abc' 'b' failed";
 
-  String.contains "abc" "f";
+  contains "abc" "f";
   Assert.isFalse $? "contains 'abc' 'f' failed";
 }
 
-function String.startsWith_test() {
-  String.startsWith "abc" "a";
+function startsWith_test() {
+  startsWith "abc" "a";
   Assert.isTrue $? "startsWith 'abc' 'a' failed";
 
-  String.startsWith "abc" "b";
+  startsWith "abc" "b";
   Assert.isFalse $? "startsWith 'abc' 'b' failed";
 }
 
-function String.endsWith_test() {
-  String.endsWith "abc" "c";
+function endsWith_test() {
+  endsWith "abc" "c";
   Assert.isTrue $? "endsWith 'abc' 'a' failed";
 
-  String.endsWith "abc" "b";
+  endsWith "abc" "b";
   Assert.isFalse $? "endsWith 'abc' 'b' failed";
+}
+
+function retrieveOwnIp_test() {
+  local _ip;
+  local -i _rescode;
+
+  import net;
+
+  retrieveOwnIp;
+  _rescode=$?;
+  _ip="${RESULT}";
+  Assert.isTrue $? "retrieveOwnIp failed";
+  Assert.isNotEmpty "${_ip}" "IP is empty";
 }

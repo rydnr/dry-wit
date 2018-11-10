@@ -473,84 +473,6 @@ function areNotEqual() {
   return ${_rescode};
 }
 
-## PUBLIC
-## Checks whether the first parameter contains the second value.
-## -> 1: The text.
-## -> 2: The substring to check.
-## <- 0/${TRUE} if the text contains the substring; 1/${FALSE} otherwise.
-## Example:
-##   if contains "abc" "b"; then
-##     echo "abc contains b";
-##   fi
-function String.contains() {
-  local _container="${1}";
-  local _substring="${2}";
-  local -i _rescode;
-
-  checkNotEmpty "container" "${_container}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
-
-  if [[ "${_container}" =~ "${_substring}" ]]; then
-    _rescode=${TRUE};
-  else
-    _rescode=${FALSE};
-  fi
-
-  return ${_rescode};
-}
-
-## PUBLIC
-## Checks whether the first parameter starts with the second value.
-## -> 1: The text.
-## -> 2: The substring to check.
-## <- 0/${TRUE} if the text starts with the substring; 1/${FALSE} otherwise.
-## Example:
-##   if startsWith "abc" "a"; then
-##     echo "abc starts with a";
-##   fi
-function String.startsWith() {
-  local _container="${1}";
-  local _substring="${2}";
-  local -i _rescode;
-
-  checkNotEmpty "container" "${_container}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
-
-  if areEqual "${_container#${_substring}}" "${_container}"; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
-  fi
-
-  return ${_rescode};
-}
-
-## PUBLIC
-## Checks whether the first parameter ends with the second value.
-## -> 1: The text.
-## -> 2: The substring to check.
-## <- 0/${TRUE} if the text ends with the substring; 1/${FALSE} otherwise.
-## Example:
-##   if endsWith "abc" "c"; then
-##     echo "abc ends with c";
-##   fi
-function String.endsWith() {
-  local _container="${1}";
-  local _substring="${2}";
-  local -i _rescode;
-
-  checkNotEmpty "container" "${_container}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
-
-  if areEqual "${_container%${_substring}}" "${_container}"; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
-  fi
-
-  return ${_rescode};
-}
-
 # PRIVATE
 # Retrieves the value of given variable.
 # -> 1: The variable name.
@@ -4939,30 +4861,6 @@ function _checkScript() {
   logTraceResult SUCCESS "${_DW_DONE}";
 }
 
-## PUBLIC
-## Sources given file, if it exists.
-## -> 1: The file to source.
-## <- 0/${TRUE} if the file is sourced; 1/${FALSE} otherwise.
-## Example:
-##   sourceFileIfExists "/tmp/my-env";
-function sourceFileIfExists() {
-  local _file="${1}";
-  local -i rescode=${FALSE};
-
-  checkNotEmpty "file" "${_file}" 1;
-
-  logTrace -n "Reading ${_file}";
-  if fileExists "${_file}"; then
-    rescode=${TRUE};
-    source "${_file}";
-    logTraceResult SUCCESS "done";
-  else
-    logTraceResult SUCCESS "not found";
-  fi
-
-  return ${rescode};
-}
-
 ## PRIVATE
 ## Retrieves the settings files.
 ## <- RESULT: a space-separated list of settings files.
@@ -5006,6 +4904,37 @@ if [ "$1" != "" ]; then
 else
   export SCRIPT_NAME="$0";
 fi
+
+function import() {
+  local _module="${1}";
+
+  checkNotEmpty "module" "${_module}" 1;
+
+  if findModule "${_module}"; then
+    source ${RESULT};
+  fi
+}
+
+function findModule() {
+  local _module="${1}";
+  local -i _rescode=${FALSE};
+  local _folder;
+
+  checkNotEmpty "module" "${_module}" 1;
+
+  for _folder in ${HOME}/.dry-wit $(dirname $(which dry-wit)) /usr/share/dry-wit; do
+    if [[ -e "${_folder}"/"${_module}.dw" ]]; then
+      _rescode=${TRUE};
+      export RESULT="${_folder}/${_module}.dw";
+      break;
+    fi
+  done
+
+  return ${_rescode};
+}
+
+import string;
+import file;
 
 function _main() {
   local _script="${1#./}";
@@ -5158,76 +5087,6 @@ function retrieveIface() {
     export RESULT="${_result}";
   else
     export RESULT="";
-  fi
-
-  return ${_rescode};
-}
-
-## Retrieves the IP for given interface.
-## -> 1: the interface name.
-## <- 0/${TRUE} if the IP is up; 1/${FALSE} otherwise.
-## <- RESULT: The IP.
-## Example:
-##   if retrieveIp "eth0"; then
-##     echo "IP: ${RESULT}";
-##   fi
-function retrieveIp() {
-  local _iface="${1}";
-  local -i _rescode;
-  local _result;
-
-  checkNotEmpty "interface" "${_iface}" 1;
-
-  if isInstalled "ifconfig"; then
-    _result="$(ifconfig ${_iface} 2> /dev/null | grep 'inet ' | sed 's/ addr:/:/g' | sed 's/inet /inet:/g' | cut -d':' -f 2 | awk '{print $1;}')";
-    _rescode=$?;
-  elif isInstalled "ip"; then
-    _result="$(ip -4 -o addr show dev ${_iface} 2> /dev/null | awk '{split($4,a,"/");print a[1]}')";
-    _rescode=$?;
-  else
-    _rescode=${FALSE};
-    export RESULT="Neither ifconfig nor ip are available";
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT=${_result};
-  fi
-
-  return ${_rescode};
-}
-
-## Retrieves the IP of the default interface.
-## <- 0/${TRUE} if the IP can be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The IP.
-## Example:
-##   if retrieveOwnIp; then
-##     echo "My IP is ${RESULT}";
-##   fi
-function retrieveOwnIp() {
-  local -i _rescode;
-  local _result;
-  local _oldIFS="${IFS}";
-  local _iface;
-  local _ifaces;
-  IFS=$' \t\n';
-
-  if retrieveIfaces; then
-      _ifaces="${RESULT}";
-      for _iface in ${_ifaces}; do
-        if retrieveIp "${_iface}"; then
-            _result="${RESULT}";
-            break;
-        fi;
-      done;
-  fi
-  IFS="${_oldIFS}";
-
-  if isEmpty "${_result}"; then
-      _rescode="${FALSE}";
-      export RESULT="";
-  else
-    _rescode=${TRUE};
-    export RESULT="${_result}";
   fi
 
   return ${_rescode};
@@ -5483,6 +5342,7 @@ function hostIsReachable() {
 
   return ${_rescode};
 }
+
 source $@;
 _main $@;
 cleanup;

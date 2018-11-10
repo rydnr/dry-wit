@@ -716,7 +716,7 @@ function Assert.contains() {
   checkNotEmpty "substring" "${_substring}" 2;
   checkNotEmpty "errorMessage" "${_errorMessage}" 3;
 
-  if String.contains "${_text}" "${_substring}"; then
+  if contains "${_text}" "${_substring}"; then
       addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";

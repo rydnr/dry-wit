@@ -1,0 +1,69 @@
+## Retrieves the IP for given interface.
+## -> 1: the interface name.
+## <- 0/${TRUE} if the IP is up; 1/${FALSE} otherwise.
+## <- RESULT: The IP.
+## Example:
+##   if retrieveIp "eth0"; then
+##     echo "IP: ${RESULT}";
+##   fi
+function retrieveIp() {
+  local _iface="${1}";
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "interface" "${_iface}" 1;
+
+  if isInstalled "ifconfig"; then
+    _result="$(ifconfig ${_iface} 2> /dev/null | grep 'inet ' | sed 's/ addr:/:/g' | sed 's/inet /inet:/g' | cut -d':' -f 2 | awk '{print $1;}')";
+    _rescode=$?;
+  elif isInstalled "ip"; then
+    _result="$(ip -4 -o addr show dev ${_iface} 2> /dev/null | awk '{split($4,a,"/");print a[1]}')";
+    _rescode=$?;
+  else
+    _rescode=${FALSE};
+    export RESULT="Neither ifconfig nor ip are available";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the IP of the default interface.
+## <- 0/${TRUE} if the IP can be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The IP.
+## Example:
+##   if retrieveOwnIp; then
+##     echo "My IP is ${RESULT}";
+##   fi
+function retrieveOwnIp() {
+  local -i _rescode;
+  local _result;
+  local _oldIFS="${IFS}";
+  local _iface;
+  local _ifaces;
+  IFS=$' \t\n';
+
+  if retrieveIfaces; then
+      _ifaces="${RESULT}";
+      for _iface in ${_ifaces}; do
+        if retrieveIp "${_iface}"; then
+            _result="${RESULT}";
+            break;
+        fi;
+      done;
+  fi
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_result}"; then
+      _rescode="${FALSE}";
+      export RESULT="";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
