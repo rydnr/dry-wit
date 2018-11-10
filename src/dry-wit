@@ -351,10 +351,11 @@ function __dwDebugArray() {
 ## <- 0/${TRUE}: if the value is zero; 1/${FALSE} otherwise.
 function isZero() {
   local _value="${1}";
-  #  checkNotEmpty "value" "${_value}" 1;
-
   local  -i rescode;
-  if [[ ${_value} -eq 0 ]]; then
+
+  if isEmpty "${_value}"; then
+    rescode=${FALSE};
+  elif [[ "${_value}" == "0" ]]; then
       rescode=${TRUE};
   else
     rescode=${FALSE};
@@ -465,6 +466,84 @@ function areNotEqual() {
 
   if areEqual "${_first}" "${_second}"; then
       _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether the first parameter contains the second value.
+## -> 1: The text.
+## -> 2: The substring to check.
+## <- 0/${TRUE} if the text contains the substring; 1/${FALSE} otherwise.
+## Example:
+##   if contains "abc" "b"; then
+##     echo "abc contains b";
+##   fi
+function String.contains() {
+  local _container="${1}";
+  local _substring="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "container" "${_container}" 1;
+  checkNotEmpty "substring" "${_substring}" 2;
+
+  if [[ "${_container}" =~ "${_substring}" ]]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether the first parameter starts with the second value.
+## -> 1: The text.
+## -> 2: The substring to check.
+## <- 0/${TRUE} if the text starts with the substring; 1/${FALSE} otherwise.
+## Example:
+##   if startsWith "abc" "a"; then
+##     echo "abc starts with a";
+##   fi
+function String.startsWith() {
+  local _container="${1}";
+  local _substring="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "container" "${_container}" 1;
+  checkNotEmpty "substring" "${_substring}" 2;
+
+  if areEqual "${_container#${_substring}}" "${_container}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## PUBLIC
+## Checks whether the first parameter ends with the second value.
+## -> 1: The text.
+## -> 2: The substring to check.
+## <- 0/${TRUE} if the text ends with the substring; 1/${FALSE} otherwise.
+## Example:
+##   if endsWith "abc" "c"; then
+##     echo "abc ends with c";
+##   fi
+function String.endsWith() {
+  local _container="${1}";
+  local _substring="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "container" "${_container}" 1;
+  checkNotEmpty "substring" "${_substring}" 2;
+
+  if areEqual "${_container%${_substring}}" "${_container}"; then
+    _rescode=${FALSE};
   else
     _rescode=${TRUE};
   fi
@@ -1766,7 +1845,7 @@ function _printUsage() {
 
 function _trapSignals() {
   trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP;
-#  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
+  #  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
 }
 
 function _debugVariable() {
@@ -1775,7 +1854,7 @@ function _debugVariable() {
   local _value="${@}";
 
   declare -t "${_name}"="${_value}";
-  trap "echo ${_name} is being used here." DEBUG
+#  trap "echo ${_name} is being used here." DEBUG
 }
 
 # Converts given date (in days) to a formatted date.
@@ -4435,10 +4514,10 @@ function retrieveUserFromUid() {
 ##   fi
 function retrieveGroupFromGid() {
   local _gid="${1}";
-  checkNotEmpty "gid" "${_gid}" 1;
-
   local result;
-  local rescode;
+  local -i rescode;
+
+  checkNotEmpty "gid" "${_gid}" 1;
 
   result=$(getent group ${_gid} | cut -d':' -f1);
   rescode=$?;

@@ -20,51 +20,66 @@ Common flags:
     * -q | --quiet: Be silent.
 EOF
 }
-v
-## Defines the errors.
-## dry-wit hook
-function defineErrors() {
-  addError PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H "The _parseCommonInput method does not support -h";
-  addError RETRIEVEUIDFROMUSER_CANNOT_RETRIEVE_ROOT_UID "retrieveUidFromUser \"root\" failed";
-  addError RETRIEVEUIDFROMUSER_FAILED_FOR_USER_ROOT "retrieveUidFromUser \"root\" returned an invalid uid";
-  addError RETRIEVEGROUPFROMGID_DOES_NOT_CHECK_INPUT_PARAMETERS "retrieveGroupFromGid does not check input parameters";
-  addError RETRIEVEGROUPFROMGID_FAILED_FOR_GROUP_ROOT "retrieveGroupFromGid returned an invalid gid for group root";
-}
 
 ## Tests for dry-wit's _parseCommonInput.
 function _parseCommonInput_test() {
 
   _parseCommonInput "-h";
-  assertNoErrorThrown PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H;
+  Assert.noErrorThrown PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H;
 }
 
 function retrieveUidFromUser_test() {
   local _expectedUid=$(grep root /etc/passwd | cut -d':' -f 3);
   retrieveUidFromUser "root";
-  assertTrue $? RETRIEVEUIDFROMUSER_CANNOT_RETRIEVE_ROOT_UID;
+  Assert.isTrue $? "retrieveUidFromUser \"root\" failed";
   local _actualUid=${RESULT};
-  assertEquals ${_expectedUid} ${_actualUid} RETRIEVEUIDFROMUSER_FAILED_FOR_USER_ROOT;
+  Assert.areEqual ${_expectedUid} ${_actualUid} "retrieveUidFromUser \"root\" returned an invalid uid (${_actualUid})";
 }
 
 function retrieveGroupFromGid_test() {
   local _gid=$(grep root /etc/group | cut -d':' -f 3);
-  retrieveGroupFromGid;
-  assertErrorThrown RETRIEVEGROUPFROMGID_DOES_NOT_CHECK_INPUT_PARAMETERS;
   retrieveGroupFromGid "${_gid}";
-  assertTrue $? RETRIEVEGROUPFROMGID_CANNOT_RETRIEVE_ROOT_GID;
+  Assert.isTrue $? "retrieveGroupFromGid failed";
   local _actualGroup=${RESULT};
-  assertEquals "root" ${_actualGroup} RETRIEVEGROUPFROMGID_FAILED_FOR_GROUP_ROOT;
+  Assert.areEqual "root" ${_actualGroup} "retrieveGroupFromGid returned an invalid group (${_actualGroup})";
 }
 
 function _retrieveSettingsFiles_test() {
   local _settingsFiles;
+  local _f;
+
   _retrieveSettingsFiles;
   _settingsFiles="${RESULT}";
-  for _f in "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-                "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-                "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-                "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
-    assertContains "${_settingsFiles}" "${_f}" "unexpected settings files";
-  done
+  if isNotEmpty "${_settingsFiles}"; then
+    for _f in "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+              "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+              "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
+              "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+      Assert.contains "${_settingsFiles}" "${_f}" "Unexpected settings files";
+    done
+  fi
 }
 
+function contains_test() {
+  String.contains "abc" "b";
+  Assert.isTrue $? "contains 'abc' 'b' failed";
+
+  String.contains "abc" "f";
+  Assert.isFalse $? "contains 'abc' 'f' failed";
+}
+
+function String.startsWith_test() {
+  String.startsWith "abc" "a";
+  Assert.isTrue $? "startsWith 'abc' 'a' failed";
+
+  String.startsWith "abc" "b";
+  Assert.isFalse $? "startsWith 'abc' 'b' failed";
+}
+
+function String.endsWith_test() {
+  String.endsWith "abc" "c";
+  Assert.isTrue $? "endsWith 'abc' 'a' failed";
+
+  String.endsWith "abc" "b";
+  Assert.isFalse $? "endsWith 'abc' 'b' failed";
+}

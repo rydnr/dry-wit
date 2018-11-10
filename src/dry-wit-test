@@ -1,8 +1,8 @@
-#!/bin/bash dry-wit
+#!/bin/bash ./dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
-# set -o xtrace
+#set -o xtrace
 
 # The tests
 export -a TESTS;
@@ -60,17 +60,12 @@ function retrieveTests() {
 ##   addTestError "my_test";
 function addTestError() {
   local _test="${1}";
-  if isEmpty "${_test}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'test' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
   local _message="${2}";
-
-  if isEmpty "${_message}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
   local -i _count;
   local -i _index;
+
+  checkNotEmpty "test" "${_test}" 1;
+  checkNotEmpty "message" "${_message}" 2;
 
   _count=${TEST_ERRORS[${_test}]};
   if isEmpty "${_count}"; then
@@ -89,12 +84,10 @@ function addTestError() {
 ##   _removeTestError "my_test";
 function _removeTestError() {
   local _test="${1}";
-  if isEmpty "${_test}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'test' (1) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
   local -i _count;
   local -i _index;
+
+  checkNotEmpty "test" "${_test}" 1;
 
   _count=${TEST_ERRORS[${_test}]};
   if ! isEmpty "${_count}"; then
@@ -113,13 +106,11 @@ function _removeTestError() {
 function addTestFailure() {
   local _test="${1}";
   local _message="${2}";
-
-  if isEmpty "${_message}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
   local -i _count;
   local -i _index;
+
+  checkNotEmpty "test" "${_test}" 1;
+  checkNotEmpty "message" "${_message}" 2;
 
   _count=${TEST_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
@@ -157,14 +148,10 @@ function addTestSuccess() {
 ##   addTestAssertionFailure "my_test" "Should not fail";
 function addTestAssertionFailure() {
   local _test="${1}";
-  if isEmpty "${_test}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'test' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-
   local _message="${2}";
-  if isEmpty "${_message}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (2+) is mandatory when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+
+  checkNotEmpty "test" "${_test}" 1;
+  checkNotEmpty "message" "${_message}" 2;
 
   local _extra="${3}";
   local _lineNumber="${BASH_LINENO[1]}";
@@ -181,7 +168,7 @@ function addTestAssertionFailure() {
   TEST_ASSERTION_FAILURES["${_test}"]=${_count};
   TEST_ASSERTION_LINE_NUMBERS["${_test}:${_index}"]=${_lineNumber};
   TEST_ASSERTION_FAILURE_MESSAGES["${_test}:${_index}"]="${_message}";
-  if ! isEmpty "${_extra}"; then
+  if isNotEmpty "${_extra}"; then
       TEST_ASSERTION_FAILURE_CONTEXT["${_test}:${_index}"]="${_extra}";
   fi
 }
@@ -507,6 +494,7 @@ function logTestSummary() {
 function __dwtest() {
   local _tests;
   local _failedTests;
+  local _t;
 
   logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
   retrieveTests ${SCRIPT_NAME};
@@ -529,7 +517,7 @@ function __dwtest() {
 
   retrieveTestsWithIssues;
   _failedTests="${RESULT}";
-  if ! isEmpty "${_failedTests}"; then
+  if isNotEmpty "${_failedTests}"; then
     for _t in ${_failedTests}; do
       logTestSummary "${_t}";
     done
@@ -557,54 +545,45 @@ function __dwCallback() {
 ## -> 1: the condition to check.
 ## -> 2: the error message.
 ## Example:
-##   assertTrue [ 1 == 1 ], ONE_DOES_NOT_EQUAL_ONE;
-function assertTrue() {
+##   Assert.isTrue [ 1 == 1 ] "check [ 1 == 1 ] failed";
+function Assert.isTrue() {
   local _condition=${1};
-  if isEmpty "${_condition}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'condition' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
   local _error="${2}";
-  if isEmpty "${_error}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'error' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-  local _conditionResult="${RESULT}";
+
+  checkNotEmpty "condition" "${_condition}" 1;
+  checkNotEmpty "error" "${_error}" 2;
 
   if isTrue ${_condition}; then
     addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     addTestAssertionFailure "${FUNCNAME[1]}" "${_error}";
   fi
-
-  export RESULT="${_conditionResult}";
 }
 
 ## Asserts given condition holds true.
 ## -> 1: the condition to check.
 ## -> 2: the error message.
 ## Example:
-##   assertFalse [ 1 != 1 ], ONE_DOES_NOT_EQUAL_ONE;
-function assertFalse() {
+##   Assert.isFalse [ 1 != 1 ], "check [ 1 != 1 ] failed";
+function Assert.isFalse() {
   local _condition=${1};
-  if isEmpty "${_condition}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'condition' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
   local _error="${2}";
-  if isEmpty "${_error}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'error' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-  assertTrue [! ${_condition} ] ${_error};
+
+  checkNotEmpty "condition" "${_condition}" 1;
+  checkNotEmpty "error" "${_error}" 2;
+
+  Assert.isTrue [! ${_condition} ] ${_error};
 }
 
 ## Asserts no error has been thrown so far in current test.
 ## -> 1: The error message.
 ## Example:
 ##   [call functionX]
-##   assertNoErrorThrown FUNCTION_X_SHOULD_NOT_THROW_ANY_ERROR;
-function assertNoErrorThrown() {
+##   Assert.noErrorThrown "functionX has thrown an error";
+function Assert.noErrorThrown() {
   local _message="${1}";
-  if isEmpty "${_message}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+
+  checkNotEmpty "message" "${_message}" 1;
 
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
@@ -618,12 +597,11 @@ function assertNoErrorThrown() {
 ## -> 1: The error message.
 ## Example:
 ##   [call functionX]
-##   assertErrorThrown FUNCTION_X_SHOULD_THROW_SOME_ERROR;
-function assertErrorThrown() {
+##   Assert.errorThrown "functionX should have thrown an error";
+function Assert.errorThrown() {
   local _message="${1}";
-  if isEmpty "${_message}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
+
+  checkNotEmpty "message" "${_message}" 1;
 
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
@@ -639,22 +617,17 @@ function assertErrorThrown() {
 ## -> 2: The actual value.
 ## -> 3: The error message.
 ## Example:
-##   assertEquals 1 1 "1 does not equal 1";
-function assertEquals() {
+##   Assert.areEqual 1 1 "1 does not equal 1";
+function Assert.areEqual() {
   local _expected="${1}";
   local _actual="${2}";
   local _message="${3}";
-  if isEmpty "${_expected}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'expected' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-  if isEmpty "${_actual}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'actual' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-  if isEmpty "${_message}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
 
-  if [ "x${_expected}" == "x${_actual}" ]; then
+  checkNotEmpty "expected" "${_expected}" 1;
+  checkNotEmpty "actual" "${_actual}" 2;
+  checkNotEmpty "message" "${_message}" 3;
+
+  if areEqual "${_expected}" "${_actual}"; then
       addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} != ${_actual})";
@@ -666,25 +639,58 @@ function assertEquals() {
 ## -> 2: The actual value.
 ## -> 3: The error message.
 ## Example:
-##   assertEquals 1 2 "1 is equal to 2";
-function assertNotEquals() {
+##   Assert.areNotEqual 1 2 "1 is equal to 2";
+function Assert.areNotEqual() {
   local _expected="${1}";
   local _actual="${2}";
   local _message="${3}";
-  if isEmpty "${_expected}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'expected' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-  if isEmpty "${_actual}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'actual' (2) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
-  if isEmpty "${_message}"; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "'message' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]} in ${BASH_SOURCE[1]}:${BASH_LINENO[0]}";
-  fi
 
-  if [ "x${_expected}" != "x${_actual}" ]; then
+  checkNotEmpty "expected" "${_expected}" 1;
+  checkNotEmpty "actual" "${_actual}" 2;
+  checkNotEmpty "message" "${_message}" 3;
+
+  if areNotEqual "${_expected}" "${_actual}"; then
       addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} == ${_actual})";
+  fi
+}
+
+## Asserts given value is empty.
+## -> 1: The value.
+## -> 2: The error message.
+## Example:
+##   Assert.isEmpty "${testValue}" "testValue is not empty";
+function Assert.isEmpty() {
+  local _value="${1}";
+  local _message="${2}";
+
+  checkNotEmpty "value" "${_value}" 1;
+  checkNotEmpty "message" "${_message}" 2;
+
+  if isEmpty "${_value}"; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is not empty)";
+  fi
+}
+
+## Asserts given value is not empty.
+## -> 1: The value.
+## -> 2: The error message.
+## Example:
+##   Assert.isNotEmpty "${testValue}" "testValue is empty";
+function Assert.isNotEmpty() {
+  local _value="${1}";
+  local _message="${2}";
+
+  checkNotEmpty "value" "${_value}" 1;
+  checkNotEmpty "message" "${_message}" 2;
+
+  if isNotEmpty "${_value}"; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is empty)";
   fi
 }
 
@@ -700,17 +706,25 @@ function fail() {
 ## -> 2: The substring.
 ## -> 3: The error message.
 ## Example:
-##   assertContains "sample text" "sample" "'sample text' does not contain 'sample'";
-function assertContains() {
+##   Assert.contains "sample text" "sample" "'sample text' does not contain 'sample'";
+function Assert.contains() {
   local _text="${1}";
   local _substring="${2}";
   local _errorMessage="${3}";
 
-  if [ "${text#${_substring}}" != "${text}" ]; then
+  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty "substring" "${_substring}" 2;
+  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+
+  if String.contains "${_text}" "${_substring}"; then
       addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_text}' does not contain  '${_actual}')";
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
   fi
+}
+
+function main() {
+  __dwtest;
 }
 
 _sourceDryWit $*;
