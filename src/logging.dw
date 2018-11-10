@@ -1,0 +1,6 @@
+function logDebugFileContents() {
+  if isDebugEnabled; then
+    [ -f "$1" ] && sed 's ^\s+$  g' "$1" | awk '{printf("logDebug \"%s\"\n", $0);}' | sh
+  fi
+}
+

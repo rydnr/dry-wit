@@ -3700,74 +3700,6 @@ function removeExtension() {
   export RESULT="${result}";
 }
 
-function remoteSshCommand() {
-  local result;
-  local resultCode=${TRUE};
-  local _user="$1";
-  local _server="$2";
-  local _command="$3";
-
-  result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
-  resultCode=$?;
-  if [ ${resultCode} == 0 ]; then
-    export RESULT="${result}";
-  fi
-
-  return ${resultCode};
-}
-
-# Retrieves the disk space available in the filesystem containing
-# given folder. Prints the available space in bytes. Returns 0 if
-# the space could be calculated.
-# - folder: the folder.
-function retrieveFreeDiskSpaceUnderFolder() {
-  local result;
-  local resultCode=1;
-  local _folder="$1";
-  local _aux="${_folder}";
-
-  if [ -d "${_folder}" ]; then
-    while isNotEmpty "${_aux}" -a areNotEqual "${_aux}" "/" && \
-          ! mountpoint -q "${_aux}"; do
-      _aux="${_aux%/*}";
-    done;
-
-    mountpoint -q "${_aux}";
-    resultCode=$?;
-
-    if isTrue ${resultCode}; then
-      result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
-      resultCode=$?;
-    fi
-  fi
-
-  export RESULT="${result}";
-
-  return ${resultCode};
-}
-
-function remoteSshCommandPipe() {
-  local result;
-  local resultCode=${TRUE};
-  local _user="$1";
-  local _server="$2";
-  local _command="$3";
-  shift;
-  shift;
-  shift;
-  local _previousPipe="$@";
-
-#  echo "_previousPipe=${_previousPipe}";
-#  echo "_command=${_command}";
-  result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
-  resultCode=$?;
-  if [ ${resultCode} == 0 ]; then
-    export RESULT="${result}";
-  fi
-
-  return ${resultCode};
-}
-
 # Runs a command supporting logging of command-line and output.
 # The output is stored in a single variable. If it's expected to
 # be longer use 'runCommandLongOutput' instead.
@@ -3825,12 +3757,6 @@ function runCommandLongOutput() {
   setLogCategory "${_previousLogCategory}";
 
   return ${resultCode};
-}
-
-function logDebugFileContents() {
-  if isDebugEnabled; then
-    [ -f "$1" ] && sed 's ^\s+$  g' "$1" | awk '{printf("logDebug \"%s\"\n", $0);}' | sh
-  fi
 }
 
 if [ "$1" != "" ]; then

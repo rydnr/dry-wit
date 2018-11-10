@@ -1,0 +1,38 @@
+function remoteSshCommand() {
+  local result;
+  local resultCode=${TRUE};
+  local _user="$1";
+  local _server="$2";
+  local _command="$3";
+
+  result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
+  resultCode=$?;
+  if [ ${resultCode} == 0 ]; then
+    export RESULT="${result}";
+  fi
+
+  return ${resultCode};
+}
+
+function remoteSshCommandPipe() {
+  local result;
+  local resultCode=${TRUE};
+  local _user="$1";
+  local _server="$2";
+  local _command="$3";
+  shift;
+  shift;
+  shift;
+  local _previousPipe="$@";
+
+#  echo "_previousPipe=${_previousPipe}";
+#  echo "_command=${_command}";
+  result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
+  resultCode=$?;
+  if [ ${resultCode} == 0 ]; then
+    export RESULT="${result}";
+  fi
+
+  return ${resultCode};
+}
+

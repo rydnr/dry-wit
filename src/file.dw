@@ -90,3 +90,33 @@ function readLink() {
   return ${rescode};
 }
 
+# Retrieves the disk space available in the filesystem containing
+# given folder. Prints the available space in bytes. Returns 0 if
+# the space could be calculated.
+# - folder: the folder.
+function retrieveFreeDiskSpaceUnderFolder() {
+  local result;
+  local resultCode=1;
+  local _folder="$1";
+  local _aux="${_folder}";
+
+  if [ -d "${_folder}" ]; then
+    while isNotEmpty "${_aux}" -a areNotEqual "${_aux}" "/" && \
+          ! mountpoint -q "${_aux}"; do
+      _aux="${_aux%/*}";
+    done;
+
+    mountpoint -q "${_aux}";
+    resultCode=$?;
+
+    if isTrue ${resultCode}; then
+      result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
+      resultCode=$?;
+    fi
+  fi
+
+  export RESULT="${result}";
+
+  return ${resultCode};
+}
+
