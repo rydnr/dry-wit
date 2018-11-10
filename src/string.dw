@@ -76,5 +76,32 @@ function endsWith() {
   return ${_rescode};
 }
 
+## Converts given string to upper case.
+## -> 1: The string to convert.
+## <- RESULT: The converted string.
+##
+## Example:
+##   local _text="abc";
+##   toUpper "${_text}";
+##   local _upcased="${RESULT}";
+function toUpper() {
+  local _text="${1}";
+  checkNotEmpty "text" "${_text}" 1;
+  local result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${result}";
+}
 
+## PUBLIC
+## Normalizes given string: converts non-alphanumeric characters to underscore, and converts it to upper case.
+## -> 1: The string to convert.
+## <- RESULT: The normalized string.
+##
+## Example:
+##   normalize "a_b.C" # returns "A_B_C";
+function normalize() {
+  local _text="${1}";
+  checkNotEmpty "text" "${_text}" 1;
+  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
+  export RESULT="${result}";
+}
 

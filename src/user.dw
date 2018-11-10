@@ -1,0 +1,551 @@
+## User/Group helpers
+## Retrieves the uid of the owner user of given file or folder.
+## -> 1: The file or folder.
+## <- RESULT: The id of the user that owns the file or folder.
+## Example:
+##   retrieveOwnerUid /tmp
+##   echo "The id of the owner of /tmp is ${RESULT}";
+function retrieveOwnerUid() {
+  local _file="${1}"
+  local result;
+
+  result="$(stat -c '%u' "${_file}")";
+
+  export RESULT="${result}";
+}
+
+## Retrieves the id of the owner group of given file or folder.
+## -> 1: The file or folder.
+## <- RESULT: The id of the group that owns the file or folder.
+## Example:
+##   retrieveOwnerGid /tmp
+##   echo "The id of the group of /tmp is ${RESULT}";
+function retrieveOwnerGid() {
+  local _file="${1}"
+  local result;
+
+  result="$(stat -c '%g' "${_file}")";
+
+  export RESULT="${result}";
+}
+
+## Checks whether given uid already exists.
+## -> 1: The user id.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if uidAlreadyExists 1; then
+##     echo "User 1 exists";
+##   fi
+function uidAlreadyExists() {
+  local _uid="${1}";
+  local rescode;
+
+  logDebug -n "Checking if uid ${_uid} is already used";
+  getent passwd ${_uid} > /dev/null;
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${rescode};
+}
+
+## Checks whether given gid already exists.
+## -> 1: The group id.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if gidAlreadyExists 103; then
+##     echo "Group 103 exists";
+##   fi
+function gidAlreadyExists() {
+  local _gid="${1}";
+  local rescode;
+
+  logDebug -n "Checking if gid ${_gid} already exists";
+  getent group ${_gid} > /dev/null;
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${rescode};
+}
+
+## Checks whether given user already exists.
+## -> 1: The user name.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if userAlreadyExists guest; then
+##     echo "User guest exists";
+##   fi
+function userAlreadyExists() {
+  local _user="${1}";
+  local rescode;
+
+  logDebug -n "Checking if user ${_user} is already used";
+  getent passwd ${_user} > /dev/null;
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${rescode};
+}
+
+## Checks whether given group already exists.
+## -> 1: The group name.
+## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
+##
+## Example:
+##   if groupAlreadyExists users; then
+##     echo "Group users exists";
+##   fi
+function groupAlreadyExists() {
+  local _group="${1}";
+  local rescode;
+
+  logDebug -n "Checking if group ${_group} already exists";
+  getent group ${_group} > /dev/null;
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "true";
+  else
+    logDebugResult FAILURE "false";
+  fi
+
+  return ${rescode};
+}
+
+## Retrieves the user id of given user.
+## -> 1: The user name.
+## <- RESULT: The user id.
+##
+## Example:
+##   retrieveUserFromUid "1";
+##   echo "The name of user 1 is ${RESULT}";
+function retrieveUserFromUid() {
+  local _uid="${1}";
+  checkNotEmpty "uid" "${_uid}" 1;
+
+  local result;
+  local rescode;
+
+  result=$(getent passwd ${_uid} | cut -d':' -f1);
+  rescode=$?;
+
+  export RESULT="${result}";
+
+  return ${rescode};
+}
+
+## Retrieves the group id of given group.
+## -> 1: The group name.
+## <- RESULT: The group id.
+## <- 0/${TRUE} if the gid is processed successfully; 1/${FALSE} otherwise.
+## Example:
+##   if retrieveGroupFromGid "100"; then
+##     echo "The name of group 1 is ${RESULT}";
+##   fi
+function retrieveGroupFromGid() {
+  local _gid="${1}";
+  local result;
+  local -i rescode;
+
+  checkNotEmpty "gid" "${_gid}" 1;
+
+  result=$(getent group ${_gid} | cut -d':' -f1);
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    export RESULT="${result}";
+  fi
+
+  return ${rescode};
+}
+
+## Retrieves the id of a given user.
+## -> 1: The user name.
+## <- RESULT: The user id.
+##
+## Example:
+##   retrieveUidFromUser "root";
+##   echo "The id of user root is ${RESULT}";
+function retrieveUidFromUser() {
+  local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
+  local result;
+  local rescode;
+
+  logDebug -n "Retrieving uid of user ${_user}";
+  result=$(getent passwd ${_user} | cut -d':' -f3);
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "${result}";
+    export RESULT="${result}";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${rescode};
+}
+
+## Retrieves the id of a given group.
+## -> 1: The group name.
+## <- RESULT: The group id.
+##
+## Example:
+##   retrieveGidFromGroup "admin";
+##   echo "The id of group admin is ${RESULT}";
+function retrieveGidFromGroup() {
+  local _group="${1}";
+  checkNotEmpty "group" "${_group}" 1;
+
+  local result;
+  local rescode;
+
+  logDebug -n "Retrieving gid of group ${_group}";
+  result=$(getent group ${_group} | cut -d':' -f3);
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "${result}";
+    export RESULT="${result}";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${rescode};
+}
+
+## Creates a new user.
+## -> 1: The user name.
+## <- 0/${TRUE} if the user gets created successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if createUser "fakeuser"; then
+##    echo "fakeuser created successfully";
+## fi
+function createUser() {
+  local _userName="${1}";
+  checkNotEmpty "userName" "${_userName}" 1;
+  local rescode;
+
+  logDebug -n "Creating user ${_userName}";
+
+  useradd -M -N -l "${_userName}";
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${rescode};
+}
+
+## Creates a new group.
+## -> 1: The group name.
+## -> 2: The group id (optional).
+## <- 0/${TRUE} if the group gets created successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if createGroup "fakegroup"; then
+##    echo "fakegroup created successfully";
+## fi
+function createGroup() {
+  local _groupName="${1}";
+  checkNotEmpty "group" "${_groupName}" 1;
+  local _gid="${2}";
+
+  local rescode;
+
+  logDebug -n "Creating group ${_groupName}";
+
+  if isEmpty "${_gid}"; then
+    groupadd "${_groupName}";
+    rescode=$?;
+  else
+    groupadd -g "${_gid}" "${_groupName}";
+    rescode=$?;
+  fi
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${rescode};
+}
+
+## Deletes given user.
+## -> 1: The user name.
+## <- 0/${TRUE} if the user is removed successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if deleteUser "fakeuser"; then
+##    echo "fakeuser deleted successfully";
+## fi
+function deleteUser() {
+  local _userName="${1}";
+  checkNotEmpty "user" "${_userName}" 1;
+  local rescode;
+
+  logDebug -n "Deleting user ${_userName}";
+
+  userdel "${_userName}";
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${rescode};
+}
+
+## Deletes given group.
+## -> 1: The group name.
+## <- 0/${TRUE} if the group is removed successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## if deleteGroup "fakegroup"; then
+##    echo "fakegroup deleted successfully";
+## fi
+function deleteGroup() {
+  local _groupName="${1}";
+  checkNotEmpty "group" "${_groupName}" 1;
+  local rescode;
+
+  logDebug -n "Deleting group ${_groupName}";
+
+  groupdel "${_groupName}";
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+  fi
+
+  return ${rescode};
+}
+
+## Resolves the path of a command for given user.
+## -> 1: The user.
+## -> 2: The command.
+## <- RESULT: The path of 'command' for given user.
+## <- 0/${TRUE} if the command gets resolved to a path for given user; 1/${FALSE} otherwise.
+## Example:
+##   if resolveCommandForUser "${SERVICE_USER}" "gradle"; then
+##     _command="${RESULT}";
+##   fi
+function resolveCommandForUser() {
+  local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
+  local _command="${2}";
+  checkNotEmpty "command" "${_command}" 2;
+  local rescode;
+
+  local result="$(su - ${_user} -c "which ${_command}" 2> /dev/null)";
+  rescode=$?;
+  if isTrue ${rescode}; then
+      export RESULT="${result}";
+  fi
+
+  return ${rescode};
+}
+
+## Runs the command in a folder, under a given user.
+## -> 1: The user id.
+## -> 2: The group id.
+## -> 3: the folder.
+## -> 4+: the command.
+## Example:
+##  if runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"; then
+##    echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
+##  fi
+function runCommandAsUidGid() {
+  local _uid="${1}";
+  local _gid="${2}";
+  local _folder="${3}";
+  local _command="${4}";
+  shift
+  shift
+  shift
+  shift
+  local _user;
+  local _group;
+
+  retrieveUserFromUid "${_uid}";
+  _user="${RESULT}";
+  retrieveGroupFromGid "${_gid}";
+  _group="${RESULT}";
+
+  runCommandAsUserAndGroup "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
+}
+
+## Runs the command in a folder, under a given user.
+## -> 1: The user.
+## -> 2: The group.
+## -> 3: the folder.
+## -> 4+: the command.
+## Example:
+##  if runCommandAsUserAndGroup root root /tmp "ls -ltrhia"; then
+##    echo "ls -ltrhia run successfully as root/root, on /tmp";
+##  fi
+function runCommandAsUserAndGroup() {
+  local _user="${1}";
+  local _group="${2}";
+  local _folder="${3}";
+  local _command="${4}";
+  shift
+  shift
+  shift
+  shift
+  local _args="${@}";
+  local _exports="$(export)";
+  local -i rescode;
+  local _line="${_command//$'\n'/ } ${_args//$'\n'/ }";
+  createTempFile;
+  local _runme="${RESULT}";
+
+  checkNotEmpty "user" "${_user}" 1;
+  checkNotEmpty "group" "${_group}" 2;
+  checkNotEmpty "folder" "${_folder}" 3;
+  checkNotEmpty "command" "${_command}" 4;
+
+
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat << EOF > "${_runme}"
+#!/bin/bash
+
+${_exports}
+declare -x HOME="$(eval echo ~${_user})"
+cd ${_folder}
+${_line}
+EOF
+  chmod a+r "${_runme}"
+  chmod a+x "${_runme}"
+
+  logDebug "Running ${_command} ${_args} as ${_user}:${_group}";
+  chown ${_user}:${_group} "${_runme}"
+  exec 2>&1
+  chpst -u ${_user}:${_group} "${_runme}";
+  rescode=$?;
+
+  return ${rescode};
+}
+
+## Updates the uid of the user.
+## -> 1: The user.
+## -> 2: The uid.
+## <- 0/${TRUE} if the user's uid is updated successfully; 1/${FALSE} otherwise.
+## Example:
+## updateUserUid "guest" 1001
+function updateUserUid() {
+  local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
+
+  local _uid="${2}";
+  checkNotEmpty "uid" "${_uid}" 2;
+
+  local rescode;
+
+  logDebug -n "Changing ${_user}'s uid to ${_uid}";
+  usermod -u ${_uid} ${_user} > /dev/null 2>&1
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    usermod -u ${_uid} ${_user} 2>&1
+  fi
+
+  return ${rescode};
+}
+
+## Updates the gid of the user.
+## -> 1: The user.
+## -> 2: The gid.
+## <- 0/${TRUE} if the user's gid is updated successfully; 1/${FALSE} otherwise.
+## Example:
+## updateUserGid "guest" 103
+function updateUserGid() {
+  local _user="${1}";
+  checkNotEmpty "user" "${_user}" 1;
+
+  local _gid="${2}";
+  checkNotEmpty "gid" "${_gid}" 2;
+  local rescode;
+
+  logDebug -n "Changing ${_user}'s primary group to ${_gid}";
+  usermod -g ${_gid} ${_user} > /dev/null 2>&1
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "unneeded";
+    usermod -g ${_gid} ${_user} 2>&1
+  fi
+
+  return ${rescode};
+}
+
+## Updates the gid of the group.
+## -> 1: The group.
+## -> 2: The gid.
+## <- 0/${TRUE} if the group's gid is updated successfully; 1/${FALSE} otherwise.
+##
+## Example:
+## updateGroupGid "guests" 103
+function updateGroupGid() {
+  local _group="${1}";
+  local _gid="${2}";
+  local rescode;
+
+  logDebug -n "Changing ${_group}'s gid to ${_gid}";
+  groupmod -g ${_gid} ${_group} > /dev/null 2>&1
+  rescode=$?;
+  if isTrue ${rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    groupmod -g ${_gid} ${_group} 2>&1
+  fi
+
+  return ${rescode};
+}
+
+## Adds given user to a group.
+## -> 1: The user.
+## -> 2: The group.
+## <- 0/${TRUE} if the user gets added to the group successfully; 1/${FALSE} otherwise.
+##
+## Example:
+##   if addUserToGroup guest users; then
+##     echo "User guest added to group users";
+##   fi
+function addUserToGroup() {
+  local _user="${1}";
+  local _group="${2}";
+  local rescode;
+
+  gpasswd -a ${_user} ${_group} > /dev/null;
+  rescode=$?;
+
+  return ${rescode};
+}
+#

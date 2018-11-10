@@ -21,14 +21,15 @@ Common flags:
 EOF
 }
 
-## Tests for dry-wit's _parseCommonInput.
-function _parseCommonInput_test() {
+## Tests for dry-wit's DRYWIT.parseCommonInput.
+function DRYWIT.parseCommonInput_test() {
 
-  _parseCommonInput "-h";
+  DRYWIT.parseCommonInput "-h";
   Assert.noErrorThrown PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H;
 }
 
 function retrieveUidFromUser_test() {
+  import user;
   local _expectedUid=$(grep root /etc/passwd | cut -d':' -f 3);
   retrieveUidFromUser "root";
   Assert.isTrue $? "retrieveUidFromUser \"root\" failed";
@@ -37,6 +38,7 @@ function retrieveUidFromUser_test() {
 }
 
 function retrieveGroupFromGid_test() {
+  import user;
   local _gid=$(grep root /etc/group | cut -d':' -f 3);
   retrieveGroupFromGid "${_gid}";
   Assert.isTrue $? "retrieveGroupFromGid failed";
@@ -44,11 +46,13 @@ function retrieveGroupFromGid_test() {
   Assert.areEqual "root" ${_actualGroup} "retrieveGroupFromGid returned an invalid group (${_actualGroup})";
 }
 
-function _retrieveSettingsFiles_test() {
+function DRYWIT.retrieveSettingsFiles_test() {
   local _settingsFiles;
   local _f;
 
-  _retrieveSettingsFiles;
+  import dw-plumbing;
+
+  DRYWIT.retrieveSettingsFiles;
   _settingsFiles="${RESULT}";
   if isNotEmpty "${_settingsFiles}"; then
     for _f in "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \

@@ -1,0 +1,19 @@
+## Checks a required package is installed.
+## -> 1: The program name.
+## <- 0/${TRUE} if given program is available in the PATH; 1/${FALSE} otherwise.
+## Example:
+##   if ! isInstalled "ifconfig"; then
+##     echo "ifconfig is not available";
+##   fi
+function isInstalled() {
+  local _req="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "candidate" "{_req}" 1;
+
+  which ${_req} > /dev/null 2>&1;
+  _rescode=$?;
+
+  return ${_rescode};
+}
+

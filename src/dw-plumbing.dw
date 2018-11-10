@@ -1,0 +1,326 @@
+## Performs some checks on the script itself.
+## -> 1: The script.
+function DRYWIT.checkScript() {
+  local _script=$1;
+  local _v;
+  local _f;
+
+  setLogCategory "sanity-check";
+  logTrace -n "Checking mandatory constants";
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  for _v in ${ERROR_MESSAGES[@]}; do
+    if [ -z "${_v}" ]; then
+      exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
+    fi
+  done
+  logTraceResult SUCCESS "done";
+  logTrace -n "Checking mandatory functions";
+  for _f in usage main; do
+    DRYWIT.functionPresent ${_f} ${_script};
+    if isFalse $?; then
+      exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
+    fi
+  done
+  IFS="${_oldIFS}";
+  logTraceResult SUCCESS "${_DW_DONE}";
+}
+
+## PRIVATE
+## Performs the dry-wit setup process.
+function DRYWIT.setup() {
+  _trapSignals;
+  local _f;
+  DRYWIT.retrieveSettingsFiles;
+  local _files="${RESULT}"
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+
+  for _f in ${_files}; do
+    sourceFileIfExists "${_f}";
+  done
+  IFS="${_oldIFS}";
+
+  evalEnvVars;
+}
+
+## PRIVATE
+## Retrieves the settings files.
+## <- RESULT: a space-separated list of settings files.
+## Example:
+##   DRYWIT.retrieveSettingsFiles;
+##   echo "settings files: ${RESULT}";
+function DRYWIT.retrieveSettingsFiles() {
+  local _f;
+  local _d;
+  local _result="";
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+    for _d in "${DRY_WIT_SCRIPT_FOLDER}" "."; do
+      _result="${_result} ${_d}/${_f}";
+    done
+  done
+  IFS="${_oldIFS}";
+
+  export RESULT="${_result}";
+}
+
+## PRIVATE
+## dry-wit's core process.
+
+function DRYWIT.main() {
+  local _script="${1#./}";
+  shift;
+  local _absolutePath;
+  retrieveAbsolutePath "${_script}";
+  export DRY_WIT_SCRIPT_PATH="${RESULT}";
+  export DRY_WIT_SCRIPT_FOLDER="$(dirname ${DRY_WIT_SCRIPT_PATH})";
+
+  DRYWIT.defineDryWitErrorMessages;
+
+  DRYWIT.setup "${_script}";
+
+  if DRYWIT.functionPresent defineErrors "${_script}"; then
+    defineErrors;
+  else
+    export ERROR_MESSAGES=();
+  fi
+
+  if DRYWIT.functionPresent defineEnvDefaults "${_script}"; then
+    defineEnvDefaults;
+  fi
+
+  if DRYWIT.functionPresent defineEnv "${_script}"; then
+    defineEnv;
+  fi
+
+  if DRYWIT.functionPresent defineKeywords "${_script}"; then
+    defineKeywords;
+  fi
+
+  DRYWIT.parseCommonInput $@;
+
+  if DRYWIT.functionPresent parseInput "${_script}"; then
+      evalEnvVars;
+      parseInput $@;
+  fi
+
+  DRYWIT.checkCommonInput $@;
+
+  DRYWIT.checkScript "${_script}";
+
+  DRYWIT.defineDryWitRequirements;
+
+  if DRYWIT.functionPresent checkRequirements "${_script}"; then
+    logTrace -n "Checking declared requirements";
+    checkRequirements;
+    logTraceResult SUCCESS "${_DW_DONE}";
+  fi
+
+  if DRYWIT.functionPresent checkInput "${_script}"; then
+      evalEnvVars;
+      checkInput $@;
+
+      if DRYWIT.functionPresent postCheckInput "${_script}"; then
+          postCheckInput $@;
+      fi
+  fi
+
+  setLogCategory "main";
+  main;
+}
+
+## Checks input common to all scripts.
+function DRYWIT.checkCommonInput() {
+
+  if isTrue ${DRY_WIT_HELP_FLAG}; then
+    _printHelp;
+    exit 0;
+  fi
+}
+
+## Parses the common flags. It sets the log level, whether to eval defaults, and
+## the help flag.
+## -> *: The arguments.
+function DRYWIT.parseCommonInput() {
+  local _help=${FALSE};
+  local _argsToPassToWrappedLogic=${FALSE};
+
+  setInfoEnabled;
+
+  local _flags=$(extractFlags $@);
+  local _flagCount=0;
+  local _oldIFS="${IFS}";
+  local _flag;
+  IFS=$' \t\n';
+  for _flag in ${_flags}; do
+    if isTrue ${_argsToPassToWrappedLogic}; then
+      DRY_WIT_REMAINING_ARGS="${DRY_WIT_REMAINING_ARGS} ${_flag}";
+    else
+      _flagCount=$((_flagCount+1));
+      case ${_flag} in
+        -h | --help)
+          _help=${TRUE};
+          ;;
+        -v)
+          setDebugEnabled;
+          ;;
+        -vv)
+          setTraceEnabled;
+          ;;
+        -q)
+          enableQuietMode;
+          ;;
+        -X:e | --X:eval-defaults)
+          export DRY_WIT_EVAL_DEFAULTS_FLAG=1;
+          ;;
+        --)
+          _argsToPassToWrappedLogic=${TRUE};
+          shift;
+          ;;
+      esac
+    fi
+  done
+  IFS="${_oldIFS}";
+  shift ${_flagCount};
+
+  export DRY_WIT_HELP_FLAG=${_help};
+}
+
+## Appends a new built-in error to BUILTIN_ERRORS.
+## -> 1: The error to add.
+##
+## Example:
+##   DRYWIT.appendBuiltInError "error";
+function DRYWIT.appendBuiltInError() {
+  local _error="${1}";
+
+  if declare -p BUILTIN_ERRORS > /dev/null 2>&1; then
+    upvars -a$((${#BUILTIN_ERRORS[@]}+1)) BUILTIN_ERRORS "${BUILTIN_ERRORS[@]}" "${_error}";
+    export BUILTIN_ERRORS;
+  else
+    export -a BUILTIN_ERRORS=();
+    upvars -a1 BUILTIN_ERRORS "${_error}";
+  fi
+}
+
+## Annotates a new built-in error.
+## -> 1: The error name.
+## -> 1: The error message.
+function DRYWIT.addBuiltInError() {
+  local _errorName="${1}";
+  local _message="${2}";
+  toUpper "${_errorName}";
+  local _upcasedErrorName="${RESULT}";
+
+  DRYWIT.appendBuiltInError "${_upcasedErrorName}";
+  upvar "${_upcasedErrorName}" "${_message}";
+  export "${_upcasedErrorName}"="${_message}";
+}
+
+## Declares dry-wit's error messages.
+function DRYWIT.defineDryWitErrorMessages() {
+  DRYWIT.addBuiltInError "SCRIPT_INTERRUPTED" "User interruption";
+  DRYWIT.addBuiltInError "MISSING_MANDATORY_VARIABLES" "Script not complete, since it doesn't define all mandatory variables";
+  DRYWIT.addBuiltInError "MISSING_MANDATORY_FUNCTIONS" "Script not complete, since it doesn't define all mandatory functions";
+  DRYWIT.addBuiltInError "UNKNOWN_ERROR" "The script has finished due to an unexpected error";
+  DRYWIT.addBuiltInError "UNACCEPTABLE_API_CALL" "Unacceptable call to dry-wit API: ";
+  DRYWIT.addBuiltInError "POSTCONDITION_NOT_SATISFIED" "Postcondition not satisfied: ";
+  DRYWIT.addBuiltInError "UNACCEPTABLE_ENVIRONMENT_VARIABLE" "Unacceptable environment variable: ";
+}
+
+## Annotates a new error describing a missing dependency.
+## -> 1: The missing dependency.
+function DRYWIT.addMissingDependencyError() {
+  local _dependency="${1}";
+  toUpper "${_dependency}_NOT_INSTALLED";
+  local _constant="${RESULT}";
+
+  addError "${_constant}" "${_dependency} is not installed";
+}
+
+## Checks a required dependency is available.
+## -> 1: The program name.
+## -> 2: The error code to throw if the dependency is not available. Optional.
+function DRYWIT.checkDependency() {
+  local _req="${1}";
+  local _errorCode="${2}";
+
+  if isEmpty "${_errorCode}"; then
+    toUpper "${_req}_NOT_INSTALLED";
+    _errorCode="${RESULT}";
+  fi
+
+  which ${_req} > /dev/null 2>&1;
+  rescode=$?;
+  if isFalse ${rescode}; then
+      exitWithErrorCode ${_errorCode};
+  fi
+}
+
+## Performs the checks for a required dependency.
+## -> 1: The dependency.
+function checkReq() {
+  local _dependency="${1}";
+  local _errorCode="${2:-}";
+
+  if [ -z "${_errorCode}" ]; then
+    DRYWIT.addMissingDependencyError "${_dependency}";
+    DRYWIT.checkDependency "${_dependency}";
+  else
+    DRYWIT.checkDependency "${_dependency}" "${_errorCode}";
+  fi
+}
+
+## Checks dry-wit's own requirements.
+function DRYWIT.defineDryWitRequirements() {
+  checkReq grep;
+  checkReq mktemp;
+}
+
+
+## Checks if given function is present.
+## -> 1: The function name.
+## -> 2: The script file.
+## <- 0/${RESULT} if the function is found; 1/${FALSE} otherwise.
+## Example:
+##   if DRYWIT.functionPresent "myFunc" "myScript.sh"; then
+##     echo "myFunc is defined in myScript.sh";
+##   fi
+function DRYWIT.functionPresent() {
+  local _function=$1;
+  local _script=$2;
+
+  checkNotEmpty "function" "${_function}" 1;
+
+  type ${_function} 2> /dev/null | grep -q 'function'
+  local rescode=$?;
+  if isFalse ${rescode}; then
+      if isNotEmpty "${_script}"; then
+          grep " ${_function}()" "${_script}" > /dev/null 2>&1;
+          rescode=$?;
+      fi
+  fi
+  if isFalse ${rescode}; then
+      if isNotEmpty "${_script}"; then
+          local _oldIFS="${IFS}";
+          local _inc;
+          IFS=$' \t\n';
+          for _inc in "./$(basename ${_script} .sh).inc.sh" \
+                      "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+            if fileExists "${_inc}"; then
+                DRYWIT.functionPresent "${_function}" "${_inc}";
+                rescode=$?;
+	              if isTrue ${rescode}; then
+                    break;
+	              fi
+            fi
+          done
+      fi
+    IFS="${_oldIFS}";
+  fi
+
+  return ${rescode};
+}
+

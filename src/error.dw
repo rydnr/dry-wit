@@ -1,0 +1,31 @@
+## Appends a new error to ERROR_MESSAGES.
+## -> 1: The error to add.
+##
+## Example:
+##   appendErrorMessage "item";
+function appendErrorMessage() {
+  local _error="${1}";
+
+  if declare -p ERROR_MESSAGES > /dev/null 2>&1; then
+    upvars -a$((${#ERROR_MESSAGES[@]}+1)) ERROR_MESSAGES "${ERROR_MESSAGES[@]}" "${_error}";
+    export ERROR_MESSAGES;
+  else
+    export -a ERROR_MESSAGES=();
+    upvars -a1 ERROR_MESSAGES "${_error}";
+  fi
+}
+
+## Annotates a new error.
+## -> 1: The error name.
+## -> 1: The error message.
+function addError() {
+  local _errorName="${1}";
+  local _message="${2}";
+  local _normalizedErrorName;
+  normalize "${_errorName}";
+  _normalizedErrorName="${RESULT}";
+  appendErrorMessage "${_normalizedErrorName}";
+  upvar "${_normalizedErrorName}" "${_message}";
+  export "${_normalizedErrorName}"="${_message}";
+}
+
