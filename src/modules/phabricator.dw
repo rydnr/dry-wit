@@ -1,0 +1,105 @@
+## Retrieves the username of a credential from Phabricator.
+## -> 1: The key id.
+## -> 2: The Phabricator URL.
+## -> 3: The API token.
+## <- 0/${TRUE} if the username could be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The credential username.
+## Example:
+##   if retrieveCredentialUsernameFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then
+##     echo "Credential username: ${RESULT}";
+##   fi
+function retrieveCredentialUsernameFromPhabricator() {
+  local _keyId="${1}";
+  local _phabricatorUrl="${2}";
+  local _apiToken="${3}";
+  local -i _rescode=${TRUE};
+  local _result;
+
+  checkNotEmpty "keyId" "${_keyId}" 1;
+  checkNotEmpty "phabricatorUrl" "${_phabricatorUrl}" 2;
+  checkNotEmpty "apiToken" "${_apiToken}" 3;
+
+  echo "curl -s ${_phabricatorUrl}/api/passphrase.query -d api.token=${_apiToken} -d \"ids[0]=${_keyId}\" -d  'needSecrets=1' 2> /dev/null | jq '. | .result.data | .[] | .username' 2> /dev/null | tr -d '\"'"  >> "${TRACE_FILE}";
+
+  _result="$(curl -s ${_phabricatorUrl}/api/passphrase.query -d api.token=${_apiToken} -d "ids[0]=${_keyId}" -d  'needSecrets=1' 2> /dev/null | jq '. | .result.data | .[] | .username' 2> /dev/null | tr -d '"')";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves a credential's password from Phabricator.
+## -> 1: The key id.
+## -> 2: The Phabricator URL.
+## -> 3: The API token.
+## <- 0/${TRUE} if the credential password could be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The credential password.
+## Example:
+##   if retrieveCredentialPasswordFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then
+##     echo "Credential password: ${RESULT}";
+##   fi
+function retrieveCredentialPasswordFromPhabricator() {
+  local _keyId="${1}";
+  local _phabricatorUrl="${2}";
+  local _apiToken="${3}";
+  local -i _rescode=${TRUE};
+  local _result;
+
+  checkNotEmpty "keyId" "${_keyId}" 1;
+  checkNotEmpty "phabricatorUrl" "${_phabricatorUrl}" 2;
+  checkNotEmpty "apiToken" "${_apiToken}" 3;
+
+  echo "curl -s ${_phabricatorUrl}/api/passphrase.query -d api.token=${_apiToken} -d \"ids[0]=${_keyId}\" -d  'needSecrets=1' 2> /dev/null | jq '. | .result.data | .[] | .material.password' 2> /dev/null | tr -d '\"'" >> "${TRACE_FILE}";
+
+  _result="$(curl -s ${_phabricatorUrl}/api/passphrase.query -d api.token=${_apiToken} -d "ids[0]=${_keyId}" -d  'needSecrets=1' 2> /dev/null | jq '. | .result.data | .[] | .material.password' 2> /dev/null | tr -d '"')";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves a credential's private key from Phabricator.
+## -> 1: The key id.
+## -> 2: The Phabricator URL.
+## -> 3: The API token.
+## <- 0/${TRUE} if the credential's private key could be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The credential private key.
+## Example:
+##   if retrieveCredentialPrivateKeyFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then
+##     echo "Credential private key: ${RESULT}";
+##   fi
+function retrieveCredentialPrivateKeyFromPhabricator() {
+  local _keyId="${1}";
+  local _phabricatorUrl="${2}";
+  local _apiToken="${3}";
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "keyId" "${_keyId}" 1;
+  checkNotEmpty "phabricatorUrl" "${_phabricatorUrl}" 2;
+  checkNotEmpty "apiToken" "${_apiToken}" 3;
+
+  echo "curl -s ${_phabricatorUrl}/api/passphrase.query -d api.token=${_apiToken} -d \"ids[0]=${_keyId}\" -d  'needSecrets=1' 2> /dev/null | jq '. | .result.data | .[] | .material.privateKey' 2> /dev/null | tr -d '\"'" >> "${TRACE_FILE}";
+
+  _result="$(curl -s ${_phabricatorUrl}/api/passphrase.query -d api.token=${_apiToken} -d "ids[0]=${_keyId}" -d 'needSecrets=1' 2> /dev/null | jq '. | .result.data | .[] | .material.privateKey' 2> /dev/null | tr -d '"')";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+#

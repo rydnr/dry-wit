@@ -1,0 +1,41 @@
+## Finds out the current branch.
+## <- 0/${TRUE} if the branch could be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The name of the branch, if the operation succeeds.
+## Example:
+##   if findOutCurrentBranch; then
+##     echo "The current branch is ${RESULT}";
+##   fi
+function retrieveGitBranch() {
+  local -i _rescode;
+  local _result;
+
+  _result="$(git rev-parse --abbrev-ref HEAD)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+## Finds out the URL of the git repository.
+## <- 0/${TRUE} if the url could be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The repository url, if the operation succeeds.
+## Example:
+##   if findOutGitRepositoryUrl; then
+##     echo "The repository url is ${RESULT}";
+##   fi
+function retrieveGitRepositoryUrl() {
+  local -i _rescode;
+  local _result;
+
+  _result="$(git config --get remote.origin.url)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
