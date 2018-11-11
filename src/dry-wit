@@ -31,23 +31,67 @@ else
 fi
 
 declare -a __DRYWIT_BOOTSTRAP_MODULES=(\
-  "stdlib" "string" "array" "check" "envvar" "constant" "error" "envvar" "term" "echo" "color" "logging" "cli" "usage" "dw-plumbing" "file" \
+   "stdlib" \
+   "string" \
+   "array" \
+   "check" \
+   "envvar" \
+   "constant" \
+   "error" \
+   "envvar" \
+   "term" \
+   "echo" \
+   "color" \
+   "logging" \
+   "cli" \
+   "usage" \
+   "dw-plumbing" \
+   "file" \
 );
 
 declare -a __DRYWIT_IMPORTED_MODULES;
 
+export DRYWIT_MODULE_TAG="master";
+export DRYWIT_MODULE_URL="https://raw.githubusercontent.com/rydnr/dry-wit/master/src/${DRYWIT_MODULE_TAG}";
+export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/modules"
+
+function downloadModule() {
+  local _module="${1}";
+  local -i _rescode;
+  local _result="";
+
+  mkdir -p "${DRYWIT_MODULE_PATH}";
+
+  echo -n "Downloading ${_module} from ${DRYWIT_MODULE_URL}/${_module}.dw ... ";
+  curl -s "${DRYWIT_MODULE_URL}/${_module}.dw" > "${DRYWIT_MODULE_PATH}/${_module}.dw";
+  _rescode=$?;
+  if [[ ${_rescode} -eq ${TRUE} ]]; then
+    echo "done";
+    export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw";
+  else
+    echo "failed";
+  fi
+
+  return ${_rescode};
+}
+
 function DRYWIT.bootstrap() {
   local _module;
+  local _modulePath;
 
   for _module in ${__DRYWIT_BOOTSTRAP_MODULES[*]}; do
     if findModule "${_module}"; then
-      source ${RESULT};
-      __DRYWIT_IMPORTED_MODULES[${#__DRYWIT_IMPORTED_MODULES[@]}]="${_module}";
+      _modulePath="${RESULT}";
+    elif downloadModule "${_module}"; then
+      _modulePath="${RESULT}";
     else
       echo "ERROR: Required module ${_module}.dw not found. Please reinstall dry-wit."
       exit 1;
     fi
   done
+
+  source "${_modulePath}";
+  __DRYWIT_IMPORTED_MODULES[${#__DRYWIT_IMPORTED_MODULES[@]}]="${_module}";
 }
 
 function import() {
