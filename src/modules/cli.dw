@@ -1,3 +1,8 @@
+declare -a __DW_CLI_SHORT_FLAGS;
+declare -a __DW_CLI_LONG_FLAGS;
+declare -A __DW_CLI_FLAG_EXPECTING_ARGUMENT;
+declare -A __DW_CLI_FLAG_CALLBACKS;
+
 # Checks whether a given flag is enabled.
 # -> 1: the name of the flag variable.
 # <- 0 if the flag is enabled, 1 otherwise.
@@ -53,6 +58,77 @@ function extractFlagValue() {
     | grep -e "^${_flag} " \
     | awk -v f="${_flag}" '{printf("echo \"%s\" | sed -e \"s_^%s __g\"\n", $2, f);}' \
     | sh;
+}
+
+## Parses the command-line arguments.
+## -> *: The command-line arguments.
+## <- 0/${TRUE} if the command-line arguments were parsed successfully; 1/${FALSE} otherwise.
+function parseInput() {
+  local _flags=$(extractFlags $@);
+  local _flagCount;
+  local _currentCount;
+  local _argument;
+
+  # Flags
+  for _flag in ${_flags}; do
+    _flagCount=$((_flagCount+1));
+    case ${_flag} in
+      -h | --help | -v | -vv | -X:e | --X:eval-defaults)
+         shift;
+         ;;
+      -q | --quiet)
+        export QUIET=${TRUE};
+        shift;
+        ;;
+      --)
+        shift;
+        break;
+        ;;
+    esac
+    if arrayContains "${__DW_CLI_SHORT_FLAGS[*]}" "${_flag}" || arrayContains "${__DW_CLI_LONG_FLAGS[*]}" "${_flag}"; then
+      if isTrue ${__DW_CLI_EXPECTING_ARGUMENT_FLAGS["${_flag}"]}; then
+        _argument="${1}";
+        shift;
+        ${__DW_CLI_FLAG_CALLBACKS["${_flag}"]} "${_argument}";
+      else
+        ${__DW_CLI_FLAG_CALLBACKS["${_flag}"]};
+      fi
+    else
+      echo "flag ${_flag} not found in ${__DW_CLI_SHORT_FLAGS} nor ${__DW_CLI_LONG_FLAGS}";
+    fi
+  done
+}
+
+## Adds a command-line flag.
+## -> 1: The short name of the flag.
+## -> 2: The long name of the flag.
+## -> 3: TRUE if the parameter contains a value; FALSE otherwise.
+## -> 4: A callback function to parse the value.
+## <- 0/${TRUE} if the flag is added successfully; 1/${FALSE} otherwise.
+## Example:
+##   if addCommandLineFlag "f" "file" TRUE myCallbackFunction; then
+##     echo "-f|--file flag added"
+##   fi
+function addCommandLineFlag() {
+  local _shortName="${1}";
+  local _longName="${2}";
+  local _expectsArgument="${3}";
+  local _callback="${4}";
+  local -i _rescode=${TRUE};
+
+  checkNotEmpty "shortName" "${_shortName}" 1;
+  checkNotEmpty "longName" "${_longName}" 2;
+  checkNotEmpty "expectsArgument" "${_expectsArgument}" 3;
+  checkNotEmpty "callback" "${_callback}" 4;
+
+  __DW_CLI_SHORT_FLAGS[${#__DW_CLI_SHORT_FLAGS[@]}]="-${_shortName}";
+  __DW_CLI_LONG_FLAGS[${#__DW_CLI_LONG_FLAGS[@]}]="--${_longName}";
+  __DW_CLI_FLAG_EXPECTING_ARGUMENT["-${_shortName}"]="${_expectsArgument}";
+  __DW_CLI_FLAG_EXPECTING_ARGUMENT["--${_longName}"]="${_expectsArgument}";
+  __DW_CLI_FLAG_CALLBACKS["-${_shortName}"]="${_callback}";
+#  __DW_CLI_FLAG_CALLBACKS["--${_longName}"]="${_callback}";
+
+  return ${_rescode};
 }
 
 
