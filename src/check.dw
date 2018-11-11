@@ -1,0 +1,27 @@
+import stdlib;
+import error;
+
+## PUBLIC
+## Performs a precondition check on given parameter.
+## -> 1: The parameter name.
+## -> 2: The parameter value.
+## -> 3: The parameter index.
+## Example:
+##   checkNotEmpty "user" "${user}" 1 # -> throws an error if the first (1) parameter ("user") is empty.
+function checkNotEmpty() {
+  local _name="${1}";
+  if isEmpty "${_name}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+  local _value="${2}";
+
+  if isEmpty "${_value}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
+
+  local _index="${3}";
+  if isEmpty "${_index}"; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+}
+

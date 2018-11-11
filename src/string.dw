@@ -105,3 +105,22 @@ function normalize() {
   export RESULT="${result}";
 }
 
+function replaceNLeftmostTokens() {
+  local _text="$1";
+  local _newToken="$2";
+  local _number=$(($3));
+  local _separator="$4";
+  local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
+  export RESULT="${result}";
+}
+
+function replaceNRightmostTokens() {
+  local _text="$1";
+  local _newToken="$2";
+  local _number=$(($3));
+  local _separator="$4";
+  local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
+  export RESULT="${result}";
+}
+
+

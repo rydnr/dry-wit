@@ -1,3 +1,9 @@
+_dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
+
+# IFS stuff
+_OLD_IFS="${IFS}";
+export IFS=$'\n\t\040';
+
 ## Performs some checks on the script itself.
 ## -> 1: The script.
 function DRYWIT.checkScript() {
@@ -29,7 +35,7 @@ function DRYWIT.checkScript() {
 ## PRIVATE
 ## Performs the dry-wit setup process.
 function DRYWIT.setup() {
-  _trapSignals;
+  DRYWIT.trapSignals;
   local _f;
   DRYWIT.retrieveSettingsFiles;
   local _files="${RESULT}"
@@ -324,3 +330,83 @@ function DRYWIT.functionPresent() {
   return ${rescode};
 }
 
+function cleanup() {
+  local -i _deletedCount;
+  local -i _notDeletedCount;
+  local _deleted;
+  local _notDeleted;
+  local _i;
+  if [ "${#_CLEANUP_FILES}" != "0" ]; then
+    setLogCategory "post-process";
+
+    logTrace -n "Cleaning up temporary files";
+
+    local _oldIFS="${IFS}";
+    IFS=$' \t\n';
+    for _i in ${_CLEANUP_FILES[*]}; do
+      IFS="${_oldIFS}";
+      rm -rf ${_i} > /dev/null 2>&1;
+      if isTrue $?; then
+          _deleted="${_deleted} ${_i}";
+          _deletedCount=$((_deletedCount + 1));
+      else
+        _notDeleted="${_notDeleted} ${_i}";
+        _notDeletedCount=$((_notDeletedCount + 1));
+      fi
+    done
+
+    if isZero ${_notDeletedCount}; then
+        logTraceResult SUCCESS "${_deletedCount}";
+    else
+      logTraceResult FAILURE "${_notDeletedCount}";
+    fi
+  fi
+
+}
+
+function DRYWIT.trapSignals() {
+  trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP;
+  #  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
+}
+
+function DRYWIT.debugVariable() {
+  local _name="${1}";
+  shift;
+  local _value="${@}";
+
+  declare -t "${_name}"="${_value}";
+#  trap "echo ${_name} is being used here." DEBUG
+}
+
+## PRIVATE/DEBUG
+## Prints the contents of given array.
+## -> 1: The name of the array.
+## Example:
+##   A=( "1" "2" "3" );
+##   _dwDebugArray "${A}"
+function __dwDebugArray() {
+  flattenArray "${1}" " + ";
+  echo "${RESULT}";
+}
+
+
+## PRIVATE
+## Traces the API call to the default log file using in development.
+## Example:
+##   traceApiCall;
+function _traceApiCall() {
+  echo -n "${FUNCNAME[0]}" >> ${_dryWitDevLogFile};
+  local -i _i=0;
+  while caller $i >> ${_dryWitDevLogFile}; do
+    i=$((i+1))
+  done
+}
+
+## PRIVATE
+## Echoes a line to stdout. Useful for locating them easily when debugging.
+## -> 1: The message to print.
+## Example:
+##   debugEcho "message";
+function _debugEcho() {
+  echo $* >> ${_dryWitDevLogFile};
+}

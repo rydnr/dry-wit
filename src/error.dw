@@ -1,3 +1,8 @@
+declare -a BUILTIN_ERRORS;
+declare -a ERROR_MESSAGES;
+
+import envvar;
+
 ## Appends a new error to ERROR_MESSAGES.
 ## -> 1: The error to add.
 ##
@@ -28,4 +33,101 @@ function addError() {
   upvar "${_normalizedErrorName}" "${_message}";
   export "${_normalizedErrorName}"="${_message}";
 }
+
+## Exits with an error code associated with given error label.
+## -> 1: The error label.
+## Example:
+##   exitWithErrorCode UNKNOWN_OPTION;
+function exitWithErrorCode() {
+  local _label="${1}";
+  shift;
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  printErrorMessage "${_label}" "$@";
+  _rescode=$?;
+  cleanup;
+  exit ${_rescode};
+}
+
+# Internal functions
+## Prints given error.
+## -> 1: The error message.
+## Example:
+##   _printError "My error message.";
+function _printError() {
+  echo "Error: $@.";
+}
+
+## PUBLIC
+## Prints the error message for given label.
+## -> 1: The error label.
+## <- 0/${TRUE} if the error is found and gets printed; 1/${FALSE} otherwise.
+## Example:
+##   if printErrorMessage INVALID_OPTION; then
+##     # [..]
+##   fi
+function printErrorMessage() {
+  local _label="${1}";
+  shift;
+  local -i rescode=${TRUE};
+  local _message;
+  local _error;
+  local -i _interruption=${TRUE};
+  local _i;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  #  set +o nounset  # allow unset variables
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  for _i in ${BUILTIN_ERRORS[@]}; do
+    rescode=$((rescode+1));
+    if areEqual "${_i}" "${_label}"; then
+      _message="${_i}";
+      break;
+    fi;
+  done
+  # TODO set -o nounset  # disallow unset variables
+
+  if isEmpty "${_message}"; then
+    # IFS issue
+#    rescode=${TRUE};
+    for _i in ${ERROR_MESSAGES[@]}; do
+      rescode=$((rescode+1));
+      if areEqual "${_i}" "${_label}"; then
+          _message="${_i}";
+          break;
+      fi;
+    done
+  fi
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_message}"; then
+    _error="Error ${_label}, but no error message defined. Fix this script";
+    rescode=-1;
+  else
+    _error="$(echo ${_message} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
+  fi
+
+  if [ ${#@} -gt 0 ]; then
+      if [ ${#@} -gt 1 ]; then
+          _error="$(cat <<EOF
+${_error}
+$@
+EOF
+)";
+      else
+        _error="${_error} $@";
+      fi
+  fi
+
+  if isDebugEnabled; then
+    _printUsage ${SCRIPT_NAME};
+  fi
+  _printError "${_error}";
+  return ${rescode};
+}
+
 

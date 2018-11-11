@@ -1,0 +1,36 @@
+## Builds a new color.
+## -> 1: The color name.
+## -> 2: The foreground value.
+## -> 3: The background value.
+## Example:
+##   buildColor "GREEN" "32" "42";
+function buildColor() {
+  local _color="${1}";
+  local _fgValue="${2}";
+  local _bgValue="${3}";
+  local result="";
+
+  upvar "${_color}" "\033[0;${_fgValue}m";
+  export "${_color}";
+  upvar "${_color}_FG" "\033[0;${_fgValue}m";
+  export "${_color}_FG";
+  upvar "${_color}_BG" "\033[${_bgValue}m";
+  export "${_color}_BG";
+  upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
+  export "LIGHT_${_color}_FG";
+  upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
+  export "UNDERSCORE_${_color}_FG";
+  upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
+  export "BLINK_${_color}_FG";
+  upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
+  export "INVERSE_${_color}_FG";
+  upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
+  export "CONCEALED_${_color}_FG";
+}
+
+#for c in "BLACK" "BLACK_B" "RED" "RED_B" "RED_S" "GREEN" "GREEN_B" "YELLOW" "YELLOW_B" "BLUE" "BLUE_B" "MAGENTA" "MAGENTA_B" "CYAN" "CYAN_B" "GREY" "WHITE" "WHITE_B" "NO_COLOR"; do
+#  upvars -a1 "${c}_TPUT" "";
+#  upvar "${c}" "";
+#  ${c}_TPUT=();
+#done
+

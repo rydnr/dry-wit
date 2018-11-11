@@ -1,0 +1,58 @@
+# Checks whether a given flag is enabled.
+# -> 1: the name of the flag variable.
+# <- 0 if the flag is enabled, 1 otherwise.
+# Example:
+# function parseInput() {
+# [..]
+#   -my | --myFlag) export MY_FLAG=${TRUE};
+#                   ;;
+# [..]
+# if flagEnabled MY_FLAG; then
+#    ..
+function flagEnabled() {
+  local _flagVar="${1}";
+  local _flagVal;
+  local -i rescode;
+
+  checkNotEmpty "flagVar" "${_flagVar}" 1;
+
+  _evalVar "${_flagVar}";
+  _flagVal="${RESULT}";
+  if    areEqual "${_flagVal}" "${TRUE}" \
+     || areEqual "${_flagVal}" "TRUE"; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+
+  return ${rescode};
+}
+
+## Extracts the flags from the arguments.
+## -> *: The arguments to process.
+## <- [STDOUT]: the flags.
+## Example:
+##   local _myFlags=$(extractFlags $*);
+function extractFlags() {
+  echo " $@" \
+    | awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' \
+    | awk -F" " '{print $1;}'
+}
+
+## Extracts the flag value for the arguments.
+## -> 1: The flag name.
+## -> 2-*: The arguments.
+## <- [STDOUT]: the flag value.
+## Example:
+##   local _Ext=$(extractFlagValue "ext" $*);
+function extractFlagValue() {
+  local _flag=${1};
+  shift;
+  echo " $@" \
+    | awk -F" -" '{printf("-"); for (i=2; i<=NF; i++){if(i%2 == 1) {printf("-");}; printf("%s \n", $i);}}' \
+    | grep -e "^${_flag} " \
+    | awk -v f="${_flag}" '{printf("echo \"%s\" | sed -e \"s_^%s __g\"\n", $2, f);}' \
+    | sh;
+}
+
+

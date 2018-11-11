@@ -1,0 +1,171 @@
+import constant;
+
+## Checks whether the terminal allows colors or not.
+## <- 0/${TRUE} if the terminal supports colors; 1/${FALSE} otherwise.
+function allowsColors() {
+  local result;
+
+  $(tput colors > /dev/null 2>&1);
+  if isTrue $?; then
+    _colors=$(tput colors);
+    if [ ${_colors} -ge 8 ]; then
+      env | grep -e '^_=' | grep env > /dev/null 2>&1;
+      if isTrue $?; then
+        result=${TRUE};
+      else
+        result=${FALSE};
+      fi
+    else
+      result=${FALSE};
+    fi
+  else
+    result=${FALSE};
+  fi;
+
+  return ${result};
+}
+
+function getColor() {
+  local _colorConstant="${1}";
+  local _defaultColor="${2:-${UNDEFINED_COLOR}}"
+  local result;
+
+  if allowsColors; then
+    evalConstant "${_colorConstant}" "${_defaultColor}";
+    result="${RESULT}";
+  fi
+
+  export RESULT="${result}";
+}
+
+## PUBLIC
+## Prints a text in color.
+## -> 1: -n : Whether to remove the CRLF from the end (optional).
+## -> 2: The color.
+## -> 3: The text to echo.
+function echoInColor() {
+  local _flagMinusN;
+  local _colorAux;
+  if [ "${1}" == "-n" ]; then
+    _flagMinusN=${TRUE};
+    shift;
+  else
+    _flagMinusN=${FALSE};
+  fi
+  local _color="${1}";
+  checkNotEmpty "color" "${_color}" 1;
+
+  local _text="${2}";
+  checkNotEmpty "text" "${_text}" 2;
+  local _colorAux="";
+  local _inColor=${FALSE};
+
+  if allowsColors; then
+    if isVariableDefined "${_color}"; then
+      _inColor=${TRUE};
+      _evalVar "${_color}";
+      _colorAux="${RESULT}";
+    fi
+  fi
+
+  if isTrue ${_flagMinusN}; then
+    if isTrue ${_inColor}; then
+      echo -en "${_colorAux}${_text}${NO_COLOR}";
+    else
+      echo -n "${_text}";
+    fi
+  else
+    if isTrue ${_inColor}; then
+        echo -e "${_colorAux}${_text}${NO_COLOR}";
+    else
+      echo "${_text}";
+    fi
+  fi
+}
+
+## PUBLIC
+## Prints a text in color.
+## -> 1: -n : Whether to remove the CRLF from the end (optional).
+## -> 2: The color.
+## -> 3: The text to echo.
+function resetColor() {
+  echo -en ${NO_COLOR};
+}
+
+## PUBLIC
+## Echoes given text, colorized.
+## -> 1: The text to colorize.
+## -> 2: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text).
+## -> 3: The default color (optional).
+## Example:
+##   echoColorizeText "done" SUCCESS;
+function echoColorizedText() {
+  local _text="${1}";
+  local _keyword="${2}";
+  local _defaultColor="${3:-${UNDEFINED_COLOR}}";
+  local _color="";
+  allowsColors;
+  _allowsColors=$?;
+
+  if isTrue ${_allowsColors}; then
+    getColor ${_defaultColor};
+    _undefinedColor="${RESULT}";
+    getColor ${SUCCESS_COLOR};
+    _successColor="${RESULT}";
+    getColor ${FAILURE_COLOR};
+    _failureColor="${RESULT}";
+    case ${_keyword} in
+      ${SUCCESS}) _color="${_successColor}";
+         ;;
+      ${FAILURE}) _color="${_failureColor}";
+         ;;
+      *) if isSuccessKeyword "${_text}"; then
+           _color="${_successColor}";
+         elif isFailureKeyword "${_text}"; then
+           _color="${_failureColor}";
+         else
+           _color="${_undefinedColor}";
+         fi
+         ;;
+    esac
+  fi
+  echoColorizedTextWithColor -n "${_color}" "${_text}";
+}
+
+## PUBLIC
+## Echoes given text, colorized.
+## -> 1: The text to colorize.
+## -> 2: The text color.
+## Example:
+##   echoColorizeTextWithColor "${WHITE}" "done";
+function echoColorizedTextWithColor() {
+  local _flagMinusN;
+  if [ "${1}" == "-n" ]; then
+    _flagMinusN=${TRUE};
+    shift;
+  else
+    _flagMinusN=${FALSE};
+  fi
+  evalConstant "${1}";
+  local _color="${RESULT}";
+  local _text="${2}";
+  local result;
+
+  local _allowsColors;
+  allowsColors;
+  _allowsColors=$?;
+
+  if isTrue ${_allowsColors}; then
+    if isTrue ${_flagMinusN}; then
+      echoInColor -n "${_color}" "${_text}";
+    else
+      echoInColor "${_color}" "${_text}";
+    fi
+    resetColor;
+  elif isTrue ${_flagMinusN}; then
+    echo -n "${_text}";
+  else
+    echo "${_text}";
+  fi
+}
+

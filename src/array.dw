@@ -1,0 +1,96 @@
+## Checks if an element is already contained in an array.
+## -> 1: The array (passed as "${array[@]}".
+## -> 2: The element to check.
+## <- 0/${TRUE}: If the element is present in the array; 1/${FALSE} otherwise.
+## Example:
+##   a=("one" "two" "three" "other number")
+##   if arrayContains "${array[@]}" "other number"; then
+##     ...
+##   fi
+function arrayContains() {
+  local _array="${1}";
+  local _item="${2}";
+  local _aux;
+  local -i _rescode=${FALSE};
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## checkNotEmpty is loaded.
+  type checkNotEmpty 2> /dev/null | grep -q 'function';
+  if isTrue $?; then
+    checkNotEmpty "array" "${_array}" 1;
+    checkNotEmpty "item" "${_item}" 2;
+  fi
+
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  for _aux in "${_array}"; do
+    if areEqual "${_aux}" "${_item}"; then
+      _rescode=${TRUE};
+      break;
+    fi
+  done
+  IFS="${_oldIFS}";
+  return ${_rescode};
+}
+
+## Checks if an element is not already contained in an array.
+## -> 1: The array (passed as "${array[@]}".
+## -> 2: The element to check.
+## <- 0/${TRUE}: If the element is not present in the array; 1/${FALSE}: Otherwise
+## Example:
+##   a=("one" "two" "three" "other number")
+##   if arrayDoesNotContain "${array[@]}" "four"; then
+##     ...
+##   fi
+function arrayDoesNotContain() {
+  local _array="${1}";
+  local _item="${2}";
+  local -i _rescode=${FALSE};
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## checkNotEmpty is loaded.
+  type checkNotEmpty 2> /dev/null | grep -q 'function';
+  if isTrue $?; then
+    checkNotEmpty "array" "${_array}" 1;
+    checkNotEmpty "item" "${_item}" 2;
+  fi
+
+  if arrayContains "${_array}" "${_item}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## PUBLIC
+## Flattens an array, using given separator.
+## -> 1: The name of the array variable.
+## -> 2: The separator to use.
+## <- RESULT: The resulting string.
+## Example:
+##   A=(a b c);
+##   flattenArray A "x";
+##   echo "A->${RESULT}" # axbxc
+function flattenArray() {
+  local _arrayName="${1}";
+  local _separator="${2}";
+  local result="";
+
+  local _aux="$(echo "\${#${_arrayName}[@]}")";
+  local _len=$((-1+$(eval echo "${_aux}")));
+  local _oldIFS="${IFS}";
+  local -i _i;
+
+  IFS=$' \t\n';
+  for _i in $(seq 0 ${_len}); do
+    _aux="$(echo "\${${_arrayName}[${_i}]}")";
+    _item=$(eval echo "${_aux}");
+    result="${result}${_separator}${_item}";
+  done
+  IFS="${_oldIFS}";
+  result="${result#${_separator}}";
+  export RESULT="${result}";
+}
+#

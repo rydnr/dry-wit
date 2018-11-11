@@ -1,0 +1,109 @@
+# term functions
+
+# Retrieves the TERM variable
+# <- RESULT: the TERM variable.
+function retrieveTERM() {
+  local result="${TERM}";
+
+  if isEmpty "${result}"; then
+    result="dumb";
+  fi
+
+  case ${result} in
+    dumb) result="$(uname | tr '[:upper:]' '[:lower:]')";
+         ;;
+      *) ;;
+  esac
+
+  export RESULT="${result}";
+
+  return ${TRUE};
+}
+
+# PRIVATE
+# Retrieves the column width, from an environment
+# variable.
+# <- RESULT: the column width; -1 if the environment variable
+#           is not specified.
+# <- 0/${TRUE} if the term width is specified via an environment variable;
+#    1/${FALSE} otherwise.
+# Example:
+#   if retrieveTermWidthFromEnvVar; then
+#     _width=${RESULT};
+#   fi
+function _retrieveTermWidthFromEnvVar() {
+  local rescode=${FALSE};
+  if isNotEmpty "${DW_TERM_WIDTH}"; then
+    rescode=${TRUE};
+    export RESULT="${DW_TERM_WIDTH}";
+  fi
+
+  return ${rescode};
+}
+
+# PRIVATE
+# Retrieves the width of the term.
+# Exports the value, since values greater
+# than 255 are not allowed as return codes.
+# <- 0: if the calculation
+# <- RESULT: the term width.
+function getTermWidth() {
+  local result;
+  local -i rescode;
+  local _term;
+
+  _retrieveTermWidthFromEnvVar;
+  rescode=$?;
+  if ! isTrue ${rescode}; then
+    retrieveTERM;
+    _term="${RESULT}";
+    getTermWidthForTerm "${_term}";
+    result="${RESULT}";
+    export RESULT="${result}";
+    rescode=$?;
+  fi
+
+#  _debugEcho "term witdh -> ${RESULT}";
+  return ${rescode};
+}
+
+# Retrieves the width of the term.
+# Exports the value, since values greater
+# than 255 are not allowed as return codes.
+# -> 1: the TERM.
+# <- 0: if the calculation is performed successfully.
+# <- RESULT: the term width.
+function getTermWidthForTerm() {
+  local -i rescode;
+  local result;
+  local _term="${1}";
+
+  checkNotEmpty "term" "${_term}" 1;
+
+  $(tput cols &> /dev/null > /dev/null 2>&1);
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    result=$(tput cols);
+  fi
+
+  if    isEmpty ${result} \
+     || [ $((result)) -le 0 ]; then
+
+    if isNotEmpty "${_term}"; then
+
+      $(tput -T ${_term} cols > /dev/null 2>&1);
+
+      if isTrue ${rescode}; then
+        result=$(tput -T ${_term} cols);
+      fi
+    fi
+  fi
+  if    isEmpty ${result} \
+     || [ $((result)) -le 0 ]; then
+    result=${_DRY_WIT_DEFAULT_TERM_WIDTH};
+  fi
+  export RESULT=${result};
+
+  return ${rescode};
+}
