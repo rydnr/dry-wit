@@ -22,7 +22,7 @@ function DRYWIT.checkScript() {
   done
   logTraceResult SUCCESS "done";
   logTrace -n "Checking mandatory functions";
-  for _f in usage main; do
+  for _f in main; do
     DRYWIT.functionPresent ${_f} ${_script};
     if isFalse $?; then
       exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
