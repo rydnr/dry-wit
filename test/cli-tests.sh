@@ -23,16 +23,31 @@ EOF
 
 import cli;
 
-commandLineFlagCallbackCalled=${FALSE};
-
-function commandLineFlagCallback() {
-  commandLineFlagCallbackCalled=${TRUE};
+function test_setup() {
+  commandLineFlagCheckingCallbackCalled=${FALSE};
+  commandLineFlagParsingCallbackCalled=${FALSE};
 }
 
-function addCommandLineFlag_test() {
-  addCommandLineFlag "f" "file" TRUE commandLineFlagCallback "The file to read";
+function commandLineFlagCheckingCallback() {
+  commandLineFlagCheckingCallbackCalled=${TRUE};
+}
+
+function commandLineFlagParsingCallback() {
+  commandLineFlagParsingCallbackCalled=${TRUE};
+}
+
+function addCommandLineFlag_checking_callback_is_called_in_checkInput_test() {
+  addCommandLineFlag "f" "file" TRUE commandLineFlagCheckingCallback commandLineFlagParsingCallback "The file to read";
+  checkInput "-f" "/tmp/1.txt";
+  Assert.isTrue ${commandLineFlagCheckingCallbackCalled} "checkingCallback not called in checkInput";
+  Assert.isFalse ${commandLineFlagParsingCallbackCalled} "parsingCallback was called in checkInput";
+}
+
+function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
+  addCommandLineFlag "f" "file" TRUE commandLineFlagCheckingCallback commandLineFlagParsingCallback "The file to read";
   parseInput "-f" "/tmp/1.txt";
-  Assert.isTrue ${commandLineFlagCallbackCalled} "callback not called in parseInput";
+  Assert.isTrue ${commandLineFlagParsingCallbackCalled} "parsingCallback not called in parseInput";
+  Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "checkingCallback was called in parseInput";
 }
 
 function setCopyright_is_included_in_the_usage_test() {
@@ -51,7 +66,7 @@ function setLicenseSummary_is_included_in_the_usage_test() {
 }
 
 function usage_includes_command_line_flags_test() {
-  addCommandLineFlag "f" "file" TRUE commandLineFlagCallback "file: The file to read";
+  addCommandLineFlag "f" "file" TRUE commandLineFlagCheckingCallback commandLineFlagParsingCallback "file: The file to read";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "-f|--file arg" "'usage' does not include -f|--file information";
 }
@@ -75,7 +90,7 @@ function retrieveCommandLineFlagLongNameFromKey_and_buildCommandLineFlagKey_are_
 function retrieveCommandLineFlagDescriptionFromKey_and_buildCommandLineFlagKey_are_consistent_test() {
   local _key;
   local _description="The file to read";
-  addCommandLineFlag "f" "file" TRUE commandLineFlagCallback "${_description}";
+  addCommandLineFlag "f" "file" TRUE commandLineFlagCheckingCallback commandLineFlagParsingCallback "${_description}";
   CLI.buildCommandLineFlagKey "f" "file";
   _key="${RESULT}";
   CLI.retrieveCommandLineFlagDescriptionFromKey "${_key}";
@@ -84,21 +99,18 @@ function retrieveCommandLineFlagDescriptionFromKey_and_buildCommandLineFlagKey_a
 
 function commandLineFlag_descriptions_are_included_in_the_usage_test() {
   local _flagDescription="file: The file to read";
-  addCommandLineFlag "f" "file" TRUE commandLineFlagCallback "${_flagDescription}";
+  addCommandLineFlag "f" "file" TRUE commandLineFlagCheckingCallback commandLineFlagParsingCallback "${_flagDescription}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_flagDescription}" "'usage' does not include ${_flagDescription}";
 
 }
+
 function setScriptDescription_is_included_in_the_usage_test() {
   local _description="This script does this and that";
   setScriptDescription "${_description}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_description}" "The script description is not included in the usage message";
 }
-
-
-
-
 
 
 

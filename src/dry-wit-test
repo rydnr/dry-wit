@@ -309,6 +309,10 @@ function runTest() {
   local _assertions;
   local _rescode;
 
+  if DRYWIT.functionPresent "test_setup"; then
+    test_setup;
+  fi
+
 #  ${_test} > /dev/null 2>&1;
   ${_test}
   if isTrue $?; then
@@ -324,6 +328,10 @@ function runTest() {
     fi
   else
     addTestError "${_test}";
+  fi
+
+  if DRYWIT.functionPresent "test_tearDown"; then
+    test_tearDown;
   fi
 
   return ${_rescode};

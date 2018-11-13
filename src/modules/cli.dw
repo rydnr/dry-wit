@@ -2,7 +2,8 @@ declare -a __DW_CLI_FLAG_KEYS;
 declare -A __DW_CLI_FLAG_SHORT_NAMES;
 declare -A __DW_CLI_FLAG_LONG_NAMES;
 declare -A __DW_CLI_FLAGS_EXPECTING_ARGUMENT;
-declare -A __DW_CLI_FLAGS_CALLBACKS;
+declare -A __DW_CLI_FLAGS_CHECKING_CALLBACKS;
+declare -A __DW_CLI_FLAGS_PARSING_CALLBACKS;
 declare -A __DW_CLI_FLAG_DESCRIPTION;
 declare __DW_CLI_COPYRIGHT;
 declare __DW_CLI_LICENSE_SUMMARY;
@@ -161,6 +162,70 @@ function CLI.isCommandLineFlagInShortFormat() {
   return ${_rescode};
 }
 
+## Checks the command-line arguments.
+## -> *: The command-line arguments.
+## <- 0/${TRUE} if the command-line arguments were checked successfully; 1/${FALSE} otherwise.
+function checkInput() {
+  local _flags=$(extractFlags $@);
+  local _flagCount;
+  local _currentCount;
+  local _argument;
+  local _key;
+  local _shortName;
+  local _longName;
+
+  # Flags
+  for _flag in ${_flags}; do
+    _flagCount=$((_flagCount+1));
+    case ${_flag} in
+      -h | --help | -v | -vv | -X:e | --X:eval-defaults)
+         shift;
+         ;;
+      -q | --quiet)
+        export QUIET=${TRUE};
+        shift;
+        ;;
+      --)
+        shift;
+        break;
+        ;;
+    esac
+
+    if CLI.isCommandLineFlagInLongFormat "${_flag}"; then
+      _longName="${_flag#--}";
+      if CLI.retrieveCommandLineFlagShortNameForLongName "${_longName}"; then
+        _shortName="${RESULT}";
+      else
+        break;
+      fi
+    elif CLI.isCommandLineFlagInShortFormat "${_flag}"; then
+      _shortName="${_flag#-}";
+      if CLI.retrieveCommandLineFlagLongNameForShortName "${_shortName}"; then
+        _longName="${RESULT}";
+      else
+        break;
+      fi
+    else
+      break;
+    fi
+
+    CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
+    _key="${RESULT}";
+
+    if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
+      if isTrue ${__DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_key}"]}; then
+        _argument="${1}";
+        shift;
+        ${__DW_CLI_FLAGS_CHECKING_CALLBACK["${_key}"]} "${_argument}";
+      else
+        ${__DW_CLI_FLAGS_CHECKING_CALLBACK["${_key}"]};
+      fi
+    else
+      echo "Unexpected flag: ${_flag}";
+    fi
+  done
+}
+
 ## Parses the command-line arguments.
 ## -> *: The command-line arguments.
 ## <- 0/${TRUE} if the command-line arguments were parsed successfully; 1/${FALSE} otherwise.
@@ -215,9 +280,9 @@ function parseInput() {
       if isTrue ${__DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_key}"]}; then
         _argument="${1}";
         shift;
-        ${__DW_CLI_FLAGS_CALLBACK["${_key}"]} "${_argument}";
+        ${__DW_CLI_FLAGS_PARSING_CALLBACK["${_key}"]} "${_argument}";
       else
-        ${__DW_CLI_FLAGS_CALLBACK["${_key}"]};
+        ${__DW_CLI_FLAGS_PARSING_CALLBACK["${_key}"]};
       fi
     else
       echo "Unexpected flag: ${_flag}";
@@ -340,16 +405,18 @@ function addCommandLineFlag() {
   local _shortName="${1}";
   local _longName="${2}";
   local _expectsArgument="${3}";
-  local _callback="${4}";
-  local _description="${5}";
+  local _checkingCallback="${4}";
+  local _parsingCallback="${5}";
+  local _description="${6}";
   local -i _rescode=${TRUE};
   local _flagKey;
 
   checkNotEmpty "shortName" "${_shortName}" 1;
   checkNotEmpty "longName" "${_longName}" 2;
   checkNotEmpty "expectsArgument" "${_expectsArgument}" 3;
-  checkNotEmpty "callback" "${_callback}" 4;
-  checkNotEmpty "description" "${_description}" 5;
+  checkNotEmpty "checkingCallback" "${_checkingCallback}" 4;
+  checkNotEmpty "parsingCallback" "${_parsingCallback}" 5;
+  checkNotEmpty "description" "${_description}" 6;
 
   CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
   _flagKey="${RESULT}";
@@ -360,7 +427,8 @@ function addCommandLineFlag() {
     __DW_CLI_FLAG_SHORT_NAMES["${_longName}"]="${_shortName}";
     __DW_CLI_FLAG_LONG_NAMES["${_shortName}"]="${_longName}";
     __DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_flagKey}"]="${_expectsArgument}";
-    __DW_CLI_FLAGS_CALLBACK["${_flagKey}"]="${_callback}";
+    __DW_CLI_FLAGS_CHECKING_CALLBACK["${_flagKey}"]="${_checkingCallback}";
+    __DW_CLI_FLAGS_PARSING_CALLBACK["${_flagKey}"]="${_parsingCallback}";
     __DW_CLI_FLAG_DESCRIPTIONS["${_flagKey}"]="${_description}";
   fi
 
