@@ -3,8 +3,10 @@ declare -A __DW_CLI_FLAG_SHORT_NAMES;
 declare -A __DW_CLI_FLAG_LONG_NAMES;
 declare -A __DW_CLI_FLAGS_EXPECTING_ARGUMENT;
 declare -A __DW_CLI_FLAGS_CALLBACKS;
+declare -A __DW_CLI_FLAG_DESCRIPTION;
 declare __DW_CLI_COPYRIGHT;
 declare __DW_CLI_LICENSE_SUMMARY;
+export __DW_CLI_DESCRIPTION="";
 
 # Checks whether a given flag is enabled.
 # -> 1: the name of the flag variable.
@@ -85,7 +87,7 @@ function CLI.retrieveCommandLineFlagShortNameForLongName() {
     _rescode=${TRUE};
     export RESULT="${_result}";
   fi
-  
+
   return ${_rescode};
 }
 
@@ -107,7 +109,7 @@ function CLI.isCommandLineFlagInLongFormat() {
   else
     _rescode=${TRUE};
   fi
-  
+
   return ${_rescode};
 }
 
@@ -133,7 +135,7 @@ function CLI.retrieveCommandLineFlagLongNameForShortName() {
     _rescode=${TRUE};
     export RESULT="${_result}";
   fi
-  
+
   return ${_rescode};
 }
 
@@ -155,7 +157,7 @@ function CLI.isCommandLineFlagInShortFormat() {
   else
     _rescode=${TRUE};
   fi
-  
+
   return ${_rescode};
 }
 
@@ -297,6 +299,32 @@ function CLI.retrieveCommandLineFlagLongNameFromKey() {
   return ${_rescode};
 }
 
+## Retrieves the description of given command-line flag key.
+## -> 1: The key.
+## <- 0/${TRUE} if the key was processed successfully; 1/${FALSE} otherwise.
+## <- RESULT: The description.
+## Example:
+##   if CLI.retrieveCommandLineFlagDescriptionFromKey "f|file"; then
+##     echo "Description: ${RESULT}";
+##   fi
+function CLI.retrieveCommandLineFlagDescriptionFromKey() {
+  local _key="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "key" "${_key}" 1;
+
+  _result="${__DW_CLI_FLAG_DESCRIPTIONS[${_key}]}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 ## Adds a command-line flag.
 ## -> 1: The short name of the flag.
 ## -> 2: The long name of the flag.
@@ -333,6 +361,7 @@ function addCommandLineFlag() {
     __DW_CLI_FLAG_LONG_NAMES["${_shortName}"]="${_longName}";
     __DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_flagKey}"]="${_expectsArgument}";
     __DW_CLI_FLAGS_CALLBACK["${_flagKey}"]="${_callback}";
+    __DW_CLI_FLAG_DESCRIPTIONS["${_flagKey}"]="${_description}";
   fi
 
   return ${_rescode};
@@ -417,6 +446,53 @@ function commandLineFlagsUsage() {
   echo "${_message}";
 }
 
+## Prints a line describing the details of the command-line flags.
+function commandLineFlagsDetailedUsage() {
+  local _message;
+  local _flagKey;
+  local _shortName;
+  local _longName;
+  local _description;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+
+  for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+    if isEmpty "${_message}"; then
+      _message="Where:";
+    fi
+    CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
+    _shortName="${RESULT}";
+    CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
+    _longName="${RESULT}";
+    CLI.retrieveCommandLineFlagDescriptionFromKey "${_flagKey}";
+    _description="${RESULT}";
+    _message="${_message}$(echo)  * -${_shortName}|--${_longName}";
+    if CLI.commandLineFlagExpectsArgument "${_flagKey}"; then
+      _message="${_message} arg";
+    fi
+    _message="${_message}: ${_description}";
+  done
+  IFS="${_oldIFS}";
+
+  if isNotEmpty "${_message}"; then
+    _message="${_message}$(echo)";
+  fi
+  echo "${_message}";
+}
+
+## Defines the script description.
+## -> 1: The description.
+## <- 0/${TRUE} in any case.
+## Example:
+##   setScriptDescription "This script calculates fibonacci sequence items"
+function setScriptDescription() {
+  local _description="${1}";
+
+  checkNotEmpty "description" "${_description}" 1;
+
+  __DW_CLI_DESCRIPTION="${_description}";
+}
+
 ## Prints the usage description.
 function usage() {
   cat <<EOF
@@ -425,6 +501,9 @@ ${SCRIPT_NAME} [-h|--help]
 ${__DW_CLI_COPYRIGHT}
 ${__DW_CLI_LICENSE_SUMMARY}
 
+${__DW_CLI_DESCRIPTION}
+
+$(commandLineFlagsDetailedUsage)
 Common flags:
     * -h | --help: Display this message.
     * -v: Increase the verbosity.

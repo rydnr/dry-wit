@@ -71,3 +71,34 @@ function retrieveCommandLineFlagLongNameFromKey_and_buildCommandLineFlagKey_are_
   CLI.retrieveCommandLineFlagLongNameFromKey "${_key}";
   Assert.areEqual "file" "${RESULT}" "file and ${RESULT} are not equal";
 }
+
+function retrieveCommandLineFlagDescriptionFromKey_and_buildCommandLineFlagKey_are_consistent_test() {
+  local _key;
+  local _description="The file to read";
+  addCommandLineFlag "f" "file" TRUE commandLineFlagCallback "${_description}";
+  CLI.buildCommandLineFlagKey "f" "file";
+  _key="${RESULT}";
+  CLI.retrieveCommandLineFlagDescriptionFromKey "${_key}";
+  Assert.areEqual "${_description}" "${RESULT}" "${_description} and ${RESULT} are not equal";
+}
+
+function commandLineFlag_descriptions_are_included_in_the_usage_test() {
+  local _flagDescription="file: The file to read";
+  addCommandLineFlag "f" "file" TRUE commandLineFlagCallback "${_flagDescription}";
+  local _usage="$(usage)";
+  Assert.contains "${_usage}" "${_flagDescription}" "'usage' does not include ${_flagDescription}";
+
+}
+function setScriptDescription_is_included_in_the_usage_test() {
+  local _description="This script does this and that";
+  setScriptDescription "${_description}";
+  local _usage="$(usage)";
+  Assert.contains "${_usage}" "${_description}" "The script description is not included in the usage message";
+}
+
+
+
+
+
+
+
