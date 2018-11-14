@@ -1,17 +1,28 @@
 declare -a __DW_CLI_FLAG_KEYS;
 declare -A __DW_CLI_FLAG_SHORT_NAMES;
 declare -A __DW_CLI_FLAG_LONG_NAMES;
-declare -A __DW_CLI_FLAGS_EXPECTING_ARGUMENT;
-declare -A __DW_CLI_FLAGS_CHECKING_CALLBACKS;
-declare -A __DW_CLI_FLAGS_PARSING_CALLBACKS;
-declare -A __DW_CLI_FLAG_DESCRIPTION;
+declare -A __DW_CLI_MANDATORY_FLAGS;
+declare -A __DW_CLI_FLAG_EXPECTING_ARGUMENTS;
+declare -A __DW_CLI_FLAG_CHECKING_CALLBACKS;
+declare -A __DW_CLI_FLAG_PARSING_CALLBACKS;
+declare -A __DW_CLI_FLAG_DESCRIPTIONS;
+declare -a __DW_CLI_PARAMETER_NAMES;
+declare -A __DW_CLI_PARAMETER_DESCRIPTIONS;
+declare -A __DW_CLI_SINGLE_PARAMETERS;
+declare -A __DW_CLI_MANDATORY_PARAMETERS;
+declare -A __DW_CLI_PARAMETER_CHECKING_CALLBACKS;
+declare -A __DW_CLI_PARAMETER_PARSING_CALLBACKS;
+
+export __DW_CLI_DESCRIPTION="";
 declare __DW_CLI_COPYRIGHT;
 declare __DW_CLI_LICENSE_SUMMARY;
-export __DW_CLI_DESCRIPTION="";
+
 export EXPECTS_ARGUMENT=${TRUE};
 export NO_ARGUMENT=${FALSE};
 export MANDATORY=${TRUE};
 export OPTIONAL=${FALSE};
+export SINGLE=${FALSE};
+export MULTIPLE=${TRUE};
 
 # Checks whether a given flag is enabled.
 # -> 1: the name of the flag variable.
@@ -217,12 +228,12 @@ function checkInput() {
     _key="${RESULT}";
 
     if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
-      if isTrue ${__DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_key}"]}; then
+      if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
         _argument="${1}";
         shift;
-        ${__DW_CLI_FLAGS_CHECKING_CALLBACK["${_key}"]} "${_argument}";
+        ${__DW_CLI_FLAG_CHECKING_CALLBACKS["${_key}"]} "${_argument}";
       else
-        ${__DW_CLI_FLAGS_CHECKING_CALLBACK["${_key}"]};
+        ${__DW_CLI_FLAG_CHECKING_CALLBACKS["${_key}"]};
       fi
     else
       echo "Unexpected flag: ${_flag}";
@@ -281,12 +292,12 @@ function parseInput() {
     _key="${RESULT}";
 
     if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
-      if isTrue ${__DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_key}"]}; then
+      if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
         _argument="${1}";
         shift;
-        ${__DW_CLI_FLAGS_PARSING_CALLBACK["${_key}"]} "${_argument}";
+        ${__DW_CLI_FLAG_PARSING_CALLBACKS["${_key}"]} "${_argument}";
       else
-        ${__DW_CLI_FLAGS_PARSING_CALLBACK["${_key}"]};
+        ${__DW_CLI_FLAG_PARSING_CALLBACKS["${_key}"]};
       fi
     else
       echo "Unexpected flag: ${_flag}";
@@ -318,7 +329,7 @@ function CLI.buildCommandLineFlagKey() {
 
 ## Retrieves the short name of given command-line flag key.
 ## -> 1: The key.
-## <- 0/${TRUE} if the key was processed successfully; 1/${FALSE} otherwise.
+## <- 0/${TRUE} if the short name was found; 1/${FALSE} otherwise.
 ## <- RESULT: The short name.
 ## Example:
 ##   if CLI.retrieveCommandLineFlagShortNameFromKey "f|file"; then
@@ -344,7 +355,7 @@ function CLI.retrieveCommandLineFlagShortNameFromKey() {
 
 ## Retrieves the long name of given command-line flag key.
 ## -> 1: The key.
-## <- 0/${TRUE} if the key was processed successfully; 1/${FALSE} otherwise.
+## <- 0/${TRUE} if the long name was found; 1/${FALSE} otherwise.
 ## <- RESULT: The long name.
 ## Example:
 ##   if CLI.retrieveCommandLineFlagLongNameFromKey "f|file"; then
@@ -370,7 +381,7 @@ function CLI.retrieveCommandLineFlagLongNameFromKey() {
 
 ## Retrieves the description of given command-line flag key.
 ## -> 1: The key.
-## <- 0/${TRUE} if the key was processed successfully; 1/${FALSE} otherwise.
+## <- 0/${TRUE} if the description was found; 1/${FALSE} otherwise.
 ## <- RESULT: The description.
 ## Example:
 ##   if CLI.retrieveCommandLineFlagDescriptionFromKey "f|file"; then
@@ -434,10 +445,10 @@ function addCommandLineFlag() {
     __DW_CLI_FLAG_SHORT_NAMES["${_longName}"]="${_shortName}";
     __DW_CLI_FLAG_LONG_NAMES["${_shortName}"]="${_longName}";
     __DW_CLI_FLAG_DESCRIPTIONS["${_flagKey}"]="${_description}";
-    __DW_CLI_FLAGS_MANDATORY["${_flagKey}"]="${_mandatory}";
-    __DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_flagKey}"]="${_expectsArgument}";
-    __DW_CLI_FLAGS_CHECKING_CALLBACK["${_flagKey}"]="${_checkingCallback}";
-    __DW_CLI_FLAGS_PARSING_CALLBACK["${_flagKey}"]="${_parsingCallback}";
+    __DW_CLI_MANDATORY_FLAGS["${_flagKey}"]="${_mandatory}";
+    __DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_flagKey}"]="${_expectsArgument}";
+    __DW_CLI_FLAG_CHECKING_CALLBACKS["${_flagKey}"]="${_checkingCallback}";
+    __DW_CLI_FLAG_PARSING_CALLBACKS["${_flagKey}"]="${_parsingCallback}";
   fi
 
   return ${_rescode};
@@ -456,7 +467,7 @@ function CLI.commandLineFlagIsMandatory() {
 
   checkNotEmpty "flagKey" "${_flagKey}" 1;
 
-  _value="${__DW_CLI_FLAGS_MANDATORY[${_flagKey}]}";
+  _value="${__DW_CLI_MANDATORY_FLAGS[${_flagKey}]}";
 
   if    isEmpty "${_value}" \
     || isTrue "${_value}" \
@@ -482,7 +493,7 @@ function CLI.commandLineFlagExpectsArgument() {
 
   checkNotEmpty "flagKey" "${_flagKey}" 1;
 
-  _value="${__DW_CLI_FLAGS_EXPECTING_ARGUMENT[${_flagKey}]}";
+  _value="${__DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}]}";
 
   if    isEmpty "${_value}" \
       || isTrue "${_value}" \
@@ -495,35 +506,32 @@ function CLI.commandLineFlagExpectsArgument() {
   return ${_rescode};
 }
 
-## Sets the script copyright message.
-## -> 1: The copyright message.
-## <- 0/${TRUE} always.
+## Retrieves the description of given command-line parameter.
+## -> 1: The name.
+## <- 0/${TRUE} if the description was found; 1/${FALSE} otherwise.
+## <- RESULT: The description.
 ## Example:
-##   setCopyrightMessage "2018-today Acme Inc.";
-function setCopyright() {
-  local _copyright="${1}";
+##   if CLI.retrieveCommandLineParameterDescriptionFromName "project"; then
+##     echo "Description: ${RESULT}";
+##   fi
+function CLI.retrieveCommandLineParameterDescriptionFromName() {
+  local _name="${1}";
+  local _result;
+  local -i _rescode;
 
-  checkNotEmpty "copyright" "${_copyright}" 1;
+  checkNotEmpty "name" "${_name}" 1;
 
-  __DW_CLI_COPYRIGHT="${_copyright}";
+  _result="${__DW_CLI_PARAMETER_DESCRIPTIONS[${_name}]}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
 
-  return ${TRUE};
+  return ${_rescode};
 }
 
-## Sets the script license summary.
-## -> 1: The license message.
-## <- 0/${TRUE} always.
-## Example:
-##   setLicenseSummary "Distributed this under the GNU General Public License v3.";
-function setLicenseSummary() {
-  local _license="${1}";
-
-  checkNotEmpty "license" "${_license}" 1;
-
-  __DW_CLI_LICENSE_SUMMARY="${_license}";
-
-  return ${TRUE};
-}
 
 ## Prints a line describing how to run the script.
 function commandLineFlagsUsage() {
@@ -595,6 +603,196 @@ function commandLineFlagsDetailedUsage() {
   echo -e "${_message}";
 }
 
+## Declares the script expects another command-line parameter.
+## -> 1: The parameter name.
+## -> 2: The parameter description.
+## -> 3: SINGLE if the parameter can not be repeated; MULTIPLE otherwise.
+## -> 4: MANDATORY if the parameter is mandatory; OPTIONAL otherwise.
+## <- 0/${TRUE} if the parameter was added successfully; 1/${FALSE} otherwise.
+## Example:
+##   addCommandLineParameter "project" "The project to process" SINGLE MANDATORY;
+function addCommandLineParameter() {
+  local _name="${1}";
+  local _description="${2}";
+  local _singleOrMultiple="${3}";
+  local _mandatoryOrOptional="${4}";
+
+  checkNotEmpty "name" "${_name}" 1;
+  checkNotEmpty "description" "${_description}" 2;
+  checkOneOf "single/multiple" "${_singleOrMultiple}" "SINGLE MULTIPLE" 3;
+  checkOneOf "mandatory/optional" "${_mandatoryOrOptional}" "MANDATORY OPTIONAL" 4;
+
+  if    isEmpty "${__DW_CLI_PARAMETER_NAMES[*]}" \
+     || arrayDoesNotContain "${__DW_CLI_PARAMETER_NAMES[*]}" "${_name}"; then
+    __DW_CLI_PARAMETER_NAMES[${#__DW_CLI_PARAMETER_NAMES[@]}]="${_name}";
+    __DW_CLI_PARAMETER_DESCRIPTIONS["${_name}"]="${_description}";
+    __DW_CLI_SINGLE_PARAMETERS["${_name}"]="${_singleOrMultiple}";
+    __DW_CLI_MANDATORY_PARAMETERS["${_name}"]="${_mandatoryOrOptional}";
+    __DW_CLI_PARAMETER_CHECKING_CALLBACKS["${_name}"]="${_checkingCallback}";
+    __DW_CLI_PARAMETER_PARSING_CALLBACKS["${_name}"]="${_parsingCallback}";
+  fi
+
+  return ${TRUE};
+}
+
+## Checks whether given parameter is single or not.
+## -> 1: The parameter name.
+## <- 0/${TRUE} if the parameter is single; 1/${FALSE} otherwise.
+## Example:
+##   if CLI.commandLineParameterIsSingle ${name}"; then
+##     echo "${name} is multiple";
+##   fi
+function CLI.commandLineParameterIsSingle() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_SINGLE_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "SINGLE"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given parameter is multiple or not.
+## -> 1: The parameter name.
+## <- 0/${TRUE} if the parameter is multiple; 1/${FALSE} otherwise.
+## Example:
+##   if CLI.commandLineParameterIsMultiple ${name}"; then
+##     echo "${name} is multiple";
+##   fi
+function CLI.commandLineParameterIsMultiple() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  if CLI.commandLineParameterIsSingle "${_name}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given parameter is mandatory or not.
+## -> 1: The parameter name.
+## <- 0/${TRUE} if the parameter is mandatory; 1/${FALSE} otherwise.
+## Example:
+##   if CLI.commandLineParameterIsMandatory ${name}"; then
+##     echo "${name} is mandatory";
+##   fi
+function CLI.commandLineParameterIsMandatory() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_MANDATORY_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+      || isTrue "${_value}" \
+      || areEqual "${_value}" "MANDATORY"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Prints a line describing the script's flags.
+function commandLineParametersUsage() {
+  local _message;
+  local _name;
+  local _oldIFS="${IFS}";
+  local _mandatory;
+  IFS=$' \t\n';
+
+  for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+    _message="${_message} ${_name}";
+    if CLI.commandLineParameterIsMultiple "${_name}"; then
+      if CLI.commandLineFlagIsMandatory "${_name}"; then
+        _message="${_message}+";
+      else
+        _message="${_message}*";
+      fi
+    fi
+  done
+  IFS="${_oldIFS}";
+  echo "${_message}";
+}
+
+## Prints a line describing the details of the command-line parameters.
+function commandLineParametersDetailedUsage() {
+  local _message;
+  local _name;
+  local _description;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+
+  for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+    CLI.retrieveCommandLineParameterDescriptionFromName "${_name}";
+    _description="${RESULT}";
+    _message="${_message}  * ${_name}";
+    if CLI.commandLineParameterIsMultiple "${_name}"; then
+      _message="${_message}*";
+    fi
+    _message="${_message}: ${_description}.";
+    if CLI.commandLineParameterIsMandatory "${_name}"; then
+      _message="${_message} Mandatory.\n";
+    else
+      _message="${_message} Optional.\n";
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  if isNotEmpty "${_message}"; then
+    _message="${_message}\n\n";
+  fi
+
+  echo -e "${_message}";
+}
+
+
+## Sets the script copyright message.
+## -> 1: The copyright message.
+## <- 0/${TRUE} always.
+## Example:
+##   setCopyrightMessage "2018-today Acme Inc.";
+function setCopyright() {
+  local _copyright="${1}";
+
+  checkNotEmpty "copyright" "${_copyright}" 1;
+
+  __DW_CLI_COPYRIGHT="${_copyright}";
+
+  return ${TRUE};
+}
+
+## Sets the script license summary.
+## -> 1: The license message.
+## <- 0/${TRUE} always.
+## Example:
+##   setLicenseSummary "Distributed this under the GNU General Public License v3.";
+function setLicenseSummary() {
+  local _license="${1}";
+
+  checkNotEmpty "license" "${_license}" 1;
+
+  __DW_CLI_LICENSE_SUMMARY="${_license}";
+
+  return ${TRUE};
+}
+
 ## Defines the script description.
 ## -> 1: The description.
 ## <- 0/${TRUE} in any case.
@@ -611,7 +809,7 @@ function setScriptDescription() {
 ## Prints the usage description.
 function usage() {
   cat <<EOF
-$(commandLineFlagsUsage)
+$(commandLineFlagsUsage)$(commandLineParametersUsage)
 ${SCRIPT_NAME} [-h|--help]
 ${__DW_CLI_COPYRIGHT}
 ${__DW_CLI_LICENSE_SUMMARY}
@@ -620,6 +818,7 @@ ${__DW_CLI_DESCRIPTION}
 
 Where:
 $(commandLineFlagsDetailedUsage)
+$(commandLineParametersDetailedUsage)
   * -h | --help: Display this message.
   * -v: Increase the verbosity.
   * -vv: Increase the verbosity further.

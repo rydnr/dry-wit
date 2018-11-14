@@ -52,7 +52,6 @@ function usage_includes_command_line_flags_test() {
   addCommandLineFlag "f" "file" "The file to read" MANDATORY EXPECTS_ARGUMENT commandLineFlagParsingCallback commandLineFlagCheckingCallback;
   local _usage="$(usage)";
   Assert.contains "${_usage}" "-f|--file arg" "'usage' does not include -f|--file information";
-  usage
 }
 
 function retrieveCommandLineShortNameFlagKey_and_buildCommandLineFlagKey_are_consistent_test() {
@@ -93,5 +92,14 @@ function setScriptDescription_is_included_in_the_usage_test() {
   setScriptDescription "${_description}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_description}" "The script description is not included in the usage message";
+}
+
+function commandLineParameters_are_included_in_the_usage_test() {
+  local _name="project";
+  local _description="The project";
+  addCommandLineParameter "${_name}" "${_description}" SINGLE MANDATORY;
+  local _usage="$(usage)";
+  Assert.contains "${_usage}" "${_description}" "The script description is not included in the usage message";
+  usage;
 }
 #
