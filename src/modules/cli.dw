@@ -8,6 +8,10 @@ declare -A __DW_CLI_FLAG_DESCRIPTION;
 declare __DW_CLI_COPYRIGHT;
 declare __DW_CLI_LICENSE_SUMMARY;
 export __DW_CLI_DESCRIPTION="";
+export EXPECTS_ARGUMENT=${TRUE};
+export NO_ARGUMENT=${FALSE};
+export MANDATORY=${TRUE};
+export OPTIONAL=${FALSE};
 
 # Checks whether a given flag is enabled.
 # -> 1: the name of the flag variable.
@@ -393,30 +397,33 @@ function CLI.retrieveCommandLineFlagDescriptionFromKey() {
 ## Adds a command-line flag.
 ## -> 1: The short name of the flag.
 ## -> 2: The long name of the flag.
-## -> 3: TRUE if the parameter contains a value; FALSE otherwise.
-## -> 4: A callback function to parse the value.
-## -> 5: The flag description.
+## -> 3: The flag description.
+## -> 4: EXPECTS_ARGUMENT if the flag contains a value; NO_ARGUMENT otherwise.
+## -> 5: MANDATORY if the flag is mandatory; OPTIONAL otherwise.
+## -> 6: A callback function to parse the value.
+## -> 7: A callback function to check the value. Optional.
 ## <- 0/${TRUE} if the flag is added successfully; 1/${FALSE} otherwise.
 ## Example:
-##   if addCommandLineFlag "f" "file" TRUE myCallbackFunction "The file to read"; then
+##   if addCommandLineFlag "f" "file" "The file to read" MANDATORY EXPECTS_ARGUMENT myParsingCallback myCheckCallback ; then
 ##     echo "-f|--file flag added"
 ##   fi
 function addCommandLineFlag() {
   local _shortName="${1}";
   local _longName="${2}";
-  local _expectsArgument="${3}";
-  local _checkingCallback="${4}";
-  local _parsingCallback="${5}";
-  local _description="${6}";
+  local _description="${3}";
+  local _mandatory="${4}";
+  local _expectsArgument="${5}";
+  local _parsingCallback="${6}";
+  local _checkingCallback="${7}";
   local -i _rescode=${TRUE};
   local _flagKey;
 
   checkNotEmpty "shortName" "${_shortName}" 1;
   checkNotEmpty "longName" "${_longName}" 2;
-  checkNotEmpty "expectsArgument" "${_expectsArgument}" 3;
-  checkNotEmpty "checkingCallback" "${_checkingCallback}" 4;
-  checkNotEmpty "parsingCallback" "${_parsingCallback}" 5;
-  checkNotEmpty "description" "${_description}" 6;
+  checkNotEmpty "description" "${_description}" 3;
+  checkOneOf "expectsArgument" "${_expectsArgument}" "EXPECTS_ARGUMENT NO_ARGUMENT" 4;
+  checkOneOf "mandatory" "${_mandatory}" "MANDATORY OPTIONAL" 5;
+  checkNotEmpty "parsingCallback" "${_parsingCallback}" 6;
 
   CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
   _flagKey="${RESULT}";
@@ -426,10 +433,37 @@ function addCommandLineFlag() {
     __DW_CLI_FLAG_KEYS[${#__DW_CLI_FLAGS[@]}]="${_flagKey}";
     __DW_CLI_FLAG_SHORT_NAMES["${_longName}"]="${_shortName}";
     __DW_CLI_FLAG_LONG_NAMES["${_shortName}"]="${_longName}";
+    __DW_CLI_FLAG_DESCRIPTIONS["${_flagKey}"]="${_description}";
+    __DW_CLI_FLAGS_MANDATORY["${_flagKey}"]="${_mandatory}";
     __DW_CLI_FLAGS_EXPECTING_ARGUMENT["${_flagKey}"]="${_expectsArgument}";
     __DW_CLI_FLAGS_CHECKING_CALLBACK["${_flagKey}"]="${_checkingCallback}";
     __DW_CLI_FLAGS_PARSING_CALLBACK["${_flagKey}"]="${_parsingCallback}";
-    __DW_CLI_FLAG_DESCRIPTIONS["${_flagKey}"]="${_description}";
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given flag is mandatory or not.
+## -> 1: The flag key.
+## <- 0/${TRUE} if the flag is mandatory; 1/${FALSE} otherwise.
+## Example:
+##   if CLI.commandLineFlagIsMandatory ${flagKey}"; then
+##     echo "${flagKey} is mandatory";
+##   fi
+function CLI.commandLineFlagIsMandatory() {
+  local _flagKey="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "flagKey" "${_flagKey}" 1;
+
+  _value="${__DW_CLI_FLAGS_MANDATORY[${_flagKey}]}";
+
+  if    isEmpty "${_value}" \
+    || isTrue "${_value}" \
+    || areEqual "${_value}" "MANDATORY"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
@@ -451,7 +485,8 @@ function CLI.commandLineFlagExpectsArgument() {
   _value="${__DW_CLI_FLAGS_EXPECTING_ARGUMENT[${_flagKey}]}";
 
   if    isEmpty "${_value}" \
-     || isTrue "${_value}"; then
+      || isTrue "${_value}" \
+      || areEqual "${_value}" "EXPECTS_ARGUMENT"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -497,6 +532,7 @@ function commandLineFlagsUsage() {
   local _shortName;
   local _longName;
   local _oldIFS="${IFS}";
+  local _mandatory;
   IFS=$' \t\n';
 
   for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
@@ -504,11 +540,19 @@ function commandLineFlagsUsage() {
     _shortName="${RESULT}";
     CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
     _longName="${RESULT}";
-    _message="${_message} [-${_shortName}|--${_longName}";
+    _message="${_message} ";
+    CLI.commandLineFlagIsMandatory "${_flagKey}";
+    _mandatory=$?;
+    if isFalse ${_mandatory}; then
+      _message="${_message}[";
+    fi
+    _message="${_message}-${_shortName}|--${_longName}";
     if CLI.commandLineFlagExpectsArgument "${_flagKey}"; then
       _message="${_message} arg";
     fi
-    _message="${_message}]";
+    if isFalse ${_mandatory}; then
+      _message="${_message}]";
+    fi
   done
   IFS="${_oldIFS}";
   echo "${_message}";
@@ -525,27 +569,30 @@ function commandLineFlagsDetailedUsage() {
   IFS=$' \t\n';
 
   for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
-    if isEmpty "${_message}"; then
-      _message="Where:";
-    fi
     CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
     _shortName="${RESULT}";
     CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
     _longName="${RESULT}";
     CLI.retrieveCommandLineFlagDescriptionFromKey "${_flagKey}";
     _description="${RESULT}";
-    _message="${_message}$(echo)  * -${_shortName}|--${_longName}";
+    _message="${_message}  * -${_shortName}|--${_longName}";
     if CLI.commandLineFlagExpectsArgument "${_flagKey}"; then
       _message="${_message} arg";
     fi
-    _message="${_message}: ${_description}";
+    _message="${_message}: ${_description}.";
+    if CLI.commandLineFlagIsMandatory "${_flagKey}"; then
+      _message="${_message} Mandatory.\n";
+    else
+      _message="${_message} Optional.\n";
+    fi
   done
   IFS="${_oldIFS}";
 
   if isNotEmpty "${_message}"; then
-    _message="${_message}$(echo)";
+    _message="${_message}\n\n";
   fi
-  echo "${_message}";
+
+  echo -e "${_message}";
 }
 
 ## Defines the script description.
@@ -571,11 +618,11 @@ ${__DW_CLI_LICENSE_SUMMARY}
 
 ${__DW_CLI_DESCRIPTION}
 
+Where:
 $(commandLineFlagsDetailedUsage)
-Common flags:
-    * -h | --help: Display this message.
-    * -v: Increase the verbosity.
-    * -vv: Increase the verbosity further.
-    * -q | --quiet: Be silent.
+  * -h | --help: Display this message.
+  * -v: Increase the verbosity.
+  * -vv: Increase the verbosity further.
+  * -q | --quiet: Be silent.
 EOF
 }
