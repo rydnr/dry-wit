@@ -1,17 +1,13 @@
 declare -a __DW_CLI_FLAG_KEYS;
-declare -A __DW_CLI_FLAG_SHORT_NAMES;
 declare -A __DW_CLI_FLAG_LONG_NAMES;
+declare -A __DW_CLI_FLAG_SHORT_NAMES;
 declare -A __DW_CLI_MANDATORY_FLAGS;
 declare -A __DW_CLI_FLAG_EXPECTING_ARGUMENTS;
-declare -A __DW_CLI_FLAG_CHECKING_CALLBACKS;
-declare -A __DW_CLI_FLAG_PARSING_CALLBACKS;
 declare -A __DW_CLI_FLAG_DESCRIPTIONS;
 declare -a __DW_CLI_PARAMETER_NAMES;
 declare -A __DW_CLI_PARAMETER_DESCRIPTIONS;
 declare -A __DW_CLI_SINGLE_PARAMETERS;
 declare -A __DW_CLI_MANDATORY_PARAMETERS;
-declare -A __DW_CLI_PARAMETER_CHECKING_CALLBACKS;
-declare -A __DW_CLI_PARAMETER_PARSING_CALLBACKS;
 declare __DW_CLI_SCRIPT_DESCRIPTION;
 declare __DW_CLI_SCRIPT_COPYRIGHT;
 declare __DW_CLI_SCRIPT_LICENSE_SUMMARY;
@@ -187,9 +183,13 @@ function checkInput() {
   local _key;
   local _shortName;
   local _longName;
+  local _flag;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
 
   # Flags
   for _flag in ${_flags}; do
+    IFS="${_oldIFS}";
     _flagCount=$((_flagCount+1));
     case ${_flag} in
       -h | --help | -v | -vv | -X:e | --X:eval-defaults)
@@ -227,17 +227,20 @@ function checkInput() {
     _key="${RESULT}";
 
     if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
-      if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
-        _argument="${1}";
-        shift;
-        ${__DW_CLI_FLAG_CHECKING_CALLBACKS["${_key}"]} "${_argument}";
-      else
-        ${__DW_CLI_FLAG_CHECKING_CALLBACKS["${_key}"]};
+      if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+        if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
+          _argument="${1}";
+          shift;
+          "dw_check_${_longName}_cli_flag" "${_argument}";
+        else
+          "dw_check_${_longName}_cli_flag";
+        fi
       fi
     else
       echo "Unexpected flag: ${_flag}";
     fi
   done
+  IFS="${_oldIFS}";
 }
 
 ## Parses the command-line arguments.
@@ -251,9 +254,12 @@ function parseInput() {
   local _key;
   local _shortName;
   local _longName;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
 
   # Flags
   for _flag in ${_flags}; do
+    IFS="${_oldIFS}";
     _flagCount=$((_flagCount+1));
     case ${_flag} in
       -h | --help | -v | -vv | -X:e | --X:eval-defaults)
@@ -291,17 +297,20 @@ function parseInput() {
     _key="${RESULT}";
 
     if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
-      if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
-        _argument="${1}";
-        shift;
-        ${__DW_CLI_FLAG_PARSING_CALLBACKS["${_key}"]} "${_argument}";
-      else
-        ${__DW_CLI_FLAG_PARSING_CALLBACKS["${_key}"]};
+      if isFunctionDefined "dw_parse_${_longName}_cli_flag"; then
+        if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
+          _argument="${1}";
+          shift;
+          "dw_parse_${_longName}_cli_flag" "${_argument}";
+        else
+          "dw_parse_${_longName}_cli_flag";
+        fi
       fi
     else
       echo "Unexpected flag: ${_flag}";
     fi
   done
+  IFS="${_oldIFS}";
 }
 
 ## Builds a key for given command-line flag.
@@ -405,35 +414,30 @@ function CLI.retrieveCommandLineFlagDescriptionFromKey() {
 }
 
 ## Adds a command-line flag.
-## -> 1: The short name of the flag.
-## -> 2: The long name of the flag.
+## -> 1: The long name of the flag.
+## -> 2: The short name of the flag.
 ## -> 3: The flag description.
 ## -> 4: EXPECTS_ARGUMENT if the flag contains a value; NO_ARGUMENT otherwise.
 ## -> 5: MANDATORY if the flag is mandatory; OPTIONAL otherwise.
-## -> 6: A callback function to parse the value.
-## -> 7: A callback function to check the value. Optional.
 ## <- 0/${TRUE} if the flag is added successfully; 1/${FALSE} otherwise.
 ## Example:
-##   if addCommandLineFlag "f" "file" "The file to read" MANDATORY EXPECTS_ARGUMENT myParsingCallback myCheckCallback ; then
+##   if addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT; then
 ##     echo "-f|--file flag added"
 ##   fi
 function addCommandLineFlag() {
-  local _shortName="${1}";
-  local _longName="${2}";
+  local _longName="${1}";
+  local _shortName="${2}";
   local _description="${3}";
   local _mandatory="${4}";
   local _expectsArgument="${5}";
-  local _parsingCallback="${6}";
-  local _checkingCallback="${7}";
   local -i _rescode=${TRUE};
   local _flagKey;
 
-  checkNotEmpty "shortName" "${_shortName}" 1;
-  checkNotEmpty "longName" "${_longName}" 2;
+  checkNotEmpty "longName" "${_longName}" 1;
+  checkNotEmpty "shortName" "${_shortName}" 2;
   checkNotEmpty "description" "${_description}" 3;
-  checkOneOf "expectsArgument" "${_expectsArgument}" "EXPECTS_ARGUMENT NO_ARGUMENT" 4;
-  checkOneOf "mandatory" "${_mandatory}" "MANDATORY OPTIONAL" 5;
-  checkNotEmpty "parsingCallback" "${_parsingCallback}" 6;
+  checkOneOf "mandatory" "${_mandatory}" "MANDATORY OPTIONAL" 4;
+  checkOneOf "expectsArgument" "${_expectsArgument}" "EXPECTS_ARGUMENT NO_ARGUMENT" 5;
 
   CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
   _flagKey="${RESULT}";
@@ -494,7 +498,7 @@ function CLI.commandLineFlagExpectsArgument() {
 
   _value="${__DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}]}";
 
-  if    isEmpty "${_value}" \
+  if     isEmpty "${_value}" \
       || isTrue "${_value}" \
       || areEqual "${_value}" "EXPECTS_ARGUMENT"; then
     _rescode=${TRUE};
@@ -545,6 +549,7 @@ function CLI.commandLineFlagsUsage() {
   IFS=$' \t\n';
 
   for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+    IFS="${_oldIFS}";
     CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
     _shortName="${RESULT}";
     CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
@@ -626,6 +631,7 @@ function CLI.commandLineFlagsDetailedUsage() {
   IFS=$' \t\n';
 
   for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+    IFS="${_oldIFS}";
     CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
     _shortName="${RESULT}";
     CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
@@ -658,30 +664,28 @@ function CLI.commandLineFlagsDetailedUsage() {
 ## Declares the script expects another command-line parameter.
 ## -> 1: The parameter name.
 ## -> 2: The parameter description.
-## -> 3: SINGLE if the parameter can not be repeated; MULTIPLE otherwise.
-## -> 4: MANDATORY if the parameter is mandatory; OPTIONAL otherwise.
+## -> 3: MANDATORY if the parameter is mandatory; OPTIONAL otherwise.
+## -> 4: SINGLE if the parameter can not be repeated; MULTIPLE otherwise.
 ## <- 0/${TRUE} if the parameter was added successfully; 1/${FALSE} otherwise.
 ## Example:
-##   addCommandLineParameter "project" "The project to process" SINGLE MANDATORY;
+##   addCommandLineParameter "project" "The project to process" MANDATORY SINGLE;
 function addCommandLineParameter() {
   local _name="${1}";
   local _description="${2}";
-  local _singleOrMultiple="${3}";
-  local _mandatoryOrOptional="${4}";
+  local _mandatoryOrOptional="${3}";
+  local _singleOrMultiple="${4}";
 
   checkNotEmpty "name" "${_name}" 1;
   checkNotEmpty "description" "${_description}" 2;
-  checkOneOf "single/multiple" "${_singleOrMultiple}" "SINGLE MULTIPLE" 3;
-  checkOneOf "mandatory/optional" "${_mandatoryOrOptional}" "MANDATORY OPTIONAL" 4;
+  checkOneOf "mandatory/optional" "${_mandatoryOrOptional}" "MANDATORY OPTIONAL" 3;
+  checkOneOf "single/multiple" "${_singleOrMultiple}" "SINGLE MULTIPLE" 4;
 
   if    isEmpty "${__DW_CLI_PARAMETER_NAMES[*]}" \
      || arrayDoesNotContain "${__DW_CLI_PARAMETER_NAMES[*]}" "${_name}"; then
     __DW_CLI_PARAMETER_NAMES[${#__DW_CLI_PARAMETER_NAMES[@]}]="${_name}";
     __DW_CLI_PARAMETER_DESCRIPTIONS["${_name}"]="${_description}";
-    __DW_CLI_SINGLE_PARAMETERS["${_name}"]="${_singleOrMultiple}";
     __DW_CLI_MANDATORY_PARAMETERS["${_name}"]="${_mandatoryOrOptional}";
-    __DW_CLI_PARAMETER_CHECKING_CALLBACKS["${_name}"]="${_checkingCallback}";
-    __DW_CLI_PARAMETER_PARSING_CALLBACKS["${_name}"]="${_parsingCallback}";
+    __DW_CLI_SINGLE_PARAMETERS["${_name}"]="${_singleOrMultiple}";
   fi
 
   return ${TRUE};
@@ -772,6 +776,7 @@ function CLI.commandLineParametersUsage() {
   IFS=$' \t\n';
 
   for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+    IFS="${_oldIFS}";
     _message="${_message} ${_name}";
     if CLI.commandLineParameterIsMultiple "${_name}"; then
       if CLI.commandLineFlagIsMandatory "${_name}"; then
@@ -804,6 +809,7 @@ function CLI.commandLineParametersDetailedUsage() {
   IFS=$' \t\n';
 
   for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+    IFS="${_oldIFS}";
     if isNotEmpty "${_message}"; then
       _message="\n";
     fi
@@ -904,15 +910,11 @@ function CLI.resetState() {
   __DW_CLI_FLAG_LONG_NAMES=();
   __DW_CLI_MANDATORY_FLAGS=();
   __DW_CLI_FLAG_EXPECTING_ARGUMENTS=();
-  __DW_CLI_FLAG_CHECKING_CALLBACKS=();
-  __DW_CLI_FLAG_PARSING_CALLBACKS=();
   __DW_CLI_FLAG_DESCRIPTIONS=();
   __DW_CLI_PARAMETER_NAMES=();
   __DW_CLI_PARAMETER_DESCRIPTIONS=();
   __DW_CLI_SINGLE_PARAMETERS=();
   __DW_CLI_MANDATORY_PARAMETERS=();
-  __DW_CLI_PARAMETER_CHECKING_CALLBACKS=();
-  __DW_CLI_PARAMETER_PARSING_CALLBACKS=();
   __DW_CLI_SCRIPT_DESCRIPTION="";
   __DW_CLI_SCRIPT_COPYRIGHT="";
   __DW_CLI_SCRIPT_LICENSE_SUMMARY="";

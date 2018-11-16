@@ -41,7 +41,7 @@ function isNotEmpty() {
 ## Example:
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isDefined() {
-  local rescode;
+  local -i rescode;
   if [ -z ${1+x} ]; then
     rescode=${TRUE};
   else
@@ -58,7 +58,7 @@ function isDefined() {
 ##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isVariableDefined() {
   local _var="${1}";
-  local rescode;
+  local -i rescode;
 #  set +o nounset  # allow unset variables
 #  eval "[ -v \${$1} ] 2> /dev/null"
   #  eval "[ -v ${1} ] 2> /dev/null"
@@ -201,3 +201,22 @@ function areNotEqual() {
 
   return ${_rescode};
 }
+
+## Checks if a given function is defined.
+## -> 1: The function name.
+## <- 0/${TRUE} if the function is defined; 1/${FALSE} otherwise.
+## Example:
+##   if functionDefined "readFile"; then
+##     echo "readFile defined";
+##   fi
+function isFunctionDefined() {
+  local _function="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "function" "${_function}" 1;
+  DRYWIT.failsafeIsFunctionDefined "${_function}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+

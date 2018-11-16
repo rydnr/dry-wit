@@ -54,49 +54,89 @@ export DRYWIT_MODULE_TAG="master";
 export DRYWIT_MODULE_URL="https://raw.githubusercontent.com/rydnr/dry-wit/${DRYWIT_MODULE_TAG}/src/modules";
 export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/modules"
 
+## A fail-safe version of checkNotEmpty.
+## -> 1: The parameter name.
+## -> 2: The parameter value.
+## -> 3: The parameter index.
+## <- Exits if the parameter value is empty.
+## Example:
+##   DRYWIT.failsafeLogTrace SUCCESS "done"
+function DRYWIT.failsafeCheckNotEmpty() {
+  local _name="${1}";
+  local _value="${2}";
+  local -i _index=${3};
+
+  if DRYWIT.failsafeIsFunctionDefined "checkNotEmpty"; then
+    checkNotEmpty "${_name}" "${_value}" ${_index};
+  fi
+}
+
+## A fail-safe version of logTrace.
+## -> 1: The outcome.
+## -> 2: The message.
+## Example:
+##   DRYWIT.failsafeLogTrace SUCCESS "done"
 function DRYWIT.failsafeLogTrace() {
   local _message="${1}";
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## checkNotEmpty is loaded.
-  type checkNotEmpty 2> /dev/null | grep -q 'function';
-  if [[ $? -eq ${TRUE} ]]; then
-    checkNotEmpty "module" "${_module}" 1;
-  fi
+  DRYWIT.failsafeCheckNotEmpty "module" "${_module}" 1;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTrace is loaded.
-  type logTrace 2> /dev/null | grep -q 'function';
-  if [[ $? -eq ${TRUE} ]]; then
+  if DRYWIT.failsafeIsFunctionDefined "logTrace"; then
     logTrace -n "${_message}";
   fi
-
 }
 
+## A fail-safe version of logTraceResult.
+## -> 1: The outcome.
+## -> 2: The message.
+## Example:
+##   DRYWIT.failsafeLogTraceResult SUCCESS "done"
 function DRYWIT.failsafeLogTraceResult() {
   local _outcome="${1}";
   local _outcomeMessage="${2}";
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## checkNotEmpty is loaded.
-  type checkNotEmpty 2> /dev/null | grep -q 'function';
-  if [[ $? -eq ${TRUE} ]]; then
-    checkNotEmpty "outcome" "${_outcome}" 1;
-    checkNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
-  fi
+  DRYWIT.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
+  DRYWIT.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTraceResult is loaded.
-  type logTraceResult 2> /dev/null | grep -q 'function';
-  if [[ $? -eq ${TRUE} ]]; then
+  if DRYWIT.failsafeIsFunctionDefined "logTraceResult"; then
     logTraceResult ${_outcome} "${_outcomeMessage}";
   fi
 }
 
+## Checks if a given function is defined.
+## -> 1: The function name.
+## <- 0/${TRUE} if the function is defined; 1/${FALSE} otherwise.
+## Example:
+##   if DRYWIT.failsafeIsFunctionDefined "readFile"; then
+##     echo "readFile defined";
+##   fi
+function DRYWIT.failsafeIsFunctionDefined() {
+  local _function="${1}";
+  local -i _rescode;
+
+  type "${_function}" 2> /dev/null | grep -q 'function';
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+## Downloads given module.
+## -> 1: The module name.
+## <- 0/${TRUE} if the module is downloaded; 1/${FALSE} otherwise.
+## Example:
+##   if downloadModule "fibonacci"; then
+##     echo "fibonacci module downloaded";
+##   fi
 function downloadModule() {
   local _module="${1}";
   local -i _rescode;
   local _result="";
+
+  DRYWIT.failsafeCheckNotEmpty "module" "${_module}" 1;
 
   mkdir -p "${DRYWIT_MODULE_PATH}";
 
@@ -116,11 +156,14 @@ function downloadModule() {
 function DRYWIT.bootstrap() {
   local _module;
   local _modulePath;
+  local _oldIFS="${IFS}";
+  IFS="${_oldIFS}";
 
   for _module in ${__DRYWIT_BOOTSTRAP_MODULES[*]}; do
+    IFS="${_oldIFS}";
     import "${_module}";
   done
-
+  IFS="${_oldIFS}";
 }
 
 function import() {
@@ -128,10 +171,7 @@ function import() {
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## checkNotEmpty is loaded.
-  type checkNotEmpty 2> /dev/null | grep -q 'function';
-  if [[ $? -eq ${TRUE} ]]; then
-    checkNotEmpty "module" "${_module}" 1;
-  fi
+  DRYWIT.failsafeCheckNotEmpty "module" "${_module}" 1;
 
   if findModule "${_module}"; then
     _modulePath="${RESULT}";
