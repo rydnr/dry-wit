@@ -15,15 +15,13 @@ function arrayContains() {
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## checkNotEmpty is loaded.
-  type checkNotEmpty 2> /dev/null | grep -q 'function';
-  if isTrue $?; then
-    checkNotEmpty "array" "${_array}" 1;
-    checkNotEmpty "item" "${_item}" 2;
-  fi
+  DRYWIT.failsafeCheckNotEmpty "array" "${_array}" 1;
+  DRYWIT.failsafeCheckNotEmpty "item" "${_item}" 2;
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _aux in "${_array}"; do
+    IFS=$' \t\n';
     if areEqual "${_aux}" "${_item}"; then
       _rescode=${TRUE};
       break;
@@ -49,11 +47,8 @@ function arrayDoesNotContain() {
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## checkNotEmpty is loaded.
-  type checkNotEmpty 2> /dev/null | grep -q 'function';
-  if isTrue $?; then
-    checkNotEmpty "array" "${_array}" 1;
-    checkNotEmpty "item" "${_item}" 2;
-  fi
+  DRYWIT.failsafeCheckNotEmpty "array" "${_array}" 1;
+  DRYWIT.failsafeCheckNotEmpty "item" "${_item}" 2;
 
   if arrayContains "${_array}" "${_item}"; then
     _rescode=${FALSE};
@@ -85,6 +80,7 @@ function flattenArray() {
 
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
+    IFS=$' \t\n';
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");
     result="${result}${_separator}${_item}";

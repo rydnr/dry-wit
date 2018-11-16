@@ -183,16 +183,19 @@ function checkInput() {
   local _key;
   local _shortName;
   local _longName;
+  local _longNameInUpperCase;
   local _flag;
+  local -a _flagsChecked;
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
 
   # Flags
   for _flag in ${_flags}; do
     IFS="${_oldIFS}";
+
     _flagCount=$((_flagCount+1));
     case ${_flag} in
-      -h | --help | -v | -vv | -X:e | --X:eval-defaults)
+      -h | -help | -v | --vv | -X:e | --X:eval-defaults)
          shift;
          ;;
       -q | --quiet)
@@ -202,6 +205,9 @@ function checkInput() {
       --)
         shift;
         break;
+        ;;
+      *)
+        shift;
         ;;
     esac
 
@@ -225,22 +231,45 @@ function checkInput() {
 
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
     _key="${RESULT}";
+    _flagsChecked[${#_flagsChecked[@]}]="${_key}";
 
-    if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
-      if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
-        if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
-          _argument="${1}";
-          shift;
-          "dw_check_${_longName}_cli_flag" "${_argument}";
-        else
-          "dw_check_${_longName}_cli_flag";
-        fi
-      fi
-    else
+    if arrayDoesNotContain "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
       echo "Unexpected flag: ${_flag}";
     fi
+
+    if CLI.doesCommandLineFlagExpectArgument "${_key}"; then
+      _argument="${1}";
+      shift;
+      toUpper "${_longName}";
+      _longNameInUpperCase="${RESULT}";
+      if CLI.isCommandLineFlagMandatory "${_key}" && isEmpty "${_argument}"; then
+        exitWithErrorCode "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT";
+      fi
+      if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+        "dw_check_${_longName}_cli_flag" "${_argument}";
+      fi
+    fi
   done
-  IFS="${_oldIFS}";
+
+  if isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}"; then
+    for _key in ${__DW_CLI_FLAG_KEYS[*]}; do
+      IFS="${_oldIFS}";
+      CLI.retrieveCommandLineFlagLongNameFromKey "${_key}";
+      _longName="${RESULT}";
+      toUpper "${_longName}";
+      _longNameInUpperCase="${RESULT}";
+      if isEmpty "${_flagsChecked[*]}" || arrayDoesNotContain "${_flagsChecked[*]}" "${_key}"; then
+        if CLI.isCommandLineFlagMandatory "${_key}"; then
+          echo "Exiting - mandatory";
+          exitWithErrorCode "${_longNameInUpperCase}_IS_MANDATORY";
+        fi
+      fi
+      if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+        "dw_check_${_longName}_cli_flag";
+      fi
+    done
+    IFS="${_oldIFS}";
+  fi
 }
 
 ## Parses the command-line arguments.
@@ -298,7 +327,7 @@ function parseInput() {
 
     if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
       if isFunctionDefined "dw_parse_${_longName}_cli_flag"; then
-        if isTrue ${__DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_key}"]}; then
+        if CLI.doesCommandLineFlagExpectArgument "${_key}"; then
           _argument="${1}";
           shift;
           "dw_parse_${_longName}_cli_flag" "${_argument}";
@@ -448,10 +477,16 @@ function addCommandLineFlag() {
     __DW_CLI_FLAG_SHORT_NAMES["${_longName}"]="${_shortName}";
     __DW_CLI_FLAG_LONG_NAMES["${_shortName}"]="${_longName}";
     __DW_CLI_FLAG_DESCRIPTIONS["${_flagKey}"]="${_description}";
+    toUpper "${_longName}";
+    _longNameInUpperCase="${RESULT}";
+    if areEqual "${_mandatory}" "MANDATORY"; then
+      addError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} is mandatory";
+    fi
     __DW_CLI_MANDATORY_FLAGS["${_flagKey}"]="${_mandatory}";
+    if areEqual "${_expectsArgument}" "EXPECTS_ARGUMENT"; then
+      addError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} expects an argument";
+    fi
     __DW_CLI_FLAG_EXPECTING_ARGUMENTS["${_flagKey}"]="${_expectsArgument}";
-    __DW_CLI_FLAG_CHECKING_CALLBACKS["${_flagKey}"]="${_checkingCallback}";
-    __DW_CLI_FLAG_PARSING_CALLBACKS["${_flagKey}"]="${_parsingCallback}";
   fi
 
   return ${_rescode};
@@ -461,10 +496,10 @@ function addCommandLineFlag() {
 ## -> 1: The flag key.
 ## <- 0/${TRUE} if the flag is mandatory; 1/${FALSE} otherwise.
 ## Example:
-##   if CLI.commandLineFlagIsMandatory ${flagKey}"; then
+##   if CLI.isCommandLineFlagMandatory ${flagKey}"; then
 ##     echo "${flagKey} is mandatory";
 ##   fi
-function CLI.commandLineFlagIsMandatory() {
+function CLI.isCommandLineFlagMandatory() {
   local _flagKey="${1}";
   local -i _rescode;
 
@@ -487,10 +522,10 @@ function CLI.commandLineFlagIsMandatory() {
 ## -> 1: The flag key.
 ## <- 0/${TRUE} if the flag expects an argument; 1/${FALSE} otherwise.
 ## Example:
-##   if CLI.commandLineFlagExpectsArgument ${flagKey}"; then
+##   if CLI.doesCommandLineFlagExpectArgument ${flagKey}"; then
 ##     echo "${flagKey} expects an argument";
 ##   fi
-function CLI.commandLineFlagExpectsArgument() {
+function CLI.doesCommandLineFlagExpectArgument() {
   local _flagKey="${1}";
   local -i _rescode;
 
@@ -555,13 +590,13 @@ function CLI.commandLineFlagsUsage() {
     CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
     _longName="${RESULT}";
     _message="${_message} ";
-    CLI.commandLineFlagIsMandatory "${_flagKey}";
+    CLI.isCommandLineFlagMandatory "${_flagKey}";
     _mandatory=$?;
     if isFalse ${_mandatory}; then
       _message="${_message}[";
     fi
     _message="${_message}-${_shortName}|--${_longName}";
-    if CLI.commandLineFlagExpectsArgument "${_flagKey}"; then
+    if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
       _message="${_message} arg";
     fi
     if isFalse ${_mandatory}; then
@@ -639,11 +674,11 @@ function CLI.commandLineFlagsDetailedUsage() {
     CLI.retrieveCommandLineFlagDescriptionFromKey "${_flagKey}";
     _description="${RESULT}";
     _message="${_message}  * -${_shortName}|--${_longName}";
-    if CLI.commandLineFlagExpectsArgument "${_flagKey}"; then
+    if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
       _message="${_message} arg";
     fi
     _message="${_message}: ${_description}.";
-    if CLI.commandLineFlagIsMandatory "${_flagKey}"; then
+    if CLI.isCommandLineFlagMandatory "${_flagKey}"; then
       _message="${_message} Mandatory.\n";
     else
       _message="${_message} Optional.\n";
@@ -779,7 +814,7 @@ function CLI.commandLineParametersUsage() {
     IFS="${_oldIFS}";
     _message="${_message} ${_name}";
     if CLI.commandLineParameterIsMultiple "${_name}"; then
-      if CLI.commandLineFlagIsMandatory "${_name}"; then
+      if CLI.isCommandLineFlagMandatory "${_name}"; then
         _message="${_message}+";
       else
         _message="${_message}*";
@@ -906,16 +941,17 @@ function usage() {
 ## Resets all internal state.
 function CLI.resetState() {
   __DW_CLI_FLAG_KEYS=();
-  __DW_CLI_FLAG_SHORT_NAMES=();
   __DW_CLI_FLAG_LONG_NAMES=();
+  __DW_CLI_FLAG_SHORT_NAMES=();
   __DW_CLI_MANDATORY_FLAGS=();
   __DW_CLI_FLAG_EXPECTING_ARGUMENTS=();
   __DW_CLI_FLAG_DESCRIPTIONS=();
   __DW_CLI_PARAMETER_NAMES=();
   __DW_CLI_PARAMETER_DESCRIPTIONS=();
-  __DW_CLI_SINGLE_PARAMETERS=();
   __DW_CLI_MANDATORY_PARAMETERS=();
+  __DW_CLI_SINGLE_PARAMETERS=();
   __DW_CLI_SCRIPT_DESCRIPTION="";
   __DW_CLI_SCRIPT_COPYRIGHT="";
   __DW_CLI_SCRIPT_LICENSE_SUMMARY="";
 }
+#

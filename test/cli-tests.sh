@@ -9,13 +9,17 @@ import cli;
 function test_reset() {
   commandLineFlagCheckingCallbackCalled=${FALSE};
   commandLineFlagParsingCallbackCalled=${FALSE};
+  checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
   CLI.resetState;
 }
+
+## Called before each test.
 function test_setup() {
   test_reset;
 }
 
-function test_cleanup() {
+## Called after each test.
+function test_tearDown() {
   test_reset;
 }
 
@@ -35,7 +39,7 @@ function addCommandLineFlag_checking_callback_is_called_in_checkInput_test() {
 }
 
 function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
-  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT commandLineFlagParsingCallback commandLineFlagCheckingCallback;
+  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
   parseInput "-f" "/tmp/1.txt";
   Assert.isTrue ${commandLineFlagParsingCallbackCalled} "parsingCallback not called in parseInput";
   Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "checkingCallback was called in parseInput";
@@ -114,5 +118,25 @@ function usage_does_not_print_too_many_empty_lines_test() {
   usage | grep -e '^\n\n\n' > /dev/null
   local -i _tooManyEmptyLines=$?;
   Assert.isFalse ${_tooManyEmptyLines} "usage() can include too many empty lines depending on the script metadata";
+}
+
+function checkInput_checks_mandatory_flags_test() {
+  addCommandLineFlag "file" "f" "The file to read" MANDATORY NO_ARGUMENT;
+  (checkInput > /dev/null)
+  local -i _rescode=$?;
+  local _result="$(checkInput)";
+  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory flag is missing";
+  Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
+  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+}
+
+function checkInput_checks_flags_with_arguments_test() {
+  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
+  (checkInput -f > /dev/null)
+  local -i _rescode=$?;
+  local _result="$(checkInput -f)";
+  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory flag is missing";
+  Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
+  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
 }
 #

@@ -63,11 +63,18 @@ export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/modules"
 ##   DRYWIT.failsafeLogTrace SUCCESS "done"
 function DRYWIT.failsafeCheckNotEmpty() {
   local _name="${1}";
+  if [ -z "${_name}" ]; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
   local _value="${2}";
-  local -i _index=${3};
 
-  if DRYWIT.failsafeIsFunctionDefined "checkNotEmpty"; then
-    checkNotEmpty "${_name}" "${_value}" ${_index};
+  if [ -z "${_value}" ]; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
+
+  local _index="${3}";
+  if [ -z "${_index}" ]; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 }
 
