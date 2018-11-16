@@ -12,10 +12,9 @@ declare -A __DW_CLI_SINGLE_PARAMETERS;
 declare -A __DW_CLI_MANDATORY_PARAMETERS;
 declare -A __DW_CLI_PARAMETER_CHECKING_CALLBACKS;
 declare -A __DW_CLI_PARAMETER_PARSING_CALLBACKS;
-
-export __DW_CLI_DESCRIPTION="";
-declare __DW_CLI_COPYRIGHT;
-declare __DW_CLI_LICENSE_SUMMARY;
+declare __DW_CLI_SCRIPT_DESCRIPTION;
+declare __DW_CLI_SCRIPT_COPYRIGHT;
+declare __DW_CLI_SCRIPT_LICENSE_SUMMARY;
 
 export EXPECTS_ARGUMENT=${TRUE};
 export NO_ARGUMENT=${FALSE};
@@ -534,7 +533,9 @@ function CLI.retrieveCommandLineParameterDescriptionFromName() {
 
 
 ## Prints a line describing how to run the script.
-function commandLineFlagsUsage() {
+## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.
+function CLI.commandLineFlagsUsage() {
+  local -i _rescode=${TRUE};
   local _message="${SCRIPT_NAME} [-v[-v]] [-q|--quiet]";
   local _flagKey;
   local _shortName;
@@ -563,11 +564,59 @@ function commandLineFlagsUsage() {
     fi
   done
   IFS="${_oldIFS}";
-  echo "${_message}";
+
+  echo -n "${_message}";
+
+  return ${_rescode};
+}
+
+## Conditionally prints (to stdout) a line with the script description.
+## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.
+function CLI.scriptDescriptionUsage() {
+  local -i _rescode;
+  if isEmpty "${__DW_CLI_SCRIPT_DESCRIPTION}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -e "\n${__DW_CLI_SCRIPT_DESCRIPTION}\n";
+  fi
+
+  return ${_rescode};
+}
+
+## Conditionally prints (to stdout) a line with the license summary.
+## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.
+function CLI.scriptLicenseSummaryUsage() {
+  local -i _rescode;
+  if isEmpty "${__DW_CLI_SCRIPT_LICENSE_SUMMARY}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+    echo "${__DW_CLI_SCRIPT_LICENSE_SUMMARY}";
+  fi
+
+  return ${_rescode};
+}
+
+## Conditionally prints (to stdout) a line with the copyright.
+## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.
+function CLI.scriptCopyrightUsage() {
+  local -i _rescode;
+
+  if isEmpty "${__DW_CLI_SCRIPT_COPYRIGHT}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo "${__DW_CLI_SCRIPT_COPYRIGHT}";
+  fi
+
+  return ${_rescode};
 }
 
 ## Prints a line describing the details of the command-line flags.
-function commandLineFlagsDetailedUsage() {
+## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.
+function CLI.commandLineFlagsDetailedUsage() {
+  local -i _rescode;
   local _message;
   local _flagKey;
   local _shortName;
@@ -596,11 +645,14 @@ function commandLineFlagsDetailedUsage() {
   done
   IFS="${_oldIFS}";
 
-  if isNotEmpty "${_message}"; then
-    _message="${_message}\n\n";
+  if isEmpty "${_message}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -n -e "${_message}";
   fi
 
-  echo -e "${_message}";
+  return ${_rescode};
 }
 
 ## Declares the script expects another command-line parameter.
@@ -710,7 +762,9 @@ function CLI.commandLineParameterIsMandatory() {
 }
 
 ## Prints a line describing the script's flags.
-function commandLineParametersUsage() {
+## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.
+function CLI.commandLineParametersUsage() {
+  local -i _rescode;
   local _message;
   local _name;
   local _oldIFS="${IFS}";
@@ -728,11 +782,21 @@ function commandLineParametersUsage() {
     fi
   done
   IFS="${_oldIFS}";
-  echo "${_message}";
+
+  if isEmpty "${_message}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -e "${_message}";
+  fi
+
+  return ${_rescode};
 }
 
 ## Prints a line describing the details of the command-line parameters.
-function commandLineParametersDetailedUsage() {
+## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.
+function CLI.commandLineParametersDetailedUsage() {
+  local -i _rescode;
   local _message;
   local _name;
   local _description;
@@ -740,6 +804,9 @@ function commandLineParametersDetailedUsage() {
   IFS=$' \t\n';
 
   for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+    if isNotEmpty "${_message}"; then
+      _message="\n";
+    fi
     CLI.retrieveCommandLineParameterDescriptionFromName "${_name}";
     _description="${RESULT}";
     _message="${_message}  * ${_name}";
@@ -748,18 +815,21 @@ function commandLineParametersDetailedUsage() {
     fi
     _message="${_message}: ${_description}.";
     if CLI.commandLineParameterIsMandatory "${_name}"; then
-      _message="${_message} Mandatory.\n";
+      _message="${_message} Mandatory.";
     else
-      _message="${_message} Optional.\n";
+      _message="${_message} Optional.";
     fi
   done
   IFS="${_oldIFS}";
 
-  if isNotEmpty "${_message}"; then
-    _message="${_message}\n\n";
+  if isEmpty "${_message}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -e "${_message}";
   fi
 
-  echo -e "${_message}";
+  return ${_rescode};
 }
 
 
@@ -767,13 +837,13 @@ function commandLineParametersDetailedUsage() {
 ## -> 1: The copyright message.
 ## <- 0/${TRUE} always.
 ## Example:
-##   setCopyrightMessage "2018-today Acme Inc.";
-function setCopyright() {
+##   setScriptCopyrightMessage "2018-today Acme Inc.";
+function setScriptCopyright() {
   local _copyright="${1}";
 
   checkNotEmpty "copyright" "${_copyright}" 1;
 
-  __DW_CLI_COPYRIGHT="${_copyright}";
+  __DW_CLI_SCRIPT_COPYRIGHT="${_copyright}";
 
   return ${TRUE};
 }
@@ -782,13 +852,13 @@ function setCopyright() {
 ## -> 1: The license message.
 ## <- 0/${TRUE} always.
 ## Example:
-##   setLicenseSummary "Distributed this under the GNU General Public License v3.";
-function setLicenseSummary() {
+##   setScriptLicenseSummary "Distributed this under the GNU General Public License v3.";
+function setScriptLicenseSummary() {
   local _license="${1}";
 
   checkNotEmpty "license" "${_license}" 1;
 
-  __DW_CLI_LICENSE_SUMMARY="${_license}";
+  __DW_CLI_SCRIPT_LICENSE_SUMMARY="${_license}";
 
   return ${TRUE};
 }
@@ -803,25 +873,47 @@ function setScriptDescription() {
 
   checkNotEmpty "description" "${_description}" 1;
 
-  __DW_CLI_DESCRIPTION="${_description}";
+  __DW_CLI_SCRIPT_DESCRIPTION="${_description}";
 }
 
 ## Prints the usage description.
 function usage() {
-  cat <<EOF
-$(commandLineFlagsUsage)$(commandLineParametersUsage)
-${SCRIPT_NAME} [-h|--help]
-${__DW_CLI_COPYRIGHT}
-${__DW_CLI_LICENSE_SUMMARY}
+  CLI.commandLineFlagsUsage
+  if ! CLI.commandLineParametersUsage; then
+    echo;
+  fi
+  echo "${SCRIPT_NAME} [-h|--help]";
+  CLI.scriptCopyrightUsage
+  CLI.scriptLicenseSummaryUsage;
+  if ! CLI.scriptDescriptionUsage; then
+    echo;
+  fi
+  echo "Where:"
+  CLI.commandLineFlagsDetailedUsage
+  CLI.commandLineParametersDetailedUsage
+  echo "  * -h | --help: Display this message.";
+  echo "  * -v: Increase the verbosity.";
+  echo "  * -vv: Increase the verbosity further.";
+  echo "  * -q | --quiet: Be silent.";
+}
 
-${__DW_CLI_DESCRIPTION}
-
-Where:
-$(commandLineFlagsDetailedUsage)
-$(commandLineParametersDetailedUsage)
-  * -h | --help: Display this message.
-  * -v: Increase the verbosity.
-  * -vv: Increase the verbosity further.
-  * -q | --quiet: Be silent.
-EOF
+## Resets all internal state.
+function CLI.resetState() {
+  __DW_CLI_FLAG_KEYS=();
+  __DW_CLI_FLAG_SHORT_NAMES=();
+  __DW_CLI_FLAG_LONG_NAMES=();
+  __DW_CLI_MANDATORY_FLAGS=();
+  __DW_CLI_FLAG_EXPECTING_ARGUMENTS=();
+  __DW_CLI_FLAG_CHECKING_CALLBACKS=();
+  __DW_CLI_FLAG_PARSING_CALLBACKS=();
+  __DW_CLI_FLAG_DESCRIPTIONS=();
+  __DW_CLI_PARAMETER_NAMES=();
+  __DW_CLI_PARAMETER_DESCRIPTIONS=();
+  __DW_CLI_SINGLE_PARAMETERS=();
+  __DW_CLI_MANDATORY_PARAMETERS=();
+  __DW_CLI_PARAMETER_CHECKING_CALLBACKS=();
+  __DW_CLI_PARAMETER_PARSING_CALLBACKS=();
+  __DW_CLI_SCRIPT_DESCRIPTION="";
+  __DW_CLI_SCRIPT_COPYRIGHT="";
+  __DW_CLI_SCRIPT_LICENSE_SUMMARY="";
 }

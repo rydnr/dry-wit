@@ -6,9 +6,17 @@
 
 import cli;
 
-function test_setup() {
+function test_reset() {
   commandLineFlagCheckingCallbackCalled=${FALSE};
   commandLineFlagParsingCallbackCalled=${FALSE};
+  CLI.resetState;
+}
+function test_setup() {
+  test_reset;
+}
+
+function test_cleanup() {
+  test_reset;
 }
 
 function commandLineFlagCheckingCallback() {
@@ -33,17 +41,16 @@ function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
   Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "checkingCallback was called in parseInput";
 }
 
-function setCopyright_is_included_in_the_usage_test() {
+function setScriptCopyright_is_included_in_the_usage_test() {
   local _copyright="2018-today Acme Inc."
-  setCopyright "${_copyright}";
+  setScriptCopyright "${_copyright}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_copyright}" "Copyright is not included in the usage message";
 }
 
-function setLicenseSummary_is_included_in_the_usage_test() {
+function setScriptLicenseSummary_is_included_in_the_usage_test() {
   local _license="Distributed this under the GNU General Public License v3.";
-
-  setLicenseSummary "${_license}";
+  setScriptLicenseSummary "${_license}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_license}" "License is not included in the usage message";
 }
@@ -100,6 +107,12 @@ function commandLineParameters_are_included_in_the_usage_test() {
   addCommandLineParameter "${_name}" "${_description}" SINGLE MANDATORY;
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_description}" "The script description is not included in the usage message";
-  usage;
+}
+
+function usage_does_not_print_too_many_empty_lines_test() {
+  local _usage="$(usage)";
+  usage | grep -e '^\n\n\n' > /dev/null
+  local -i _tooManyEmptyLines=$?;
+  Assert.isFalse ${_tooManyEmptyLines} "usage() can include too many empty lines depending on the script metadata";
 }
 #
