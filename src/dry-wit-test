@@ -580,7 +580,11 @@ function Assert.isFalse() {
   checkNotEmpty "condition" "${_condition}" 1;
   checkNotEmpty "error" "${_error}" 2;
 
-  Assert.isTrue [! ${_condition} ] ${_error};
+  if isFalse ${_condition}; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_error}";
+  fi
 }
 
 ## Asserts no error has been thrown so far in current test.
