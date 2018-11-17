@@ -182,9 +182,6 @@ function checkInput() {
   local _longNameInUpperCase;
   local _flag;
   local -a _flagsChecked;
-  local _parameterName;
-  local _parameterValue;
-  local _parameterNameInUpperCase;
   local _oldIFS="${IFS}";
 
   # Flags
@@ -210,22 +207,16 @@ function checkInput() {
         ;;
     esac
 
-    if CLI.isCommandLineFlagInLongFormat "${_flag}"; then
-      _longName="${_flag#--}";
-      if CLI.retrieveCommandLineFlagShortNameForLongName "${_longName}"; then
-        _shortName="${RESULT}";
-      else
-        break;
-      fi
-    elif CLI.isCommandLineFlagInShortFormat "${_flag}"; then
-      _shortName="${_flag#-}";
-      if CLI.retrieveCommandLineFlagLongNameForShortName "${_shortName}"; then
-        _longName="${RESULT}";
-      else
-        break;
-      fi
+    if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
+      _longName="${RESULT}";
     else
-      break;
+      exitWithErrorCode UNKNOWN_FLAG "Unknown flag ${_flag}";
+    fi
+
+    if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
+      _shortName="${RESULT}";
+    else
+      exitWithErrorCode UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
 
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
@@ -233,31 +224,128 @@ function checkInput() {
     _flagsChecked[${#_flagsChecked[@]}]="${_key}";
 
     if arrayDoesNotContain "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
-      echo "Unexpected flag: ${_flag}";
+      exitWithErrorCode UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
 
-    if CLI.doesCommandLineFlagExpectArgument "${_key}"; then
-      _argument="${1}";
-      shift;
-      toUpper "${_longName}";
-      _longNameInUpperCase="${RESULT}";
-      if CLI.isCommandLineFlagMandatory "${_key}" && isEmpty "${_argument}"; then
-        exitWithErrorCode "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT";
-      fi
-      if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
-        "dw_check_${_longName}_cli_flag" "${_argument}";
-      fi
-    fi
+    CLI.checkCommandLineFlag "${_key}" "${_longName}" $@;
   done
+  IFS="${_oldIFS}";
+
+  CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[*]}";
+
+  CLI.checkCommandLineParameters $@;
+}
+
+## Retrieves the long name of a flag.
+## -> 1: The flag.
+## <- 0/${TRUE} if the long name was retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The long name.
+## Example:
+##   if CLI.retrieveCommandLineFlagLongName "-f"; then
+##     echo "long name: ${RESULT}";
+##   fi
+function CLI.retrieveCommandLineFlagLongName() {
+  local _flag="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.isCommandLineFlagInLongFormat "${_flag}"; then
+    _result="${_flag#--}";
+    _rescode=${TRUE};
+  elif CLI.isCommandLineFlagInShortFormat "${_flag}" && CLI.retrieveCommandLineFlagLongNameForShortName "${_flag#-}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+## Retrieves the short name of a flag.
+## -> 1: The flag.
+## <- 0/${TRUE} if the short name was retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The short name.
+## Example:
+##   if CLI.retrieveCommandLineShortName "--file"; then
+##     echo "short name: ${RESULT}";
+##   fi
+function CLI.retrieveCommandLineFlagShortName() {
+  local _flag="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.isCommandLineFlagInLongFormat "${_flag}" && CLI.retrieveCommandLineFlagShortNameForLongName "${_flag#--}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  elif CLI.isCommandLineFlagInShortFormat "${_flag}"; then
+    _result="${_flag#-}";
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+## Checks a command line flag.
+## -> 1: The flag.
+## Example:
+##   CLI.checkCommandLineFlag "${_flagKey}";
+function CLI.checkCommandLineFlag() {
+  local _flagKey="${1}";
+  local _longName="${2}";
+  shift;
+  shift;
+  local _argument;
+  local _longNameInUpperCase;
+
+  if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
+    _argument="${1}";
+    shift;
+    toUpper "${_longName}";
+    _longNameInUpperCase="${RESULT}";
+    if CLI.isCommandLineFlagMandatory "${_flagKey}" && isEmpty "${_argument}"; then
+      exitWithErrorCode "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT";
+    fi
+    if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+      "dw_check_${_longName}_cli_flag" "${_argument}";
+    fi
+  fi
+}
+
+## Checks for mandatory command line flags that are declared but not provided.
+## -> 1: The flags provided.
+## Example:
+##   CLI.checkForMissingMandatoryCommandLineFlags "-f --file -v -vv";
+function CLI.checkForMissingMandatoryCommandLineFlags() {
+  local _flagsChecked="$@";
+  local _key;
+  local _longName;
+  local _longNameInUpperCase;
+  local _oldIFS="${IFS}";
 
   if isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}"; then
+    IFS=$' \t\n';
     for _key in ${__DW_CLI_FLAG_KEYS[*]}; do
       IFS="${_oldIFS}";
       CLI.retrieveCommandLineFlagLongNameFromKey "${_key}";
       _longName="${RESULT}";
       toUpper "${_longName}";
       _longNameInUpperCase="${RESULT}";
-      if isEmpty "${_flagsChecked[*]}" || arrayDoesNotContain "${_flagsChecked[*]}" "${_key}"; then
+      if isEmpty "${_flagsChecked}" || arrayDoesNotContain "${_flagsChecked}" "${_key}"; then
         if CLI.isCommandLineFlagMandatory "${_key}"; then
           exitWithErrorCode "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} flag is mandatory";
         fi
@@ -268,6 +356,16 @@ function checkInput() {
     done
     IFS="${_oldIFS}";
   fi
+}
+
+## Checks the command-line parameters.
+## -> *: The parameters provided.
+## Example:
+##   CLI.checkCommandLineParameters "/tmp/1.txt" "http://www.example.com";
+function CLI.checkCommandLineParameters() {
+  local _parameterName;
+  local _parameterValue;
+  local _parameterNameInUpperCase;
 
   # Parameters
   IFS=$' \t\n';
@@ -288,14 +386,6 @@ function checkInput() {
         "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}";
       fi
     fi
-  done
-
-  # Parameters
-  IFS=$' \t\n';
-  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
-    IFS="${_oldIFS}";
-    _parameterValue="${1}";
-    shift;
   done
   IFS="${_oldIFS}";
 }
@@ -332,40 +422,7 @@ function parseInput() {
         ;;
     esac
 
-    if CLI.isCommandLineFlagInLongFormat "${_flag}"; then
-      _longName="${_flag#--}";
-      if CLI.retrieveCommandLineFlagShortNameForLongName "${_longName}"; then
-        _shortName="${RESULT}";
-      else
-        break;
-      fi
-    elif CLI.isCommandLineFlagInShortFormat "${_flag}"; then
-      _shortName="${_flag#-}";
-      if CLI.retrieveCommandLineFlagLongNameForShortName "${_shortName}"; then
-        _longName="${RESULT}";
-      else
-        break;
-      fi
-    else
-      break;
-    fi
-
-    CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
-    _key="${RESULT}";
-
-    if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
-      if isFunctionDefined "dw_parse_${_longName}_cli_flag"; then
-        if CLI.doesCommandLineFlagExpectArgument "${_key}"; then
-          _argument="${1}";
-          shift;
-          "dw_parse_${_longName}_cli_flag" "${_argument}";
-        else
-          "dw_parse_${_longName}_cli_flag";
-        fi
-      fi
-    else
-      exitWithErrorCode INVALID_OPTION "Unexpected flag: ${_flag}";
-    fi
+    CLI.parseFlag "${_flag}" $@;
   done
   IFS="${_oldIFS}";
 
@@ -386,6 +443,48 @@ function parseInput() {
       fi
     fi
   done
+}
+
+## Parses given flag.
+## -> 1: The flag to parse.
+## Example:
+##   CLI.parseFlag "-f" $@;
+function CLI.parseFlag() {
+  local _flag="${1}";
+  shift;
+  local _longName;
+  local _shortName;
+
+  checkNotEmpty "${_flag}" "flag" 1;
+
+  if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
+    _longName="${RESULT}";
+  else
+    exitWithErrorCode UNKNOWN_FLAG "Unknown flag ${_flag}";
+  fi
+
+  if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
+    _shortName="${RESULT}";
+  else
+    exitWithErrorCode UNKNOWN_FLAG "Unknown flag ${_flag}";
+  fi
+
+  CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
+  _key="${RESULT}";
+
+  if arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_key}"; then
+    if isFunctionDefined "dw_parse_${_longName}_cli_flag"; then
+      if CLI.doesCommandLineFlagExpectArgument "${_key}"; then
+        _argument="${1}";
+        shift;
+        "dw_parse_${_longName}_cli_flag" "${_argument}";
+      else
+        "dw_parse_${_longName}_cli_flag";
+      fi
+    fi
+  else
+    exitWithErrorCode INVALID_OPTION "Unexpected flag: ${_flag}";
+  fi
 }
 
 ## Builds a key for given command-line flag.
