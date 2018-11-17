@@ -4,23 +4,6 @@
 
 # set -o xtrace
 
-function usage() {
-cat <<EOF
-$SCRIPT_NAME
-$SCRIPT_NAME [-h|--help]
-(c) 2016-today ACM-SL
-    Distributed this under the GNU General Public License v3.
-
-Runs all tests implemented for string.dw.
-
-Common flags:
-    * -h | --help: Display this message.
-    * -v: Increase the verbosity.
-    * -vv: Increase the verbosity further.
-    * -q | --quiet: Be silent.
-EOF
-}
-
 function contains_test() {
   contains "abc" "b";
   Assert.isTrue $? "contains 'abc' 'b' failed";
@@ -43,4 +26,12 @@ function endsWith_test() {
 
   endsWith "abc" "b";
   Assert.isFalse $? "endsWith 'abc' 'b' failed";
+}
+
+function removePrefix_test() {
+  removePrefix "--abc" "-*";
+  local -i _done=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_done} "removePrefix failed";
+  Assert.areEqual "${_result}" "abc" "removePrefix --abc returned ${_result} instead of abc";
 }

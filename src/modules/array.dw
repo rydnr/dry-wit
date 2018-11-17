@@ -20,7 +20,7 @@ function arrayContains() {
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for _aux in "${_array}"; do
+  for _aux in ${_array}; do
     IFS=$' \t\n';
     if areEqual "${_aux}" "${_item}"; then
       _rescode=${TRUE};
@@ -28,6 +28,7 @@ function arrayContains() {
     fi
   done
   IFS="${_oldIFS}";
+
   return ${_rescode};
 }
 
@@ -72,21 +73,112 @@ function flattenArray() {
   local _arrayName="${1}";
   local _separator="${2}";
   local result="";
-
-  local _aux="$(echo "\${#${_arrayName}[@]}")";
-  local _len=$((-1+$(eval echo "${_aux}")));
+  local _aux;
+  local _len;
   local _oldIFS="${IFS}";
   local -i _i;
 
+  checkNotEmpty "arrayName" "${_arrayName}" 1;
+
+  _aux="$(echo "\${#${_arrayName}[@]}")";
+  _len=$((-1+$(eval echo "${_aux}")));
+  _oldIFS="${IFS}";
+
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
-    IFS=$' \t\n';
+    IFS="${_oldIFS}";
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");
     result="${result}${_separator}${_item}";
   done
   IFS="${_oldIFS}";
+
   result="${result#${_separator}}";
+
   export RESULT="${result}";
 }
+
+## Extracts the keys of given associate array.
+## --> 1: The array name.
+## <-- RESULT: the list of the keys, wrapped in double quotes.
+## Example:
+##   myMapping=([foo]=bar [with spaces]="with spaces");
+##   retrieveAssociateArrayKeys myMapping;
+##   for key in ${RESULT}; do
+##     ..
+##   done
+function retrieveAssociateArrayKeys() {
+  local _arrayName="${1}";
+  local _key;
+  local _result;
+
+  checkNotEmpty "arrayName" "${_arrayName}" 1;
+
+  declare -n _directArray="${_arrayName}";
+
+  IFS=$' \t\n"';
+  for _key in "${!_directArray[@]}"; do
+    IFS="${_oldIFS}";
+    if isNotEmpty "${_result}"; then
+      _result="${_result} ";
+    fi
+    _result="${_result}\"${_key}\"";
+  done
+  IFS="${_oldIFS}";
+
+  export RESULT="${_result}";
+}
+
+## Calls a given function for each entry found in given associative array.
+## -> 1: The name of the associative array variable.
+## -> 2: The name of the callback function.
+## Example:
+## function process_code() {
+##   echo "Code: ${1}, description: ${2}";
+## }
+##   ..
+##   forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
+function forEachAssociativeArrayEntryDo() {
+  local _arrayName="${1}";
+  local _callback="${2}";
+  local _key;
+  local _oldIFS="${IFS}";
+
+  checkNotEmpty "arrayName" "${_arrayName}" 1;
+  checkFunctionPresent "callback" "${_callback}" 2;
+
+  declare -n _directArray="${_arrayName}";
+
+  IFS=$' \t\n"';
+  for _key in "${!_directArray[@]}"; do
+    IFS="${_oldIFS}";
+    ${_callback} "${_key}" "${_directArray[${_key}]}";
+  done
+  IFS="${_oldIFS}";
+}
+
+## Clears given associative array.
+## -> 1: The associative array.
+## Example:
+##   clearAssociativeArray myArray;
+function clearAssociativeArray() {
+  local _arrayName="${1}";
+  local _key;
+
+  checkNotEmpty "arrayName" "${_arrayName}" 1;
+
+  declare -n _directArray="${_arrayName}";
+
+  IFS=$' \t\n"';
+  for _key in "${!_directArray[@]}"; do
+    IFS="${_oldIFS}";
+    unset _directArray[${_key}];
+  done
+  IFS="${_oldIFS}";
+}
 #
+
+
+
+
+

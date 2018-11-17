@@ -19,9 +19,8 @@ declare -A TEST_ASSERTION_LINE_NUMBERS; export TEST_ASSERTION_LINE_NUMBERS;
 declare -A TEST_ASSERTION_FAILURE_MESSAGES; export TEST_ASSERTION_FAILURE_MESSAGES;
 declare -A TEST_ASSERTION_FAILURE_CONTEXT; export TEST_ASSERTION_FAILURE_CONTEXT;
 
-## Defines the errors.
-## dry-wit hook
-function _defineErrors() {
+function DWTEST.defineErrors() {
+  import error;
   addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
   addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
   addError NO_TESTS_FOUND "No tests found";
@@ -36,16 +35,20 @@ function _defineErrors() {
 function retrieveTests() {
   local _script="${1}";
   local _functions="$(typeset -f | awk '!/^main[ (]/ && /^[^ {}]+ *\(\)/ { gsub(/[()]/, "", $1); print $1}')";
+  local _oldIFS="${IFS}";
 
   if isEmpty "${_functions}"; then
     exitWithErrorCode NO_TESTS_FOUND;
   fi
 
+  IFS=$' \t\n';
   for _f in ${_functions}; do
+    IFS="${_oldIFS}";
     if [ "${_f%*_test}" != "${_f}" ] && [ "${_f}" != "_test" ]; then
       TESTS[${#TESTS[@]}]="${_f}";
     fi
   done
+  IFS="${_oldIFS}";
 
   if isEmpty "${TESTS[@]}"; then
     exitWithErrorCode NO_TESTS_FOUND;
@@ -309,7 +312,7 @@ function runTest() {
   local _assertions;
   local _rescode;
 
-  if DRYWIT.functionPresent "test_setup"; then
+  if isFunctionPresent "test_setup"; then
     test_setup;
   fi
 
@@ -330,7 +333,7 @@ function runTest() {
     addTestError "${_test}";
   fi
 
-  if DRYWIT.functionPresent "test_tearDown"; then
+  if isFunctionPresent "test_tearDown"; then
     test_tearDown;
   fi
 
@@ -358,8 +361,11 @@ function retrieveTestsWithIssues() {
   local _successes;
   local _assertionFailures;
   local _assertionSuccesses;
+  local _oldIFS="${IFS}";
 
+  IFS=$' \t\n';
   for _test in ${TESTS[@]}; do
+    IFS="${_oldIFS}";
     _errors="${TEST_ERRORS[${_test}]}";
     _failures="${TEST_FAILURES[${_test}]}";
     _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
@@ -368,6 +374,7 @@ function retrieveTestsWithIssues() {
       _result="${_result} ${_test}";
     fi
   done
+  IFS="${_oldIFS}";
 
   export RESULT="${_result}";
 }
@@ -378,9 +385,13 @@ function retrieveTestsWithIssues() {
 ## Example:
 ##   logTestSummary;
 function logSummary() {
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
   for _test in ${TESTS[@]}; do
+    IFS="${_oldIFS}";
     logTestSummary "${_test}";
   done
+  IFS="${_oldIFS}";
 }
 
 ## Logs the detailed information about why a given test has thrown errors.
@@ -394,15 +405,19 @@ function logErrorReasons() {
   local _error;
   local _message;
   local _lineNumber;
+  local _oldIFS="${IFS}";
 
   if [ ${_count} -gt 0 ]; then
-      for _i in $(seq 0 $((_count-1))); do
-        _error="${TEST_ERROR_MESSAGES[${_test}:${_i}]}";
-        evalConstant "${_error}" "${_error}";
-        _message="${RESULT}";
-        logInfo -n "${_message}";
-        logInfoResult FAILURE "${_test}";
-      done
+    IFS=$' \t\n';
+    for _i in $(seq 0 $((_count-1))); do
+      IFS="${_oldIFS}";
+      _error="${TEST_ERROR_MESSAGES[${_test}:${_i}]}";
+      evalConstant "${_error}" "${_error}";
+      _message="${RESULT}";
+      logInfo -n "${_message}";
+      logInfoResult FAILURE "${_test}";
+    done
+    IFS="${_oldIFS}";
   fi
 }
 
@@ -417,15 +432,19 @@ function logFailureReasons() {
   local _error;
   local _message;
   local _lineNumber;
+  local _oldIFS="${IFS}";
 
   if [ ${_count} -gt 0 ]; then
-      for _i in $(seq 0 $((_count-1))); do
-        _error="${TEST_FAILURE_MESSAGES[${_test}:${_i}]}";
-        evalConstant "${_error}" "${_error}";
-        _message="${RESULT}";
-        logInfo -n "${_message}";
-        logInfoResult FAILURE "${_test}";
-      done
+    IFS=$' \t\n';
+    for _i in $(seq 0 $((_count-1))); do
+      IFS="${_oldIFS}";
+      _error="${TEST_FAILURE_MESSAGES[${_test}:${_i}]}";
+      evalConstant "${_error}" "${_error}";
+      _message="${RESULT}";
+      logInfo -n "${_message}";
+      logInfoResult FAILURE "${_test}";
+    done
+    IFS="${_oldIFS}";
   fi
 }
 
@@ -441,21 +460,25 @@ function logFailedAssertions() {
   local _message;
   local _lineNumber;
   local _context;
+  local _oldIFS="${IFS}";
 
   if [ ${_count} -gt 0 ]; then
-      for _i in $(seq 0 $((_count-1))); do
-        _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
-        _error="${TEST_ASSERTION_FAILURE_MESSAGES[${_test}:${_i}]}";
-        evalConstant "${_error}" "${_error}";
-        _message="${RESULT}";
-        _context="${TEST_ASSERTION_FAILURE_CONTEXT[${_test}:${_i}]}";
-        if isEmpty "${_context}"; then
-            logInfo -n "${_message}";
-        else
-          logInfo -n "${_message}: ${_context}";
-        fi
-        logInfoResult FAILURE "${_test}:${_lineNumber}";
-      done
+    IFS=$' \t\n';
+    for _i in $(seq 0 $((_count-1))); do
+      IFS="${_oldIFS}";
+      _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
+      _error="${TEST_ASSERTION_FAILURE_MESSAGES[${_test}:${_i}]}";
+      evalConstant "${_error}" "${_error}";
+      _message="${RESULT}";
+      _context="${TEST_ASSERTION_FAILURE_CONTEXT[${_test}:${_i}]}";
+      if isEmpty "${_context}"; then
+        logInfo -n "${_message}";
+      else
+        logInfo -n "${_message}: ${_context}";
+      fi
+      logInfoResult FAILURE "${_test}:${_lineNumber}";
+    done
+    IFS="${_oldIFS}";
   fi
 }
 
@@ -503,6 +526,7 @@ function __dwtest() {
   local _tests;
   local _failedTests;
   local _t;
+  local _oldIFS="${IFS}";
 
   logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
   retrieveTests ${SCRIPT_NAME};
@@ -514,7 +538,9 @@ function __dwtest() {
     logInfoResult SUCCESS "$(echo "${_tests}" | wc -w)";
   fi
 
+  IFS=$' \t\n';
   for _t in ${_tests}; do
+    IFS="${_oldIFS}";
     logInfo -n "Running ${_t}";
     if runTest "${_t}"; then
       logInfoResult SUCCESS "pass";
@@ -522,25 +548,25 @@ function __dwtest() {
       logInfoResult FAILURE "failed";
     fi
   done
+  IFS="${_oldIFS}";
 
   retrieveTestsWithIssues;
   _failedTests="${RESULT}";
   if isNotEmpty "${_failedTests}"; then
+    IFS=$' \t\n';
     for _t in ${_failedTests}; do
+      IFS="${_oldIFS}";
       logTestSummary "${_t}";
     done
+    IFS="${_oldIFS}";
   fi
 }
 
 ## Calling dry-wit from a well-known place
-function _sourceDryWit() {
-  source $(which dry-wit);
-}
-
 function __dwCallback() {
   _defineDryWitErrorMessages;
-  _defineErrors;
-  if _functionPresent defineErrors "${SCRIPT_NAME}"; then
+  DWTEST.defineErrors;
+  if isFunctionPresent defineErrors "${SCRIPT_NAME}"; then
       defineErrors;
   else
     export -a ERROR_MESSAGES=();
@@ -555,7 +581,7 @@ function __dwCallback() {
 ## Example:
 ##   Assert.isTrue [ 1 == 1 ] "check [ 1 == 1 ] failed";
 function Assert.isTrue() {
-  local _condition=${1};
+  local -i _condition=${1};
   local _error="${2}";
 
   checkNotEmpty "condition" "${_condition}" 1;
@@ -677,7 +703,6 @@ function Assert.isEmpty() {
   local _value="${1}";
   local _message="${2}";
 
-  checkNotEmpty "value" "${_value}" 1;
   checkNotEmpty "message" "${_message}" 2;
 
   if isEmpty "${_value}"; then
@@ -696,9 +721,9 @@ function Assert.isNotEmpty() {
   local _value="${1}";
   local _message="${2}";
 
-  checkNotEmpty "message" "${_message}" 2;
-
   if isNotEmpty "${_value}"; then
+    checkNotEmpty "message" "${_message}" 2;
+
     addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is empty)";
@@ -728,7 +753,29 @@ function Assert.contains() {
   checkNotEmpty "errorMessage" "${_errorMessage}" 3;
 
   if contains "${_text}" "${_substring}"; then
-      addTestAssertionSuccess "${FUNCNAME[1]}";
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+  fi
+}
+
+## Checks a file contains a text.
+## -> 1: The file.
+## -> 2: The text to test.
+## -> 3: The error message.
+## Example:
+##   Assert.fileContains "/tmp/debug.log" "TESTING" "/tmp/debug.log doesn't contain TESTING";
+function Assert.fileContains() {
+  local _file="${1}";
+  local _text="${2}";
+  local _errorMessage="${3}";
+
+  checkNotEmpty "file" "${_file}" 1;
+  checkNotEmpty "text" "${_text}" 2;
+  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+
+  if grep -q "${_text}" "${_file}" 2> /dev/null; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
   fi
@@ -738,5 +785,6 @@ function main() {
   __dwtest;
 }
 
-_sourceDryWit $*;
+source $(which dry-wit);
 #
+

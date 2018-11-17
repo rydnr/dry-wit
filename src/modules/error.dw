@@ -1,11 +1,7 @@
-declare -a BUILTIN_ERRORS;
-declare -a ERROR_MESSAGES;
-
 import envvar;
 
 ## Appends a new error to ERROR_MESSAGES.
 ## -> 1: The error to add.
-##
 ## Example:
 ##   appendErrorMessage "item";
 function appendErrorMessage() {
@@ -21,17 +17,87 @@ function appendErrorMessage() {
 }
 
 ## Annotates a new error.
-## -> 1: The error name.
-## -> 1: The error message.
+## -> 1: The error label.
+## -> 2: The error message.
+## Example:
+##   addError INVALID_NAME "The name is not valid";
 function addError() {
-  local _errorName="${1}";
+  local _label="${1}";
   local _message="${2}";
-  local _normalizedErrorName;
-  normalize "${_errorName}";
-  _normalizedErrorName="${RESULT}";
-  appendErrorMessage "${_normalizedErrorName}";
-  upvar "${_normalizedErrorName}" "${_message}";
-  export "${_normalizedErrorName}"="${_message}";
+  local _normalizedLabel;
+
+  checkNotEmpty "label" "${_label}" 1;
+  checkNotEmpty "message" "${_message}" 2;
+
+  normalize "${_label}";
+  _normalizedLabel="${RESULT}";
+  appendErrorMessage "${_normalizedLabel}";
+  upvar "${_normalizedLabel}" "${_message}";
+  export "${_normalizedLabel}"="${_message}";
+}
+
+## Checks whether an error is defined.
+## -> 1: The error label.
+## <- 0/${TRUE} if the error is defined; 1/${FALSE} otherwise.
+## Example:
+##   if isErrorDefined INVALID_NAME; then
+##     echo "INVALID_NAME already defined";
+##   fi
+function isErrorDefined() {
+  local _label="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  if isNotEmpty "${ERROR_MESSAGES[*]}" && arrayContains "${ERROR_MESSAGES[*]}" "${_label}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether an error is undefined.
+## -> 1: The error label.
+## <- 0/${TRUE} if the error is undefined; 1/${FALSE} otherwise.
+## Example:
+##   if isErrorUndefined INVALID_NAME; then
+##     addError INVALID_NAME "The name is not valid";
+##   fi
+function isErrorUndefined() {
+  local _label="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  if isErrorDefined "${_label}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+## Exits with an error.
+## -> 1: The error label.
+## -> 2: The error message.
+## Example:
+##   exitWithError UNKNOWN_OPTION "Unknown option";
+function exitWithError() {
+  local _label="${1}";
+  shift;
+  local _message="${@}";
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  if isErrorUndefined "${_label}"; then
+    addError "${_label}" "${_message}";
+  fi
+
+  exitWithErrorCode "${_label}";
 }
 
 ## Exits with an error code associated with given error label.
@@ -48,6 +114,10 @@ function exitWithErrorCode() {
   printErrorMessage "${_label}" "$@";
   _rescode=$?;
   cleanup;
+  if isErrorDefined "${_label}"; then
+    echo "${_label} was defined (code ${_rescode})";
+  fi
+  
   exit ${_rescode};
 }
 
@@ -55,8 +125,8 @@ function exitWithErrorCode() {
 ## Prints given error.
 ## -> 1: The error message.
 ## Example:
-##   _printError "My error message.";
-function _printError() {
+##   ERROR.printError "My error message.";
+function ERROR.printError() {
   echo "Error: $@.";
 }
 
@@ -126,8 +196,44 @@ EOF
   if isDebugEnabled; then
     _printUsage ${SCRIPT_NAME};
   fi
-  _printError "${_error}";
+  ERROR.printError "${_error}";
   return ${rescode};
 }
 
+## Prints the exit values.
+## Example:
+##   printExitValues;
+function printExitValues() {
+  local -i i=0;
+  local -i j=0;
+
+  if isTraceEnabled; then
+    cat <<EOF
+Exit values:
+  0: No error.
+EOF
+    local _oldIFS="${IFS}";
+    IFS=$' \t\n';
+    if [ ${#BUILTIN_ERRORS[@]} -gt 0 ]; then
+      for ((i = 0; i < ${#BUILTIN_ERRORS[@]}; i++)); do
+        echo "  $((i+1)): $(echo ${BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
+      done
+    fi
+    if [ ${#ERROR_MESSAGES[@]} -gt 0 ]; then
+      for ((j = 0; j < ${#ERROR_MESSAGES[@]}; j++)); do
+        echo "  $((j+i+1)): $(echo ${ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
+      done
+    fi
+    IFS="${_oldIFS}";
+  fi
+}
+
+## Resets the state of the module.
+function ERROR.resetState() {
+  BUILTIN_ERRORS=();
+  ERROR_MESSAGES=();
+}
+
+declare -a BUILTIN_ERRORS;
+declare -a ERROR_MESSAGES;
 

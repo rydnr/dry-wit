@@ -13,6 +13,7 @@ function test_reset() {
   commandLineParameterCheckingCallbackCalled=${FALSE};
   commandLineParameterParsingCallbackCalled=${FALSE};
   CLI.resetState;
+  CLI.defaultState;
 }
 
 ## Called before each test.
@@ -41,18 +42,17 @@ function dw_parse_file_cli_parameter() {
   commandLineParameterParsingCallbackCalled=${TRUE};
 }
 
-function addCommandLineFlag_checking_callback_is_called_in_checkInput_test() {
-  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
-  checkInput "-f" "/tmp/1.txt";
-  Assert.isTrue ${commandLineFlagCheckingCallbackCalled} "dw_check_file_cli_flag not called in checkInput";
-  Assert.isFalse ${commandLineFlagParsingCallbackCalled} "dw_parse_file_cli_flag was called in checkInput";
+function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
+  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
+  local _result="$(checkInput "/tmp/1.txt")";
+  Assert.isEmpty "${_result}" "checkInput returned something";
 }
 
-function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
-  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
-  parseInput "-f" "/tmp/1.txt";
-  Assert.isTrue ${commandLineFlagParsingCallbackCalled} "dw_check_file_cli_flag not called in parseInput";
-  Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "dw_parse_file_cli_flag was called in parseInput";
+function addCommandLineParameter_checking_callback_is_called_in_checkInput_test() {
+  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
+  checkInput "/tmp/1.txt";
+  Assert.isTrue ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was not called in checkInput";
+  Assert.isFalse ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was called in checkInput";
 }
 
 function setScriptCopyright_is_included_in_the_usage_test() {
@@ -160,19 +160,80 @@ function checkInput_checks_mandatory_parameters_test() {
   Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
 }
 
-function addCommandLineParameter_checking_callback_is_called_in_checkInput_test() {
+function checkInput_does_not_complain_with_no_flags_and_one_parameter_test() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
-  checkInput "/tmp/1.txt";
-  Assert.isTrue ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was not called in checkInput";
-  Assert.isFalse ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was called in checkInput";
+  local _result="$(checkInput "/tmp/1.txt")";
+  Assert.isEmpty "${_result}" "checkInput returned something";
 }
 
-function addCommandLineParameter_parsing_callback_is_called_in_parseInput__test() {
+function cli_module_adds_debug_flag_automatically_test() {
+  local -i _debugDefined;
+  CLI.isCommandLineFlagDefined "-v";
+  _debugDefined=$?;
+  Assert.isTrue ${_debugDefined} "CLI module does not define -v flag automatically";
+  CLI.isCommandLineFlagDefined "--debug";
+  _debugDefined=$?;
+  Assert.isTrue ${_debugDefined} "CLI module does not define --debug flag automatically";
+}
+
+function cli_module_adds_trace_flag_automatically_test() {
+  local -i _traceDefined;
+  CLI.isCommandLineFlagDefined "-vv";
+  _traceDefined=$?;
+  Assert.isTrue ${_traceDefined} "CLI module does not define -vv flag automatically";
+  CLI.isCommandLineFlagDefined "--trace";
+  _traceDefined=$?;
+  Assert.isTrue ${_traceDefined} "CLI module does not define --trace flag automatically";
+}
+
+function cli_module_adds_quiet_flag_automatically_test() {
+  local -i _quietDefined;
+  CLI.isCommandLineFlagDefined "-q";
+  _quietDefined=$?;
+  Assert.isTrue ${_quietDefined} "CLI module does not define -q flag automatically";
+  CLI.isCommandLineFlagDefined "--quiet";
+  _quietDefined=$?;
+  Assert.isTrue ${_quietDefined} "CLI module does not define --quiet flag automatically";
+}
+
+function cli_module_adds_help_flag_automatically_test() {
+  local -i _helpDefined;
+  CLI.isCommandLineFlagDefined "-h";
+  _helpDefined=$?;
+  Assert.isTrue ${_helpDefined} "CLI module does not define -h flag automatically";
+  CLI.isCommandLineFlagDefined "--help";
+  _helpDefined=$?;
+  Assert.isTrue ${_helpDefined} "CLI module does not define --help flag automatically";
+}
+
+function cli_module_allows_deleting_automatic_flags_test() {
+  local -i _helpDefined;
+  removeCommandLineFlag "-h";
+  CLI.isCommandLineFlagDefined "-h";
+  _helpDefined=$?;
+  Assert.isFalse ${_helpDefined} "CLI module does not allow removing the -h flag";
+  CLI.isCommandLineFlagDefined "--help";
+  _helpDefined=$?;
+  Assert.isFalse ${_helpDefined} "CLI module does not allow removing the --help flag";
+}
+
+function addCommandLineParameter_parsing_callback_is_called_in_parseInput_test() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   parseInput "/tmp/1.txt";
   Assert.isFalse ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was called in checkInput";
   Assert.isTrue ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was not called in checkInput";
 }
 
+function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
+  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
+  parseInput "-f" "/tmp/1.txt";
+  Assert.isTrue ${commandLineFlagParsingCallbackCalled} "dw_check_file_cli_flag not called in parseInput";
+  Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "dw_parse_file_cli_flag was called in parseInput";
+}
 
+declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
+declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
+declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
+declare -ig commandLineParameterCheckingCallbackCalled=${FALSE};
+declare -ig commandLineParameterParsingCallbackCalled=${FALSE};
 #

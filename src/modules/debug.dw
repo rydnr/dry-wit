@@ -1,0 +1,115 @@
+## Tries to declare a variable with given arguments.
+## -> 1: The variable name.
+## -> 2+: The variable value(s).
+## Example:
+##   debugVariable "foo" "bar";
+function debugVariable() {
+  local _name="${1}";
+  shift;
+  local _value="${@}";
+
+  declare -t "${_name}"="${_value}";
+#  trap "echo ${_name} is being used here." DEBUG
+}
+
+## Prints the contents of given array.
+## -> 1: The name of the array.
+## Example:
+##   A=( "1" "2" "3" );
+##   debugArray "${A}"
+function debugArray() {
+  import array;
+  flattenArray "${1}" " + ";
+  debugEcho "${RESULT}";
+}
+
+## Prints the contents of given associative array.
+## -> 1: The name of the associative array.
+## Example:
+##   A=( [foo]=bar [other key]="other value" );
+##   debugArray "${A}"
+function debugAssociativeArray() {
+  local _associativeArrayName="${1}";
+  import array;
+
+  checkNotEmpty "associativeArrayName" "${_associativeArrayName}" 1;
+
+  debugEcho "BEGIN processing array ${_associativeArrayName}";
+
+  forEachAssociativeArrayEntryDo "${_associativeArrayName}" debugAssociativeArrayEntry;
+
+  debugEcho "DONE processing array ${_associativeArrayName}";
+}
+
+## Callback to be called to debug a specific entry in an associative array.
+## -> 1: The entry key. Mandatory.
+## -> 2: The entry value. Could be empty.
+## Example:
+##   forEachAssociativeArrayEntryDo MY_ASSOCIATIVE_ARRAY debugAssociativeArrayEntry;
+function debugAssociativeArrayEntry() {
+  local _key="${1}";
+  local _value="${2}";
+
+  checkNotEmpty "key" "${_key}" 1;
+
+  debugEcho "${_key} -> ${_value}";
+}
+
+## Traces the API call to the default log file using in development.
+## Example:
+##   traceApiCall;
+function traceApiCall() {
+  local -i _i=0;
+  local _logFile;
+
+  DEBUG.getDebugLogFile;
+  _logFile="${RESULT}";
+
+  echo "${FUNCNAME[0]}" >> ${_logFile};
+  while caller $i >> ${_logFile}; do
+    i=$((i+1))
+  done
+}
+
+## Specifies the log file for debugging purposes.
+## -> 1: The log file.
+## Example:
+##   setDebugLogFile "/tmp/.dw-debug.log";
+function setDebugLogFile() {
+  local _file="${1}";
+
+  export __DW_DEBUG_LOG_FILE="${_file}";
+}
+
+## Retrieves the log file for debugging purposes.
+## <- The log file.
+## Example:
+##   DEBUG.getDebugLogFile;
+##   echo "log file -> ${RESULT}";
+function DEBUG.getDebugLogFile() {
+  export RESULT="${__DW_DEBUG_LOG_FILE}";
+}
+
+## Echoes a line to stdout. Useful for locating them easily when debugging.
+## -> 1: The message to print.
+## Example:
+##   debugEcho "message";
+function debugEcho() {
+  local _logFile;
+
+  DEBUG.getDebugLogFile;
+  _logFile="${RESULT}";
+  echo $* >> ${_logFile};
+}
+
+function DEBUG.defaultState() {
+  setDebugLogFile "${TEMP:-/tmp}/${SCRIPT_NAME}-debug.$(date '+%Y%m%d%H%M%S').log";
+}
+
+function DEBUG.resetState() {
+  setDebugLogFile "";
+}
+
+if [ -z ${__DW_DEBUG_LOG_FILE+x} ]; then
+  DEBUG.defaultState;
+fi

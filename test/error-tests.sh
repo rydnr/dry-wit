@@ -1,0 +1,41 @@
+#!/bin/bash ../src/dry-wit-test
+# Copyright 2016-today Automated Computing Machinery S.L.
+# Distributed under the terms of the GNU General Public License v3
+
+# set -o xtrace
+
+import error;
+
+function test_reset() {
+  ERROR.resetState;
+}
+
+## Called before each test.
+function test_setup() {
+  test_reset;
+}
+
+## Called after each test.
+function test_tearDown() {
+  test_reset;
+}
+
+function isErrorDefined_test() {
+  local -i _defined;
+  addError ERROR1 "error 1 message";
+  isErrorDefined ERROR1;
+  _defined=$?;
+  Assert.isTrue ${_defined} "isErrorDefined doesn't find ERROR1";
+}
+
+function exitWithError_declares_a_new_error_if_necessary_test() {
+  local -i _errorCode;
+  local _result;
+  (exitWithError UNDEFINED_ERROR "Undefined error" > /dev/null);
+  _errorCode=$?;
+  _result="$(exitWithError UNDEFINED_ERROR "Custom undefined error")";
+  Assert.isFalse ${_errorCode} "exitWithError doesn't exit with an error code";
+  Assert.isNotEmpty ${_result} "exitWithError doesn't print anything";
+  Assert.contains "${_result}" "Custom undefined error" "exitWithError doesn't define UNDEFINED_ERROR on demand";
+}
+#

@@ -588,3 +588,59 @@ function appendEnvVariable() {
     export ENV_VARIABLES;
   fi
 }
+
+## Prints the environment variables.
+## Example:
+##   printEnvironment;
+function printEnvironment() {
+  local -i i=0;
+  local _varName;
+  local _varValue;
+  local _description;
+  local _tempFile;
+
+  if isNotEmpty "${ENV_VARIABLES}" && isTraceEnabled; then
+    cat <<EOF
+Environment variables:
+EOF
+    if createTempFileNoCleanup; then
+        _tempFile="${RESULT}";
+    fi
+
+    local _oldIFS="${IFS}";
+    IFS=$' \t\n';
+    for ((i = 0; i < ${#ENV_VARIABLES[@]}; i++)); do
+      _varName="${ENV_VARIABLES[$i]}";
+      if _evalOverriddenVar "${_varName}"; then
+          _varValue="${RESULT}";
+      else
+        _evalVar "${_varName}";
+        _varValue="${RESULT}";
+      fi
+      if _evalVarDescription "${_varName}"; then
+          _description=": ${RESULT}.";
+      else
+        _description="";
+      fi
+      if isEmpty "${_tempFile}"; then
+          echo "  ${_varName} (${_varValue})${_description}";
+      else
+        echo "  ${_varName} (${_varValue})${_description}" >> "${_tempFile}";
+      fi
+    done
+    IFS="${_oldIFS}";
+
+    if isNotEmpty "${_tempFile}"; then
+        cat "${_tempFile}" | sort;
+        rm -f "${_tempFile}" > /dev/null 2>&1;
+    fi
+  fi
+}
+
+function reset_state() {
+  ENV_VARIABLES=();
+  OVERRIDDEN_ENV_VARIABLES=();
+  ENVIRONMENT_VARIABLES_DEFAULTS=();
+  ENVIRONMENT_VARIABLES_DESCRIPTIONS=();
+  ENVIRONMENT_VARIABLES_COMMANDS=();
+}

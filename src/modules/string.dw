@@ -79,7 +79,6 @@ function endsWith() {
 ## Converts given string to upper case.
 ## -> 1: The string to convert.
 ## <- RESULT: The converted string.
-##
 ## Example:
 ##   local _text="abc";
 ##   toUpper "${_text}";
@@ -89,6 +88,32 @@ function toUpper() {
   checkNotEmpty "text" "${_text}" 1;
   local result=$(echo "${_text}" | awk '{print toupper($0);}');
   export RESULT="${result}";
+}
+
+## Removes the prefix of given string.
+## -> 1: The string to convert.
+## <- RESULT: The converted string.
+## Example:
+##   local _text="--abc";
+##   if removePrefix "${_text}" "--*"; then
+##     echo "${_text} -> ${RESULT}";
+##   fi
+function removePrefix() {
+  local _text="${1}";
+  local _prefix="${2}";
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty "prefix" "${_prefix}" 2;
+
+  _result="$(echo "${_text}" | sed -e "s/^${_prefix}//")";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
 }
 
 ## PUBLIC

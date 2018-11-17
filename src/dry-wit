@@ -64,17 +64,17 @@ export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/modules"
 function DRYWIT.failsafeCheckNotEmpty() {
   local _name="${1}";
   if [ -z "${_name}" ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
   local _value="${2}";
 
   if [ -z "${_value}" ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
 
   local _index="${3}";
   if [ -z "${_index}" ]; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 }
 
@@ -131,6 +131,36 @@ function DRYWIT.failsafeIsFunctionDefined() {
   return ${_rescode};
 }
 
+## Checks if an element is already contained in an array.
+## -> 1: The array (passed as "${array[@]}".
+## -> 2: The element to check.
+## <- 0/${TRUE}: If the element is present in the array; 1/${FALSE} otherwise.
+## Example:
+##   a=("one" "two" "three" "other number")
+##   if DRYWIT.failsafeArrayContains "${array[@]}" "other number"; then
+##     ...
+##   fi
+function DRYWIT.failsafeArrayContains() {
+  local _array="${1}";
+  local _item="${2}";
+  local _aux;
+  local -i _rescode=${FALSE};
+  local _oldIFS="${IFS}";
+
+  IFS=$' \t\n';
+  for _aux in ${_array}; do
+    IFS="${_oldIFS}";
+    if [[ "${_aux}" == "${_item}" ]]; then
+      _rescode=${TRUE};
+      break;
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  return ${_rescode};
+}
+
+
 ## Downloads given module.
 ## -> 1: The module name.
 ## <- 0/${TRUE} if the module is downloaded; 1/${FALSE} otherwise.
@@ -166,6 +196,7 @@ function DRYWIT.bootstrap() {
   local _oldIFS="${IFS}";
   IFS="${_oldIFS}";
 
+  IFS=$' \t\n';
   for _module in ${__DRYWIT_BOOTSTRAP_MODULES[*]}; do
     IFS="${_oldIFS}";
     import "${_module}";
@@ -189,24 +220,24 @@ function import() {
     exit 1;
   fi
 
-  DRYWIT.failsafeLogTrace "Loading ${_modulePath}";
-  source "${_modulePath}";
-  DRYWIT.failsafeLogTraceResult SUCCESS "done";
-  __DRYWIT_IMPORTED_MODULES[${#__DRYWIT_IMPORTED_MODULES[@]}]="${_module}";
+  if DRYWIT.failsafeArrayContains "${__DRYWIT_IMPORTED_MODULES[*]}" "${_module}"; then
+    DRYWIT.failsafeLogTrace "Not sourcing ${_modulePath} since it's already sourced";
+  else
+    DRYWIT.failsafeLogTrace -n "Loading ${_modulePath}";
+    source "${_modulePath}";
+    DRYWIT.failsafeLogTraceResult SUCCESS "done";
+    __DRYWIT_IMPORTED_MODULES[${#__DRYWIT_IMPORTED_MODULES[@]}]="${_module}";
+  fi
 }
 
 function findModule() {
   local _module="${1}";
   local -i _rescode=${FALSE};
-  local _folder;
-  local _result="";
 
   if [[ -e "${DRYWIT_MODULE_PATH}/${_module}.dw" ]]; then
     _rescode=${TRUE};
-    _result="${DRYWIT_MODULE_PATH}/${_module}.dw";
+    export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw";
   fi
-
-  export RESULT="${_result}";
 
   return ${_rescode};
 }
@@ -214,6 +245,12 @@ function findModule() {
 DRYWIT.bootstrap;
 
 source $@;
+
 DRYWIT.main $@;
+
 cleanup;
 #
+
+
+
+

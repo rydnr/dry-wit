@@ -1,5 +1,3 @@
-_dryWitDevLogFile=${TEMP:-/tmp}/.drywit.log;
-
 # IFS stuff
 _OLD_IFS="${IFS}";
 export IFS=$'\n\t\040';
@@ -23,7 +21,7 @@ function DRYWIT.checkScript() {
   logTraceResult SUCCESS "done";
   logTrace -n "Checking mandatory functions";
   for _f in main; do
-    DRYWIT.functionPresent ${_f} ${_script};
+    isFunctionPresent ${_f} ${_script};
     if isFalse $?; then
       exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
     fi
@@ -87,48 +85,48 @@ function DRYWIT.main() {
 
   DRYWIT.setup "${_script}";
 
-  if DRYWIT.functionPresent defineErrors "${_script}"; then
+  if isFunctionPresent defineErrors "${_script}"; then
     defineErrors;
   else
     export ERROR_MESSAGES=();
   fi
 
-  if DRYWIT.functionPresent defineEnvDefaults "${_script}"; then
+  if isFunctionPresent defineEnvDefaults "${_script}"; then
     defineEnvDefaults;
   fi
 
-  if DRYWIT.functionPresent defineEnv "${_script}"; then
+  if isFunctionPresent defineEnv "${_script}"; then
     defineEnv;
   fi
 
-  if DRYWIT.functionPresent defineKeywords "${_script}"; then
+  if isFunctionPresent defineKeywords "${_script}"; then
     defineKeywords;
   fi
 
-  DRYWIT.parseCommonInput $@;
+#  DRYWIT.parseCommonInput $@;
 
-  if DRYWIT.functionPresent parseInput "${_script}"; then
+  if isFunctionPresent parseInput "${_script}"; then
       evalEnvVars;
       parseInput $@;
   fi
 
-  DRYWIT.checkCommonInput $@;
+#  DRYWIT.checkCommonInput $@;
 
   DRYWIT.checkScript "${_script}";
 
   DRYWIT.defineDryWitRequirements;
 
-  if DRYWIT.functionPresent checkRequirements "${_script}"; then
+  if isFunctionPresent checkRequirements "${_script}"; then
     logTrace -n "Checking declared requirements";
     checkRequirements;
     logTraceResult SUCCESS "${_DW_DONE}";
   fi
 
-  if DRYWIT.functionPresent checkInput "${_script}"; then
+  if isFunctionPresent checkInput "${_script}"; then
       evalEnvVars;
       checkInput $@;
 
-      if DRYWIT.functionPresent postCheckInput "${_script}"; then
+      if isFunctionPresent postCheckInput "${_script}"; then
           postCheckInput $@;
       fi
   fi
@@ -141,7 +139,7 @@ function DRYWIT.main() {
 function DRYWIT.checkCommonInput() {
 
   if isTrue ${DRY_WIT_HELP_FLAG}; then
-    _printHelp;
+    USAGE.printHelp;
     exit 0;
   fi
 }
@@ -285,49 +283,74 @@ function DRYWIT.defineDryWitRequirements() {
   checkReq mktemp;
 }
 
-
 ## Checks if given function is present.
 ## -> 1: The function name.
-## -> 2: The script file.
+## -> 2: The script file. Optional.
 ## <- 0/${RESULT} if the function is found; 1/${FALSE} otherwise.
 ## Example:
-##   if DRYWIT.functionPresent "myFunc" "myScript.sh"; then
+##   if isFunctionPresent "myFunc" "myScript.sh"; then
 ##     echo "myFunc is defined in myScript.sh";
 ##   fi
-function DRYWIT.functionPresent() {
-  local _function=$1;
-  local _script=$2;
+function isFunctionPresent() {
+  local _function="${1}";
+  local _script="${2}";
+  local _rescode;
+  local _inc;
+  local _oldIFS="${IFS}";
 
   checkNotEmpty "function" "${_function}" 1;
 
   type ${_function} 2> /dev/null | grep -q 'function'
-  local rescode=$?;
-  if isFalse ${rescode}; then
-      if isNotEmpty "${_script}"; then
-          grep " ${_function}()" "${_script}" > /dev/null 2>&1;
-          rescode=$?;
-      fi
+  _rescode=$?;
+  if isFalse ${_rescode}; then
+    if isNotEmpty "${_script}"; then
+      grep " ${_function}()" "${_script}" > /dev/null 2>&1;
+      _rescode=$?;
+    fi
   fi
-  if isFalse ${rescode}; then
-      if isNotEmpty "${_script}"; then
-          local _oldIFS="${IFS}";
-          local _inc;
-          IFS=$' \t\n';
-          for _inc in "./$(basename ${_script} .sh).inc.sh" \
-                      "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
-            if fileExists "${_inc}"; then
-                DRYWIT.functionPresent "${_function}" "${_inc}";
-                rescode=$?;
-	              if isTrue ${rescode}; then
-                    break;
-	              fi
-            fi
-          done
-      fi
-    IFS="${_oldIFS}";
+  if isFalse ${_rescode}; then
+    if isNotEmpty "${_script}"; then
+      IFS=$' \t\n';
+      for _inc in "./$(basename ${_script} .sh).inc.sh" \
+                    "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+        IFS="${_oldIFS}";
+        if fileExists "${_inc}"; then
+          isFunctionPresent "${_function}" "${_inc}";
+          _rescode=$?;
+	        if isTrue ${_rescode}; then
+            break;
+	        fi
+        fi
+      done
+      IFS="${_oldIFS}";
+    fi
   fi
 
-  return ${rescode};
+  return ${_rescode};
+}
+
+## Checks if given function is missing.
+## -> 1: The function name.
+## -> 2: The script file. Optional.
+## <- 0/${RESULT} if the function is missing; 1/${FALSE} otherwise.
+## Example:
+##   if isFunctionMissing "myFunc" "myScript.sh"; then
+##     echo "myFunc is not defined in myScript.sh";
+##   fi
+function isFunctionMissing() {
+  local _function="${1}";
+  local _script="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "function" "${_function}" 1;
+
+  if isFunctionPresent "${_function}" "${_script}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
 }
 
 function cleanup() {
@@ -368,45 +391,6 @@ function DRYWIT.trapSignals() {
   trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP;
   #  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
 }
-
-function DRYWIT.debugVariable() {
-  local _name="${1}";
-  shift;
-  local _value="${@}";
-
-  declare -t "${_name}"="${_value}";
-#  trap "echo ${_name} is being used here." DEBUG
-}
-
-## PRIVATE/DEBUG
-## Prints the contents of given array.
-## -> 1: The name of the array.
-## Example:
-##   A=( "1" "2" "3" );
-##   _dwDebugArray "${A}"
-function __dwDebugArray() {
-  flattenArray "${1}" " + ";
-  echo "${RESULT}";
-}
+#
 
 
-## PRIVATE
-## Traces the API call to the default log file using in development.
-## Example:
-##   traceApiCall;
-function _traceApiCall() {
-  echo -n "${FUNCNAME[0]}" >> ${_dryWitDevLogFile};
-  local -i _i=0;
-  while caller $i >> ${_dryWitDevLogFile}; do
-    i=$((i+1))
-  done
-}
-
-## PRIVATE
-## Echoes a line to stdout. Useful for locating them easily when debugging.
-## -> 1: The message to print.
-## Example:
-##   debugEcho "message";
-function _debugEcho() {
-  echo $* >> ${_dryWitDevLogFile};
-}
