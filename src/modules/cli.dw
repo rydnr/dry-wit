@@ -23,13 +23,9 @@ export MULTIPLE=${TRUE};
 # -> 1: the name of the flag variable.
 # <- 0 if the flag is enabled, 1 otherwise.
 # Example:
-# function parseInput() {
-# [..]
-#   -my | --myFlag) export MY_FLAG=${TRUE};
-#                   ;;
-# [..]
-# if flagEnabled MY_FLAG; then
+#   if flagEnabled MY_FLAG; then
 #    ..
+#   fi
 function flagEnabled() {
   local _flagVar="${1}";
   local _flagVal;
@@ -186,10 +182,13 @@ function checkInput() {
   local _longNameInUpperCase;
   local _flag;
   local -a _flagsChecked;
+  local _parameterName;
+  local _parameterValue;
+  local _parameterNameInUpperCase;
   local _oldIFS="${IFS}";
-  IFS=$' \t\n';
 
   # Flags
+  IFS=$' \t\n';
   for _flag in ${_flags}; do
     IFS="${_oldIFS}";
 
@@ -260,8 +259,7 @@ function checkInput() {
       _longNameInUpperCase="${RESULT}";
       if isEmpty "${_flagsChecked[*]}" || arrayDoesNotContain "${_flagsChecked[*]}" "${_key}"; then
         if CLI.isCommandLineFlagMandatory "${_key}"; then
-          echo "Exiting - mandatory";
-          exitWithErrorCode "${_longNameInUpperCase}_IS_MANDATORY";
+          exitWithErrorCode "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} flag is mandatory";
         fi
       fi
       if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
@@ -270,6 +268,36 @@ function checkInput() {
     done
     IFS="${_oldIFS}";
   fi
+
+  # Parameters
+  IFS=$' \t\n';
+  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
+    IFS="${_oldIFS}";
+    _parameterValue="${1}";
+    shift;
+    if isEmpty "${_parameterValue}" && CLI.isCommandLineParameterMandatory "${_parameterName}"; then
+      toUpper "${_parameterName}";
+      _parameterNameInUpperCase="${RESULT}";
+      exitWithErrorCode "${_parameterNameInUpperCase}_IS_MANDATORY" "${_parameterName} is mandatory";
+    fi
+    if isFunctionDefined "dw_check_${_parameterName}_cli_parameter"; then
+      if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
+        "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}" ${@};
+        break;
+      else
+        "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}";
+      fi
+    fi
+  done
+
+  # Parameters
+  IFS=$' \t\n';
+  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
+    IFS="${_oldIFS}";
+    _parameterValue="${1}";
+    shift;
+  done
+  IFS="${_oldIFS}";
 }
 
 ## Parses the command-line arguments.
@@ -336,10 +364,28 @@ function parseInput() {
         fi
       fi
     else
-      echo "Unexpected flag: ${_flag}";
+      exitWithErrorCode INVALID_OPTION "Unexpected flag: ${_flag}";
     fi
   done
   IFS="${_oldIFS}";
+
+  # Parameters
+  IFS=$' \t\n';
+  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
+    IFS="${_oldIFS}";
+    if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
+      if isFunctionDefined "dw_parse_${_parameterName}_cli_parameter"; then
+        "dw_parse_${_parameterName}_cli_parameter" ${@};
+      fi
+      break;
+    else
+      _parameterValue="${1}";
+      shift;
+      if isFunctionDefined "dw_parse_${_parameterName}_cli_parameter"; then
+        "dw_parse_${_parameterName}_cli_parameter" "${_parameterValue}";
+      fi
+    fi
+  done
 }
 
 ## Builds a key for given command-line flag.
@@ -570,6 +616,79 @@ function CLI.retrieveCommandLineParameterDescriptionFromName() {
   return ${_rescode};
 }
 
+## Checks whether given parameter is mandatory or not.
+## -> 1: The parameter name.
+## <- 0/${TRUE} if the parameter is mandatory; 1/${FALSE} otherwise.
+## Example:
+##   if CLI.isCommandLineParameterMandatory "file"; then
+##     echo "file is mandatory";
+##   fi
+function CLI.isCommandLineParameterMandatory() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_MANDATORY_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "MANDATORY"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given parameter is single or not.
+## -> 1: The parameter name.
+## <- 0/${TRUE} if the parameter only expects a single value; 1/${FALSE} otherwise.
+## Example:
+##   if CLI.isCommandLineParameterSingle "file"; then
+##     echo "file accepts only one value";
+##   fi
+function CLI.isCommandLineParameterSingle() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_SINGLE_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "SINGLE"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+## Checks whether given parameter is multiple or not.
+## -> 1: The parameter name.
+## <- 0/${TRUE} if the parameter allows multiple values; 1/${FALSE} otherwise.
+## Example:
+##   if CLI.isCommandLineParameterMultiple "file"; then
+##     echo "file can accept multiple values";
+##   fi
+function CLI.isCommandLineParameterMultiple() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  if CLI.isCommandLineParameterSingle "${_name}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
 
 ## Prints a line describing how to run the script.
 ## <- 0/${TRUE} if this function printed anything; 1/${FALSE} otherwise.

@@ -10,6 +10,8 @@ function test_reset() {
   commandLineFlagCheckingCallbackCalled=${FALSE};
   commandLineFlagParsingCallbackCalled=${FALSE};
   checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
+  commandLineParameterCheckingCallbackCalled=${FALSE};
+  commandLineParameterParsingCallbackCalled=${FALSE};
   CLI.resetState;
 }
 
@@ -31,18 +33,26 @@ function dw_parse_file_cli_flag() {
   commandLineFlagParsingCallbackCalled=${TRUE};
 }
 
+function dw_check_file_cli_parameter() {
+  commandLineParameterCheckingCallbackCalled=${TRUE};
+}
+
+function dw_parse_file_cli_parameter() {
+  commandLineParameterParsingCallbackCalled=${TRUE};
+}
+
 function addCommandLineFlag_checking_callback_is_called_in_checkInput_test() {
   addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
   checkInput "-f" "/tmp/1.txt";
-  Assert.isTrue ${commandLineFlagCheckingCallbackCalled} "checkingCallback not called in checkInput";
-  Assert.isFalse ${commandLineFlagParsingCallbackCalled} "parsingCallback was called in checkInput";
+  Assert.isTrue ${commandLineFlagCheckingCallbackCalled} "dw_check_file_cli_flag not called in checkInput";
+  Assert.isFalse ${commandLineFlagParsingCallbackCalled} "dw_parse_file_cli_flag was called in checkInput";
 }
 
 function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
   addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
   parseInput "-f" "/tmp/1.txt";
-  Assert.isTrue ${commandLineFlagParsingCallbackCalled} "parsingCallback not called in parseInput";
-  Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "checkingCallback was called in parseInput";
+  Assert.isTrue ${commandLineFlagParsingCallbackCalled} "dw_check_file_cli_flag not called in parseInput";
+  Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "dw_parse_file_cli_flag was called in parseInput";
 }
 
 function setScriptCopyright_is_included_in_the_usage_test() {
@@ -139,4 +149,30 @@ function checkInput_checks_flags_with_arguments_test() {
   Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
   Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
 }
+
+function checkInput_checks_mandatory_parameters_test() {
+  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
+  (checkInput > /dev/null)
+  local -i _rescode=$?;
+  local _result="$(checkInput)";
+  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory parameter is missing";
+  Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
+  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+}
+
+function addCommandLineParameter_checking_callback_is_called_in_checkInput_test() {
+  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
+  checkInput "/tmp/1.txt";
+  Assert.isTrue ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was not called in checkInput";
+  Assert.isFalse ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was called in checkInput";
+}
+
+function addCommandLineParameter_parsing_callback_is_called_in_parseInput__test() {
+  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
+  parseInput "/tmp/1.txt";
+  Assert.isFalse ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was called in checkInput";
+  Assert.isTrue ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was not called in checkInput";
+}
+
+
 #
