@@ -201,6 +201,7 @@ function overrideEnvVar() {
   local _varName="${1}";
   local _varValue="${2}";
   local _varDescription="${3:-not provided}";
+  local _mandatoryOrOptional;
   local _upcasedVarName;
 
   checkNotEmpty "varName" "${_varName}" 1;
@@ -210,7 +211,12 @@ function overrideEnvVar() {
     _upcasedVarName="${RESULT}";
     ENVVAR.addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
-  defineEnvVar "${_varName}" "${_varDescription}" "${_varValue}";
+  if isEnvVarMandatory "${_varName}"; then
+    _mandatoryOrOptional="MANDATORY";
+  else
+    _mandatoryOrOptional="OPTIONAL";
+  fi
+  defineEnvVar "${_varName}" "${_mandatoryOrOptional}" "${_varDescription}" "${_varValue}";
 
   return ${TRUE};
 }
@@ -232,6 +238,7 @@ function defineButDoNotOverrideEnvVar() {
   local _varDescription="${2}";
   local _varDefault="${3}";
   local _varCommand="${4}";
+  local _mandatoryOrOptional;
   local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
@@ -242,7 +249,12 @@ function defineButDoNotOverrideEnvVar() {
       logTraceResult SUCCESS "skipped";
       rescode=${TRUE};
   else
-    defineEnvVar "${_varName}" "${_varDescription}" "${_varDefault}" "${_varCommand}";
+    if isEnvVarMandatory "${_varName}"; then
+      _mandatoryOrOptional="MANDATORY";
+    else
+      _mandatoryOrOptional="OPTIONAL";
+    fi
+    defineEnvVar "${_varName}" "${_mandatoryOrOptional}" "${_varDescription}" "${_varDefault}" "${_varCommand}";
     rescode=$?;
   fi
 
@@ -523,7 +535,7 @@ function ENVVAR.evalEnvVar() {
       export RESULT="${_varValue}";
       rescode=${TRUE};
     else
-      rescode==${FALSE};
+      rescode=${FALSE};
     fi
   fi
 
@@ -540,7 +552,7 @@ function evalEnvVars() {
   IFS=$' \t\n';
   for _var in "${__DW_ENVVAR_ENV_VARIABLES[@]}"; do
     IFS="${_oldIFS}";
-    ENVVAR.evalEnvVar ${var};
+    ENVVAR.evalEnvVar "${_var}";
   done
   IFS="${_oldIFS}";
 }
