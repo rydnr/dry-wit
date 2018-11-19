@@ -1,6 +1,9 @@
 # IFS stuff
-_OLD_IFS="${IFS}";
-export IFS=$'\n\t\040';
+#_OLD_IFS="${IFS}";
+#export IFS=$'\n\t\040';
+
+export MANDATORY=${TRUE};
+export OPTIONAL=${FALSE};
 
 ## Performs some checks on the script itself.
 ## -> 1: The script.
@@ -8,6 +11,8 @@ function DRYWIT.checkScript() {
   local _script=$1;
   local _v;
   local _f;
+
+  checkNotEmpty "script" "${_script}" 1;
 
   setLogCategory "sanity-check";
   logTrace -n "Checking mandatory constants";
@@ -35,12 +40,15 @@ function DRYWIT.checkScript() {
 function DRYWIT.setup() {
   DRYWIT.trapSignals;
   local _f;
-  DRYWIT.retrieveSettingsFiles;
-  local _files="${RESULT}"
+  local _files;
   local _oldIFS="${IFS}";
-  IFS=$' \t\n';
 
+  DRYWIT.retrieveSettingsFiles;
+  _files="${RESULT}"
+
+  IFS=$' \t\n';
   for _f in ${_files}; do
+    IFS="${_oldIFS}";
     sourceFileIfExists "${_f}";
   done
   IFS="${_oldIFS}";
@@ -59,9 +67,11 @@ function DRYWIT.retrieveSettingsFiles() {
   local _d;
   local _result="";
   local _oldIFS="${IFS}";
+
   IFS=$' \t\n';
   for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
     for _d in "${DRY_WIT_SCRIPT_FOLDER}" "."; do
+      IFS="${_oldIFS}";
       _result="${_result} ${_d}/${_f}";
     done
   done
@@ -72,7 +82,6 @@ function DRYWIT.retrieveSettingsFiles() {
 
 ## PRIVATE
 ## dry-wit's core process.
-
 function DRYWIT.main() {
   local _script="${1#./}";
   shift;
@@ -103,14 +112,10 @@ function DRYWIT.main() {
     defineKeywords;
   fi
 
-#  DRYWIT.parseCommonInput $@;
-
   if isFunctionPresent parseInput "${_script}"; then
       evalEnvVars;
       parseInput $@;
   fi
-
-#  DRYWIT.checkCommonInput $@;
 
   DRYWIT.checkScript "${_script}";
 
@@ -133,63 +138,6 @@ function DRYWIT.main() {
 
   setLogCategory "main";
   main;
-}
-
-## Checks input common to all scripts.
-function DRYWIT.checkCommonInput() {
-
-  if isTrue ${DRY_WIT_HELP_FLAG}; then
-    USAGE.printHelp;
-    exit 0;
-  fi
-}
-
-## Parses the common flags. It sets the log level, whether to eval defaults, and
-## the help flag.
-## -> *: The arguments.
-function DRYWIT.parseCommonInput() {
-  local _help=${FALSE};
-  local _argsToPassToWrappedLogic=${FALSE};
-
-  setInfoEnabled;
-
-  local _flags=$(extractFlags $@);
-  local _flagCount=0;
-  local _oldIFS="${IFS}";
-  local _flag;
-  IFS=$' \t\n';
-  for _flag in ${_flags}; do
-    if isTrue ${_argsToPassToWrappedLogic}; then
-      DRY_WIT_REMAINING_ARGS="${DRY_WIT_REMAINING_ARGS} ${_flag}";
-    else
-      _flagCount=$((_flagCount+1));
-      case ${_flag} in
-        -h | --help)
-          _help=${TRUE};
-          ;;
-        -v)
-          setDebugEnabled;
-          ;;
-        -vv)
-          setTraceEnabled;
-          ;;
-        -q)
-          enableQuietMode;
-          ;;
-        -X:e | --X:eval-defaults)
-          export DRY_WIT_EVAL_DEFAULTS_FLAG=1;
-          ;;
-        --)
-          _argsToPassToWrappedLogic=${TRUE};
-          shift;
-          ;;
-      esac
-    fi
-  done
-  IFS="${_oldIFS}";
-  shift ${_flagCount};
-
-  export DRY_WIT_HELP_FLAG=${_help};
 }
 
 ## Appends a new built-in error to BUILTIN_ERRORS.

@@ -114,9 +114,6 @@ function exitWithErrorCode() {
   printErrorMessage "${_label}" "$@";
   _rescode=$?;
   cleanup;
-  if isErrorDefined "${_label}"; then
-    echo "${_label} was defined (code ${_rescode})";
-  fi
   
   exit ${_rescode};
 }

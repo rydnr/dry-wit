@@ -127,17 +127,18 @@ function evalVar() {
   return ${rescode};
 }
 
-# PUBLIC
-# Declares a new environment variable.
-# -> 1: The variable name.
-# -> 2: The variable description (optional).
-# -> 3: The default value (optional).
-# -> 4: The command to retrieve the actual value (optional).
+## Declares a new environment variable.
+## -> 1: The variable name.
+## -> 2: Whether is the variable is mandatory or not. Either MANDATORY or OPTIONAL.
+## -> 3: The variable description.
+## -> 4: The default value (optional).
+## -> 5: The command to retrieve the actual value (optional).
 function defineEnvVar() {
   local _varName="${1}";
-  local _varDescription="${2}";
-  local _varDefault="${3}";
-  local _varCommand="${4:-}";
+  local _varMandatory="${2}";
+  local _varDescription="${3}";
+  local _varDefault="${4}";
+  local _varCommand="${5:-}";
   local _upcasedVarName;
   local _varValue;
   local _defaultValue;
@@ -145,10 +146,13 @@ function defineEnvVar() {
   local _command;
 
   checkNotEmpty "name" "${_varName}" 1;
-  checkNotEmpty "description" "${_varDescription}" 2;
+  checkMandatoryOrOptional "mandatory or optional" "${_varMandatory}" 2;
+  checkNotEmpty "description" "${_varDescription}" 3;
 
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
+
+  ENVVAR.addEnvVarMandatory "${_upcasedVarName}" "${_varMandatory}";
 
   if ENVVAR.evalVarDescription "${_upcasedVarName}"; then
       _description="${RESULT}";
@@ -286,6 +290,72 @@ function ENVVAR.addOverriddenEnvVar() {
     __DW_ENVVAR_OVERRIDDEN_ENV_VARIABLES["${_varName}"]="${_varValue}";
     ENVVAR.addEnvVar "${_varName}" "${_varValue}";
   fi
+}
+
+## Annotates whether given environment variable is mandatory or optional.
+## -> 1: The variable name.
+## -> 2: Either MANDATORY or OPTIONAL.
+## Example;
+##   ENVVAR.addEnvVarMandatory "MY_VAR" OPTIONAL;
+function ENVVAR.addEnvVarMandatory() {
+  local _varName="${1}";
+  local _varMandatory="${2}";
+
+  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty "mandatory" "${_varMandatory}" 1;
+
+  __DW_ENVVAR_MANDATORY_ENVIRONMENT_VARIABLES["${_varName}"]="${_varMandatory}";
+}
+
+## Checks whether given environment variable is mandatory.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the variable is mandatory; 1/${FALSE} otherwise.
+## Example;
+##   if isEnvVarMandatory "MY_VAR"; then
+##     echo "MY_VAR is mandatory";
+##   fi
+function isEnvVarMandatory() {
+  local _varName="${1}";
+  local _varMandatory;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_varName}" 1;
+
+  _varMandatory="${__DW_ENVVAR_MANDATORY_ENVIRONMENT_VARIABLES[${_varName}]}";
+
+  if areEqual ${MANDATORY} ${_varMandatory} || areEqual "${_varMandatory}" "MANDATORY"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+
+## Checks whether given environment variable is optional.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the variable is optional; 1/${FALSE} otherwise.
+## Example;
+##   if isEnvVarMandatory "MY_VAR"; then
+##     echo "MY_VAR is optional";
+##   fi
+function isEnvVarOptional() {
+  local _varName="${1}";
+  local _varMandatory;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_varName}" 1;
+
+  _varMandatory="${__DW_ENVVAR_MANDATORY_ENVIRONMENT_VARIABLES[${_varName}]}";
+
+  if areEqual ${OPTIONAL} ${_varMandatory} || areEqual "${_varMandatory}" "OPTIONAL"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 ## Annotates the description of given environment variable.
@@ -653,6 +723,7 @@ EOF
 function ENVVAR.resetState() {
   __DW_ENVVAR_ENV_VARIABLES=();
   clearAssociativeArray __DW_ENVVAR_OVERRIDDEN_ENV_VARIABLES;
+  clearAssociativeArray __DW_ENVVAR_MANDATORY_ENVIRONMENT_VARIABLES;
   clearAssociativeArray __DW_ENVVAR_ENVIRONMENT_VARIABLES_DEFAULTS;
   clearAssociativeArray __DW_ENVVAR_ENVIRONMENT_VARIABLES_DESCRIPTIONS;
   clearAssociativeArray __DW_ENVVAR_ENVIRONMENT_VARIABLES_COMMANDS;
@@ -660,6 +731,7 @@ function ENVVAR.resetState() {
 
 declare -ag __DW_ENVVAR_ENV_VARIABLES;
 declare -Ag __DW_ENVVAR_OVERRIDDEN_ENV_VARIABLES;
+declare -Ag __DW_ENVVAR_MANDATORY_ENVIRONMENT_VARIABLES;
 declare -Ag __DW_ENVVAR_ENVIRONMENT_VARIABLES_DEFAULTS;
 declare -Ag __DW_ENVVAR_ENVIRONMENT_VARIABLES_DESCRIPTIONS;
 declare -Ag __DW_ENVVAR_ENVIRONMENT_VARIABLES_COMMANDS;

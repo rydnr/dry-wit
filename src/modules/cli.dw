@@ -1,7 +1,5 @@
 export EXPECTS_ARGUMENT=${TRUE};
 export NO_ARGUMENT=${FALSE};
-export MANDATORY=${TRUE};
-export OPTIONAL=${FALSE};
 export SINGLE=${FALSE};
 export MULTIPLE=${TRUE};
 
@@ -465,6 +463,15 @@ function CLI.checkEnvironmentVariables() {
   IFS=$' \t\n';
   for _envVarName in ${_envVars}; do
     IFS="${_oldIFS}";
+
+    if isEnvVarMandatory "${_envVarName}"; then
+      evalVar "${_envVarName}";
+      _envVarValue="${RESULT}";
+      if isEmpty "${_envVarValue}"; then
+        exitWithError "${_envVarName}_IS_MANDATORY" "${_envVarName} environment variable is mandatory";
+      fi
+    fi
+
     toLower "${_envVarName}";
     _envVarNameInLowerCase="${RESULT}";
     if isFunctionDefined "dw_check_${_envVarNameInLowerCase}_cli_envvar"; then

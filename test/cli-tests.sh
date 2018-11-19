@@ -12,10 +12,11 @@ function test_reset() {
   checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
   commandLineParameterCheckingCallbackCalled=${FALSE};
   commandLineParameterParsingCallbackCalled=${FALSE};
-  envVarCheckingCallbackCalled=${FALSE};
-  envVarParsingCallbackCalled=${FALSE};
+  optionalEnvVarCheckingCallbackCalled=${FALSE};
+  optionalEnvVarParsingCallbackCalled=${FALSE};
   CLI.resetState;
   CLI.defaultState;
+  ENVVAR.resetState;
 }
 
 ## Called before each test.
@@ -44,12 +45,12 @@ function dw_parse_file_cli_parameter() {
   commandLineParameterParsingCallbackCalled=${TRUE};
 }
 
-function dw_check_my_envvar_cli_envvar() {
-  envVarCheckingCallbackCalled=${TRUE};
+function dw_check_my_optional_envvar_cli_envvar() {
+  optionalEnvVarCheckingCallbackCalled=${TRUE};
 }
 
-function dw_parse_my_envvar_cli_envvar() {
-  envVarParsingCallbackCalled=${TRUE};
+function dw_parse_my_optional_envvar_cli_envvar() {
+  optionalEnvVarParsingCallbackCalled=${TRUE};
 }
 
 function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
@@ -242,10 +243,17 @@ function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
 }
 
 function checkInput_calls_a_check_callback_for_defined_environment_variables_test() {
-  defineEnvVar MY_ENVVAR "An environment variable used for testing" "default-value";
+  defineEnvVar MY_OPTIONAL_ENVVAR OPTIONAL "An environment variable used for testing" "default-value";
   checkInput;
-  Assert.isTrue ${envVarCheckingCallbackCalled} "dw_check_my_envvar_cli_envvar was not called in parseInput";
-  Assert.isFalse ${envVarParsingCallbackCalled} "dw_parse_my_envvar_cli_envvar was called in parseInput";
+  Assert.isTrue ${optionalEnvVarCheckingCallbackCalled} "dw_check_my_optional_envvar_cli_envvar was not called in parseInput";
+  Assert.isFalse ${optionalEnvVarParsingCallbackCalled} "dw_parse_my_optional_envvar_cli_envvar was called in parseInput";
+}
+
+function checkInput_checks_mandatory_environment_variables_are_not_empty_test() {
+  defineEnvVar MY_MANDATORY_ENVVAR MANDATORY "An environment variable used for testing" "default-value";
+  export MY_MANDATORY_ENVVAR="";
+  local _result="$(MY_MANDATORY_ENVVAR="" checkInput)";
+  Assert.isNotEmpty "${_result}" "checkInput didn't check for MY_MANDATORY_ENVVAR";
 }
 
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
@@ -253,6 +261,6 @@ declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
 declare -ig commandLineParameterCheckingCallbackCalled=${FALSE};
 declare -ig commandLineParameterParsingCallbackCalled=${FALSE};
-declare -ig envVarCheckingCallbackCalled=${FALSE};
-declare -ig envVarParsingCallbackCalled=${FALSE};
+declare -ig optionalEnvVarCheckingCallbackCalled=${FALSE};
+declare -ig optionalEnvVarParsingCallbackCalled=${FALSE};
 #
