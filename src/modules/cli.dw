@@ -6,6 +6,7 @@ export SINGLE=${FALSE};
 export MULTIPLE=${TRUE};
 
 import debug;
+import envvar;
 
 # Checks whether a given flag is enabled.
 # -> 1: the name of the flag variable.
@@ -181,6 +182,8 @@ function checkInput() {
   CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[*]}";
 
   CLI.checkCommandLineParameters $@;
+
+  CLI.checkEnvironmentVariables;
 }
 
 ## Perform some checks on given flag.
@@ -439,6 +442,38 @@ function CLI.checkCommandLineParameters() {
       else
         "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}";
       fi
+    fi
+  done
+  IFS="${_oldIFS}";
+}
+
+## Checks the environment variables.
+## Example:
+##   CLI.checkEnvironmentVariables;
+function CLI.checkEnvironmentVariables() {
+  local _envVars;
+  local -i _callbackDefined;
+  local _envVarName;
+  local _envVarValue;
+  local _envVarNameInLowerCase;
+
+  retrieveCustomEnvironmentVariables;
+  _envVars="${RESULT}";
+
+  local _oldIFS="${IFS}";
+
+  IFS=$' \t\n';
+  for _envVarName in ${_envVars}; do
+    IFS="${_oldIFS}";
+    toLower "${_envVarName}";
+    _envVarNameInLowerCase="${RESULT}";
+    if isFunctionDefined "dw_check_${_envVarNameInLowerCase}_cli_envvar"; then
+      _callbackDefined=${TRUE};
+    else
+      _callbackDefined=${FALSE};
+    fi
+    if isTrue ${_callbackDefined}; then
+      "dw_check_${_envVarNameInLowerCase}_cli_envvar" "${_envVar}"
     fi
   done
   IFS="${_oldIFS}";

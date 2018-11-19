@@ -12,6 +12,8 @@ function test_reset() {
   checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
   commandLineParameterCheckingCallbackCalled=${FALSE};
   commandLineParameterParsingCallbackCalled=${FALSE};
+  envVarCheckingCallbackCalled=${FALSE};
+  envVarParsingCallbackCalled=${FALSE};
   CLI.resetState;
   CLI.defaultState;
 }
@@ -40,6 +42,14 @@ function dw_check_file_cli_parameter() {
 
 function dw_parse_file_cli_parameter() {
   commandLineParameterParsingCallbackCalled=${TRUE};
+}
+
+function dw_check_my_envvar_cli_envvar() {
+  envVarCheckingCallbackCalled=${TRUE};
+}
+
+function dw_parse_my_envvar_cli_envvar() {
+  envVarParsingCallbackCalled=${TRUE};
 }
 
 function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
@@ -227,8 +237,15 @@ function addCommandLineParameter_parsing_callback_is_called_in_parseInput_test()
 function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
   addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
   parseInput "-f" "/tmp/1.txt";
-  Assert.isTrue ${commandLineFlagParsingCallbackCalled} "dw_check_file_cli_flag not called in parseInput";
+  Assert.isTrue ${commandLineFlagParsingCallbackCalled} "dw_check_file_cli_flag was not called in parseInput";
   Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "dw_parse_file_cli_flag was called in parseInput";
+}
+
+function checkInput_calls_a_check_callback_for_defined_environment_variables_test() {
+  defineEnvVar MY_ENVVAR "An environment variable used for testing" "default-value";
+  checkInput;
+  Assert.isTrue ${envVarCheckingCallbackCalled} "dw_check_my_envvar_cli_envvar was not called in parseInput";
+  Assert.isFalse ${envVarParsingCallbackCalled} "dw_parse_my_envvar_cli_envvar was called in parseInput";
 }
 
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
@@ -236,4 +253,6 @@ declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
 declare -ig commandLineParameterCheckingCallbackCalled=${FALSE};
 declare -ig commandLineParameterParsingCallbackCalled=${FALSE};
+declare -ig envVarCheckingCallbackCalled=${FALSE};
+declare -ig envVarParsingCallbackCalled=${FALSE};
 #

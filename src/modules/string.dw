@@ -50,7 +50,6 @@ function startsWith() {
   return ${_rescode};
 }
 
-## PUBLIC
 ## Checks whether the first parameter ends with the second value.
 ## -> 1: The text.
 ## -> 2: The substring to check.
@@ -87,6 +86,20 @@ function toUpper() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
   local result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${result}";
+}
+
+## Converts given string to lower case.
+## -> 1: The string to convert.
+## <- RESULT: The converted string.
+## Example:
+##   local _text="ABC";
+##   toLower "${_text}";
+##   local _lowerCase="${RESULT}";
+function toLower() {
+  local _text="${1}";
+  checkNotEmpty "text" "${_text}" 1;
+  local result=$(echo "${_text}" | awk '{print tolower($0);}');
   export RESULT="${result}";
 }
 

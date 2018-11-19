@@ -35,3 +35,15 @@ function removePrefix_test() {
   Assert.isTrue ${_done} "removePrefix failed";
   Assert.areEqual "${_result}" "abc" "removePrefix --abc returned ${_result} instead of abc";
 }
+
+function toUpper_test() {
+  toUpper "abc";
+  local _result="${RESULT}";
+  Assert.areEqual "ABC" "${_result}" "toUpper failed for 'abc'";
+}
+
+function toLower_test() {
+  toLower "ABC";
+  local _result="${RESULT}";
+  Assert.areEqual "abc" "${_result}" "toLower failed for 'ABC'";
+}

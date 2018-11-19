@@ -1,23 +1,3 @@
-if [ -z ${ENV_VARIABLES+x} ]; then
-  declare -a ENV_VARIABLES;
-fi
-
-if [ -z ${OVERRIDEN_ENV_VARIABLES+x} ]; then
-  declare -A OVERRIDDEN_ENV_VARIABLES;
-fi
-
-if [ -z ${ENVIRONMENT_VARIABLES_DEFAULTS+x} ]; then
-  declare -A ENVIRONMENT_VARIABLES_DEFAULTS;
-fi
-
-if [ -z ${ENVIRONMENT_VARIABLES_DESCRIPTIONS+x} ]; then
-  declare -A ENVIRONMENT_VARIABLES_DESCRIPTIONS;
-fi
-
-if [ -z ${ENVIRONMENT_VARIABLES_COMMANDS+x} ]; then
-  declare -A ENVIRONMENT_VARIABLES_COMMANDS;
-fi
-
 # Bash: Passing variables by reference
 # Copyright (C) 2010 Freddy Vulto
 # Version: upvars-0.9.dev
@@ -61,7 +41,6 @@ function upvar() {
     fi
 }
 
-
 # Assign variables one scope above the caller
 # Usage: local varname [varname ...] &&
 #        upvars [-v varname value] | [-aN varname [value ...]] ...
@@ -82,7 +61,7 @@ function upvars() {
   local _flag="${1}";
 
   if isEmpty "${_flag}"; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
+    exitWithError UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
   fi
 
   while (( $# )); do
@@ -125,11 +104,15 @@ There is NO WARRANTY, to the extent permitted by law."
   done
 }
 
-# PRIVATE
-# Retrieves the value of given variable.
-# -> 1: The variable name.
-# <- RESULT: The variable value.
-function _evalVar() {
+## Retrieves the value of given variable.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the value could be retrieved; 1/${FALSE} otherwise.
+## <- RESULT: The variable value.
+## Example:
+##   if evalVar "MY_VAR"; then
+##     echo "MY_VAR -> ${RESULT}";
+##   fi
+function evalVar() {
   local _varName="${1}";
   local -i rescode;
 
@@ -167,28 +150,28 @@ function defineEnvVar() {
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
 
-  if _evalVarDescription "${_upcasedVarName}"; then
+  if ENVVAR.evalVarDescription "${_upcasedVarName}"; then
       _description="${RESULT}";
   fi
 
   if isEmpty "${_description}"; then
-    _addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
+    ENVVAR.addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
   fi
 
   if isNotEmpty "${_varDefault}"; then
-    _addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
-    if _evalVarDefault "${_upcasedVarName}"; then
+    ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
+    if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
       _defaultValue="${RESULT}";
 
-      _evalVar "${_upcasedVarName}";
+      evalVar "${_upcasedVarName}";
       _varValue="${RESULT}";
 
       if isEmpty "${_varValue}"; then
         if isNotEmpty "${_defaultValue}"; then
           _varValue="${_defaultValue}";
         elif isNotEmpty "${_varCommand}"; then
-          _addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
-          if _evalVarCommand "${_upcasedVarName}"; then
+          ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
+          if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
             _varValue="${RESULT}";
           fi
         fi
@@ -199,7 +182,7 @@ function defineEnvVar() {
   fi
 
   if isNotEmpty "${_varValue}"; then
-    _addEnvVar "${_upcasedVarName}" "${_varValue}";
+    ENVVAR.addEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
 
   return ${TRUE};
@@ -221,7 +204,7 @@ function overrideEnvVar() {
   if isEnvVarDefined ${_varName}; then
     toUpper "${_varName}";
     _upcasedVarName="${RESULT}";
-    _addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
+    ENVVAR.addOverriddenEnvVar "${_upcasedVarName}" "${_varValue}";
   fi
   defineEnvVar "${_varName}" "${_varDescription}" "${_varValue}";
 
@@ -262,89 +245,105 @@ function defineButDoNotOverrideEnvVar() {
   return ${rescode};
 }
 
-# PRIVATE
-# Annotates given environment variable.
-# -> 1: The variable name.
-# -> 2: The value.
-function _addEnvVar() {
+## Retrieves the environment variables.
+## <- RESULT: The environment variables.
+## Example:
+##    retrieveCustomEnvironmentVariables;
+##    echo "Custom environment variables: ${RESULT}";
+function retrieveCustomEnvironmentVariables() {
+  export RESULT="${__DW_ENVVAR_ENV_VARIABLES[*]}";
+}
+
+## Annotates given environment variable.
+## -> 1: The variable name.
+## -> 2: The value.
+function ENVVAR.addEnvVar() {
   local _varName="${1}";
   local _varValue="${2:-}";
 
   checkNotEmpty "varName" "${_varName}" 1;
 
   if ! isEnvVarDefined "${_varName}"; then
-    appendEnvVariable ${_varName} ENV_VARIABLES;
+    appendEnvVariable ${_varName} __DW_ENVVAR_ENV_VARIABLES;
   fi
   upvar "${_varName}" "${_varValue}";
 
   export "${_varName}"="${_varValue}";
 }
 
-# PRIVATE
-# Annotates given environment variable as overridden.
-# -> 1: The variable name.
-# -> 2: The value.
-function _addOverriddenEnvVar() {
+## Annotates given environment variable as overridden.
+## -> 1: The variable name.
+## -> 2: The value.
+## Example;
+##   ENVVAR.addOverriddenEnvvar "MY_VAR" "MY_VAR's new value";
+function ENVVAR.addOverriddenEnvVar() {
   local _varName="${1}";
   local _varValue="${2:-}";
 
   checkNotEmpty "varName" "${_varName}" 1;
 
   if isEnvVarDefined "${_varName}"; then
-      OVERRIDDEN_ENV_VARIABLES["${_varName}"]="${_varValue}";
-      _addEnvVar "${_varName}" "${_varValue}";
+    __DW_ENVVAR_OVERRIDDEN_ENV_VARIABLES["${_varName}"]="${_varValue}";
+    ENVVAR.addEnvVar "${_varName}" "${_varValue}";
   fi
 }
 
-# PRIVATE
-# Annotates the description of given environment variable.
-# -> 1: The variable name.
-# -> 2: The description.
-function _addEnvVarDescription() {
+## Annotates the description of given environment variable.
+## -> 1: The variable name.
+## -> 2: The description.
+## Example;
+##   ENVVAR.addEnvVarDescription "MY_VAR" "MY_VAR description";
+function ENVVAR.addEnvVarDescription() {
   local _varName="${1}";
   local _varDescription="${2}";
 
   checkNotEmpty "name" "${_varName}" 1;
   checkNotEmpty "description" "${_varDescription}" 1;
 
-  ENVIRONMENT_VARIABLES_DESCRIPTIONS["${_varName}"]="${_varDescription}";
+  __DW_ENVVAR_ENVIRONMENT_VARIABLES_DESCRIPTIONS["${_varName}"]="${_varDescription}";
 }
 
-# PRIVATE
-# Annotates the default value of given environment variable.
-# -> 1: The variable name.
-# -> 2: The default value.
-function _addEnvVarDefault() {
+## Annotates the default value of given environment variable.
+## -> 1: The variable name.
+## -> 2: The default value.
+## Example;
+##   ENVVAR.addEnvVarDefault "MY_VAR" "MY_VAR's default value";
+function ENVVAR.addEnvVarDefault() {
   local _varName="${1}";
   local _varDefault="${2}";
 
   checkNotEmpty "name" "${_varName}" 1;
   checkNotEmpty "default" "${_varDefault}" 1;
 
-  ENVIRONMENT_VARIABLES_DEFAULTS["${_varName}"]="${_varDefault}";
+  __DW_ENVVAR_ENVIRONMENT_VARIABLES_DEFAULTS["${_varName}"]="${_varDefault}";
 }
 
-# PRIVATE
-# Annotates the command of given environment variable.
-# -> 1: The variable name.
-# -> 2: The command.
-function _addEnvVarCommand() {
+## Annotates the command of given environment variable.
+## -> 1: The variable name.
+## -> 2: The command.
+## Example;
+##   ENVVAR.addEnvVarCommand "MY_VAR" "curl http://zeroconf.example.com/version | bash";
+function ENVVAR.addEnvVarCommand() {
   local _varName="${1}";
   local _varCommand="${2}";
 
   checkNotEmpty "name" "${_varName}" 1;
   checkNotEmpty "command" "${_varCommand}" 1;
 
-  ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]="${_varCommand}";
+  __DW_ENVVAR_ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]="${_varCommand}";
 }
 
-# Checks whether giver variable is defined.
-# -> 1: The variable name.
-# <- 0/${TRUE} if the variable is defined; 1/${FALSE} otherwise.
+## Checks whether giver variable is defined.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the variable is defined; 1/${FALSE} otherwise.
+## Example:
+##   if isEnvVarDefined "MY_VAR"; then
+##     echo "MY_VAR is defined already";
+##   fi
 function isEnvVarDefined() {
   local _varName="${1}";
   local e;
-  local rescode=${FALSE};
+  local -i rescode=${FALSE};
 
   checkNotEmpty "varName" "${_varName}" 1;
 
@@ -364,7 +363,7 @@ function isEnvVarDefined() {
 #  IFS=$' \t\n';
 ##  set +o nounset
 #  local _e;
-#  for _e in ${#ENV_VARIABLES[@]}; do
+#  for _e in ${#__DW_ENVVAR_ENV_VARIABLES[@]}; do
 #    if [[ "${e}" == "${_varName}" ]]; then
 #      rescode=${TRUE};
 #      break;
@@ -376,22 +375,22 @@ function isEnvVarDefined() {
   return ${rescode};
 }
 
-# Removes the ${..} envelope.
-# -> 1: The variable name.
-# <- 0/${TRUE} if the envelope was removed; 1/${FALSE} otherwise.
-# <- RESULT: the variable name, without envelope, if existed. Unset otherwise.
-# Example:
-#  if _removeDollarSquareBrackets '${_bla}'; then
-#    echo "result -> ${RESULT}" # _bla
-#  fi
-function _removeDollarSquareBrackets() {
+## Removes the ${..} envelope.
+## -> 1: The variable name.
+## <- 0/${TRUE} if the envelope was removed; 1/${FALSE} otherwise.
+## <- RESULT: the variable name, without envelope, if existed. Unset otherwise.
+## Example:
+##  if ENVVAR.removeDollarSquareBrackets '${_bla}'; then
+##    echo "result -> ${RESULT}" # _bla
+##  fi
+function ENVVAR.removeDollarSquareBrackets() {
   local _varName="${1}";
   local -i rescode;
   local result;
 
-  if [ "${_varName#$\{}" == "${_varName}" ]; then
+  if areEqual "${_varName#$\{}" "${_varName}"; then
       rescode=${FALSE};
-  elif [ "${_varName%\}}" == "${_varName}" ]; then
+  elif areEqual "${_varName%\}}" "${_varName}"; then
       rescode=${FALSE};
   else
     rescode=${TRUE};
@@ -402,66 +401,76 @@ function _removeDollarSquareBrackets() {
   return ${rescode};
 }
 
-# Evaluates given environment variable.
-# -> 1: the variable name.
-function _evalEnvVar() {
+## Evaluates given environment variable.
+## -> 1: the variable name.
+## <- 0/${TRUE} if the environment variable is evaluated successfully; 1/${FALSE} otherwise.
+## Example:
+##   if ENVVAR.evalEnvVar "MY_VAR"; then
+##     echo "MY_VAR -> ${RESULT}";
+##   fi
+function ENVVAR.evalEnvVar() {
   local _varName="${1}";
   local -i rescode;
 
   checkNotEmpty "varName" "${_varName}" 1;
 
-  if _removeDollarSquareBrackets "${_varName}"; then
-      _evalEnvVar "${RESULT}";
+  if ENVVAR.removeDollarSquareBrackets "${_varName}"; then
+    ENVVAR.evalEnvVar "${RESULT}";
   else
-    _evalVarDefault "${_varName}";
+    ENVVAR.evalVarDefault "${_varName}";
     local _defaultValue="${RESULT}";
-    _evalVar "${_varName}";
+    evalVar "${_varName}";
     local _varValue="${RESULT}";
 
     if isEmpty "${_varValue}"; then
-        if isNotEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
-            #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
-            _evalVarCommand "${_varName}";
-            local _defaultCommand="${RESULT}";
-            #      echo "${_defaultCommand}";
-            if isNotEmpty "${_defaultCommand}"; then
-                logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
-                local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
-                if isNotEmpty "${_aux}"; then
-                    _defaultValue="${_aux}";
-                    logTraceResult SUCCESS "${_aux}"
-                else
-                  logTraceResult FAILURE "${_DW_FAILED}"
-                fi
-            fi
+      if isNotEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
+        #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
+        ENVVAR.evalVarCommand "${_varName}";
+        local _defaultCommand="${RESULT}";
+        #      echo "${_defaultCommand}";
+        if isNotEmpty "${_defaultCommand}"; then
+          logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
+          local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
+          if isNotEmpty "${_aux}"; then
+            _defaultValue="${_aux}";
+            logTraceResult SUCCESS "${_aux}";
+          else
+            logTraceResult FAILURE "failed";
+          fi
         fi
-        _varValue="${_defaultValue}";
+      fi
+      _varValue="${_defaultValue}";
     fi
 
-    if isNotEmpty ${_varValue} && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
-        while [[ "${_varValue}" =~ .*'$'.* ]]; do
-          _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
-        done
+    if isNotEmpty "${_varValue}" && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
+      while [[ "${_varValue}" =~ .*'$'.* ]]; do
+        _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
+      done
     fi
 
     if isNotEmpty "${_varValue}"; then
-        export ${_varName}="${_varValue}" 2> /dev/null;
-        export RESULT="${_varValue}";
-        rescode=${TRUE};
+      export ${_varName}="${_varValue}" 2> /dev/null;
+      export RESULT="${_varValue}";
+      rescode=${TRUE};
     else
-      rescode=${FALSE};
+      rescode==${FALSE};
     fi
   fi
 
   return ${rescode};
 }
 
+## Resolves the value of all custom environment variables.
+## Example:
+##   evalEnvVars;
 function evalEnvVars() {
   local _oldIFS="${IFS}";
-  local var;
+  local _var;
+
   IFS=$' \t\n';
-  for var in "${ENV_VARIABLES[@]}"; do
-    _evalEnvVar ${var};
+  for _var in "${__DW_ENVVAR_ENV_VARIABLES[@]}"; do
+    IFS="${_oldIFS}";
+    ENVVAR.evalEnvVar ${var};
   done
   IFS="${_oldIFS}";
 }
@@ -471,17 +480,17 @@ function evalEnvVars() {
 ## <- 0/${TRUE} if the variable is indeed overridden; 1/${FALSE} otherwise.
 ## <- RESULT: The value of the overridden variable.
 ## Example:
-##   if _evalOverriddenVar "myVar"; then
+##   if ENVVAR.evalOverriddenVar "myVar"; then
 ##     echo "myVar -> ${RESULT}";
 ##   fi
-function _evalOverriddenVar() {
+function ENVVAR.evalOverriddenVar() {
   local _varName="${1}";
   local result;
   local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  result="${OVERRIDDEN_ENV_VARIABLES[${_varName}]}";
+  result="${__DW_ENVVAR_OVERRIDDEN_ENV_VARIABLES[${_varName}]}";
   if isEmpty "${result}"; then
       rescode=${FALSE};
   else
@@ -497,17 +506,17 @@ function _evalOverriddenVar() {
 ## <- 0/${TRUE} if the variable description is defined; 1/${FALSE} otherwise.
 ## <- RESULT: The variable description.
 ## Example:
-##   if _evalVarDescription "myVar"; then
+##   if ENVVAR.evalVarDescription "myVar"; then
 ##     echo "myVar -> ${RESULT}";
 ##   fi
-function _evalVarDescription() {
+function ENVVAR.evalVarDescription() {
   local _varName="${1}";
   local result;
   local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  result="${ENVIRONMENT_VARIABLES_DESCRIPTIONS[${_varName}]}";
+  result="${__DW_ENVVAR_ENVIRONMENT_VARIABLES_DESCRIPTIONS[${_varName}]}";
   if isEmpty "${result}"; then
       rescode=${FALSE};
   else
@@ -523,17 +532,17 @@ function _evalVarDescription() {
 ## <- 0/${TRUE} if the default value is defined; 1/${FALSE} otherwise.
 ## <- RESULT: The default value..
 ## Example:
-##   if _evalVarDefault "myVar"; then
+##   if ENVVAR.evalVarDefault "myVar"; then
 ##     echo "myVar -> ${RESULT}";
 ##   fi
-function _evalVarDefault() {
+function ENVVAR.evalVarDefault() {
   local _varName="${1}";
   local result;
   local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  result="${ENVIRONMENT_VARIABLES_DEFAULTS[${_varName}]}";
+  result="${__DW_ENVVAR_ENVIRONMENT_VARIABLES_DEFAULTS[${_varName}]}";
   if isEmpty "${result}"; then
       rescode=${FALSE};
   else
@@ -549,17 +558,17 @@ function _evalVarDefault() {
 ## <- 0/${TRUE} if the command is defined; 1/${FALSE} otherwise.
 ## <- RESULT: The command.
 ## Example:
-##   if _evalVarCommand "myVar"; then
+##   if ENVVAR.evalVarCommand "myVar"; then
 ##     echo "myVar -> ${RESULT}";
 ##   fi
-function _evalVarCommand() {
+function ENVVAR.evalVarCommand() {
   local _varName="${1}";
   local result;
   local -i rescode;
 
   checkNotEmpty "name" "${_varName}" 1;
 
-  result="${ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]}";
+  result="${__DW_ENVVAR_ENVIRONMENT_VARIABLES_COMMANDS[${_varName}]}";
   if isEmpty "${result}"; then
       rescode=${FALSE};
   else
@@ -570,22 +579,22 @@ function _evalVarCommand() {
   return ${rescode};
 }
 
-
-## Appends a new variable to ENV_VARIABLES.
+## Appends a new variable to __DW_ENVVAR_ENV_VARIABLES.
 ## -> 1: The item to add.
-##
 ## Example:
 ##   appendEnvVariable "item";
 function appendEnvVariable() {
   local _variable="${1}";
 
-  if declare -p ENV_VARIABLES > /dev/null 2>&1; then
-    upvars -a$((${#ENV_VARIABLES[@]}+1)) ENV_VARIABLES "${ENV_VARIABLES[@]}" "${_variable}";
-    export ENV_VARIABLES;
+  checkNotEmpty "variable" "${_variable}" 1;
+
+  if declare -p __DW_ENVVAR_ENV_VARIABLES > /dev/null 2>&1; then
+    upvars -a$((${#__DW_ENVVAR_ENV_VARIABLES[@]}+1)) __DW_ENVVAR_ENV_VARIABLES "${__DW_ENVVAR_ENV_VARIABLES[@]}" "${_variable}";
+    export __DW_ENVVAR_ENV_VARIABLES;
   else
-    export -a ENV_VARIABLES=();
-    upvars -a1 ENV_VARIABLES "${_variable}";
-    export ENV_VARIABLES;
+    export -a __DW_ENVVAR_ENV_VARIABLES=();
+    upvars -a1 __DW_ENVVAR_ENV_VARIABLES "${_variable}";
+    export __DW_ENVVAR_ENV_VARIABLES;
   fi
 }
 
@@ -599,7 +608,7 @@ function printEnvironment() {
   local _description;
   local _tempFile;
 
-  if isNotEmpty "${ENV_VARIABLES}" && isTraceEnabled; then
+  if isNotEmpty "${__DW_ENVVAR_ENV_VARIABLES}" && isTraceEnabled; then
     cat <<EOF
 Environment variables:
 EOF
@@ -609,15 +618,16 @@ EOF
 
     local _oldIFS="${IFS}";
     IFS=$' \t\n';
-    for ((i = 0; i < ${#ENV_VARIABLES[@]}; i++)); do
-      _varName="${ENV_VARIABLES[$i]}";
-      if _evalOverriddenVar "${_varName}"; then
+    for ((i = 0; i < ${#__DW_ENVVAR_ENV_VARIABLES[@]}; i++)); do
+      IFS="${_oldIFS}";
+      _varName="${__DW_ENVVAR_ENV_VARIABLES[$i]}";
+      if ENVVAR.evalOverriddenVar "${_varName}"; then
           _varValue="${RESULT}";
       else
-        _evalVar "${_varName}";
+        evalVar "${_varName}";
         _varValue="${RESULT}";
       fi
-      if _evalVarDescription "${_varName}"; then
+      if ENVVAR.evalVarDescription "${_varName}"; then
           _description=": ${RESULT}.";
       else
         _description="";
@@ -637,10 +647,20 @@ EOF
   fi
 }
 
-function reset_state() {
-  ENV_VARIABLES=();
-  OVERRIDDEN_ENV_VARIABLES=();
-  ENVIRONMENT_VARIABLES_DEFAULTS=();
-  ENVIRONMENT_VARIABLES_DESCRIPTIONS=();
-  ENVIRONMENT_VARIABLES_COMMANDS=();
+## Resets the state of the module.
+## Example:
+##   ENVVAR.resetState;
+function ENVVAR.resetState() {
+  __DW_ENVVAR_ENV_VARIABLES=();
+  clearAssociativeArray __DW_ENVVAR_OVERRIDDEN_ENV_VARIABLES;
+  clearAssociativeArray __DW_ENVVAR_ENVIRONMENT_VARIABLES_DEFAULTS;
+  clearAssociativeArray __DW_ENVVAR_ENVIRONMENT_VARIABLES_DESCRIPTIONS;
+  clearAssociativeArray __DW_ENVVAR_ENVIRONMENT_VARIABLES_COMMANDS;
 }
+
+declare -ag __DW_ENVVAR_ENV_VARIABLES;
+declare -Ag __DW_ENVVAR_OVERRIDDEN_ENV_VARIABLES;
+declare -Ag __DW_ENVVAR_ENVIRONMENT_VARIABLES_DEFAULTS;
+declare -Ag __DW_ENVVAR_ENVIRONMENT_VARIABLES_DESCRIPTIONS;
+declare -Ag __DW_ENVVAR_ENVIRONMENT_VARIABLES_COMMANDS;
+#
