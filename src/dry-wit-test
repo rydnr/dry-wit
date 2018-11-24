@@ -24,6 +24,7 @@ function DWTEST.defineErrors() {
   addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
   addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
   addError NO_TESTS_FOUND "No tests found";
+  addError TEST_FAILED "Test failed"
 }
 
 ## Retrieves all available tests.
@@ -330,7 +331,7 @@ function runTest() {
       _rescode=${FALSE};
     fi
   else
-    addTestError "${_test}";
+    addTestError "${_test}" TEST_FAILED;
   fi
 
   if isFunctionPresent "test_tearDown"; then
@@ -731,10 +732,15 @@ function Assert.isNotEmpty() {
 }
 
 ## Fails the test directly.
+## -> 1: The error message. Mandatory.
 ## Example:
 ##   fail "my_test";
-function fail() {
-  addTestFailure "${FUNCNAME[1]}";
+function Assert.fail() {
+  local _message="${1}";
+
+  checkNotEmpty "errorMessage" "${_message}" 1;
+
+  addTestFailure "${FUNCNAME[1]}" "${_message}";
 }
 
 ## Checks a substring is contained in given text.

@@ -256,6 +256,12 @@ function checkInput_checks_mandatory_environment_variables_are_not_empty_test() 
   Assert.isNotEmpty "${_result}" "checkInput didn't check for MY_MANDATORY_ENVVAR";
 }
 
+function parseInput_fails_if_there_is_no_callback_function_for_a_mandatory_parameter_test() {
+  addCommandLineParameter "folder" "The file to read" MANDATORY SINGLE;
+  (parseInput "/tmp" > /dev/null)
+  Assert.isFalse $? "parseInput failed to detect parameter witout parsing callback defined";
+}
+
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
 declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};

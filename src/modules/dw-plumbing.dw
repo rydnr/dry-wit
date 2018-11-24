@@ -2,8 +2,9 @@
 #_OLD_IFS="${IFS}";
 #export IFS=$'\n\t\040';
 
-export MANDATORY=${TRUE};
-export OPTIONAL=${FALSE};
+declare -g MANDATORY=${TRUE};
+declare -g OPTIONAL=${FALSE};
+declare -g DWIFS=$' \t\n';
 
 ## Performs some checks on the script itself.
 ## -> 1: The script.
@@ -11,21 +12,26 @@ function DRYWIT.checkScript() {
   local _script=$1;
   local _v;
   local _f;
+  local _oldIFS="${IFS}";
 
   checkNotEmpty "script" "${_script}" 1;
 
   setLogCategory "sanity-check";
   logTrace -n "Checking mandatory constants";
-  local _oldIFS="${IFS}";
-  IFS=$' \t\n';
+
+  IFS="${DWIFS}";
   for _v in ${ERROR_MESSAGES[@]}; do
+    IFS="${_oldIFS}";
     if [ -z "${_v}" ]; then
       exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
     fi
   done
+  IFS="${_oldIFS}";
   logTraceResult SUCCESS "done";
   logTrace -n "Checking mandatory functions";
+  IFS="${DWIFS}";
   for _f in main; do
+    IFS="${_oldIFS}";
     isFunctionPresent ${_f} ${_script};
     if isFalse $?; then
       exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
@@ -46,7 +52,7 @@ function DRYWIT.setup() {
   DRYWIT.retrieveSettingsFiles;
   _files="${RESULT}"
 
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
   for _f in ${_files}; do
     IFS="${_oldIFS}";
     sourceFileIfExists "${_f}";
@@ -68,7 +74,7 @@ function DRYWIT.retrieveSettingsFiles() {
   local _result="";
   local _oldIFS="${IFS}";
 
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
   for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
     for _d in "${DRY_WIT_SCRIPT_FOLDER}" "."; do
       IFS="${_oldIFS}";
@@ -258,7 +264,7 @@ function isFunctionPresent() {
   fi
   if isFalse ${_rescode}; then
     if isNotEmpty "${_script}"; then
-      IFS=$' \t\n';
+      IFS="${DWIFS}";
       for _inc in "./$(basename ${_script} .sh).inc.sh" \
                     "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
         IFS="${_oldIFS}";
@@ -313,7 +319,7 @@ function cleanup() {
     logTrace -n "Cleaning up temporary files";
 
     local _oldIFS="${IFS}";
-    IFS=$' \t\n';
+    IFS="${DWIFS}";
     for _i in ${_CLEANUP_FILES[*]}; do
       IFS="${_oldIFS}";
       rm -rf ${_i} > /dev/null 2>&1;
@@ -325,6 +331,7 @@ function cleanup() {
         _notDeletedCount=$((_notDeletedCount + 1));
       fi
     done
+    IFS="${_oldIFS}";
 
     if isZero ${_notDeletedCount}; then
         logTraceResult SUCCESS "${_deletedCount}";
