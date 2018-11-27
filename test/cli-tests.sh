@@ -262,6 +262,13 @@ function parseInput_fails_if_there_is_no_callback_function_for_a_mandatory_param
   Assert.isFalse $? "parseInput failed to detect parameter witout parsing callback defined";
 }
 
+function parseInput_uses_the_default_value_of_an_optional_command_line_flag_test() {
+  addCommandLineFlag "tag" "t" "The tag" OPTIONAL EXPECTS_ARGUMENT "latest";
+  parseInput "-v";
+  Assert.isNotEmpty "${TAG}" "TAG is not defined";
+  Assert.areEqual "${TAG}" "latest" "TAG should be 'latest' when omitted";
+}
+
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
 declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
