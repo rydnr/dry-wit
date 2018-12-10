@@ -133,6 +133,8 @@ function evalVar() {
 ## -> 3: The variable description.
 ## -> 4: The default value (optional).
 ## -> 5: The command to retrieve the actual value (optional).
+## Example:
+##   defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date"
 function defineEnvVar() {
   local _varName="${1}";
   local _varMandatory="${2}";
@@ -280,11 +282,9 @@ function ENVVAR.addEnvVar() {
   checkNotEmpty "varName" "${_varName}" 1;
 
   if ! isEnvVarDefined "${_varName}"; then
-    appendEnvVariable ${_varName} __DW_ENVVAR_ENV_VARIABLES;
+    __DW_ENVVAR_ENV_VARIABLES[${#__DW_ENVVAR_ENV_VARIABLES[@]}]="${_varName}";
   fi
-  upvar "${_varName}" "${_varValue}";
-
-  export "${_varName}"="${_varValue}";
+  declare -gx "${_varName}"="${_varValue}";
 }
 
 ## Annotates given environment variable as overridden.
@@ -549,8 +549,8 @@ function evalEnvVars() {
   local _oldIFS="${IFS}";
   local _var;
 
-  IFS=$' \t\n';
-  for _var in "${__DW_ENVVAR_ENV_VARIABLES[@]}"; do
+  IFS="${DWIFS}";
+  for _var in ${__DW_ENVVAR_ENV_VARIABLES[@]}; do
     IFS="${_oldIFS}";
     ENVVAR.evalEnvVar "${_var}";
   done
@@ -670,14 +670,7 @@ function appendEnvVariable() {
 
   checkNotEmpty "variable" "${_variable}" 1;
 
-  if declare -p __DW_ENVVAR_ENV_VARIABLES > /dev/null 2>&1; then
-    upvars -a$((${#__DW_ENVVAR_ENV_VARIABLES[@]}+1)) __DW_ENVVAR_ENV_VARIABLES "${__DW_ENVVAR_ENV_VARIABLES[@]}" "${_variable}";
-    export __DW_ENVVAR_ENV_VARIABLES;
-  else
-    export -a __DW_ENVVAR_ENV_VARIABLES=();
-    upvars -a1 __DW_ENVVAR_ENV_VARIABLES "${_variable}";
-    export __DW_ENVVAR_ENV_VARIABLES;
-  fi
+  __DW_ENVVAR_ENV_VARIABLES[${#__DW_ENVVAR_ENV_VARIABLES[@]}]="${_variable}";
 }
 
 ## Prints the environment variables.

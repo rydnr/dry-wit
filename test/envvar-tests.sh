@@ -34,5 +34,20 @@ function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
   Assert.fileContains "${_debugFile}" "key with spaces -> value with spaces" "debugAssociativeArray didn't write 'key with spaces -> value with spaces' in the log file";
 }
 
+function defineEnvVar_adds_an_env_var_to___DW_ENVVAR_ENV_VARIABLES_test() {
+  defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
+  Assert.isNotEmpty "${__DW_ENVVAR_ENV_VARIABLES[*]}" "__DW_ENVVAR_ENV_VARIABLES is empty";
+  Assert.arrayContains "${__DW_ENVVAR_ENV_VARIABLES[@]}" "MY_VAR" "__DW_ENVVAR_ENV_VARIABLES does not contain MY_VAR";
+}
+
+function ___DW_ENVVAR_ENV_VARIABLES_does_not_include_empty_vars_test() {
+  local i;
+  defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
+  Assert.isNotEmpty "${__DW_ENVVAR_ENV_VARIABLES[*]}" "__DW_ENVVAR_ENV_VARIABLES is empty";
+  for ((i = 0; i < ${#__DW_ENVVAR_ENV_VARIABLES[*]}; i++)); do
+    Assert.isNotEmpty "${__DW_ENVVAR_ENV_VARIABLES[$i]}" "Variable at position $i is empty";
+  done
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
 #

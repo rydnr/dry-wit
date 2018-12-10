@@ -47,3 +47,16 @@ function toLower_test() {
   local _result="${RESULT}";
   Assert.areEqual "abc" "${_result}" "toLower failed for 'ABC'";
 }
+
+function normalize_test() {
+  normalize "X:default-values";
+  local _result="${RESULT}";
+  Assert.areEqual "X_default_values" "${_result}" "normalize failed for 'X:default-values'";
+}
+
+function normalizeUppercase_test() {
+  normalizeUppercase "X:default-values";
+  local _result="${RESULT}";
+  Assert.areEqual "X_DEFAULT_VALUES" "${_result}" "normalize failed for 'X:default-values'";
+}
+#

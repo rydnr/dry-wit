@@ -5,6 +5,7 @@ declare -g MULTIPLE=${TRUE};
 
 import debug;
 import envvar;
+import error;
 
 # Checks whether a given flag is enabled.
 # -> 1: the name of the flag variable.
@@ -162,11 +163,10 @@ function checkInput() {
   local _flags=$(extractFlags $@);
   local _flag;
   local -a _flagsChecked=();
-
   local _oldIFS="${IFS}";
 
   # Flags
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
   for _flag in ${_flags}; do
     IFS="${_oldIFS}";
     _flagCount=$((_flagCount+1));
@@ -346,7 +346,7 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
   local _oldIFS="${IFS}";
 
   if isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}"; then
-    IFS=$' \t\n';
+    IFS="${DWIFS}";
     for _key in ${__DW_CLI_FLAG_KEYS[*]}; do
       IFS="${_oldIFS}";
       CLI.retrieveCommandLineFlagLongNameFromKey "${_key}";
@@ -409,7 +409,7 @@ function CLI.checkCommandLineParameters() {
   local -i _multiple;
 
   # Parameters
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
   for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
     IFS="${_oldIFS}";
     _parameterValue="${1}";
@@ -454,13 +454,12 @@ function CLI.checkEnvironmentVariables() {
   local _envVarName;
   local _envVarValue;
   local _envVarNameInLowerCase;
+  local _oldIFS="${IFS}";
 
   retrieveCustomEnvironmentVariables;
   _envVars="${RESULT}";
 
-  local _oldIFS="${IFS}";
-
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
   for _envVarName in ${_envVars}; do
     IFS="${_oldIFS}";
 
@@ -494,6 +493,7 @@ function parseInput() {
   local _oldIFS="${IFS}";
   local -i _i;
   local -a _providedFlags=();
+  local _flag;
 
   # Flags
   IFS="${DWIFS}";
@@ -580,7 +580,7 @@ function CLI.parseCallbackDefinedForFlag() {
 function CLI.parseFlag() {
   local _flag="${1}";
   shift;
-  local -i _result=1;
+  local -i _result=0;
   local _flagCount;
   local _longName;
   local _shortName;
@@ -686,8 +686,6 @@ function CLI.parseNotProvidedFlags() {
 
   IFS="${DWIFS}";
   for _flagKey in ${__DW_CLI_FLAG_KEYS[*]}; do
-    IFS="${_oldIFS}";
-    IFS="${DWIFS}";
     _provided=${FALSE};
     for _providedFlag in ${_providedFlags}; do
       IFS="${_oldIFS}";
@@ -701,6 +699,7 @@ function CLI.parseNotProvidedFlags() {
         break;
       fi
     done
+
     IFS="${_oldIFS}";
     if isFalse ${_provided}; then
       if CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
@@ -713,9 +712,9 @@ function CLI.parseNotProvidedFlags() {
           _callbackFunction="${RESULT}";
           "${_callbackFunction}" "${_defaultValue}";
         else
-          toUpper "${_longName}";
+          normalizeUppercase "${_longName}";
           _upcasedLongName="${RESULT}";
-          export "${_upcasedLongName}"="${_defaultValue}";
+          export ${_upcasedLongName}="${_defaultValue}";
         fi
       fi
     fi
@@ -958,7 +957,7 @@ function CLI.retrieveCommandLineFlagDescriptionFromKey() {
 ## -> 6: The default value (if the flag is optional).
 ## <- 0/${TRUE} if the flag is added successfully; 1/${FALSE} otherwise.
 ## Example:
-##   if addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT; then
+##   if addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT "/tmp/file.log"; then
 ##     echo "-f|--file flag added"
 ##   fi
 function addCommandLineFlag() {
@@ -971,21 +970,12 @@ function addCommandLineFlag() {
   local -i _rescode=${TRUE};
   local _flagKey;
   local _longNameInUpperCase;
-  local -i _isMandatory;
 
   checkNotEmpty "longName" "${_longName}" 1;
   checkNotEmpty "shortName" "${_shortName}" 2;
   checkNotEmpty "description" "${_description}" 3;
   checkOneOf "mandatory" "${_mandatory}" "MANDATORY OPTIONAL" 4;
   checkOneOf "expectsArgument" "${_expectsArgument}" "EXPECTS_ARGUMENT NO_ARGUMENT" 5;
-  if areEqual "${_mandatory}" OPTIONAL; then
-    _isMandatory=${FALSE};
-    if areEqual "${_expectsArgument}" EXPECTS_ARGUMENT; then
-      checkNotEmpty "defaultValue" "${_defaultValue}" 6;
-    fi
-  else
-    _isMandatory=${TRUE};
-  fi
 
   if removePrefix "${_longName}" "-*"; then
     _longName="${RESULT}";
@@ -1003,7 +993,7 @@ function addCommandLineFlag() {
     __DW_CLI_FLAG_SHORT_NAMES[${_longName}]="${_shortName}";
     __DW_CLI_FLAG_LONG_NAMES[${_shortName}]="${_longName}";
     __DW_CLI_FLAG_DESCRIPTIONS[${_flagKey}]="${_description}";
-    toUpper "${_longName}";
+    normalizeUppercase "${_longName}";
     _longNameInUpperCase="${RESULT}";
     if areEqual "${_mandatory}" "MANDATORY"; then
       addError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} is mandatory";
@@ -1051,6 +1041,7 @@ function removeCommandLineFlag() {
       unset __DW_CLI_FLAG_DESCRIPTIONS[${_flagKey}];
       unset __DW_CLI_MANDATORY_FLAGS[${_flagKey}];
       unset __DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}];
+      unset __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES[${_flagKey}];
     fi
 
   else

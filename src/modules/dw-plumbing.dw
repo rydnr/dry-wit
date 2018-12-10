@@ -6,10 +6,12 @@ declare -g MANDATORY=${TRUE};
 declare -g OPTIONAL=${FALSE};
 declare -g DWIFS=$' \t\n';
 
+import error;
+
 ## Performs some checks on the script itself.
 ## -> 1: The script.
 function DRYWIT.checkScript() {
-  local _script=$1;
+  local _script="${1}";
   local _v;
   local _f;
   local _oldIFS="${IFS}";
@@ -102,8 +104,6 @@ function DRYWIT.main() {
 
   if isFunctionPresent defineErrors "${_script}"; then
     defineErrors;
-  else
-    export ERROR_MESSAGES=();
   fi
 
   if isFunctionPresent defineEnvDefaults "${_script}"; then
@@ -192,9 +192,10 @@ function DRYWIT.defineDryWitErrorMessages() {
 ## -> 1: The missing dependency.
 function DRYWIT.addMissingDependencyError() {
   local _dependency="${1}";
-  toUpper "${_dependency}_NOT_INSTALLED";
+  normalizeUppercase "${_dependency}_NOT_INSTALLED";
   local _constant="${RESULT}";
 
+  debugEcho "addError ${_constant} \"${_dependency}\" is not installed\"";
   addError "${_constant}" "${_dependency} is not installed";
 }
 
@@ -206,7 +207,7 @@ function DRYWIT.checkDependency() {
   local _errorCode="${2}";
 
   if isEmpty "${_errorCode}"; then
-    toUpper "${_req}_NOT_INSTALLED";
+    normalizeUppercase "${_req}_NOT_INSTALLED";
     _errorCode="${RESULT}";
   fi
 

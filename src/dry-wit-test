@@ -787,6 +787,50 @@ function Assert.fileContains() {
   fi
 }
 
+## Checks an array contains a text.
+## -> 1: The array.
+## -> 2: The text to test.
+## -> 3: The error message.
+## Example:
+##   Assert.arrayContains "${array[@]}" "TESTING" "array doesn't contain TESTING";
+function Assert.arrayContains() {
+  local _array="${1}";
+  local _text="${2}";
+  local _errorMessage="${3}";
+
+  checkNotEmpty "array" "${_array}" 1;
+  checkNotEmpty "text" "${_text}" 2;
+  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+
+  if arrayContains "${_array}" "${_text}"; then
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+  fi
+}
+
+## Checks an array doesn't contain a text.
+## -> 1: The array.
+## -> 2: The text to test.
+## -> 3: The error message.
+## Example:
+##   Assert.arrayDoesNotContain "${array[@]}" "TESTING" "array contains TESTING";
+function Assert.arrayDoesNotContain() {
+  local _array="${1}";
+  local _text="${2}";
+  local _errorMessage="${3}";
+
+  checkNotEmpty "array" "${_array}" 1;
+  checkNotEmpty "text" "${_text}" 2;
+  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+
+  if arrayContains "${_array}" "${_text}"; then
+    addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_actual}')";
+  else
+    addTestAssertionSuccess "${FUNCNAME[1]}";
+  fi
+}
+
 function main() {
   __dwtest;
 }

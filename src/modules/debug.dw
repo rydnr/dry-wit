@@ -90,6 +90,40 @@ function DEBUG.getDebugLogFile() {
   export RESULT="${__DW_DEBUG_LOG_FILE}";
 }
 
+## Specifies whether "debugEcho" is enabled.
+## -> 1: That condition.
+## Example:
+##   setDebugEchoEnabled TRUE
+function setDebugEchoEnabled() {
+  local _flag="${1}";
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if isTrue "${_flag}"; then
+    export __DW_DEBUG_ECHO_ENABLED=${TRUE};
+  else
+    export __DW_DEBUG_ECHO_ENABLED=${FALSE};
+  fi
+}
+
+## Retrieves whether "debugEcho" is enabled.
+## <- 0/${TRUE} if it's enabled; 1/${FALSE} otherwise.
+## Example:
+##   if isDebugEchoEnabled; then
+##      ..
+##   fi
+function isDebugEchoEnabled() {
+  local -i _rescode;
+
+  if isTrue ${__DW_DEBUG_ECHO_ENABLED}; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
 ## Echoes a line to stdout. Useful for locating them easily when debugging.
 ## -> 1: The message to print.
 ## Example:
@@ -97,19 +131,24 @@ function DEBUG.getDebugLogFile() {
 function debugEcho() {
   local _logFile;
 
-  DEBUG.getDebugLogFile;
-  _logFile="${RESULT}";
-  echo $* >> ${_logFile};
+  if isDebugEchoEnabled; then
+    DEBUG.getDebugLogFile;
+    _logFile="${RESULT}";
+    echo $* >> "${_logFile}";
+  fi
 }
 
 function DEBUG.defaultState() {
   setDebugLogFile "${TEMP:-/tmp}/${SCRIPT_NAME}-debug.$(date '+%Y%m%d%H%M%S').log";
+  setDebugEchoEnabled TRUE;
 }
 
 function DEBUG.resetState() {
   setDebugLogFile "";
 }
 
-if [ -z ${__DW_DEBUG_LOG_FILE+x} ]; then
-  DEBUG.defaultState;
-fi
+declare -g __DW_DEBUG_LOG_FILE;
+declare -g __DW_DEBUG_ECHO_ENABLED;
+
+DEBUG.defaultState;
+#

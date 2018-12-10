@@ -1,4 +1,4 @@
-declare -a _CLEANUP_FILES;
+declare -ag _CLEANUP_FILES;
 
 import logging;
 
@@ -58,7 +58,7 @@ function retrieveAbsolutePath() {
 ## Checks if the system is a MacOSX.
 ## <- 0/${TRUE} if the system is MacOSX; 1/${FALSE} otherwise.
 ## Example:
-##   if _isMacOSX; then
+##   if isMacOSX; then
 ##     echo "I'm running on a MacOSX";
 ##   fi
 function isMacOSX() {
@@ -424,7 +424,7 @@ function _mktempFile() {
   checkNotEmpty "baseFolder" "${_baseFolder}" 1;
   checkNotEmpty "format" "${_format}" 2;
 
-  if _isMacOSX; then
+  if isMacOSX; then
     result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
     rescode=$?;
   else
@@ -454,7 +454,7 @@ function _mktempFolder() {
   checkNotEmpty "baseFolder" "${_baseFolder}" 1;
   checkNotEmpty "format" "${_format}" 2;
 
-  if _isMacOSX; then
+  if isMacOSX; then
     result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
     rescode=$?;
   else

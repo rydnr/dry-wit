@@ -12,16 +12,16 @@ function arrayContains() {
   local _item="${2}";
   local _aux;
   local -i _rescode=${FALSE};
+  local _oldIFS="${IFS}";
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## checkNotEmpty is loaded.
   DRYWIT.failsafeCheckNotEmpty "array" "${_array}" 1;
   DRYWIT.failsafeCheckNotEmpty "item" "${_item}" 2;
 
-  local _oldIFS="${IFS}";
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
   for _aux in ${_array}; do
-    IFS=$' \t\n';
+    IFS="${_oldIFS}";
     if areEqual "${_aux}" "${_item}"; then
       _rescode=${TRUE};
       break;
@@ -177,8 +177,3 @@ function clearAssociativeArray() {
   IFS="${_oldIFS}";
 }
 #
-
-
-
-
-

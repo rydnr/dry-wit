@@ -7,13 +7,9 @@ import envvar;
 function appendErrorMessage() {
   local _error="${1}";
 
-  if declare -p ERROR_MESSAGES > /dev/null 2>&1; then
-    upvars -a$((${#ERROR_MESSAGES[@]}+1)) ERROR_MESSAGES "${ERROR_MESSAGES[@]}" "${_error}";
-    export ERROR_MESSAGES;
-  else
-    export -a ERROR_MESSAGES=();
-    upvars -a1 ERROR_MESSAGES "${_error}";
-  fi
+  checkNotEmpty "error" "${_error}" 1;
+
+  ERROR_MESSAGES[${#ERROR_MESSAGES[@]}]="${_error}";
 }
 
 ## Annotates a new error.
@@ -29,11 +25,11 @@ function addError() {
   checkNotEmpty "label" "${_label}" 1;
   checkNotEmpty "message" "${_message}" 2;
 
-  normalize "${_label}";
+  normalizeUppercase "${_label}";
   _normalizedLabel="${RESULT}";
   appendErrorMessage "${_normalizedLabel}";
-  upvar "${_normalizedLabel}" "${_message}";
-  export "${_normalizedLabel}"="${_message}";
+  declare -gx "${_normalizedLabel}"="${_message}";
+  debugEcho "${_normalizedLabel} -> ${_message}"
 }
 
 ## Checks whether an error is defined.
@@ -114,7 +110,7 @@ function exitWithErrorCode() {
   printErrorMessage "${_label}" "$@";
   _rescode=$?;
   cleanup;
-  
+
   exit ${_rescode};
 }
 
@@ -144,25 +140,33 @@ function printErrorMessage() {
   local -i _interruption=${TRUE};
   local _i;
   local _oldIFS="${IFS}";
-  IFS=$' \t\n';
+
   #  set +o nounset  # allow unset variables
 
   checkNotEmpty "label" "${_label}" 1;
 
+  IFS="${DWIFS}";
   for _i in ${BUILTIN_ERRORS[@]}; do
+    IFS="${_oldIFS}";
     rescode=$((rescode+1));
+    debugEcho "error_message (${rescode}): ${_i}";
     if areEqual "${_i}" "${_label}"; then
       _message="${_i}";
       break;
     fi;
   done
+  IFS="${_oldIFS}";
+
   # TODO set -o nounset  # disallow unset variables
 
   if isEmpty "${_message}"; then
     # IFS issue
 #    rescode=${TRUE};
+    IFS="${DWIFS}";
     for _i in ${ERROR_MESSAGES[@]}; do
+      IFS="${_oldIFS}";
       rescode=$((rescode+1));
+      debugEcho "error_message (${rescode}): ${_i}";
       if areEqual "${_i}" "${_label}"; then
           _message="${_i}";
           break;
@@ -203,20 +207,21 @@ EOF
 function printExitValues() {
   local -i i=0;
   local -i j=0;
+  local _oldIFS="${IFS}";
 
   if isTraceEnabled; then
     cat <<EOF
 Exit values:
   0: No error.
 EOF
-    local _oldIFS="${IFS}";
-    IFS=$' \t\n';
     if [ ${#BUILTIN_ERRORS[@]} -gt 0 ]; then
+      IFS=$"${DWIFS}";
       for ((i = 0; i < ${#BUILTIN_ERRORS[@]}; i++)); do
         echo "  $((i+1)): $(echo ${BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
       done
     fi
     if [ ${#ERROR_MESSAGES[@]} -gt 0 ]; then
+      IFS=$"${DWIFS}";
       for ((j = 0; j < ${#ERROR_MESSAGES[@]}; j++)); do
         echo "  $((j+i+1)): $(echo ${ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
       done
@@ -231,6 +236,6 @@ function ERROR.resetState() {
   ERROR_MESSAGES=();
 }
 
-declare -a BUILTIN_ERRORS;
-declare -a ERROR_MESSAGES;
-
+declare -ag BUILTIN_ERRORS;
+declare -ag ERROR_MESSAGES;
+#

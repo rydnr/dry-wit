@@ -17,6 +17,7 @@ function test_reset() {
   CLI.resetState;
   CLI.defaultState;
   ENVVAR.resetState;
+  setDebugEchoEnabled FALSE;
 }
 
 ## Called before each test.
@@ -51,6 +52,10 @@ function dw_check_my_optional_envvar_cli_envvar() {
 
 function dw_parse_my_optional_envvar_cli_envvar() {
   optionalEnvVarParsingCallbackCalled=${TRUE};
+}
+
+function dw_parse_repository_cli_parameter() {
+  export REPOSITORY="${1}";
 }
 
 function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
@@ -264,9 +269,19 @@ function parseInput_fails_if_there_is_no_callback_function_for_a_mandatory_param
 
 function parseInput_uses_the_default_value_of_an_optional_command_line_flag_test() {
   addCommandLineFlag "tag" "t" "The tag" OPTIONAL EXPECTS_ARGUMENT "latest";
+  addCommandLineFlag "overwrite-latest" "ol" "Whether to override latest" OPTIONAL NO_ARGUMENT "false";
   parseInput "-v";
   Assert.isNotEmpty "${TAG}" "TAG is not defined";
   Assert.areEqual "${TAG}" "latest" "TAG should be 'latest' when omitted";
+  Assert.isNotEmpty "${OVERWRITE_LATEST}" "OVERWRITE_LATEST is not defined";
+  Assert.areEqual "${OVERWRITE_LATEST}" "false" "OVERWRITE_LATEST should be 'false' when not defined";
+}
+
+function parseInput_does_not_swallow_parameters_test() {
+  setDebugEchoEnabled TRUE;
+  addCommandLineParameter "repository" "The repository" MANDATORY SINGLE;
+  parseInput "-v" "base";
+  Assert.isNotEmpty "${REPOSITORY}" "REPOSITORY was empty";
 }
 
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
@@ -277,3 +292,4 @@ declare -ig commandLineParameterParsingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarCheckingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarParsingCallbackCalled=${FALSE};
 #
+

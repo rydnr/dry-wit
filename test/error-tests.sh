@@ -38,4 +38,21 @@ function exitWithError_declares_a_new_error_if_necessary_test() {
   Assert.isNotEmpty ${_result} "exitWithError doesn't print anything";
   Assert.contains "${_result}" "Custom undefined error" "exitWithError doesn't define UNDEFINED_ERROR on demand";
 }
+
+function addError_converts_error_name_to_uppercase_test() {
+  local -i _defined;
+  addError error_sample "error sample";
+  isErrorDefined ERROR_SAMPLE;
+  _defined=$?;
+  Assert.isTrue ${_defined} "isErrorDefined doesn't find ERROR_SAMPLE";
+}
+
+
+function exitWithErrorCode_finds_declared_error_test() {
+  local -i _result;
+  addError error_sample "error sample";
+  (exitWithErrorCode ERROR_SAMPLE "exited due to error sample" 2>&1 > /dev/null 2>&1);
+  _result=$?;
+  Assert.isFalse ${_result} "exitWithErrorCode finds ERROR_SAMPLE";
+}
 #
