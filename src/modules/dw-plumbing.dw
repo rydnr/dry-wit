@@ -309,17 +309,19 @@ function isFunctionMissing() {
 }
 
 function cleanup() {
-  local -i _deletedCount;
-  local -i _notDeletedCount;
+  local -i _deletedCount=0;
+  local -i _notDeletedCount=0;
   local _deleted;
   local _notDeleted;
+  local -i _success;
+  local _oldIFS="${IFS}";
   local _i;
+
   if [ "${#_CLEANUP_FILES}" != "0" ]; then
     setLogCategory "post-process";
 
     logTrace -n "Cleaning up temporary files";
 
-    local _oldIFS="${IFS}";
     IFS="${DWIFS}";
     for _i in ${_CLEANUP_FILES[*]}; do
       IFS="${_oldIFS}";
@@ -335,12 +337,26 @@ function cleanup() {
     IFS="${_oldIFS}";
 
     if isZero ${_notDeletedCount}; then
+      _success=${TRUE};
+    fi
+
+    if isTrue ${_success}; then
+      if isZero ${_deletedCount}; then
+        logTraceResult SUCCESS "none";
+      else
         logTraceResult SUCCESS "${_deletedCount}";
+        logTrace "Deleted: ${_deleted}";
+      fi
+    elif isEmpty "${_notDeletedCount}"; then
+      logTraceResult FAILURE "?";
     else
       logTraceResult FAILURE "${_notDeletedCount}";
     fi
-  fi
 
+    if isFalse ${_success}; then
+      logTrace "Not deleted: ${_notDeleted}";
+    fi
+  fi
 }
 
 function DRYWIT.trapSignals() {
