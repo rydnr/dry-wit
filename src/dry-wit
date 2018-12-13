@@ -21,6 +21,7 @@
 set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
 #set -o xtrace   # trace what gets executed
 
+declare -gx DWIFS=$' \t\n';
 export TRUE=0;
 export FALSE=1;
 
@@ -46,9 +47,10 @@ declare -a __DRYWIT_BOOTSTRAP_MODULES=(\
    "usage" \
    "dw-plumbing" \
    "file" \
+   "debug" \
 );
 
-declare -a __DRYWIT_IMPORTED_MODULES;
+declare -ax __DRYWIT_IMPORTED_MODULES;
 
 export DRYWIT_MODULE_TAG="master";
 export DRYWIT_MODULE_URL="https://raw.githubusercontent.com/rydnr/dry-wit/${DRYWIT_MODULE_TAG}/src/modules";
@@ -168,7 +170,7 @@ function DRYWIT.failsafeArrayContains() {
 ##   if downloadModule "fibonacci"; then
 ##     echo "fibonacci module downloaded";
 ##   fi
-function downloadModule() {
+function DW.downloadModule() {
   local _module="${1}";
   local -i _rescode;
   local _result="";
@@ -196,24 +198,25 @@ function DRYWIT.bootstrap() {
   local _oldIFS="${IFS}";
   IFS="${_oldIFS}";
 
-  IFS=$' \t\n';
+  IFS=${DWIFS};
   for _module in ${__DRYWIT_BOOTSTRAP_MODULES[*]}; do
     IFS="${_oldIFS}";
-    import "${_module}";
+    echo "Importing ${_module}"
+    DW.import "${_module}";
   done
   IFS="${_oldIFS}";
 }
 
-function import() {
+function DW.import() {
   local _module="${1}";
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## checkNotEmpty is loaded.
   DRYWIT.failsafeCheckNotEmpty "module" "${_module}" 1;
 
-  if findModule "${_module}"; then
+  if DW.findModule "${_module}"; then
     _modulePath="${RESULT}";
-  elif downloadModule "${_module}"; then
+  elif DW.downloadModule "${_module}"; then
     _modulePath="${RESULT}";
   else
     echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?"
@@ -230,7 +233,7 @@ function import() {
   fi
 }
 
-function findModule() {
+function DW.findModule() {
   local _module="${1}";
   local -i _rescode=${FALSE};
 
@@ -242,15 +245,14 @@ function findModule() {
   return ${_rescode};
 }
 
+echo "calling DRYWIT.bootstrap";
 DRYWIT.bootstrap;
 
-source $@;
-
-DRYWIT.main $@;
+if [ $# -gt 0 ]; then
+  echo "sourcing $@"
+  source $@;
+  DRYWIT.main $@;
+fi
 
 cleanup;
 #
-
-
-
-

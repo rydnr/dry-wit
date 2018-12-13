@@ -1,31 +1,30 @@
-#!/bin/bash ./dry-wit
+#!/bin/bash /home/chous/.dry-wit/dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
 #set -o xtrace
 
+#source ${HOME}/.dry-wit/dry-wit;
+
 # The tests
-export -a TESTS;
+declare -ax TESTS;
 
 # The associative arrays
-declare -A TEST_ERRORS; export TEST_ERRORS;
-declare -A TEST_ERROR_MESSAGES; export TEST_ERROR_MESSAGES;
-declare -A TEST_FAILURES; export TEST_FAILURES;
-declare -A TEST_SUCCESSES; export TEST_SUCCESSES;
-declare -A TEST_FAILURE_MESSAGES; export TEST_FAILURE_MESSAGES;
-declare -A TEST_ASSERTION_FAILURES; export TEST_ASSERTION_FAILURES;
-declare -A TEST_ASSERTION_SUCCESSES; export TEST_ASSERTION_SUCCESSES;
-declare -A TEST_ASSERTION_LINE_NUMBERS; export TEST_ASSERTION_LINE_NUMBERS;
-declare -A TEST_ASSERTION_FAILURE_MESSAGES; export TEST_ASSERTION_FAILURE_MESSAGES;
-declare -A TEST_ASSERTION_FAILURE_CONTEXT; export TEST_ASSERTION_FAILURE_CONTEXT;
+declare -Ax TEST_ERRORS;
+declare -Ax TEST_ERROR_MESSAGES;
+declare -Ax TEST_FAILURES;
+declare -Ax TEST_SUCCESSES;
+declare -Ax TEST_FAILURE_MESSAGES;
+declare -Ax TEST_ASSERTION_FAILURES;
+declare -Ax TEST_ASSERTION_SUCCESSES;
+declare -Ax TEST_ASSERTION_LINE_NUMBERS;
+declare -Ax TEST_ASSERTION_FAILURE_MESSAGES;
+declare -Ax TEST_ASSERTION_FAILURE_CONTEXT;
 
-function DWTEST.defineErrors() {
-  import error;
-  addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
-  addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
-  addError NO_TESTS_FOUND "No tests found";
-  addError TEST_FAILED "Test failed"
-}
+addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
+addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
+addError NO_TESTS_FOUND "No tests found";
+addError TEST_FAILED "Test failed"
 
 ## Retrieves all available tests.
 ## -> 1: The script name.
@@ -834,7 +833,4 @@ function Assert.arrayDoesNotContain() {
 function main() {
   __dwtest;
 }
-
-source $(which dry-wit);
 #
-

@@ -1,6 +1,6 @@
-declare -ag _CLEANUP_FILES;
+declare -agx _CLEANUP_FILES;
 
-import logging;
+DW.import logging;
 
 ## PUBLIC
 ## Sources given file, if it exists.
@@ -90,7 +90,9 @@ function readLink() {
     result="$(readlink $@)";
     rescode=$?;
   fi
-  export RESULT="${result}";
+  if isTrue ${rescode}; then
+    export RESULT="${result}";
+  fi
   return ${rescode};
 }
 

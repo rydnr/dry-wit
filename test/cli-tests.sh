@@ -4,8 +4,6 @@
 
 # set -o xtrace
 
-import cli;
-
 function test_reset() {
   commandLineFlagCheckingCallbackCalled=${FALSE};
   commandLineFlagParsingCallbackCalled=${FALSE};

@@ -4,7 +4,7 @@
 
 # set -o xtrace
 
-import array;
+DW.import array;
 
 function test_reset() {
   forEachAssociativeArrayEntryDoCalled=${FALSE};
