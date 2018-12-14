@@ -1,10 +1,10 @@
-#!/bin/bash ../src/dry-wit-test
+#!/bin/bash dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
 # set -o xtrace
 
-import debug;
+DW.import debug;
 
 function test_reset() {
   DEBUG.resetState;
@@ -24,7 +24,7 @@ function test_tearDown() {
 }
 
 function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
-  local _debugFile="${TEMP:-/tmp}/.$$.${SCRIPT_NAME}.log";
+  local _debugFile="${TEMP:-/tmp}/.$$.$(basename ${SCRIPT_NAME}).log";
   setDebugLogFile "${_debugFile}";
   debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;
   Assert.isNotEmpty "${_debugFile}" "debugFile is not set";

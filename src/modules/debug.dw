@@ -77,8 +77,19 @@ function traceApiCall() {
 ##   setDebugLogFile "/tmp/.dw-debug.log";
 function setDebugLogFile() {
   local _file="${1}";
+  local -i _rescode=${TRUE};
 
-  export __DW_DEBUG_LOG_FILE="${_file}";
+  if isNotEmpty "${_file}"; then
+    mkdir -p "$(dirname "${_file}")";
+    touch "${_file}";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export __DW_DEBUG_LOG_FILE="${_file}";
+  fi
+
+  return ${_rescode};
 }
 
 ## Retrieves the log file for debugging purposes.
@@ -139,7 +150,7 @@ function debugEcho() {
 }
 
 function DEBUG.defaultState() {
-  setDebugLogFile "${TEMP:-/tmp}/${SCRIPT_NAME}-debug.$(date '+%Y%m%d%H%M%S').log";
+  setDebugLogFile "${TEMP:-/tmp}/$(basename ${SCRIPT_NAME})-debug.$(date '+%Y%m%d%H%M%S').log";
   setDebugEchoEnabled TRUE;
 }
 
@@ -147,8 +158,8 @@ function DEBUG.resetState() {
   setDebugLogFile "";
 }
 
-declare -g __DW_DEBUG_LOG_FILE;
-declare -g __DW_DEBUG_ECHO_ENABLED;
+declare -gx __DW_DEBUG_LOG_FILE;
+declare -gx __DW_DEBUG_ECHO_ENABLED;
 
 DEBUG.defaultState;
 #

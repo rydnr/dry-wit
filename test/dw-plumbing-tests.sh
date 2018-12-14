@@ -1,25 +1,8 @@
-#!/bin/bash ../src/dry-wit-test
+#!/bin/bash dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
 # set -o xtrace
-
-function usage() {
-cat <<EOF
-$SCRIPT_NAME
-$SCRIPT_NAME [-h|--help]
-(c) 2016-today ACM-SL
-    Distributed this under the GNU General Public License v3.
-
-Runs all tests implemented for dw-plumbing.dw.
-
-Common flags:
-    * -h | --help: Display this message.
-    * -v: Increase the verbosity.
-    * -vv: Increase the verbosity further.
-    * -q | --quiet: Be silent.
-EOF
-}
 
 ## Tests for dry-wit's DRYWIT.
 function DRYWIT.parseCommonInput_test() {
@@ -46,4 +29,4 @@ function DRYWIT.retrieveSettingsFiles_test() {
   fi
 }
 
-
+setScriptDescription "Runs all tests implemented for dw-plumbing.dw.";

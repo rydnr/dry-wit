@@ -1,4 +1,4 @@
-#!/bin/bash /home/chous/.dry-wit/dry-wit
+#!/bin/bash dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
@@ -521,14 +521,19 @@ function logTestSummary() {
   fi
 }
 
-## dry-wit hook
+function retrieveScriptName() {
+  local _testFile="${0}";
+}
+
 function __dwtest() {
   local _tests;
   local _failedTests;
   local _t;
   local _oldIFS="${IFS}";
+  local _scriptName;
+  retrieveScriptName;
 
-  logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
+  logInfo -n "Retrieving tests in ${TEST_SCRIPT_NAME}";
   retrieveTests ${SCRIPT_NAME};
   _tests="${RESULT}";
   if isEmpty "${_tests}"; then
@@ -538,7 +543,7 @@ function __dwtest() {
     logInfoResult SUCCESS "$(echo "${_tests}" | wc -w)";
   fi
 
-  IFS=$' \t\n';
+  IFS=${DWIFS};
   for _t in ${_tests}; do
     IFS="${_oldIFS}";
     logInfo -n "Running ${_t}";

@@ -21,14 +21,21 @@
 set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
 #set -o xtrace   # trace what gets executed
 
+if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
+  return;
+fi
+
 declare -gx DWIFS=$' \t\n';
 export TRUE=0;
 export FALSE=1;
 
-if [ "$1" != "" ]; then
-  export SCRIPT_NAME="$(basename $1)";
-else
-  export SCRIPT_NAME="$0";
+if [ "${SCRIPT_NAME}" == "" ]; then
+  if [ "$1" != "" ]; then
+    declare -gx SCRIPT_NAME="$(basename $1)";
+    shift;
+  else
+    declare -gx SCRIPT_NAME="$0";
+  fi
 fi
 
 declare -a __DRYWIT_BOOTSTRAP_MODULES=(\
@@ -52,9 +59,9 @@ declare -a __DRYWIT_BOOTSTRAP_MODULES=(\
 
 declare -ax __DRYWIT_IMPORTED_MODULES;
 
-export DRYWIT_MODULE_TAG="master";
+export DRYWIT_MODULE_TAG="develop";
 export DRYWIT_MODULE_URL="https://raw.githubusercontent.com/rydnr/dry-wit/${DRYWIT_MODULE_TAG}/src/modules";
-export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/modules"
+export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/src/modules"
 
 ## A fail-safe version of checkNotEmpty.
 ## -> 1: The parameter name.
@@ -201,7 +208,6 @@ function DRYWIT.bootstrap() {
   IFS=${DWIFS};
   for _module in ${__DRYWIT_BOOTSTRAP_MODULES[*]}; do
     IFS="${_oldIFS}";
-    echo "Importing ${_module}"
     DW.import "${_module}";
   done
   IFS="${_oldIFS}";
@@ -245,14 +251,13 @@ function DW.findModule() {
   return ${_rescode};
 }
 
-echo "calling DRYWIT.bootstrap";
 DRYWIT.bootstrap;
 
-if [ $# -gt 0 ]; then
-  echo "sourcing $@"
-  source $@;
-  DRYWIT.main $@;
+source "${SCRIPT_NAME}" $@;
+if [ "${SCRIPT_NAME%-tests.sh}" != "${SCRIPT_NAME}" ]; then
+  source $(which dry-wit-test) "${SCRIPT_NAME}" $@;
 fi
+DRYWIT.main "${SCRIPT_NAME}" $@;
 
 cleanup;
 #

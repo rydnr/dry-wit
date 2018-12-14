@@ -51,7 +51,11 @@ function findInPath() {
 ## <- RESULT: The absolute path.
 function retrieveAbsolutePath() {
   local _relativePath="${1}";
+
+  checkNotEmpty "relativePath" "${_relativePath}" 1;
+
   readLink -f "${_relativePath}";
+
   return $?;
 }
 
