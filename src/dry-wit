@@ -254,7 +254,8 @@ function DW.findModule() {
 DRYWIT.bootstrap;
 
 source "${SCRIPT_NAME}" $@;
-if [ "${SCRIPT_NAME%-tests.sh}" != "${SCRIPT_NAME}" ]; then
+if    endsWith "${SCRIPT_NAME}" "-tests.sh" \
+   || endsWith "${SCRIPT_NAME}" "-test.sh"; then
   source $(which dry-wit-test) "${SCRIPT_NAME}" $@;
 fi
 DRYWIT.main "${SCRIPT_NAME}" $@;

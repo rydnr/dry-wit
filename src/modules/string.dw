@@ -104,8 +104,9 @@ function toLower() {
 }
 
 ## Removes the prefix of given string.
-## -> 1: The string to convert.
-## <- RESULT: The converted string.
+## -> 1: The string to process.
+## -> 2: The prefix to remove.
+## <- RESULT: The string without the prefix.
 ## Example:
 ##   local _text="--abc";
 ##   if removePrefix "${_text}" "--*"; then
@@ -124,6 +125,38 @@ function removePrefix() {
   _rescode=$?;
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+## Removes the suffix of given string.
+## -> 1: The string to process.
+## -> 2: The prefix to remove.
+## <- RESULT: The string without the prefix.
+## Example:
+##   local _text="abc--";
+##   if removeSuffix "${_text}" "-*"; then
+##     echo "${_text} -> ${RESULT}";
+##   fi
+function removeSuffix() {
+  local _text="${1}";
+  local _suffix="${2}";
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty "suffix" "${_suffix}" 2;
+
+  _result="$(echo "${_text}" | sed -e "s/${_suffix}$//")";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    # double-check
+    if areNotEqual "${_text}" "${_result}"; then
+      export RESULT="${_result}";
+    else
+      _rescode=${FALSE};
+    fi
   fi
 
   return ${_rescode};

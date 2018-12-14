@@ -33,7 +33,21 @@ function removePrefix_test() {
   local -i _done=$?;
   local _result="${RESULT}";
   Assert.isTrue ${_done} "removePrefix failed";
-  Assert.areEqual "${_result}" "abc" "removePrefix --abc returned ${_result} instead of abc";
+  Assert.areEqual "${_result}" "abc" "removePrefix '--abc' '-*' returned '${_result}' instead of 'abc'";
+}
+
+function removeSuffix_test() {
+  removeSuffix "abc--" "-*";
+  local -i _done=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_done} "removeSuffix failed";
+  Assert.areEqual "${_result}" "abc" "removeSuffix 'abc--' '-*' returned '${_result}' instead of 'abc'";
+
+  removeSuffix "my-test.sh" "-test.sh";
+  _done=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_done} "removeSuffix failed";
+  Assert.areEqual "${_result}" "my" "removeSuffix 'my-test.sh' '-test.sh' returned '${_result}' instead of 'my'";
 }
 
 function toUpper_test() {
