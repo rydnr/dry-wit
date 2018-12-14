@@ -51,6 +51,12 @@ function clearAssociativeArray_test() {
   Assert.areEqual "${#__DW_ASSOCIATIVE_ARRAY_FOR_TESTING2[@]}" "0" "clearAssociativeArray did'nt clear the array";
 }
 
+function isArrayEmpty_test() {
+  local -a test_array=();
+  Assert.functionExists "isArrayEmpty" "isArrayEmpty doesn't exist";
+  Assert.isEmpty "${test_array[*]}" "test_array is not empty";
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo]=bar [foo2]=bar2 );
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING2=( [foo]=bar [foo2]=bar2 );
 declare -Ag associativeArrayWithSpacesInKeys=( [with spaces]="dummy value" );

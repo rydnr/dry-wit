@@ -737,6 +737,28 @@ function Assert.isNotEmpty() {
   fi
 }
 
+## Asserts given value is an existing function.
+## -> 1: The function name.
+## -> 2: The error message.
+## Example:
+##   Assert.functionExists "my_function" "my_function does not exist";
+function Assert.functionExists() {
+  local _functionName="${1}";
+  local _message="${2}";
+
+  if isNotEmpty "${_functionName}"; then
+    checkNotEmpty "message" "${_message}" 2;
+
+    if isFunctionPresent "${_functionName}"; then
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    else
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_functionName} is not defined)";
+    fi
+  else
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_functionName} is not defined)";
+  fi
+}
+
 ## Fails the test directly.
 ## -> 1: The error message. Mandatory.
 ## Example:
@@ -767,7 +789,7 @@ function Assert.contains() {
   if contains "${_text}" "${_substring}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_substring}')";
   fi
 }
 

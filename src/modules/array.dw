@@ -84,7 +84,7 @@ function flattenArray() {
   _len=$((-1+$(eval echo "${_aux}")));
   _oldIFS="${IFS}";
 
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
   for _i in $(seq 0 ${_len}); do
     IFS="${_oldIFS}";
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
@@ -116,7 +116,7 @@ function retrieveAssociateArrayKeys() {
 
   declare -n _directArray="${_arrayName}";
 
-  IFS=$' \t\n"';
+  IFS="${DWIFS}";
   for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
     if isNotEmpty "${_result}"; then
@@ -149,7 +149,7 @@ function forEachAssociativeArrayEntryDo() {
 
   declare -n _directArray="${_arrayName}";
 
-  IFS=$' \t\n"';
+  IFS="${DWIFS}";
   for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
     ${_callback} "${_key}" "${_directArray[${_key}]}";
@@ -169,11 +169,26 @@ function clearAssociativeArray() {
 
   declare -n _directArray="${_arrayName}";
 
-  IFS=$' \t\n"';
+  IFS="${DWIFS}";
   for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
     unset _directArray[${_key}];
   done
   IFS="${_oldIFS}";
+}
+
+function isArrayEmpty() {
+  local _arrayName="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "arrayName" "${_arrayName}" 1;
+
+  if isEmpty "${_arrayName}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 #
