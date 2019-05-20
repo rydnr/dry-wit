@@ -92,6 +92,10 @@ function DRYWIT.main() {
   local _script="${1#./}";
   shift;
 
+  local _absolutePath;
+  retrieveAbsolutePath "${DRY_WIT_SCRIPT_PATH}";
+  DRY_WIT_SCRIPT_PATH="${RESULT}";
+
   source "${DRY_WIT_SCRIPT_PATH}" $@;
 
   DRYWIT.defineDryWitErrorMessages;
