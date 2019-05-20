@@ -253,9 +253,6 @@ function DW.findModule() {
 
 DRYWIT.bootstrap;
 
-SCRIPT_FOLDER="$( cd "$( dirname "${BASH_SOURCE[1]}" )" >/dev/null 2>&1 && pwd )"
-
-source "${SCRIPT_FOLDER}"/"${SCRIPT_NAME}" $@;
 if    endsWith "${SCRIPT_NAME}" "-tests.sh" \
    || endsWith "${SCRIPT_NAME}" "-test.sh"; then
   source $(which dry-wit-test) "${SCRIPT_NAME}" $@;
