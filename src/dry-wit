@@ -25,6 +25,9 @@ if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
   return;
 fi
 
+declare -gx DRY_WIT_SCRIPT_PATH="${1}";
+declare -gx DRY_WIT_SCRIPT_FOLDER="$(dirname "${DRY_WIT_SCRIPT_PATH}")";
+
 declare -gx DWIFS=$' \t\n';
 export TRUE=0;
 export FALSE=1;
@@ -168,7 +171,6 @@ function DRYWIT.failsafeArrayContains() {
 
   return ${_rescode};
 }
-
 
 ## Downloads given module.
 ## -> 1: The module name.

@@ -88,13 +88,12 @@ function DRYWIT.retrieveSettingsFiles() {
 ## PRIVATE
 ## dry-wit's core process.
 function DRYWIT.main() {
-  declare -gx DRY_WIT_SCRIPT_PATH="${1}";
   local _script="${1#./}";
   shift;
 
   local _absolutePath;
   retrieveAbsolutePath "${DRY_WIT_SCRIPT_PATH}";
-  DRY_WIT_SCRIPT_PATH="${RESULT}";
+  _absolutePath="${RESULT}";
 
   source "${DRY_WIT_SCRIPT_PATH}" $@;
 
