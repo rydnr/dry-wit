@@ -73,11 +73,17 @@ function DRYWIT.retrieveSettingsFiles() {
   local _result="";
   local _oldIFS="${IFS}";
 
+  local -A _doneAlready=();
+
   IFS="${DWIFS}";
   for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
     for _d in "${DRY_WIT_SCRIPT_FOLDER}" "."; do
       IFS="${_oldIFS}";
-      _result="${_result} ${_d}/${_f}";
+      retrieveAbsolutePath "${_d}/${_f}";
+      if [ -e "${RESULT}" ] && [ "${_doneAlready[${RESULT}]}" != "${TRUE}" ]; then
+        _result="${_result} ${RESULT}";
+        _doneAlready["${RESULT}"]=${TRUE};
+      fi
     done
   done
   IFS="${_oldIFS}";
