@@ -187,9 +187,7 @@ function defineEnvVar() {
     fi
   fi
 
-  if isNotEmpty "${_varValue}"; then
-    ENVVAR.addEnvVar "${_upcasedVarName}" "${_varValue}";
-  fi
+  ENVVAR.addEnvVar "${_upcasedVarName}" "${_varValue}";
 
   return ${TRUE};
 }
@@ -493,14 +491,16 @@ function ENVVAR.removeDollarSquareBrackets() {
 function ENVVAR.evalEnvVar() {
   local _varName="${1}";
   local -i rescode;
+  local _defaultValue="";
 
   checkNotEmpty "varName" "${_varName}" 1;
 
   if ENVVAR.removeDollarSquareBrackets "${_varName}"; then
     ENVVAR.evalEnvVar "${RESULT}";
   else
-    ENVVAR.evalVarDefault "${_varName}";
-    local _defaultValue="${RESULT}";
+    if ENVVAR.evalVarDefault "${_varName}"; then
+      _defaultValue="${RESULT}";
+    fi
     evalVar "${_varName}";
     local _varValue="${RESULT}";
 
@@ -626,6 +626,7 @@ function ENVVAR.evalVarDefault() {
 
   result="${__DW_ENVVAR_ENVIRONMENT_VARIABLES_DEFAULTS[${_varName}]}";
   if isEmpty "${result}"; then
+      export RESULT="";
       rescode=${FALSE};
   else
     export RESULT="${result}";
