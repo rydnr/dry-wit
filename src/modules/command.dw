@@ -1,11 +1,15 @@
+# mod: command
+
 DW.import user;
 DW.import logging;
 
-# Runs a command supporting logging of command-line and output.
-# The output is stored in a single variable. If it's expected to
-# be longer use 'runCommandLongOutput' instead.
-# Parameters:
-# - Command: The command to run.
+# txt: Runs a command supporting logging of command-line and output.
+# txt: The output is stored in a single variable. If it's expected to be longer use 'runCommandLongOutput' instead.
+# txt: Returns the result of the command.
+# fun: runCommand command
+# opt: command: The command to run.
+# api: runCommand
+# use: if runCommand "nmap -Pn"; then ... fi
 function runCommand() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
   local result;
@@ -25,12 +29,13 @@ function runCommand() {
   return ${resultCode};
 }
 
-# TODO: find out why this fails. result gets modified
-# externally in the getLogCategory/setLogCategory/logDebug block
-# Runs a command supporting logging of command-line and output,
-# even if it's long, since it uses a temporary file to store it.
-# Parameters:
-# - Command: The command to run.
+# txt: Runs a command supporting logging of command-line and output, even if it's long, since it uses a temporary file to store it.
+# txt: Returns the result of the command.
+# txt: TODO: find out why this fails. result gets modified externally in the getLogCategory/setLogCategory/logDebug block
+# fun: runCommandLongOutput command
+# opt: command: The command to run.
+# api: runCommandLongOutput
+# use: if runCommandLongOutput "nmap -Pn"; then ... fi
 function runCommandLongOutput() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
   local result;
@@ -60,15 +65,17 @@ function runCommandLongOutput() {
   return ${resultCode};
 }
 
-## Runs the command in a folder, under a given user.
-## -> 1: The user id.
-## -> 2: The group id.
-## -> 3: the folder.
-## -> 4+: the command.
-## Example:
-##  if runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"; then
-##    echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
-##  fi
+# txt: Runs a command in a folder, under a given user.
+# txt: Returns the result of the command.
+# fun: runCommandAsUidGid uid gid folder command+
+# opt: uid: The user id.
+# opt: gid: The group id.
+# opt: folder: the folder.
+# opt: command: the command.
+# api: runCommandAsUidGid
+# use: if runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"; then
+# use:   echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
+# use: fi
 function runCommandAsUidGid() {
   local _uid="${1}";
   local _gid="${2}";
@@ -89,15 +96,17 @@ function runCommandAsUidGid() {
   runCommandAsUserAndGroup "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
 }
 
-## Runs the command in a folder, under a given user.
-## -> 1: The user.
-## -> 2: The group.
-## -> 3: the folder.
-## -> 4+: the command.
-## Example:
-##  if runCommandAsUserAndGroup root root /tmp "ls -ltrhia"; then
-##    echo "ls -ltrhia run successfully as root/root, on /tmp";
-##  fi
+# txt: Runs the command in a folder, under a given user.
+# txt: Returns the result of the command.
+# fun: runCommandAsUserAndGroup user group folder command+
+# opt: user: The user.
+# opt: group: The group.
+# opt: folder: the folder.
+# opt: command: the command.
+# api: runCommandAsUserAndGroup
+# use: if runCommandAsUserAndGroup root root /tmp "ls -ltrhia"; then
+# use:   echo "ls -ltrhia run successfully as root/root, on /tmp";
+# use: fi
 function runCommandAsUserAndGroup() {
   local _user="${1}";
   local _group="${2}";
@@ -142,4 +151,4 @@ EOF
 
   return ${rescode};
 }
-
+#

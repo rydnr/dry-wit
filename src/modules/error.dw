@@ -1,9 +1,11 @@
+# mod: error
 DW.import envvar;
 
-## Appends a new error to ERROR_MESSAGES.
-## -> 1: The error to add.
-## Example:
-##   appendErrorMessage "item";
+# txt: Appends a new error to ERROR_MESSAGES.
+# txt: Returns 0/TRUE always.
+# fun: appendErrorMessage error
+# opt: error: The error to add.
+# use: appendErrorMessage "item";
 function appendErrorMessage() {
   local _error="${1}";
 
@@ -12,11 +14,12 @@ function appendErrorMessage() {
   ERROR_MESSAGES[${#ERROR_MESSAGES[@]}]="${_error}";
 }
 
-## Annotates a new error.
-## -> 1: The error label.
-## -> 2: The error message.
-## Example:
-##   addError INVALID_NAME "The name is not valid";
+# txt: Annotates a new error.
+# txt: Returns 0/TRUE always.
+# fun: addError label message
+# opt: label: The error label.
+# opt: message: The error message.
+# use: addError INVALID_NAME "The name is not valid";
 function addError() {
   local _label="${1}";
   local _message="${2}";
@@ -32,13 +35,13 @@ function addError() {
   debugEcho "${_normalizedLabel} -> ${_message}"
 }
 
-## Checks whether an error is defined.
-## -> 1: The error label.
-## <- 0/${TRUE} if the error is defined; 1/${FALSE} otherwise.
-## Example:
-##   if isErrorDefined INVALID_NAME; then
-##     echo "INVALID_NAME already defined";
-##   fi
+# txt: Checks whether an error is defined.
+# txt: 0/TRUE if the error is defined; 1/FALSE otherwise.
+# fun: isErrorDefined label
+# opt: label: The error label.
+# use: if isErrorDefined INVALID_NAME; then
+# use:   echo "INVALID_NAME already defined";
+# use: fi
 function isErrorDefined() {
   local _label="${1}";
   local -i _rescode;
@@ -54,13 +57,13 @@ function isErrorDefined() {
   return ${_rescode};
 }
 
-## Checks whether an error is undefined.
-## -> 1: The error label.
-## <- 0/${TRUE} if the error is undefined; 1/${FALSE} otherwise.
-## Example:
-##   if isErrorUndefined INVALID_NAME; then
-##     addError INVALID_NAME "The name is not valid";
-##   fi
+# txt: Checks whether an error is undefined.
+# txt: Returns <- 0/TRUE if the error is undefined; 1/FALSE otherwise.
+# fun: isErrorUndefined label
+# opt: label: The error label.
+# use: if isErrorUndefined INVALID_NAME; then
+# use:   addError INVALID_NAME "The name is not valid";
+# use: fi
 function isErrorUndefined() {
   local _label="${1}";
   local -i _rescode;
@@ -76,11 +79,11 @@ function isErrorUndefined() {
   return ${_rescode};
 }
 
-## Exits with an error.
-## -> 1: The error label.
-## -> 2: The error message.
-## Example:
-##   exitWithError UNKNOWN_OPTION "Unknown option";
+# txt: Exits with an error.
+# fun: exitWithError label message
+# opt: label: The error label.
+# opt: message: The error message.
+# use: exitWithError UNKNOWN_OPTION "Unknown option";
 function exitWithError() {
   local _label="${1}";
   shift;
@@ -96,10 +99,10 @@ function exitWithError() {
   exitWithErrorCode "${_label}";
 }
 
-## Exits with an error code associated with given error label.
-## -> 1: The error label.
-## Example:
-##   exitWithErrorCode UNKNOWN_OPTION;
+# txt: Exits with an error code associated with given error label.
+# fun: exitWithErrorCode label
+# opt: label: The error label.
+# use: exitWithErrorCode UNKNOWN_OPTION;
 function exitWithErrorCode() {
   local _label="${1}";
   shift;
@@ -114,23 +117,21 @@ function exitWithErrorCode() {
   exit ${_rescode};
 }
 
-# Internal functions
-## Prints given error.
-## -> 1: The error message.
-## Example:
-##   ERROR.printError "My error message.";
+# txt: Prints given error.
+# txt: Returns 0/TRUE always.
+# fun: ERROR.printError message
+# opt: message: The error message.
+# api: internal
+# use: ERROR.printError "My error message.";
 function ERROR.printError() {
   echo "Error: $@.";
 }
 
-## PUBLIC
-## Prints the error message for given label.
-## -> 1: The error label.
-## <- 0/${TRUE} if the error is found and gets printed; 1/${FALSE} otherwise.
-## Example:
-##   if printErrorMessage INVALID_OPTION; then
-##     # [..]
-##   fi
+# txt: Prints the error message for given label.
+# txt: Returns 0/TRUE if the error is found and gets printed; 1/FALSE otherwise.
+# fun: printErrorMessage label
+# opt: label: The error label.
+# use: if printErrorMessage INVALID_OPTION; then ... fi
 function printErrorMessage() {
   local _label="${1}";
   shift;
@@ -201,9 +202,10 @@ EOF
   return ${rescode};
 }
 
-## Prints the exit values.
-## Example:
-##   printExitValues;
+# txt: Prints the exit values.
+# txt: Returns 0/TRUE always.
+# fun: printExitValues
+# use: printExitValues;
 function printExitValues() {
   local -i i=0;
   local -i j=0;
@@ -230,7 +232,10 @@ EOF
   fi
 }
 
-## Resets the state of the module.
+# txt: Resets the state of the module.
+# fun: ERROR.resetState
+# api: internal
+# use: ERROR.resetState
 function ERROR.resetState() {
   BUILTIN_ERRORS=();
   ERROR_MESSAGES=();

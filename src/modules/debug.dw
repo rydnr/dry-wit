@@ -1,8 +1,12 @@
-## Tries to declare a variable with given arguments.
-## -> 1: The variable name.
-## -> 2+: The variable value(s).
-## Example:
-##   debugVariable "foo" "bar";
+# mod: debug
+
+# txt: Tries to declare a variable with given arguments.
+# txt: Returns 0/TRUE always.
+# fun: debugVariable varName varValue+
+# opt: varName: The variable name.
+# opt: varValue: The variable value(s).
+# api: debugVariable
+# use: debugVariable "foo" "bar";
 function debugVariable() {
   local _name="${1}";
   shift;
@@ -12,22 +16,26 @@ function debugVariable() {
 #  trap "echo ${_name} is being used here." DEBUG
 }
 
-## Prints the contents of given array.
-## -> 1: The name of the array.
-## Example:
-##   A=( "1" "2" "3" );
-##   debugArray "${A}"
+# txt: Prints the contents of given array.
+# txt: Returns 0/TRUE always.
+# fun: debugArray arrayName
+# opt: arrayName: The name of the array.
+# api: debugArray
+# use: A=( "1" "2" "3" );
+# use: debugArray "${A}"
 function debugArray() {
   DW.import array;
   flattenArray "${1}" " + ";
   debugEcho "${RESULT}";
 }
 
-## Prints the contents of given associative array.
-## -> 1: The name of the associative array.
-## Example:
-##   A=( [foo]=bar [other key]="other value" );
-##   debugArray "${A}"
+# txt: Prints the contents of given associative array.
+# txt: Returns 0/TRUE always.
+# fun: debugAssociativeArray arrayName
+# opt: arrayName: The name of the associative array.
+# api: debugAssociativeArray
+# use: A=( [foo]=bar [other key]="other value" );
+# use: debugArray "${A}"
 function debugAssociativeArray() {
   local _associativeArrayName="${1}";
   DW.import array;
@@ -41,11 +49,13 @@ function debugAssociativeArray() {
   debugEcho "DONE processing array ${_associativeArrayName}";
 }
 
-## Callback to be called to debug a specific entry in an associative array.
-## -> 1: The entry key. Mandatory.
-## -> 2: The entry value. Could be empty.
-## Example:
-##   forEachAssociativeArrayEntryDo MY_ASSOCIATIVE_ARRAY debugAssociativeArrayEntry;
+# txt: Callback to be called to debug a specific entry in an associative array.
+# txt: Returns 0/TRUE always.
+# fun: debugAssociativeArrayEntry key value
+# opt: key: The entry key. Mandatory.
+# opt: value: The entry value. Could be empty.
+# api: debugAssociativeArrayEntry
+# use: forEachAssociativeArrayEntryDo MY_ASSOCIATIVE_ARRAY debugAssociativeArrayEntry; done
 function debugAssociativeArrayEntry() {
   local _key="${1}";
   local _value="${2}";
@@ -55,9 +65,11 @@ function debugAssociativeArrayEntry() {
   debugEcho "${_key} -> ${_value}";
 }
 
-## Traces the API call to the default log file using in development.
-## Example:
-##   traceApiCall;
+# txt: Traces the API call to the default log file using in development.
+# txt: Returns 0/TRUE always.
+# fun: traceApiCall
+# api: traceApiCall
+# use: traceApiCall
 function traceApiCall() {
   local -i _i=0;
   local _logFile;
@@ -71,10 +83,12 @@ function traceApiCall() {
   done
 }
 
-## Specifies the log file for debugging purposes.
-## -> 1: The log file.
-## Example:
-##   setDebugLogFile "/tmp/.dw-debug.log";
+# txt: Specifies the log file for debugging purposes.
+# txt: Returns 0/TRUE if the log file can be used for writing; 1/FALSE otherwise.
+# fun: setDebugLogFile fileName
+# opt: fileName: The log file.
+# api: setDebugLogFile
+# use: setDebugLogFile "/tmp/.dw-debug.log";
 function setDebugLogFile() {
   local _file="${1}";
   local -i _rescode=${TRUE};
@@ -92,19 +106,21 @@ function setDebugLogFile() {
   return ${_rescode};
 }
 
-## Retrieves the log file for debugging purposes.
-## <- The log file.
-## Example:
-##   DEBUG.getDebugLogFile;
-##   echo "log file -> ${RESULT}";
+# txt: Retrieves the log file for debugging purposes.
+# txt: Returns 0/TRUE always, and the variable RESULT contains the path of the debug file.
+# fun: DEBUG.getDebugLogFile
+# use: DEBUG.getDebugLogFile;
+# use: echo "log file -> ${RESULT}";
 function DEBUG.getDebugLogFile() {
   export RESULT="${__DW_DEBUG_LOG_FILE}";
 }
 
-## Specifies whether "debugEcho" is enabled.
-## -> 1: That condition.
-## Example:
-##   setDebugEchoEnabled TRUE
+# txt: Specifies whether "debugEcho" is enabled.
+# txt: Returns 0/TRUE always.
+# fun: setDebugEchoEnabled bool
+# opt: bool: That condition.
+# api: setDebugEchoEnabled
+# use: setDebugEchoEnabled TRUE
 function setDebugEchoEnabled() {
   local _flag="${1}";
 
@@ -117,12 +133,13 @@ function setDebugEchoEnabled() {
   fi
 }
 
-## Retrieves whether "debugEcho" is enabled.
-## <- 0/${TRUE} if it's enabled; 1/${FALSE} otherwise.
-## Example:
-##   if isDebugEchoEnabled; then
-##      ..
-##   fi
+# txt: Retrieves whether "debugEcho" is enabled.
+# txt: Returns  0/TRUE if it's enabled; 1/FALSE otherwise.
+# fun: isDebugEchoEnabled
+# api: isDebugEchoEnabled
+# use: if isDebugEchoEnabled; then
+# use:   ...
+# use: fi
 function isDebugEchoEnabled() {
   local -i _rescode;
 
@@ -135,10 +152,12 @@ function isDebugEchoEnabled() {
   return ${_rescode};
 }
 
-## Echoes a line to stdout. Useful for locating them easily when debugging.
-## -> 1: The message to print.
-## Example:
-##   debugEcho "message";
+# txt: Echoes a line to stdout. Useful for locating them easily when debugging.
+# txt: Returns 0/TRUE always.
+# fun: debugEcho message
+# opt: message: The message to print.
+# api: debugEcho
+# use: debugEcho "message";
 function debugEcho() {
   local _logFile;
 
@@ -149,11 +168,19 @@ function debugEcho() {
   fi
 }
 
+# txt: Reverts the module to the default state.
+# txt: Returns 0/TRUE always.
+# fun: DEBUG.defaultState
+# use: DEBUG.defaultState
 function DEBUG.defaultState() {
   setDebugLogFile "${TEMP:-/tmp}/$(basename ${SCRIPT_NAME})-debug.$(date '+%Y%m%d%H%M%S').log";
   setDebugEchoEnabled TRUE;
 }
 
+# txt: Resets the module.
+# txt: Returns 0/TRUE always.
+# fun: DEBUG.resetState
+# use: DEBUG.resetState
 function DEBUG.resetState() {
   setDebugLogFile "";
 }

@@ -1,13 +1,12 @@
+# mod: net
 # Network functions
-
 import DW.package;
 
-## Retrieves all regular (excluding localhost, VPN, Docker, VirtualBox, etc) network interfaces.
-## <- RESULT: the interface names.
-## Usage:
-##   if retrieveIfaces; then
-##     echo "Interfaces: ${RESULT}";
-##   fi
+# txt: Retrieves all regular (excluding localhost, VPN, Docker, VirtualBox, etc) network interfaces.
+# txt: Returns 0/TRUE if network interfaces were found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the interface names.
+# fun: retrieveIfaces
+# use: if retrieveIfaces; then echo "Interfaces: ${RESULT}"; fi
 function retrieveIfaces() {
   local _result;
   local -i _rescode;
@@ -37,12 +36,11 @@ function retrieveIfaces() {
   return ${_rescode};
 }
 
-## Retrieves the first network interface.
-## <- RESULT: such interface name.
-## Usage:
-##   if retrieveIface; then
-##     echo "Interface candidate: ${RESULT}";
-##   fi
+# txt: Retrieves the first network interface.
+# txt: Returns 0/TRUE if first network interface was found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the first interface.
+# fun: retrieveIface
+# use: if retrieveIface; then echo "Interface candidate: ${RESULT}"; fi
 function retrieveIface() {
   local _result;
   local -i _rescode=${FALSE};
@@ -61,14 +59,12 @@ function retrieveIface() {
   return ${_rescode};
 }
 
-## Retrieves the /24 subnet of given network interface.
-## -> 1: The interface name.
-## <- 0/${TRUE} if the subnet information is available; 1/${FALSE} otherwise.
-## <- RESULT: the device where the root filesystem is stored.
-## Usage:
-##   if retrieveSubnet24 "eth0"; then
-##     echo "The /24 subnet for eth0 is ${RESULT}"
-##   fi
+# txt: Retrieves the /24 subnet of given network interface.
+# txt: Returns 0/TRUE if the subnet information is available; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains /24 subnet.
+# fun: retrieveSubnet24 interface
+# opt: interface: The interface name.
+# use: if retrieveSubnet24 "eth0"; then echo "The /24 subnet for eth0 is ${RESULT}"; fi
 function retrieveSubnet24() {
   local _iface="${1}";
   local _ip;
@@ -92,14 +88,12 @@ function retrieveSubnet24() {
   return ${rescode};
 }
 
-## Retrieves the IP for given interface.
-## -> 1: the interface name.
-## <- 0/${TRUE} if the IP is up; 1/${FALSE} otherwise.
-## <- RESULT: The IP.
-## Example:
-##   if retrieveIp "eth0"; then
-##     echo "IP: ${RESULT}";
-##   fi
+# txt: Retrieves the IP for given interface.
+# txt: Returns 0/TRUE if the IP is up; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the IP.
+# fun: retrieveIp interface
+# opt: interface: The interface name.
+# use: if retrieveIp "eth0"; then echo "IP: ${RESULT}"; fi
 function retrieveIp() {
   local _iface="${1}";
   local -i _rescode;
@@ -125,13 +119,11 @@ function retrieveIp() {
   return ${_rescode};
 }
 
-## Retrieves the IP of the default interface.
-## <- 0/${TRUE} if the IP can be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The IP.
-## Example:
-##   if retrieveOwnIp; then
-##     echo "My IP is ${RESULT}";
-##   fi
+# txt: Retrieves the IP of the default interface.
+# txt: Returns 0/TRUE if the IP can be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the IP.
+# fun: retrieveOwnIp
+# use: if retrieveOwnIp; then echo "My IP is ${RESULT}"; fi
 function retrieveOwnIp() {
   local -i _rescode;
   local _result;
@@ -162,13 +154,11 @@ function retrieveOwnIp() {
   return ${_rescode};
 }
 
-## Checks whether given host is reachable.
-## -> 1: The host to check.
-## <- 0/${TRUE} if the host is reachable; 1/${FALSE} otherwise.
-## Example:
-##   if hostIsReachable "www.google.com"; then
-##     echo "www.google.com is reachable";
-##   fi
+# txt: Checks whether given host is reachable.
+# txt: Returns 0/TRUE if the host is reachable; 1/FALSE otherwise.
+# fun: hostIsReachable host
+# opt: host: The host to check.
+# use: if hostIsReachable "www.google.com"; then echo "www.google.com is reachable"; fi
 function hostIsReachable() {
   local _host="${1}";
   local -i _rescode;
@@ -180,3 +170,4 @@ function hostIsReachable() {
 
   return ${_rescode};
 }
+#

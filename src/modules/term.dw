@@ -1,7 +1,12 @@
 # term functions
+# mod: term
 
-# Retrieves the TERM variable
-# <- RESULT: the TERM variable.
+# txt: Retrieves the TERM variable
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the TERM variable.
+# fun: retrieveTERM
+# use: retrieveTERM;
+# use: echo "TERM -> ${RESULT}";
 function retrieveTERM() {
   local result="${TERM}";
 
@@ -20,19 +25,14 @@ function retrieveTERM() {
   return ${TRUE};
 }
 
-# PRIVATE
-# Retrieves the column width, from an environment
-# variable.
-# <- RESULT: the column width; -1 if the environment variable
-#           is not specified.
-# <- 0/${TRUE} if the term width is specified via an environment variable;
-#    1/${FALSE} otherwise.
-# Example:
-#   if retrieveTermWidthFromEnvVar; then
-#     _width=${RESULT};
-#   fi
-function _retrieveTermWidthFromEnvVar() {
-  local rescode=${FALSE};
+# txt: Retrieves the column width, from an environment variable.
+# txt: Returns 0/TRUE if the term width is specified via an environment variable; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the column width.
+# fun: TERM.retrieveTermWidthFromEnvVar
+# api: internal
+# use: if retrieveTermWidthFromEnvVar; then width=${RESULT}; fi
+function TERM.retrieveTermWidthFromEnvVar() {
+  local -i rescode=${FALSE};
   if isNotEmpty "${DW_TERM_WIDTH}"; then
     rescode=${TRUE};
     export RESULT="${DW_TERM_WIDTH}";
@@ -41,37 +41,37 @@ function _retrieveTermWidthFromEnvVar() {
   return ${rescode};
 }
 
-# PRIVATE
-# Retrieves the width of the term.
-# Exports the value, since values greater
-# than 255 are not allowed as return codes.
-# <- 0: if the calculation
-# <- RESULT: the term width.
+# txt: Retrieves the width of the term.
+# txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
+# fun: getTermWidth
+# use: if getTermWidth; then echo "term width -> ${RESULT}"; fi
 function getTermWidth() {
   local result;
   local -i rescode;
   local _term;
 
-  _retrieveTermWidthFromEnvVar;
+  TERM.retrieveTermWidthFromEnvVar;
   rescode=$?;
   if ! isTrue ${rescode}; then
     retrieveTERM;
     _term="${RESULT}";
     getTermWidthForTerm "${_term}";
-    result="${RESULT}";
-    export RESULT="${result}";
     rescode=$?;
+    if ! isTrue ${rescode}; then
+        export RESULT="";
+    fi
   fi
 
   return ${rescode};
 }
 
-# Retrieves the width of the term.
-# Exports the value, since values greater
-# than 255 are not allowed as return codes.
-# -> 1: the TERM.
-# <- 0: if the calculation is performed successfully.
-# <- RESULT: the term width.
+# txt: Retrieves the width of the term.
+# txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
+# fun: getTermWidthForTerm term
+# opt: term: the TERM value.
+# use: if getTermWidthForTerm "${TERM}"; then ...; fi
 function getTermWidthForTerm() {
   local -i rescode;
   local result;
@@ -102,7 +102,11 @@ function getTermWidthForTerm() {
      || [ $((result)) -le 0 ]; then
     result=${_DRY_WIT_DEFAULT_TERM_WIDTH};
   fi
-  export RESULT=${result};
+
+  if isTrue ${rescode}; then
+      export RESULT=${result};
+  fi
 
   return ${rescode};
 }
+#

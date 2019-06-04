@@ -1,10 +1,15 @@
+# mod: echo
+
 DW.import constant;
 DW.import envvar;
 
-## Checks whether the terminal allows colors or not.
-## <- 0/${TRUE} if the terminal supports colors; 1/${FALSE} otherwise.
+# txt: Checks whether the terminal allows colors or not.
+# txt: Returns 0/TRUE if the terminal supports colors; 1/FALSE otherwise.
+# fun: allowsColors
+# api: allowsColors
+# use: if allowsColors then ... fi
 function allowsColors() {
-  local result;
+  local -i result;
 
   $(tput colors > /dev/null 2>&1);
   if isTrue $?; then
@@ -26,6 +31,13 @@ function allowsColors() {
   return ${result};
 }
 
+# txt: Retrieves the color for given name.
+# txt: The variable RESULT contains the color value.
+# fun: getColor name defaultColor?
+# opt: name: The color name.
+# opt: defaultColor: The fallback color. Optional.
+# api: getColor
+# use: getColor RED
 function getColor() {
   local _colorConstant="${1}";
   local _defaultColor="${2:-${UNDEFINED_COLOR}}"
@@ -39,11 +51,14 @@ function getColor() {
   export RESULT="${result}";
 }
 
-## PUBLIC
-## Prints a text in color.
-## -> 1: -n : Whether to remove the CRLF from the end (optional).
-## -> 2: The color.
-## -> 3: The text to echo.
+# txt: Prints a text in color.
+# txt: Returns 0/TRUE always.
+# fun: echoInColor [-n]? colorName text
+# opt: -n: Whether to remove the CRLF from the end (optional).
+# opt: colorName: The name of the color.
+# opt: text: The text to echo.
+# api: echoInColor
+# use: echoInColor -n RED "Work in progress"
 function echoInColor() {
   local _flagMinusN;
   local _colorAux;
@@ -84,22 +99,23 @@ function echoInColor() {
   fi
 }
 
-## PUBLIC
-## Prints a text in color.
-## -> 1: -n : Whether to remove the CRLF from the end (optional).
-## -> 2: The color.
-## -> 3: The text to echo.
+# txt: Resets the color for future calls to "echo".
+# txt: Returns 0/TRUE always.
+# fun: resetColor
+# api: resetColor
+# use: resetColor
 function resetColor() {
   echo -en ${NO_COLOR};
 }
 
-## PUBLIC
-## Echoes given text, colorized.
-## -> 1: The text to colorize.
-## -> 2: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text).
-## -> 3: The default color (optional).
-## Example:
-##   echoColorizeText "done" SUCCESS;
+# txt: Echoes given text, colorized.
+# txt: Returns 0/TRUE always.
+# fun: echoColorizedText text keyword defaultColor?
+# opt: text: The text to colorize.
+# opt: keyword: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text).
+# opt: defaultColor: The default color (optional).
+# api: echoColorizedText
+# use: echoColorizeText "done" SUCCESS;
 function echoColorizedText() {
   local _text="${1}";
   local _keyword="${2}";
@@ -133,12 +149,14 @@ function echoColorizedText() {
   echoColorizedTextWithColor -n "${_color}" "${_text}";
 }
 
-## PUBLIC
-## Echoes given text, colorized.
-## -> 1: The text to colorize.
-## -> 2: The text color.
-## Example:
-##   echoColorizeTextWithColor "${WHITE}" "done";
+# txt: Echoes given text, colorized.
+# txt: Returns 0/TRUE always.
+# fun: echoColorizedTextWithColor [-n]? colorName text
+# opt: -n: Whether to include a new line at the end of the text.
+# opt: colorName: The name of the color.
+# opt: text: The text to colorize.
+# api: echoColorizedTextWithColor
+# use: echoColorizeTextWithColor WHITE "done";
 function echoColorizedTextWithColor() {
   local _flagMinusN;
   if [ "${1}" == "-n" ]; then
@@ -169,4 +187,4 @@ function echoColorizedTextWithColor() {
     echo "${_text}";
   fi
 }
-
+#

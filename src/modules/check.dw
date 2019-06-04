@@ -1,13 +1,16 @@
+# mod: check
+
 DW.import stdlib;
 DW.import error;
 DW.import dw-plumbing;
 
-## Performs a precondition check on given parameter to ensure it's not empty. Exits if the check fails.
-## -> 1: The parameter name.
-## -> 2: The parameter value.
-## -> 3: The parameter index.
-## Example:
-##   checkNotEmpty "user" "${user}" 1 # -> throws an error if the first (1) parameter ("user") is empty.
+# txt: Performs a precondition check on given parameter to ensure it's not empty. Exits if the check fails.
+# fun: checkNotEmpty paramName paramValue paramIndex
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# api: checkNotEmpty
+# use: checkNotEmpty "user" "${user}" 1 # -> throws an error if the first (1) parameter ("user") is empty.
 function checkNotEmpty() {
   local _name="${1}";
   local _value="${2}";
@@ -26,14 +29,15 @@ function checkNotEmpty() {
   fi
 }
 
-## Performs a precondition check on given parameter to ensure it's included in a predefined list.
-## Exits if the check fails.
-## -> 1: The parameter name.
-## -> 2: The parameter value.
-## -> 3: The list of allowed values.
-## -> 3: The parameter index.
-## Example:
-##   checkOneOf "option" "${option}" "VALID INVALID" 1 # -> throws an error if the first (1) parameter ("option") is neither VALID nor INVALID.
+# txt: Performs a precondition check on given parameter to ensure it's included in a predefined list.
+# txt: Exits if the check fails.
+# fun: checkOneOf paramName paramValue validValues paramIndex
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: validValues: The list of allowed values.
+# opt: paramIndex: The parameter index.
+# api: checkOneOf
+# use: checkOneOf "option" "${option}" "VALID INVALID" 1 # -> throws an error if the first (1) parameter ("option") is neither VALID nor INVALID.
 function checkOneOf() {
   local _name="${1}";
   local _value="${2}";
@@ -43,15 +47,16 @@ function checkOneOf() {
   CHECK.checkOneOf 1 "${_name}" "${_value}" "${_validValues}" "${_index}";
 }
 
-## Performs a precondition check on given parameter to ensure it's included in a predefined list.
-## Exits if the check fails.
-## -> 1: The call stack offset.
-## -> 2: The parameter name.
-## -> 3: The parameter value.
-## -> 4: The list of allowed values.
-## -> 5: The parameter index.
-## Example:
-##   CHECK.checkOneOf 0 "option" "${option}" "VALID INVALID" 1 # -> throws an error if the first (1) parameter ("option") is neither VALID nor INVALID.
+# txt: Performs a precondition check on given parameter to ensure it's included in a predefined list.
+# txt: Exits if the check fails.
+# fun: CHECK.checkOneOf callStackOffset paramName paramValue validValues paramIndex
+# opt: callStackOffset: The call stack offset.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: validValues: The list of allowed values.
+# opt: paramIndex: The parameter index.
+# api: CHECK.checkOneOf
+# use: CHECK.checkOneOf 0 "option" "${option}" "VALID INVALID" 1 # -> throws an error if the first (1) parameter ("option") is neither VALID nor INVALID.
 function CHECK.checkOneOf() {
   local _callStackOffset="${1}";
   local _name="${2}";
@@ -105,13 +110,14 @@ function CHECK.checkOneOf() {
   fi
 }
 
-## Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
-## Exits if the check fails.
-## -> 1: The parameter name.
-## -> 2: The parameter value.
-## -> 3: The parameter index.
-## Example:
-##   checkMandatoryOrOptional "option" "${option}" 1 # -> throws an error if the first (1) parameter ("option") is neither MANDATORY or OPTIONAL.
+# txt: Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
+# txt: Exits if the check fails.
+# fun: checkMandatoryOrOptional paramName paramValue paramIndex
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# api: checkMandatoryOrOptional
+# use: checkMandatoryOrOptional "option" "${option}" 1 # -> throws an error if the first (1) parameter ("option") is neither MANDATORY or OPTIONAL.
 function checkMandatoryOrOptional() {
   local _name="${1}";
   local _value="${2}";
@@ -120,12 +126,14 @@ function checkMandatoryOrOptional() {
   CHECK.checkOneOf 1 "${_name}" "${_value}" "MANDATORY OPTIONAL" "${_index}";
 }
 
-## Checks whether a function is present. Exits if the check fails.
-## -> 1: The parameter name.
-## -> 2: The function name.
-## -> 3: The parameter index.
-## Example:
-##   checkFunctionPresent "callback" "echo" 1;
+# txt: Checks whether a function is present.
+# txt: Exits if the check fails.
+# fun: checkFunctionPresent paramName function paramIndex
+# opt: paramName: The parameter name.
+# opt: function: The function name.
+# opt: paramIndex: The parameter index.
+# api: checkFunctionPresent
+# use: checkFunctionPresent "callback" "echo" 1;
 function checkFunctionPresent() {
   local _name="${1}";
   local _functionName="${2}";
@@ -147,5 +155,4 @@ function checkFunctionPresent() {
     exitWithError UNACCEPTABLE_API_CALL "${_name} (parameter at position ${_index}) is a non-existent function when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 }
-
 #

@@ -1,3 +1,5 @@
+# mod: dw-plumbing
+
 # IFS stuff
 #_OLD_IFS="${IFS}";
 #export IFS=$'\n\t\040';
@@ -5,8 +7,157 @@
 declare -gx MANDATORY=${TRUE};
 declare -gx OPTIONAL=${FALSE};
 
-## Performs some checks on the script itself.
-## -> 1: The script.
+# txt: Performs the checks for a required dependency.
+# fun: checkReq dependency errorCode?
+# opt: dependency: The dependency.
+# opt: errorCode: The error code, optional.
+# api: checkReq
+# use: checkReq jq
+function checkReq() {
+    local _dependency="${1}";
+    local _errorCode="${2:-}";
+
+    if [ -z "${_errorCode}" ]; then
+        DRYWIT.addMissingDependencyError "${_dependency}";
+        DRYWIT.checkDependency "${_dependency}";
+    else
+        DRYWIT.checkDependency "${_dependency}" "${_errorCode}";
+    fi
+}
+
+# txt: Checks if given function is present.
+# txt: Returns 0/TRUE if the function is found; 1/FALSE otherwise.
+# fun: isFunctionPresent funcName scriptFile?
+# opt: funcName: The function name.
+# opt: scriptFile: The script file. Optional.
+# api: isFunctionPresent
+# use: if isFunctionPresent "myFunc" "myScript.sh"; then
+# use:   echo "myFunc is defined in myScript.sh";
+# use: fi
+function isFunctionPresent() {
+  local _function="${1}";
+  local _script="${2}";
+  local _rescode;
+  local _inc;
+  local _oldIFS="${IFS}";
+
+  checkNotEmpty "function" "${_function}" 1;
+
+  type ${_function} 2> /dev/null | grep -q 'function'
+  _rescode=$?;
+  if isFalse ${_rescode}; then
+    if isNotEmpty "${_script}"; then
+      grep " ${_function}()" "${_script}" > /dev/null 2>&1;
+      _rescode=$?;
+    fi
+  fi
+  if isFalse ${_rescode}; then
+    if isNotEmpty "${_script}"; then
+      IFS="${DWIFS}";
+      for _inc in "./$(basename ${_script} .sh).inc.sh" \
+                    "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+        IFS="${_oldIFS}";
+        if fileExists "${_inc}"; then
+          isFunctionPresent "${_function}" "${_inc}";
+          _rescode=$?;
+	        if isTrue ${_rescode}; then
+            break;
+	        fi
+        fi
+      done
+      IFS="${_oldIFS}";
+    fi
+  fi
+
+  return ${_rescode};
+}
+
+# txt: Checks if given function is missing.
+# txt: Returns 0/TRUE if the function is missing; 1/FALSE otherwise.
+# fun: isFunctionMissing funcName scriptFile?
+# opt: funcName: The function name.
+# opt: scriptFile: The script file. Optional.
+# api: isFunctionMissing
+# use: if isFunctionMissing "myFunc" "myScript.sh"; then
+# use:   echo "myFunc is not defined in myScript.sh";
+# use: fi
+function isFunctionMissing() {
+  local _function="${1}";
+  local _script="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "function" "${_function}" 1;
+
+  if isFunctionPresent "${_function}" "${_script}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# txt: Cleans up temporary resources.
+# txt: Returns 0/TRUE always.
+# fun: cleanup
+# api: cleanup
+# use: cleanup
+function cleanup() {
+  local -i _deletedCount=0;
+  local -i _notDeletedCount=0;
+  local _deleted;
+  local _notDeleted;
+  local -i _success;
+  local _oldIFS="${IFS}";
+  local _i;
+
+  if [ "${#_CLEANUP_FILES}" != "0" ]; then
+    setLogCategory "post-process";
+
+    logTrace -n "Cleaning up temporary files";
+
+    IFS="${DWIFS}";
+    for _i in ${_CLEANUP_FILES[*]}; do
+      IFS="${_oldIFS}";
+      rm -rf ${_i} > /dev/null 2>&1;
+      if isTrue $?; then
+          _deleted="${_deleted} ${_i}";
+          _deletedCount=$((_deletedCount + 1));
+      else
+        _notDeleted="${_notDeleted} ${_i}";
+        _notDeletedCount=$((_notDeletedCount + 1));
+      fi
+    done
+    IFS="${_oldIFS}";
+
+    if isZero ${_notDeletedCount}; then
+      _success=${TRUE};
+    fi
+
+    if isTrue ${_success}; then
+      if isZero ${_deletedCount}; then
+        logTraceResult SUCCESS "none";
+      else
+        logTraceResult SUCCESS "${_deletedCount}";
+        logTrace "Deleted: ${_deleted}";
+      fi
+    elif isEmpty "${_notDeletedCount}"; then
+      logTraceResult FAILURE "?";
+    else
+      logTraceResult FAILURE "${_notDeletedCount}";
+    fi
+
+    if isFalse ${_success}; then
+      logTrace "Not deleted: ${_notDeleted}";
+    fi
+  fi
+}
+
+# txt: Performs some checks on the script itself.
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.checkScript script
+# opt: script: The script.
+# use: DRYWIT.checkScript /tmp/myScript.sh
 function DRYWIT.checkScript() {
   local _script="${1}";
   local _v;
@@ -40,8 +191,10 @@ function DRYWIT.checkScript() {
   logTraceResult SUCCESS "${_DW_DONE}";
 }
 
-## PRIVATE
-## Performs the dry-wit setup process.
+# txt: Performs the dry-wit setup process.
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.setup
+# use: DRYWIT.setup
 function DRYWIT.setup() {
   DRYWIT.trapSignals;
   local _f;
@@ -61,12 +214,11 @@ function DRYWIT.setup() {
   evalEnvVars;
 }
 
-## PRIVATE
-## Retrieves the settings files.
-## <- RESULT: a space-separated list of settings files.
-## Example:
-##   DRYWIT.retrieveSettingsFiles;
-##   echo "settings files: ${RESULT}";
+# txt: Retrieves the settings files.
+# txt: The variable RESULT contains a space-separated list of settings files.
+# fun: DRYWIT.retrieveSettingsFiles
+# use: DRYWIT.retrieveSettingsFiles;
+# use: echo "settings files: ${RESULT}";
 function DRYWIT.retrieveSettingsFiles() {
   local _f;
   local _d;
@@ -91,8 +243,11 @@ function DRYWIT.retrieveSettingsFiles() {
   export RESULT="${_result}";
 }
 
-## PRIVATE
-## dry-wit's core process.
+# txt: dry-wit's core process.
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.main script
+# opt: script: The script to run.
+# use: DRYWIT.main
 function DRYWIT.main() {
   local _script="${1#./}";
   shift;
@@ -151,11 +306,11 @@ function DRYWIT.main() {
   main;
 }
 
-## Appends a new built-in error to BUILTIN_ERRORS.
-## -> 1: The error to add.
-##
-## Example:
-##   DRYWIT.appendBuiltInError "error";
+# txt: Appends a new built-in error to BUILTIN_ERRORS.
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.appendBuiltInError error
+# opt: error: The error to add.
+# use: DRYWIT.appendBuiltInError "error";
 function DRYWIT.appendBuiltInError() {
   local _error="${1}";
 
@@ -168,9 +323,12 @@ function DRYWIT.appendBuiltInError() {
   fi
 }
 
-## Annotates a new built-in error.
-## -> 1: The error name.
-## -> 1: The error message.
+# txt: Annotates a new built-in error.
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.addBuiltInError name message
+# opt: name: The error name.
+# opt: message: The error message.
+# use: DRYWIT.addBuiltInError INVALID_OPTION "Option unrecognized"
 function DRYWIT.addBuiltInError() {
   local _errorName="${1}";
   local _message="${2}";
@@ -182,7 +340,10 @@ function DRYWIT.addBuiltInError() {
   export "${_upcasedErrorName}"="${_message}";
 }
 
-## Declares dry-wit's error messages.
+# txt: Declares dry-wit's error messages.
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.defineDryWitErrorMessages
+# use: DRYWIT.defineDryWitErrorMessages
 function DRYWIT.defineDryWitErrorMessages() {
   DRYWIT.addBuiltInError "SCRIPT_INTERRUPTED" "User interruption";
   DRYWIT.addBuiltInError "MISSING_MANDATORY_VARIABLES" "Script not complete, since it doesn't define all mandatory variables";
@@ -193,8 +354,11 @@ function DRYWIT.defineDryWitErrorMessages() {
   DRYWIT.addBuiltInError "UNACCEPTABLE_ENVIRONMENT_VARIABLE" "Unacceptable environment variable: ";
 }
 
-## Annotates a new error describing a missing dependency.
-## -> 1: The missing dependency.
+# txt: Annotates a new error describing a missing dependency.
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.addMissingDependencyError dependency
+# opt: message: The the missing dependency.
+# use: DRYWIT.addMissingDependencyError "docker"
 function DRYWIT.addMissingDependencyError() {
   local _dependency="${1}";
   normalizeUppercase "${_dependency}_NOT_INSTALLED";
@@ -204,9 +368,12 @@ function DRYWIT.addMissingDependencyError() {
   addError "${_constant}" "${_dependency} is not installed";
 }
 
-## Checks a required dependency is available.
-## -> 1: The program name.
-## -> 2: The error code to throw if the dependency is not available. Optional.
+# txt: Checks a required dependency is available.
+# txt: Returns 0/TRUE always; it exits if the dependency is not available.
+# fun: DRYWIT.checkDependency name errorCode
+# opt: name: The program name.
+# opt: errorCode: The error code to throw if the dependency is not available. Optional.
+# use: DRYWIT.checkDependency jq JQ_IS_NOT_INSTALLED
 function DRYWIT.checkDependency() {
   local _req="${1}";
   local _errorCode="${2}";
@@ -223,151 +390,21 @@ function DRYWIT.checkDependency() {
   fi
 }
 
-## Performs the checks for a required dependency.
-## -> 1: The dependency.
-function checkReq() {
-  local _dependency="${1}";
-  local _errorCode="${2:-}";
-
-  if [ -z "${_errorCode}" ]; then
-    DRYWIT.addMissingDependencyError "${_dependency}";
-    DRYWIT.checkDependency "${_dependency}";
-  else
-    DRYWIT.checkDependency "${_dependency}" "${_errorCode}";
-  fi
-}
-
-## Checks dry-wit's own requirements.
+# txt: Checks dry-wit's own requirements.
+# txt: Returns 0/TRUE always, unless it finds missing requirements and exits.
+# fun: DRYWIT.defineDryWitRequirements
+# use: DRYWIT.defineDryWitRequirements
 function DRYWIT.defineDryWitRequirements() {
   checkReq grep;
   checkReq mktemp;
 }
 
-## Checks if given function is present.
-## -> 1: The function name.
-## -> 2: The script file. Optional.
-## <- 0/${RESULT} if the function is found; 1/${FALSE} otherwise.
-## Example:
-##   if isFunctionPresent "myFunc" "myScript.sh"; then
-##     echo "myFunc is defined in myScript.sh";
-##   fi
-function isFunctionPresent() {
-  local _function="${1}";
-  local _script="${2}";
-  local _rescode;
-  local _inc;
-  local _oldIFS="${IFS}";
-
-  checkNotEmpty "function" "${_function}" 1;
-
-  type ${_function} 2> /dev/null | grep -q 'function'
-  _rescode=$?;
-  if isFalse ${_rescode}; then
-    if isNotEmpty "${_script}"; then
-      grep " ${_function}()" "${_script}" > /dev/null 2>&1;
-      _rescode=$?;
-    fi
-  fi
-  if isFalse ${_rescode}; then
-    if isNotEmpty "${_script}"; then
-      IFS="${DWIFS}";
-      for _inc in "./$(basename ${_script} .sh).inc.sh" \
-                    "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
-        IFS="${_oldIFS}";
-        if fileExists "${_inc}"; then
-          isFunctionPresent "${_function}" "${_inc}";
-          _rescode=$?;
-	        if isTrue ${_rescode}; then
-            break;
-	        fi
-        fi
-      done
-      IFS="${_oldIFS}";
-    fi
-  fi
-
-  return ${_rescode};
-}
-
-## Checks if given function is missing.
-## -> 1: The function name.
-## -> 2: The script file. Optional.
-## <- 0/${RESULT} if the function is missing; 1/${FALSE} otherwise.
-## Example:
-##   if isFunctionMissing "myFunc" "myScript.sh"; then
-##     echo "myFunc is not defined in myScript.sh";
-##   fi
-function isFunctionMissing() {
-  local _function="${1}";
-  local _script="${2}";
-  local -i _rescode;
-
-  checkNotEmpty "function" "${_function}" 1;
-
-  if isFunctionPresent "${_function}" "${_script}"; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
-  fi
-
-  return ${_rescode};
-}
-
-function cleanup() {
-  local -i _deletedCount=0;
-  local -i _notDeletedCount=0;
-  local _deleted;
-  local _notDeleted;
-  local -i _success;
-  local _oldIFS="${IFS}";
-  local _i;
-
-  if [ "${#_CLEANUP_FILES}" != "0" ]; then
-    setLogCategory "post-process";
-
-    logTrace -n "Cleaning up temporary files";
-
-    IFS="${DWIFS}";
-    for _i in ${_CLEANUP_FILES[*]}; do
-      IFS="${_oldIFS}";
-      rm -rf ${_i} > /dev/null 2>&1;
-      if isTrue $?; then
-          _deleted="${_deleted} ${_i}";
-          _deletedCount=$((_deletedCount + 1));
-      else
-        _notDeleted="${_notDeleted} ${_i}";
-        _notDeletedCount=$((_notDeletedCount + 1));
-      fi
-    done
-    IFS="${_oldIFS}";
-
-    if isZero ${_notDeletedCount}; then
-      _success=${TRUE};
-    fi
-
-    if isTrue ${_success}; then
-      if isZero ${_deletedCount}; then
-        logTraceResult SUCCESS "none";
-      else
-        logTraceResult SUCCESS "${_deletedCount}";
-        logTrace "Deleted: ${_deleted}";
-      fi
-    elif isEmpty "${_notDeletedCount}"; then
-      logTraceResult FAILURE "?";
-    else
-      logTraceResult FAILURE "${_notDeletedCount}";
-    fi
-
-    if isFalse ${_success}; then
-      logTrace "Not deleted: ${_notDeleted}";
-    fi
-  fi
-}
-
+# txt: Traps required signals
+# txt: Returns 0/TRUE always.
+# fun: DRYWIT.trapSignals
+# use: DRYWIT.trapSignals
 function DRYWIT.trapSignals() {
   trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP;
   #  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
 }
 #
-
-

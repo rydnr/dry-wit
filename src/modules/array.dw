@@ -1,12 +1,12 @@
-## Checks if an element is already contained in an array.
-## -> 1: The array (passed as "${array[@]}".
-## -> 2: The element to check.
-## <- 0/${TRUE}: If the element is present in the array; 1/${FALSE} otherwise.
-## Example:
-##   a=("one" "two" "three" "other number")
-##   if arrayContains "${array[@]}" "other number"; then
-##     ...
-##   fi
+# mod: array
+# txt: Checks if an element is already contained in an array.
+# txt: Returns 0/TRUE: If the element is present in the array; 1/FALSE otherwise.
+# fun: arrayContains array element
+# opt: array: The array (passed as "${array[@]}".
+# opt: element: The element to check.
+# api: arrayContains
+# use:   a=("one" "two" "three" "other number")
+# use:   if arrayContains "${a[@]}" "other number"; then ...
 function arrayContains() {
   local _array="${1}";
   local _item="${2}";
@@ -32,15 +32,14 @@ function arrayContains() {
   return ${_rescode};
 }
 
-## Checks if an element is not already contained in an array.
-## -> 1: The array (passed as "${array[@]}".
-## -> 2: The element to check.
-## <- 0/${TRUE}: If the element is not present in the array; 1/${FALSE}: Otherwise
-## Example:
-##   a=("one" "two" "three" "other number")
-##   if arrayDoesNotContain "${array[@]}" "four"; then
-##     ...
-##   fi
+# txt: Checks if an element is not already contained in an array.
+# txt: Returns 0/TRUE: If the element is not present in the array; 1/FALSE Otherwise.
+# fun: arrayDoesNotContain array element
+# opt: array: The array (passed as "${array[@]}").
+# opt: element: The element to check.
+# api: arrayDoesNotContain
+# use: a=("one" "two" "three" "other number")
+# use: if arrayDoesNotContain "${a[@]}" "four"; then ...
 function arrayDoesNotContain() {
   local _array="${1}";
   local _item="${2}";

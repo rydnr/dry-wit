@@ -1,6 +1,10 @@
-# Converts given date (in days) to a formatted date.
-# -> 1: The day-based timestamp.
-# <- RESULT: year month day
+# mod: date
+# txt: Converts given date (in days) to a formatted date.
+# txt: The variable RESULT contains "year month day"
+# fun: jd2date date
+# opt: date: The day-based timestamp.
+# api: jd2date
+# use: jd2date 135353
 function jd2date() {
   local _standardJd;
   local _temp1;
@@ -27,11 +31,14 @@ function jd2date() {
   export RESULT="$_year $_month $_day";
 }
 
-# Converts given formatted date to a day-based one.
-# -> 1: The year.
-# -> 2: The month.
-# -> 3: The day.
-# <- RESULT: The day-based timestamp.
+# txt: Converts given formatted date to a day-based one.
+# txt: The variable RESULT contains the day-based timestamp.
+# fun: date2jd year month day
+# opt: year: The year.
+# opt: month: The month.
+# opt: day: The day.
+# api: date2jd
+# use: date2jd 2019 6 2
 function date2jd() {
   local result=0;
 
@@ -49,9 +56,12 @@ function date2jd() {
   export RESULT=${result};
 }
 
-# Converts given date (in seconds) to a formatted date.
-# -> 1: The timestamp, in seconds.
-# <- RESULT: days hour minute second
+# txt: Converts given date (in seconds) to a formatted date.
+# txt: The variable RESULT contains "days hour minute second".
+# fun: jds2date timestamp
+# opt: timestamp: The timestamp, in seconds.
+# api: jds2date
+# use: jds2date 112412542444
 function jds2date() {
   local _year;
   local _month;
@@ -76,14 +86,17 @@ function jds2date() {
   export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}";
 }
 
-# Converts given formatted date to a second-based one.
-# -> 1: The year.
-# -> 2: The month.
-# -> 3: The day.
-# -> 4: The hour.
-# -> 5: The minute.
-# -> 6: The second.
-# <- RESULT: The number of seconds.
+# txt: Converts given formatted date to a second-based one.
+# txt: The variable RESULT contains the number of seconds.
+# fun: date2jds year month day hour minute second
+# opt: year: The year.
+# opt: month: The month.
+# opt: day: The day.
+# opt: hour: The hour.
+# opt: minute: The minute.
+# opt: second: The second.
+# api: date2jds
+# use: date2jjds 2019 6 2 18 13 56
 function date2jds() {
   local result=0;
 
@@ -102,3 +115,4 @@ function date2jds() {
 
   export RESULT=${result};
 }
+#
