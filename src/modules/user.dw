@@ -1,47 +1,57 @@
+# mod: user
 DW.import logging;
 
 ## User/Group helpers
-## Retrieves the uid of the owner user of given file or folder.
-## -> 1: The file or folder.
-## <- RESULT: The id of the user that owns the file or folder.
-## Example:
-##   retrieveOwnerUid /tmp
-##   echo "The id of the owner of /tmp is ${RESULT}";
+# txt: Retrieves the uid of the owner user of given file or folder.
+# txt: Returns 0/TRUE if the owner information is found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the id of the user that owns the file or folder.
+# fun: retrieveOwnerUid path
+# opt: path: The file or folder.
+# use: if retrieveOwnerUid /tmp; then echo "The id of the owner of /tmp is ${RESULT}"; fi
 function retrieveOwnerUid() {
   local _file="${1}"
+  local -i _rescode;
   local result;
 
   result="$(stat -c '%u' "${_file}")";
+  _rescode=$?;
 
-  export RESULT="${result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${result}";
+  fi
+
+  return ${_rescode};
 }
 
-## Retrieves the id of the owner group of given file or folder.
-## -> 1: The file or folder.
-## <- RESULT: The id of the group that owns the file or folder.
-## Example:
-##   retrieveOwnerGid /tmp
-##   echo "The id of the group of /tmp is ${RESULT}";
+# txt: Retrieves the id of the owner group of given file or folder.
+# txt: Returns 0/TRUE if the owner information is found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the id of the group that owns the file or folder.
+# fun: retrieveOwnerGid path
+# opt: path: The file or folder.
+# use: if retrieveOwnerGid /tmp; then echo "The id of the group of /tmp is ${RESULT}"; fi
 function retrieveOwnerGid() {
   local _file="${1}"
+  local -i _rescode;
   local result;
 
   result="$(stat -c '%g' "${_file}")";
+  _rescode=$?;
 
-  export RESULT="${result}";
+  if isTrue ${_rescode}; then
+      export RESULT="${result}";
+  fi
+
+  return ${_rescode};
 }
 
-## Checks whether given uid already exists.
-## -> 1: The user id.
-## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
-##
-## Example:
-##   if uidAlreadyExists 1; then
-##     echo "User 1 exists";
-##   fi
+# txt: Checks whether given uid already exists.
+# txt: Returns 0/TRUE if it exists; 1/FALSE otherwise.
+# fun: uidAlreadyExists uid
+# opt: uid: The user id.
+# use: if uidAlreadyExists 1; then ...; fi
 function uidAlreadyExists() {
   local _uid="${1}";
-  local rescode;
+  local -i rescode;
 
   logDebug -n "Checking if uid ${_uid} is already used";
   getent passwd ${_uid} > /dev/null;
@@ -56,17 +66,14 @@ function uidAlreadyExists() {
   return ${rescode};
 }
 
-## Checks whether given gid already exists.
-## -> 1: The group id.
-## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
-##
-## Example:
-##   if gidAlreadyExists 103; then
-##     echo "Group 103 exists";
-##   fi
+# txt: Checks whether given gid already exists.
+# txt: Returns 0/TRUE if it exists; 1/FALSE otherwise.
+# fun: gidAlreadyExists gid
+# opt: gid: The group id.
+# use: if gidAlreadyExists 103; then ...; fi
 function gidAlreadyExists() {
   local _gid="${1}";
-  local rescode;
+  local -i rescode;
 
   logDebug -n "Checking if gid ${_gid} already exists";
   getent group ${_gid} > /dev/null;
@@ -81,17 +88,14 @@ function gidAlreadyExists() {
   return ${rescode};
 }
 
-## Checks whether given user already exists.
-## -> 1: The user name.
-## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
-##
-## Example:
-##   if userAlreadyExists guest; then
-##     echo "User guest exists";
-##   fi
+# txt: Checks whether given user already exists.
+# txt: Returns 0/TRUE if it exists; 1/FALSE otherwise.
+# fun: userAlreadyExists user
+# opt: user: The user name.
+# use: if userAlreadyExists guest; then ...; fi
 function userAlreadyExists() {
   local _user="${1}";
-  local rescode;
+  local -i rescode;
 
   logDebug -n "Checking if user ${_user} is already used";
   getent passwd ${_user} > /dev/null;
@@ -106,17 +110,14 @@ function userAlreadyExists() {
   return ${rescode};
 }
 
-## Checks whether given group already exists.
-## -> 1: The group name.
-## <- 0/${TRUE} if it exists; 1/${FALSE} otherwise.
-##
-## Example:
-##   if groupAlreadyExists users; then
-##     echo "Group users exists";
-##   fi
+# txt: Checks whether given group already exists.
+# txt: Returns 0/TRUE if it exists; 1/FALSE otherwise.
+# fun: groupAlreadyExists group
+# opt: group: The group name.
+# use: if groupAlreadyExists users; then ...; fi
 function groupAlreadyExists() {
   local _group="${1}";
-  local rescode;
+  local -i rescode;
 
   logDebug -n "Checking if group ${_group} already exists";
   getent group ${_group} > /dev/null;
@@ -131,36 +132,36 @@ function groupAlreadyExists() {
   return ${rescode};
 }
 
-## Retrieves the user id of given user.
-## -> 1: The user name.
-## <- RESULT: The user id.
-##
-## Example:
-##   retrieveUserFromUid "1";
-##   echo "The name of user 1 is ${RESULT}";
+# txt: Retrieves the user id of given user.
+# txt: Returns 0/TRUE if the user is found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the user id.
+# fun: retrieveUserFromUid user
+# opt: user:: The user name.
+# use: if retrieveUserFromUid "1"; then echo "The name of user 1 is ${RESULT}"; fi
 function retrieveUserFromUid() {
   local _uid="${1}";
+
   checkNotEmpty "uid" "${_uid}" 1;
 
   local result;
-  local rescode;
+  local -i rescode;
 
   result=$(getent passwd ${_uid} | cut -d':' -f1);
   rescode=$?;
 
-  export RESULT="${result}";
+  if isTrue ${rescode}; then
+      export RESULT="${result}";
+  fi
 
   return ${rescode};
 }
 
-## Retrieves the group id of given group.
-## -> 1: The group name.
-## <- RESULT: The group id.
-## <- 0/${TRUE} if the gid is processed successfully; 1/${FALSE} otherwise.
-## Example:
-##   if retrieveGroupFromGid "100"; then
-##     echo "The name of group 1 is ${RESULT}";
-##   fi
+# txt: Retrieves the group id of given group.
+# txt: Returns 0/TRUE if the gid is processed successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the group id.
+# fun: retrieveGroupFromGid group
+# opt: group: The group name.
+# use: if retrieveGroupFromGid "100"; then echo "The name of group 1 is ${RESULT}"; fi
 function retrieveGroupFromGid() {
   local _gid="${1}";
   local result;
@@ -178,18 +179,17 @@ function retrieveGroupFromGid() {
   return ${rescode};
 }
 
-## Retrieves the id of a given user.
-## -> 1: The user name.
-## <- RESULT: The user id.
-##
-## Example:
-##   retrieveUidFromUser "root";
-##   echo "The id of user root is ${RESULT}";
+# txt: Retrieves the id of a given user.
+# txt: Returns 0/TRUE if the user is found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the user id.
+# fun: retrieveUidFromUser user
+# opt: user: The user name.
+# use: if retrieveUidFromUser "root"; then "The id of user root is ${RESULT}"; fi
 function retrieveUidFromUser() {
   local _user="${1}";
   checkNotEmpty "user" "${_user}" 1;
   local result;
-  local rescode;
+  local -i rescode;
 
   logDebug -n "Retrieving uid of user ${_user}";
   result=$(getent passwd ${_user} | cut -d':' -f3);
