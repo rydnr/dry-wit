@@ -1,11 +1,11 @@
-## Retrieves a Vault token from given file.
-## -> 1: The file.
-## <- 0/${TRUE} if the token is retrieved; 1/${FALSE} otherwise.
-## <- RESULT: the Vault token.
-## Example:
-##   if retrieveVaultToken "keys.txt"; then
-##     echo "Vault token: ${RESULT}";
-##   fi
+# mod: vault
+
+# txt: Retrieves a Vault token from given file.
+# txt: Returns 0/TRUE if the token is retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the Vault token.
+# fun: retrieveVaultToken file
+# opt: file: The file.
+# use: if retrieveVaultToken "keys.txt"; then echo "Vault token: ${RESULT}"; fi
 function retrieveVaultToken() {
   local _file="${1}";
   local -i _rescode;
@@ -28,13 +28,12 @@ function retrieveVaultToken() {
   return ${_rescode};
 }
 
-## Runs a command inside the Vault container.
-## -> @: command to run.
-## <- 0/${TRUE} if the command succeeds; 1/${FALSE} otherwise.
-## Example:
-##   if runVaultCommand vault read; then
-##     echo "vault read -> ${RESULT}";
-##   fi
+# txt: Runs a command inside the Vault container.
+# txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
+# fun: runVaultCommand command args*
+# opt: command: The command to run.
+# opt: args: The command arguments. Optional.
+# use: if runVaultCommand vault read; then echo "vault read -> ${RESULT}"; fi
 function runVaultCommand() {
   local _args="${@}";
   local -i _rescode;
@@ -57,9 +56,10 @@ function runVaultCommand() {
   return ${_rescode};
 }
 
-## Checks if Vault is running.
-## Example:
-##   checkVaultRunning;f
+# txt: Checks if a Vault container (whose name is matches ${VAULT_CONTAINER_NAME}) is running.
+# txt: Returns 0/TRUE if Vault is running; 1/FALSE otherwise.
+# fun: checkVaultRunning
+# use: if checkVaultRunning; then echo "${VAULT_CONTAINER_NAME} is running"; fi
 function checkVaultRunning() {
   logDebug -n "Checking if ${VAULT_CONTAINER_NAME} is running";
   if isDockerContainerRunning "${VAULT_CONTAINER_NAME}"; then
@@ -71,9 +71,9 @@ function checkVaultRunning() {
   fi
 }
 
-## Performs the Vault authorization.
-## Example:
-##   authorizeInVault;
+# txt: Performs the Vault authorization.
+# fun: authorizeInVault
+# use: authorizeInVault;
 function authorizeInVault() {
 
   logDebug -n "Retrieving Vault token";
@@ -106,13 +106,11 @@ function authorizeInVault() {
   fi
 }
 
-## Builds the Vault url.
-## <- 0/${TRUE} if the Vault url was built; 1/${FALSE} otherwise.
-## <- RESULT: The Vault url.
-## Example:
-##   if retrieveVaultUrl; then
-##     echo "Vault URL -> ${RESULT}";
-##   fi
+# txt: Builds the Vault url.
+# txt: Returns 0/TRUE if the Vault url was built; 1/FALSE otherwise.
+# txt: If the funcion returns 0/TRUE, the variable RESULT contains the Vault url.
+# fun: retrieveVaultUrl
+# use: if retrieveVaultUrl; then echo "The Vault URL is ${RESULT}"; fi
 function retrieveVaultUrl() {
   local _protocol="${VAULT_URL_PROTOCOL}";
   local _port="${VAULT_URL_PORT}";
@@ -132,16 +130,12 @@ function retrieveVaultUrl() {
   return ${_rescode};
 }
 
-## Writes a file in Vault.
-## -> 1: The source path.
-## -> 2: The destination path.
-## <- 0/${TRUE} if the private key was stored; 1/${FALSE} otherwise.
-## Example:
-##   if writeFileInVault "config/concourse-private-key" "concourse/main/main/private-key"; then
-##     echo "Private key written in Vault";
-##   else
-##     echo "Could not write the private key in Vault: ${RESULT}";
-##   fi
+# txt: Writes a file in Vault.
+# txt: Returns 0/TRUE if the private key was stored; 1/FALSE otherwise.
+# fun: writeFileInVault source destination
+# opt: source: The source path.
+# opt: destination: The destination path.
+# use: if writeFileInVault "config/concourse-private-key" "concourse/main/main/private-key"; then echo "Private key written in Vault"; fi
 function writeFileInVault() {
   local _sourcePath="${1}";
   local _destinationPath="${2}";
@@ -159,16 +153,12 @@ function writeFileInVault() {
   return ${_rescode};
 }
 
-## Writes a setting in Vault.
-## -> 1: The destination.
-## -> 2: The value.
-## <- 0/${TRUE} if the private key was stored; 1/${FALSE} otherwise.
-## Example:
-##   if writeInVault "config/registry-username" "johndoe"; then
-##     echo "Registry username written in Vault";
-##   else
-##     echo "Could not write the registry username in Vault: ${RESULT}";
-##   fi
+# txt: Writes a setting in Vault.
+# txt: Returns 0/TRUE if the private key was stored; 1/FALSE otherwise.
+# fun: writeValueInVault destination value
+# opt: destination: The destination.
+# opt: value: The value.
+# use: if writeInVault "config/registry-username" "johndoe"; then echo "Registry username written in Vault"; fi
 function writeValueInVault() {
   local _destinationPath="${1}";
   local _value="${2}";
@@ -186,17 +176,15 @@ function writeValueInVault() {
   return ${_rescode};
 }
 
-## Builds the path of a pipeline parameter in Vault.
-## -> 1: The Concourse folder.
-## -> 2: The Concourse team.
-## -> 3: The pipeline name.
-## -> 4: The parameter name.
-## <- 0/${TRUE} if the path was constructed successfully; 1/${FALSE} otherwise.
-## <- RESULT: The path, if the operation succeeds.
-## Example:
-##   if buildPipelineParameterPathInVault "/concourse" "main" "default" "src-git-branch"; then
-##     echo "src-git-branch in Vault under: ${RESULT}";
-##   fi
+# txt: Builds the path of a pipeline parameter in Vault.
+# txt: Returns 0/TRUE if the path was constructed successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the path.
+# fun: buildPipelineParameterPathInVault folder team pipeline parameter
+# opt: folder: The Concourse folder.
+# opt: team: The Concourse team.
+# opt: pipeline: The pipeline name.
+# opt: parameter: The parameter name.
+# use: if buildPipelineParameterPathInVault "/concourse" "main" "default" "src-git-branch"; then echo "src-git-branch in Vault under: ${RESULT}"; fi
 function buildPipelineParameterPathInVault() {
   local _concourseFolder="${1}";
   local _concourseTeam="${2}";
@@ -215,16 +203,14 @@ function buildPipelineParameterPathInVault() {
   return ${_rescode};
 }
 
-## Generates the vault.hcl file.
-## -> 1: The vault.hcl file.
-## -> 2: The lease TTL.
-## -> 3: The maximum lease TTL.
-## -> 4: The vault ip. Optional. Defaults to 0.0.0.0.
-## <- 0/${TRUE} if the file gets generated successfully; 1/${FALSE} otherwise.
-## Example:
-##   if generateVaultHclFile "./vault.hcl" "168h" "720h"; then
-##     echo "vault.hcl file generated successfully";
-##   fi
+# txt: Generates the vault.hcl file.
+# txt: Returns 0/TRUE if the file gets generated successfully; 1/FALSE otherwise.
+# fun: generateVaultHclFile file leaseTTL maxLeaseTTL vaultIP
+# opt: file: The vault.hcl file.
+# opt: leaseTTL: The lease TTL.
+# opt: maxLeaseTTLR: The maximum lease TTL.
+# opt: vaultIP: The Vault IP. Optional. Defaults to 0.0.0.0.
+# use: if generateVaultHclFile "./vault.hcl" "168h" "720h" localhost; then echo "vault.hcl file generated successfully"; fi
 function generateVaultHclFile() {
   local _file="${1}";
   local _leaseTtl="${2}";
@@ -283,14 +269,12 @@ EOF
   return ${_rescode};
 }
 
-## Creates the Vault container if it does not exist, or starts the already existing Vault container.
-## -> 1: The virtual host.
-## -> 2: The network.
-## <- 0/${TRUE} if the container was missing and could be created, or if it was started; 1/${FALSE} otherwise.
-## Example:
-##   if createOrStartVaultContainer "vault.example.com" "my_network"; then
-##     echo "vault.example.com started in my_network";
-##   fi
+# txt: Creates the Vault container if it does not exist, or starts the already existing Vault container.
+# txt: Returns 0/TRUE if the container was missing and could be created, or if it was started; 1/FALSE otherwise.
+# fun: createOrStartVaultContainer virtualHost network
+# opt: virtualHost: The virtual host.
+# opt: network: The network.
+# use: if createOrStartVaultContainer "vault.example.com" "my_network"; then echo "vault.example.com started in my_network"; fi
 function createOrStartVaultContainer() {
   local _vaultContainerName="${1}";
   local _vaultVersion="${2}"
@@ -299,7 +283,6 @@ function createOrStartVaultContainer() {
   local _network="${5}";
   local _configContainerName="${6}";
   local _vaultHclFile="${7}";
-  local 
   local -i _rescode;
   local _output;
 
@@ -358,13 +341,11 @@ function createOrStartVaultContainer() {
   return ${_rescode};
 }
 
-## Deletes the Vault container if it exists.
-## -> 1: The name of the Vault container.
-## <- 0/${TRUE} if the container was running and could be deleted, or if it didn't exist; 1/${FALSE} otherwise.
-## Example:
-##   if deleteVaultContainer; then
-##     echo "Vault container deleted";
-##   fi
+# txt: Deletes the Vault container if it exists.
+# txt: Returns 0/TRUE if the container was running and could be deleted, or if it didn't exist; 1/FALSE otherwise.
+# fun: deleteVaultContainer containerName
+# opt: containerName: The name of the Vault container.
+# use: if deleteVaultContainer vault; then echo "Vault container deleted"; fi
 function deleteVaultContainer() {
   local _vaultContainerName="${1}";
   local -i _rescode;

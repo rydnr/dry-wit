@@ -1,13 +1,13 @@
-## Retrieves the username of a credential from Phabricator.
-## -> 1: The key id.
-## -> 2: The Phabricator URL.
-## -> 3: The API token.
-## <- 0/${TRUE} if the username could be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The credential username.
-## Example:
-##   if retrieveCredentialUsernameFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then
-##     echo "Credential username: ${RESULT}";
-##   fi
+# mod: phabricator
+
+# txt: Retrieves the username of a credential from Phabricator.
+# txt: Returns 0/TRUE if the username could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the credential username.
+# fun: retrieveCredentialUsernameFromPhabricator keyId phabricatorUrl apiToken
+# opt: keyId: The key id.
+# opt: phabricatorUrl: The Phabricator URL.
+# opt: apiToken: The API token.
+# use: if retrieveCredentialUsernameFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then echo "Credential username: ${RESULT}"; fi
 function retrieveCredentialUsernameFromPhabricator() {
   local _keyId="${1}";
   local _phabricatorUrl="${2}";
@@ -33,16 +33,14 @@ function retrieveCredentialUsernameFromPhabricator() {
   return ${_rescode};
 }
 
-## Retrieves a credential's password from Phabricator.
-## -> 1: The key id.
-## -> 2: The Phabricator URL.
-## -> 3: The API token.
-## <- 0/${TRUE} if the credential password could be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The credential password.
-## Example:
-##   if retrieveCredentialPasswordFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then
-##     echo "Credential password: ${RESULT}";
-##   fi
+# txt: Retrieves a credential's password from Phabricator.
+# txt: Returns 0/TRUE if the credential password could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the credential password.
+# fun: retrieveCredentialPasswordFromPhabricator keyId phabricatorUrl apiToken
+# opt: keyId: The key id.
+# opt: phabricatorUrl: The Phabricator URL.
+# opt: apiToken: The API token.
+# use: if retrieveCredentialPasswordFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then echo "Credential password: ${RESULT}"; fi
 function retrieveCredentialPasswordFromPhabricator() {
   local _keyId="${1}";
   local _phabricatorUrl="${2}";
@@ -68,16 +66,14 @@ function retrieveCredentialPasswordFromPhabricator() {
   return ${_rescode};
 }
 
-## Retrieves a credential's private key from Phabricator.
-## -> 1: The key id.
-## -> 2: The Phabricator URL.
-## -> 3: The API token.
-## <- 0/${TRUE} if the credential's private key could be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The credential private key.
-## Example:
-##   if retrieveCredentialPrivateKeyFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then
-##     echo "Credential private key: ${RESULT}";
-##   fi
+# txt: Retrieves a credential's private key from Phabricator.
+# txt: Returns 0/TRUE if the credential's private key could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the credential private key.
+# fun: retrieveCredentialPrivateKeyFromPhabricator keyId phabricatorUrl apiToken
+# opt: keyId: The key id.
+# opt: phabricatorUrl: The Phabricator URL.
+# opt: apiToken: The API token.
+# use: if retrieveCredentialPrivateKeyFromPhabricator "4" "http://phabricator.osoco.es" "api-aouktahoekoahk"; then echo "Credential private key: ${RESULT}"; fi
 function retrieveCredentialPrivateKeyFromPhabricator() {
   local _keyId="${1}";
   local _phabricatorUrl="${2}";

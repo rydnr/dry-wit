@@ -1,3 +1,5 @@
+# mod: rabbitmq
+
 ## Required environment variables:
 ## BOOTSTRAPPED_FILE: The path of the file used for indicating whether the bootstrapping was completed.
 ## LOCK_FILE: The path of the file used to lock the bootstrapping process.
@@ -6,39 +8,38 @@
 
 ## You might be interested in importing rabbitmq-cli.dw as well, to inject processing of the required environment variables above.
 
-## Checks whether FAIL_FAST mode is active.
-## <- 0/${TRUE} in the script is running in fail-fast mode.
-## Examples:
-##   if RABBITMQ.in_fail_fast_mode; then
-##     echo "Running in fail-fast mode";
-##   fi
+# txt: Checks whether FAIL_FAST mode is active.
+# txt: Returns 0/TRUE if the script is running in fail-fast mode; 1/FALSE otherwise.
+# fun: RABBITMQ.in_fail_fast_mode
+# api: internal
+# use: if RABBITMQ.in_fail_fast_mode; then echo "Running in fail-fast mode"; fi
 function RABBITMQ.in_fail_fast_mode() {
-  _flagEnabled FAIL_FAST;
+  flagEnabled FAIL_FAST;
 }
 
-## Checks whether FORCE mode is active.
-## <- 0/${TRUE} in the script is running in forcing mode.
-## Examples:
-##   if RABBITMQ.in_force_mode; then
-##     echo "Running in force mode";
-##   fi
+# txt: Checks whether FORCE mode is active.
+# txt: Returns 0/TRUE if the script is running in forcing mode; 1/FALSE otherwise.
+# fun: RABBITMQ.in_force_mode
+# use: if RABBITMQ.in_force_mode; then echo "Running in force mode"; fi
 function RABBITMQ.in_force_mode() {
-  _flagEnabled FORCE;
+  flagEnabled FORCE;
 }
 
-## Releases the lock file if FAIL_FAST flag is active.
-## Example:
-##   RABBITMQ.release_bootstrap_lock_if_fail_fast;
+# txt: Releases the lock file if FAIL_FAST flag is active.
+# fun: RABBITMQ.release_bootstrap_lock_if_fail_fast
+# api: internal
+# use: RABBITMQ.release_bootstrap_lock_if_fail_fast;
 function RABBITMQ.release_bootstrap_lock_if_fail_fast() {
   if RABBITMQ.in_fail_fast_mode; then
     RABBITMQ.release_bootstrap_lock;
   fi
 }
 
-## Exits with an error code if FAIL_FAST flag is active.
-## -> 1: The error label.
-## Example:
-##   RABBITMQ.exit_with_error_code_if_fail_fast CANNOT_ACQUIRE_LOCK
+# txt: Exits with an error code if FAIL_FAST flag is active.
+# fun: RABBITMQ.exit_with_error_code_if_fail_fast errorLabel
+# opt: errorLabel: The error label.
+# api: internal
+# use: RABBITMQ.exit_with_error_code_if_fail_fast CANNOT_ACQUIRE_LOCK
 function RABBITMQ.exit_with_error_code_if_fail_fast() {
   local _label="${1}";
   shift;
@@ -47,12 +48,11 @@ function RABBITMQ.exit_with_error_code_if_fail_fast() {
   fi
 }
 
-## Checks whether the RabbitMQ instance is already bootstrapped.
-## <- 0/${TRUE} if the bootstrap has already done in the past; 1/${FALSE} otherwise.
-## Example:
-##   if RABBITMQ.already_bootstrapped; then
-##     echo "Instance already bootstrapped";
-##   fi
+# txt: Checks whether the RabbitMQ instance is already bootstrapped.
+# txt: Returns 0/TRUE if the bootstrap has already done in the past; 1/FALSE otherwise.
+# fun: RABBITMQ.already_bootstrapped
+# api: internal
+# use: if RABBITMQ.already_bootstrapped; then echo "Instance already bootstrapped"; fi
 function RABBITMQ.already_bootstrapped() {
   local -i _rescode;
 
@@ -65,12 +65,11 @@ function RABBITMQ.already_bootstrapped() {
   return ${_rescode};
 }
 
-## Marks the RabbitMQ instance as already bootstrapped.
-## <- 0/${TRUE} if the bootstrap has been annotated successfully; 1/${FALSE} otherwise.
-## Example:
-##   if RABBITMQ.mark_as_bootstrapped; then
-##     echo "Instance annotated as bootstrapped";
-##   fi
+# txt: Marks the RabbitMQ instance as already bootstrapped.
+# txt: Returns 0/TRUE if the bootstrap has been annotated successfully; 1/FALSE otherwise.
+# fun: RABBITMQ.mark_as_boostrapped
+# api: internal
+# use: if RABBITMQ.mark_as_bootstrapped; then echo "Instance annotated as bootstrapped"; fi
 function RABBITMQ.mark_as_bootstrapped() {
   local -i _rescode;
 
@@ -80,12 +79,10 @@ function RABBITMQ.mark_as_bootstrapped() {
   return ${_rescode};
 }
 
-## Checks whether there's a concurrent bootstrap process.
-## <- 0/${TRUE} if a concurrent bootstrap process has not yet finished.
-## Example:
-##   if RABBITMQ.acquire_bootstrap_lock; then
-##     ...
-##   fi
+# txt: Checks whether there's a concurrent bootstrap process.
+# txt: Returns 0/TRUE if a concurrent bootstrap process has not yet finished; 1/FALSE otherwise.
+# fun: RABBITMQ.acquire_bootstrap_lock
+# use: if RABBITMQ.acquire_bootstrap_lock; then ...; fi
 function RABBITMQ.acquire_bootstrap_lock() {
   local -i _rescode;
 
@@ -99,12 +96,11 @@ function RABBITMQ.acquire_bootstrap_lock() {
   return ${_rescode};
 }
 
-## Releases the bootstrap lock.
-## <- 0/${TRUE} if the lock can be released; 1/${FALSE} otherwise.
-## Example:
-##   if RABBITMQ.release_bootstrap_lock; then
-##     echo "Error: Could not release bootstrap lock";
-##   fi
+# txt: Releases the bootstrap lock.
+# txt: Returns 0/TRUE if the lock can be released; 1/FALSE otherwise.
+# fun: RABBITMQ.release_boostrap_lock
+# api: internal
+# use: if RABBITMQ.release_bootstrap_lock; then echo "Error: Could not release bootstrap lock"; fi
 function RABBITMQ.release_bootstrap_lock() {
   local -i _rescode;
 
@@ -122,14 +118,13 @@ function RABBITMQ.release_bootstrap_lock() {
   return ${_rescode};
 }
 
-## Retrieves the rabbitmqadmin script.
-## -> 1: The url of RabbitMQ CLI interface.
-## -> 2: The output file.
-## <- 0/${TRUE} if the script was retrieved successfully; 1/${FALSE} otherwise.
-## Example:
-##   if RABBITMQ.retrieve_rabbitmqadmin /tmp/rabbitmqadmin; then
-##     ...
-##   fi
+# txt: Retrieves the rabbitmqadmin script.
+# txt: Returns 0/TRUE if the script was retrieved successfully; 1/FALSE otherwise.
+# fun: RABBITMQ.retrieve_rabbitmqadmin url outputFile
+# opt: url: The url of RabbitMQ CLI interface.
+# opt: outputFile: The output file.
+# api: internal
+# use: if RABBITMQ.retrieve_rabbitmqadmin /tmp/rabbitmqadmin; then ...; fi
 function RABBITMQ.retrieve_rabbitmqadmin() {
   local _url="${1}";
   local _output="${2}";
@@ -144,13 +139,12 @@ function RABBITMQ.retrieve_rabbitmqadmin() {
   return ${_rescode};
 }
 
-## Fixes rabbitmqadmin script.
-## -> 1: The rabbitmqadmin location.
-## <- 0/${TRUE} if the script was fixed; 1/${FALSE} otherwise.
-## Example:
-##   if RABBITMQ.fix_rabbitmqadmin /usr/sbin/rabbitmqadmin; then
-##     echo "/usr/sbin/rabbitmqadmin fixed";
-##   fi
+# txt: Fixes rabbitmqadmin script.
+# txt: Returns 0/TRUE if the script was fixed; 1/FALSE otherwise.
+# fun: RABBITMQ.fix_rabbitmqadmin file
+# opt: file: The rabbitmqadmin location.
+# api: internal
+# use: if RABBITMQ.fix_rabbitmqadmin /usr/sbin/rabbitmqadmin; then echo "/usr/sbin/rabbitmqadmin fixed"; fi
 function RABBITMQ.fix_rabbitmqadmin() {
   local _rabbitmqadmin="${1}";
   local -i _rescode;
@@ -168,12 +162,10 @@ function RABBITMQ.fix_rabbitmqadmin() {
   return ${_rescode};
 }
 
-## Enables the plugin-management mode.
-## <- 0/${TRUE} if the operation succeeds; 1/${FALSE} otherwise.
-## Example:
-##   if ! enable_rabbitmq_management; then
-##     echo "Cannot enable plugin management mode";
-##   fi
+# txt: Enables the plugin-management mode.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# fun: enable_rabbitmq_management
+# use: if ! enable_rabbitmq_management; then echo "Cannot enable plugin management mode"; fi
 function enable_rabbitmq_management() {
   local -i _rescode;
 
@@ -183,12 +175,10 @@ function enable_rabbitmq_management() {
   return ${_rescode};
 }
 
-## Checks whether RabbitMQ is running.
-## <- 0/${TRUE} if it's running; 1/${FALSE} otherwise.
-## Example:
-##   if ! is_running; then
-##     echo "RabbitMQ is not running";
-##   fi
+# txt: Checks whether RabbitMQ is running.
+# txt: Returns 0/TRUE if it's running; 1/FALSE otherwise.
+# fun: is_rabbitmq_running
+# use: if ! is_running; then echo "RabbitMQ is not running"; fi
 function is_rabbitmq_running() {
   local -i _rescode;
 
@@ -201,14 +191,12 @@ function is_rabbitmq_running() {
   return ${_rescode};
 }
 
-## Adds a new user.
-## -> 1: The username.
-## -> 2: The password.
-## <- 0/${TRUE} if the user was added; 1/${FALSE} otherwise.
-## Example:
-##   if add_user "admin" "secret"; then
-##     echo "User admin added successfully";
-##   fi
+# txt: Adds a new RabbitMQ user.
+# txt: Returns 0/TRUE if the user was added; 1/FALSE otherwise.
+# fun: add_user username password
+# opt: username: The username.
+# opt: password: The password.
+# use: if add_user "admin" "secret"; then echo "User admin added successfully"; fi
 function add_user() {
   local _user="${1}";
   local _password="${2}";
@@ -232,14 +220,12 @@ function add_user() {
   return ${_rescode};
 }
 
-## Sets user tags.
-## -> 1: The user.
-## -> 2: The tags.
-## <- 0/${TRUE} if the tags were set successfully; 1/${FALSE} otherwise.
-## Example:
-##   if ! set_user_tags admin Admin; then
-##     echo "Could not set Admin tag for admin user";
-##   fi
+# txt: Sets user tags.
+# txt: Returns 0/TRUE if the tags were set successfully; 1/FALSE otherwise.
+# fun: set_user_tags user tags+
+# opt: user: The user.
+# opt: tags: The tags.
+# use: if ! set_user_tags admin Admin; then echo "Could not set Admin tag for admin user"; fi
 function set_user_tags() {
   local _user="${1}";
   local _tags="${@}";
@@ -263,13 +249,11 @@ function set_user_tags() {
   return ${_rescode};
 }
 
-## Deletes an user.
-## -> 1: The user.
-## <- 0/${TRUE} if the user gets deleted successfully; 1/${FALSE} otherwise.
-## Example:
-##   if delete_user "guest"; then
-##     echo "guest user deleted successfully";
-##   fi
+# txt: Deletes an user.
+# txt: Returns 0/TRUE if the user gets deleted successfully; 1/FALSE otherwise.
+# fun: delete_user user
+# opt: user: The user.
+# use: if delete_user "guest"; then echo "guest user deleted successfully"; fi
 function delete_user() {
   local _name="${1}";
   local -i _rescode;
@@ -292,17 +276,15 @@ function delete_user() {
   return ${_rescode};
 }
 
-## Sets RabbitMQ permissions.
-## -> 1: The virtualhost;
-## -> 2: The user.
-## -> 3: The configure permissions.
-## -> 4: The write permissions.
-## -> 5: The read permissions.
-## <- 0/${TRUE} if the permissions were set successfully; 1/${FALSE} otherwise.
-## Example:
-##   if ! set_permissions / admin ".*" ".*" ".*"; then
-##     echo "Could not set permissions for admin";
-##   fi
+# txt: Sets RabbitMQ permissions.
+# txt: Returns 0/TRUE if the permissions were set successfully; 1/FALSE otherwise.
+# fun: set_permissions virtualHost user configurePermissions writePermissions readPermissions
+# opt: virtualHost: The virtualhost.
+# opt: user: The user.
+# opt: configurePermissions: The configure permissions.
+# opt: writePermissions: The write permissions.
+# opt: readPermissions: The read permissions.
+# use: if ! set_permissions / admin ".*" ".*" ".*"; then echo "Could not set permissions for admin"; fi
 function set_permissions() {
   local _vhost="${1}";
   local _user="${2}";
@@ -332,13 +314,11 @@ function set_permissions() {
   return ${_rescode};
 }
 
-## Declares a virtual host.
-## -> 1: The virtual host.
-## <- 0/${TRUE} if the virtual host gets created successfully; 1/${FALSE} otherwise.
-## Example:
-##   if ! add_vhost "/"; then
-##     echo "Could not add vhost /";
-##   fi
+# txt: Declares a virtual host.
+# txt: Returns 0/TRUE if the virtual host gets created successfully; 1/FALSE otherwise.
+# fun: add_vhost virtualHost
+# opt: virtualHost: The virtual host.
+# use: if ! add_vhost "/"; then echo "Could not add vhost /"; fi
 function add_vhost() {
   local _vhost="${1}";
   local -i _rescode;
@@ -361,17 +341,15 @@ function add_vhost() {
   return ${_rescode};
 }
 
-## Declares an exchange.
-## -> 1: The exchange name.
-## -> 2: The exchange type.
-## -> 3: Whether the exchange is durable. Optional.
-## -> 4: Whether the exchange is internal. Optional.
-## -> 5: Additional arguments. Optional.
-## <- 0/${TRUE} if the exchange gets created successfully; 1/${FALSE} otherwise.
-## Example:
-##   if declare_exchange "ex" "topic"; then
-##     echo "ex exchange created successfully";
-##   fi
+# txt: Declares an exchange.
+# txt: Returns 0/TRUE if the exchange gets created successfully; 1/FALSE otherwise.
+# fun: declare_exchange name type durable internal args*
+# opt: name: The exchange name.
+# opt: type: The exchange type.
+# opt: durable: Whether the exchange is durable. Optional.
+# opt: internal: Whether the exchange is internal. Optional.
+# opt: args: Additional arguments. Optional.
+# use: if declare_exchange "ex" "topic"; then echo "ex exchange created successfully"; fi
 function declare_exchange() {
   local _name="${1}";
   local _type="${2}";
@@ -419,14 +397,12 @@ function declare_exchange() {
   return ${_rescode};
 }
 
-## Declares a queue.
-## -> 1: The queue name.
-## -> 2: Whether it's durable or not.
-## <- 0/${TRUE} if the queue is created successfully; 1/${FALSE} otherwise.
-## Example:
-##   if declare_queue "my-queue" "true"; then
-##     echo "Queue my-queue created successfully";
-##   fi
+# txt: Declares a queue.
+# txt: Returns <- 0/TRUE if the queue is created successfully; 1/FALSE otherwise.
+# fun: declare_queue name durable
+# opt: name: The queue name.
+# opt: durable: Whether it's durable or not.
+# use: if declare_queue "my-queue" "true"; then echo "Queue my-queue created successfully"; fi
 function declare_queue() {
   local _name="${1}";
   local _durable="${2}";
@@ -450,16 +426,14 @@ function declare_queue() {
   return ${_rescode};
 }
 
-## Declares a binding.
-## -> 1: The source.
-## -> 2: The destination type.
-## -> 3: The destination.
-## -> 4: The routing key.
-## <- 0/${TRUE} if the binding gets created successfully; 1/${FALSE} othervise.
-## Example:
-##   if declare_binding "my-exchange" "queue" "my-queue" "#"; then
-##     echo "binding created successfully";
-##   fi
+# txt: Declares a binding.
+# txt: Returns 0/TRUE if the binding gets created successfully; 1/FALSE othervise.
+# fun: declare_binding source destinationType destination routingKey
+# opt: source: The source.
+# opt: destinationType: The destination type.
+# opt: destination: The destination.
+# opt: routingKey: The routing key.
+# use: if declare_binding "my-exchange" "queue" "my-queue" "#"; then echo "binding created successfully"; fi
 function declare_binding() {
   local _source="${1}";
   local _destinationType="${2}";
@@ -487,16 +461,14 @@ function declare_binding() {
   return ${_rescode};
 }
 
-## Sets a policy.
-## -> 1: The policy name.
-## -> 2: The match.
-## -> 3: The policy body.
-## -> 4: The object type: which objects apply.
-## <- 0/${TRUE} if the policy gets created successfully; 1/${FALSE} otherwise.
-## Example:
-##   if set_policy "my-dlx" "^my-ex" '{"dead-letter-exchange":"my-dlx"}' "queues"; then
-##     echo "Policy created successfully";
-##   fi
+# txt: Sets a policy.
+# txt: Returns 0/TRUE if the policy gets created successfully; 1/FALSE otherwise.
+# fun: set_policy name match body type
+# opt: name: The policy name.
+# opt: match: The match.
+# opt: body: The policy body.
+# opt: type: The object type: which objects apply.
+# use: if set_policy "my-dlx" "^my-ex" '{"dead-letter-exchange":"my-dlx"}' "queues"; then echo "Policy created successfully"; fi
 function set_policy() {
   local _name="${1}";
   local _match="${2}";
@@ -524,10 +496,10 @@ function set_policy() {
   return ${_rescode};
 }
 
-## Migrates the RabbitMQ instance.
-## Important: This function delegates the migration logic to an external function "rabbitmq_patch".
-## Example:
-##   rabbitmq_migrate;
+# txt: Migrates the RabbitMQ instance.
+# txt: Important: This function delegates the migration logic to an external function "rabbitmq_patch".
+# fun: rabbitmq_migrate
+# use: rabbitmq_migrate;
 function rabbitmq_migrate() {
   local -i _initialized=${FALSE};
   local -i _running=${FALSE};

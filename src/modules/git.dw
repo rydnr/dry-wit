@@ -1,10 +1,10 @@
-## Finds out the current branch.
-## <- 0/${TRUE} if the branch could be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The name of the branch, if the operation succeeds.
-## Example:
-##   if findOutCurrentBranch; then
-##     echo "The current branch is ${RESULT}";
-##   fi
+# mod: git
+
+# txt: Finds out the current branch.
+# txt: Returns 0/TRUE if the branch could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the branch.
+# fun: retrieveGitBranch
+# net: if findOutCurrentBranch; then echo "The current branch is ${RESULT}"; fi
 function retrieveGitBranch() {
   local -i _rescode;
   local _result;
@@ -19,13 +19,11 @@ function retrieveGitBranch() {
   return ${_rescode};
 }
 
-## Finds out the URL of the git repository.
-## <- 0/${TRUE} if the url could be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The repository url, if the operation succeeds.
-## Example:
-##   if findOutGitRepositoryUrl; then
-##     echo "The repository url is ${RESULT}";
-##   fi
+# txt: Finds out the URL of the git repository.
+# txt: Returns 0/TRUE if the url could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the repository url.
+# fun: retrieveGitRepositoryUrl
+# use: if findOutGitRepositoryUrl; then echo "The repository url is ${RESULT}"; fi
 function retrieveGitRepositoryUrl() {
   local -i _rescode;
   local _result;
@@ -39,3 +37,4 @@ function retrieveGitRepositoryUrl() {
 
   return ${_rescode};
 }
+#

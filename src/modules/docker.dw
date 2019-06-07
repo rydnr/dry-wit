@@ -1,12 +1,13 @@
+# mod: docker
+
 ## Docker helpers
-## Checks if given container exists.
-## -> 1: The container name.
-## <- 0/${TRUE} if the container exists; 0/${FALSE} otherwise.
-## <- RESULT: The hash of the container.
-## Example:
-##   if dockerContainerExists "config"; then
-##     echo "'config' container already exists (${RESULT})";
-##   fi
+
+# txt: Checks if given container exists.
+# txt: Returns 0/TRUE if the container exists; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash of the container.
+# fun: dockerContainerExists container
+# opt: container: The container name.
+# use: if dockerContainerExists "config"; then echo "'config' container already exists (${RESULT})"; fi
 function dockerContainerExists() {
   local _name="${1}";
   local _result;
@@ -25,14 +26,12 @@ function dockerContainerExists() {
   return ${_rescode};
 }
 
-## Retrieves the status of given container.
-## -> 1: the container name.
-## <- 0/${TRUE} if the container status could be obtained; 1/${FALSE} otherwise.
-## <- RESULT: the status.
-## Example:
-##   if retrieveDockerContainerStatus mysql; then
-##     echo "mysql's status is ${RESULT}";
-##   fi
+# txt: Retrieves the status of given container.
+# txt: Returns 0/TRUE if the container status could be obtained; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the status.
+# fun: retrieveDockerContainerStatus container
+# opt: container: The container name.
+# use: if retrieveDockerContainerStatus mysql; then echo "mysql's status is ${RESULT}"; fi
 function retrieveDockerContainerStatus() {
   local _containerName="${1}";
   local _result;
@@ -49,13 +48,11 @@ function retrieveDockerContainerStatus() {
   return ${_rescode};
 }
 
-## Checks if a container is running.
-## -> 1: the container name.
-## <- 0/${TRUE} if the container is running; 1/${FALSE} otherwise.
-## Example:
-##   if isDockerContainerRunning mysql; then
-##     echo "mysql is running";
-##   fi
+# txt: Checks if a container is running.
+# txt: Returns 0/TRUE if the container is running; 1/FALSE otherwise.
+# fun: isDockerContainerRunning container
+# opt: fun: the container name.
+# use: if isDockerContainerRunning mysql; then echo "mysql is running"; fi
 function isDockerContainerRunning() {
   local _containerName="${1}";
   local _status;
@@ -76,15 +73,13 @@ function isDockerContainerRunning() {
   return ${_rescode};
 }
 
-## Copies a file to a Docker container.
-## -> 1: The file to copy.
-## -> 2: The container name.
-## -> 3: The target location.
-## <- 0/${TRUE} if the operation succeeds; 1/${FALSE} otherwise.
-## Example:
-##   if copyToDockerContainer "my-file" "container" "/tmp"; then
-##     echo "my-file copied to container:/tmp successfully";
-##   fi
+# txt: Copies a file to a Docker container.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# fun: copyToDockerContainer file container containerFolder
+# opt: file: The file to copy.
+# opt: container: The container name.
+# opt: containerFolder: The target location.
+# use: if copyToDockerContainer "my-file" "container" "/tmp"; then echo "my-file copied to container:/tmp successfully"; fi
 function copyToDockerContainer() {
   local _file="${1}";
   local _containerName="${2}";
@@ -106,13 +101,12 @@ function copyToDockerContainer() {
   return ${_rescode};
 }
 
-## Runs a Docker command.
-## -> @: The docker command.
-## <- 0/${TRUE} if the operation succeeds; 1/${FALSE} otherwise.
-## Example:
-##   if dockerCommand create -v /config --name config busybox; then
-##     echo "config container created successfully";
-##   fi
+# txt: Runs a Docker command.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# fun: dockerCommand command args*
+# opt: command: The Docker command.
+# opt: args: The command arguments (if any).
+# use: if dockerCommand create -v /config --name config busybox; then echo "config container created successfully"; fi
 function dockerCommand() {
   local _args="${@}";
   local -i _rescode;
@@ -127,13 +121,11 @@ function dockerCommand() {
   return ${_rescode};
 }
 
-## Checks if given network exists.
-## -> 1: The network name.
-## <- 0/${TRUE} if the networkctl exists; 0/${FALSE} otherwise.
-## Example:
-##   if dockerNetworkExists "bridge"; then
-##     echo "'bridge' network already exists";
-##   fi
+# txt: Checks if given network exists.
+# txt: Returns 0/TRUE if the network exists; 0/${FALSE} otherwise.
+# fun: dockerNetworkExists network
+# opt: network: The network name.
+# use: if dockerNetworkExists "bridge"; then echo "'bridge' network already exists"; fi
 function dockerNetworkExists() {
   local _name="${1}";
   local _result;
@@ -147,12 +139,11 @@ function dockerNetworkExists() {
   return ${_rescode};
 }
 
-## Creates a Docker network.
-## <- 0/${TRUE} if the network was created successfully; 1/${FALSE} otherwise.
-## Example:
-##   if createDockerNetwork bridge; then
-##     echo "bridge network created";
-##   fi
+# txt: Creates a Docker network.
+# txt: Returns 0/TRUE if the network was created successfully; 1/FALSE otherwise.
+# fun: createDockerNetwork bridge
+# opt: network: The network name.
+# use: if createDockerNetwork bridge; then echo "bridge network created"; fi
 function createDockerNetwork() {
   local _network="${1}";
   local -i _rescode;
@@ -173,12 +164,11 @@ function createDockerNetwork() {
   return ${_rescode};
 }
 
-## Removes a Docker network.
-## <- 0/${TRUE} if the network was deleted successfully; 1/${FALSE} otherwise.
-## Example:
-##   if removeDockerNetwork bridge; then
-##     echo "bridge network removed";
-##   fi
+# txt: Removes a Docker network.
+# txt: Returns 0/TRUE if the network was deleted successfully; 1/FALSE otherwise.
+# fun: removeDockerNetwork network
+# opt: network: The Docker network.
+# use: if removeDockerNetwork bridge; then echo "bridge network removed"; fi
 function removeDockerNetwork() {
   local _network="${1}";
   local -i _rescode;
@@ -199,12 +189,13 @@ function removeDockerNetwork() {
   return ${_rescode};
 }
 
-## Connects a container to given network.
-## <- 0/${TRUE} if the container was connected to the network; 1/${FALSE} otherwise.
-## Example:
-##   if connectDockerContainerToNetwork container my_network; then
-##     echo "Container added to my_network network";
-##   fi
+# txt: Connects a container to given network.
+# txt: Returns 0/TRUE if the container was connected to the network; 1/FALSE otherwise.
+# txt: The variable RESULT contains the output of the command, either in case of success or failure.
+# fun: connectdockerContainerToNetwork container network
+# opt: container: The Docker container.
+# opt: network: The network.
+# use: if connectDockerContainerToNetwork container my_network; then echo "Container added to my_network network"; fi
 function connectDockerContainerToNetwork() {
   local _container="${1}";
   local _network="${2}";
@@ -239,4 +230,4 @@ function connectDockerContainerToNetwork() {
 
   return ${_rescode};
 }
-
+#

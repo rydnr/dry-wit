@@ -1,11 +1,12 @@
-## Runs a fly command.
-## -> 1: Whether to assume 'y' or 'n' to any question.
-## -> 2..: command to run.
-## <- 0/${TRUE} if the command succeeds; 1/${FALSE} otherwise.
-## Example:
-##   if runFlyCommand y -t ci set-pipeline -p main; then
-##     echo "fly -t ci set-pipeline -p main -> ${RESULT}";
-##   fi
+# mod: concourse
+
+# txt: Runs a fly command.
+# txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
+# fun: runFlyCommand y|Y|yes|YES|n|N|no|NO command arg*
+# opt: y|Y|yes|YES|n|N|no|NO-> 1: Whether to assume 'y' or 'n' to any question.
+# opt: command: The command to run.
+# opt: arg: The command arguments. Optional.
+# use: if runFlyCommand y -t ci set-pipeline -p main; then echo "fly -t ci set-pipeline -p main -> ${RESULT}"; fi
 function runFlyCommand() {
   local _yesOrNo="${1}";
   shift;
@@ -45,14 +46,12 @@ function runFlyCommand() {
   return ${_rescode};
 }
 
-## Runs a fly login command.
-## -> 1: The Concourse target.
-## -> 2: The Concourse url.
-## <- 0/${TRUE} if the command succeeds; 1/${FALSE} otherwise.
-## Example:
-##   if flyLogin ci http://concourse:8080; then
-##     echo "fly -t ci login -c http://concourse:8080 -> ${RESULT}";
-##   fi
+# txt: Runs a fly login command.
+# txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
+# fun: flyLogin target url
+# opt: target: The Concourse target.
+# opt: url: The Concourse url.
+# use: if flyLogin ci http://concourse:8080; then ...; fi
 function flyLogin() {
   local _concourseTarget="${1}";
   local _concourseUrl="${2}";
@@ -79,6 +78,4 @@ function flyLogin() {
 
   return ${_rescode};
 }
-
-
-
+#

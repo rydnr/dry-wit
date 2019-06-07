@@ -1,9 +1,10 @@
-## PUBLIC
-## Checks whether given value is empty.
-## -> 1: The value to check.
-## <- 0/${TRUE} if the value is empty; 1/${FALSE} otherwise.
-## Example:
-##   if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
+# mod: stdlib
+
+# txt: Checks whether given value is empty.
+# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
+# fun: isEmpty value
+# opt: value: The value to check.
+# use: if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
 function isEmpty() {
   local -i rescode;
 
@@ -16,12 +17,11 @@ function isEmpty() {
   return ${rescode};
 }
 
-## PUBLIC
-## Checks whether given value is not empty.
-## -> 1: The value to check.
-## <- 0/${TRUE} if the value is not empty; 1/${FALSE} otherwise.
-## Example:
-##   if isNotEmpty "${MYVAR}"; then echo "MYVAR is not empty"; fi
+# txt: Checks whether given value is not empty.
+# txt: Returns 0/TRUE if the value is not empty; 1/FALSE otherwise.
+# fun: isNotEmpty value
+# opt: value: The value to check.
+# use: if isNotEmpty "${MYVAR}"; then echo "MYVAR is not empty"; fi
 function isNotEmpty() {
   local -i rescode;
 
@@ -34,12 +34,11 @@ function isNotEmpty() {
   return ${rescode};
 }
 
-## PUBLIC
-## Checks whether given value is defined.
-## -> 1: The value to check.
-## <- 0: if the value is empty; 1 otherwise.
-## Example:
-##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+# txt: Checks whether given value is defined.
+# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
+# fun: isDefined var
+# opt: var: The variable to check.
+# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isDefined() {
   local -i rescode;
   if [ -z ${1+x} ]; then
@@ -50,12 +49,11 @@ function isDefined() {
   return ${rescode};
 }
 
-## PUBLIC
-## Checks whether given variable is defined.
-## -> 1: The value to check.
-## <- 0: if the value is empty; 1 otherwise.
-## Example:
-##   if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+# txt: Checks whether given variable is defined.
+# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
+# fun: isVariableDefined var
+# opt: var: The variable value to check.
+# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isVariableDefined() {
   local _var="${1}";
   local -i rescode;
@@ -74,9 +72,11 @@ function isVariableDefined() {
   return ${rescode};
 }
 
-## Checks whether given value is zero.
-## -> 1: The value.
-## <- 0/${TRUE}: if the value is zero; 1/${FALSE} otherwise.
+# txt: Checks whether given value is zero.
+# txt: Returns 0/TRUE: if the value is zero; 1/FALSE otherwise.
+# fun: isZero value
+# opt: value: The value.
+# use: if isZero "${MYVAR}"; then ...; fi
 function isZero() {
   local _value="${1}";
   local  -i rescode;
@@ -91,9 +91,11 @@ function isZero() {
   return ${rescode};
 }
 
-## Checks whether given value is true.
-## -> 1: The value.
-## <- 0/${TRUE}: if the value is true; 1/${FALSE} otherwise.
+# txt: Checks whether given value is true.
+# txt: Returns 0/TRUE if the value is true; 1/FALSE otherwise.
+# fun: isTrue value
+# opt: value: The value.
+# use: if isTrue "${MYVAR}"; then ...; fi
 function isTrue() {
   local _value="${1}";
 #  checkNotEmpty "value" "${_value}" 1;
@@ -114,9 +116,11 @@ function isTrue() {
   return ${rescode};
 }
 
-## Checks whether given value is not zero.
-## -> 1: The value.
-## <- 0/${TRUE}: if the value is zero; 1/${FALSE} otherwise.
+# txt: Checks whether given value is not zero.
+# txt: Returns 0/TRUE if the value is zero; 1/FALSE otherwise.
+# fun: isNotZero value
+# opt: value: The value.
+# use: if isNotZero "${MYVAR}"; then ...; fi
 function isNotZero() {
   local _value="${1}";
   #  checkNotEmpty "value" "${_value}" 1;
@@ -131,12 +135,13 @@ function isNotZero() {
   return ${rescode};
 }
 
-## PUBLIC
-## Checks whether given value is false.
-## -> 1: The value.
-## <- 0: if the value is false; 1 otherwise.
+# txt: Checks whether given value is false.
+# txt: Returns 0/TRUE if the value is false; 1/FALSE otherwise.
+# fun: isFalse value
+# opt: value: The value.
+# use: if isFalse "${MYVAR}"; then ...; fi
 function isFalse() {
-  local rescode;
+  local -i rescode;
   checkNotEmpty "value" "${1}" 1;
 
   if isTrue $*; then
@@ -147,15 +152,12 @@ function isFalse() {
   return ${rescode};
 }
 
-## PUBLIC
-## Checks whether given parameters are equal.
-## -> 1: The first value.
-## -> 2: The second value.
-## <- 0/${TRUE} if both values are equal; 1/${FALSE} otherwise.
-## Example:
-##   if areEqual "${param}" "${expected}"; then
-##     echo "param equals expected";
-##   fi
+# txt: Checks whether given parameters are equal.
+# txt: Returns 0/TRUE if both values are equal; 1/FALSE otherwise.
+# fun: areEqual first second
+# opt: first: The first value.
+# opt: second: The second value.
+# use: if areEqual "${param}" "${expected}"; then echo "param equals expected (${param})"; fi
 function areEqual() {
   local _first="${1}";
   local _second="${2}";
@@ -178,15 +180,12 @@ function areEqual() {
   return ${_rescode};
 }
 
-## PUBLIC
-## Checks whether given parameters are not equal.
-## -> 1: The first value.
-## -> 2: The second value.
-## <- 0/${TRUE} if both values aren't equal; 1/${FALSE} otherwise.
-## Example:
-##   if areEqual "${param}" "${expected}"; then
-##     echo "param and expected are not equal";
-##   fi
+# txt: Checks whether given parameters are not equal.
+# txt: Returns 0/TRUE if both values aren't equal; 1/FALSE otherwise.
+# fun: areNotEqual first second
+# opt: first: The first value.
+# opt: second: The second value.
+# use: if areEqual "${param}" "${expected}"; then echo "param (${param}) and expected ${expected} are not equal"; fi
 function areNotEqual() {
   local _first="${1}";
   local _second="${2}";
@@ -201,13 +200,11 @@ function areNotEqual() {
   return ${_rescode};
 }
 
-## Checks if a given function is defined.
-## -> 1: The function name.
-## <- 0/${TRUE} if the function is defined; 1/${FALSE} otherwise.
-## Example:
-##   if functionDefined "readFile"; then
-##     echo "readFile defined";
-##   fi
+# txt: Checks if a given function is defined.
+# txt: Returns 0/TRUE if the function is defined; 1/FALSE otherwise.
+# fun: isFunctionDefined functionName
+# opt: functionName: The function name.
+# use: if functionDefined "readFile"; then readFile ...; fi
 function isFunctionDefined() {
   local _function="${1}";
   local -i _rescode;
@@ -219,4 +216,3 @@ function isFunctionDefined() {
   return ${_rescode};
 }
 #
-
