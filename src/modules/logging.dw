@@ -658,40 +658,43 @@ function LOGGING.pushLog() {
   _DRY_WIT_LOG_STACK[${#_DRY_WIT_LOG_STACK[@]}]="$*";
 }
 
-## PRIVATE
-## Pushes given category to the log category stack.
-## -> 1: The category to push.
+# txt: Pushes given category to the log category stack.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.pushLogCategory category
+# opt: category: The category to push.
+# api: internal
+# use: LOGGING.pushLogCategory "sending-data"
 function LOGGING.pushLogCategory() {
   _DRY_WIT_LOG_CATEGORY_STACK[${#_DRY_WIT_LOG_CATEGORY_STACK[@]}]="$*";
 }
 
-## PRIVATE
-## Pushes given level to the log level stack.
-## -> 1: The level to push.
+# txt: Pushes given level to the log level stack.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.pushLogLevel level
+# opt: level: The level to push.
+# api: internal
+# use: LOGGING.pushLogLevel INFO
 function LOGGING.pushLogLevel() {
   _DRY_WIT_LOG_LEVEL_STACK[${#_DRY_WIT_LOG_LEVEL_STACK[@]}]="$*";
 }
 
-## PRIVATE
-## Retrieves the number of "in-progress" tasks pending.
-## <- Such count.
-## Example:
-##   LOGGING.numberOfNestedInProgressTasks;
-##   _count=$?
+# txt: Retrieves the number of "in-progress" tasks pending.
+# txt: Returns such count.
+# fun: LOGGING.numberOfNestedInProgressTasks
+# api: internal
+# use: LOGGING.numberOfNestedInProgressTasks; local count=$?;
 function LOGGING.numberOfNestedInProgressTasks() {
-  local rescode;
+  local -i rescode;
   rescode=${#_DRY_WIT_LOG_STACK[@]};
   return ${rescode};
 }
 
-## PRIVATE
-## Pops given message from the log stack.
-## <- 0: if the stack contained at least the popped item; 1 otherwise.
-## <- RESULT: The popped message.
-## Example:
-##   if LOGGING.popLog; then
-##     echo "Last log: ${RESULT}";
-##   fi
+# txt: Pops given message from the log stack.
+# txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the popped message.
+# fun: LOGGING.popLog
+# api: internal
+# use: if LOGGING.popLog; then echo "Last log: ${RESULT}"; fi
 function LOGGING.popLog() {
   local -i rescode;
   local result="";
@@ -711,16 +714,14 @@ function LOGGING.popLog() {
   return ${rescode};
 }
 
-## PRIVATE
-## Peeks given message from top of the log stack.
-## <- 0: if the stack contains at least the returned item; 1 otherwise.
-## <- RESULT: The message.
-## Example:
-##   if LOGGING.peekLog; then
-##     echo "Last log: ${RESULT}";
-##   fi
+# txt: Peeks given message from top of the log stack.
+# txt: Returns 0/TRUE if the stack contains at least the returned item; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the message.
+# fun: LOGGING.peekLog
+# api: internal
+# use: if LOGGING.peekLog; then echo "Last log: ${RESULT}"; fi
 function LOGGING.peekLog() {
-  local rescode;
+  local -i rescode;
   local result="";
   local -i _len=${#_DRY_WIT_LOG_STACK[@]};
   local -i _newLen;
@@ -737,14 +738,12 @@ function LOGGING.peekLog() {
   return ${rescode};
 }
 
-## PRIVATE
-## Pops given category from the log category stack.
-## <- 0: if the stack contained at least the popped item; 1 otherwise.
-## <- RESULT: The popped category.
-## Example:
-##   if LOGGING.popLogCategory; then
-##     echo "Last log category: ${RESULT}";
-##   fi
+# txt: Pops given category from the log category stack.
+# txt: 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the popped category.
+# fun: LOGGING.popLogCategory
+# api: internal
+# use: if LOGGING.popLogCategory; then echo "Last log category: ${RESULT}"; fi
 function LOGGING.popLogCategory() {
   local -i rescode;
   local -i _len=${#_DRY_WIT_LOG_CATEGORY_STACK[@]};
@@ -760,14 +759,12 @@ function LOGGING.popLogCategory() {
   return ${rescode};
 }
 
-## PRIVATE
-## Peeks given category from the log category stack.
-## <- 0: if the stack contained at least the returned item; 1 otherwise.
-## <- RESULT: The category.
-## Example:
-##   if LOGGING.peekLogCategory; then
-##     echo "Last log category: ${RESULT}";
-##   fi
+# txt: Peeks given category from the log category stack.
+# txt: Returns 0/TRUE if the stack contained at least the returned item; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the category.
+# fun: LOGGING.peekLogCategory
+# api: internal
+# use: if LOGGING.peekLogCategory; then echo "Last log category: ${RESULT}"; fi
 function LOGGING.peekLogCategory() {
   local -i rescode;
   local result="";
@@ -788,14 +785,12 @@ function LOGGING.peekLogCategory() {
   return ${rescode};
 }
 
-## PRIVATE
-## Pops given level from the log level stack.
-## <- 0: if the stack contained at least the popped item; 1 otherwise.
-## <- RESULT: The popped level.
-## Example:
-##   if LOGGING.popLogLevel; then
-##     echo "Last log level: ${RESULT}";
-##   fi
+# txt: Pops given level from the log level stack.
+# txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the popped level.
+# fun: LOGGING.popLogLevel
+# api: internal
+# use: if LOGGING.popLogLevel; then echo "Last log level: ${RESULT}"; fi
 function LOGGING.popLogLevel() {
   local -i rescode;
   local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
@@ -841,93 +836,90 @@ function LOGGING.peekLogLevel() {
   return ${rescode};
 }
 
-## PRIVATE
-## Checks whether the log line is currently opened.
-## <- 0: if it's open; 1 otherwise.
-## Example:
-##   if LOGGING.isLogLineOpen; then [..]; fi
+# txt: Checks whether the log line is currently opened.
+# txt: Returns 0/TRUE if it's open; 1/FALSE otherwise.
+# fun: LOGGING.isLogLineOpen
+# api: internal
+# use: if LOGGING.isLogLineOpen; then [..]; fi
 function LOGGING.isLogLineOpen() {
   return ${_DRY_WIT_LOG_LINE_OPEN};
 }
 
-## PRIVATE
-## Opens the log line.
-## Example:
-##   LOGGING.openLogLine;
+# txt: Opens the log line.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.openLogLine
+# api: internal
+# use: LOGGING.openLogLine;
 function LOGGING.openLogLine() {
   export _DRY_WIT_LOG_LINE_OPEN=${TRUE};
 }
 
-## PRIVATE
-## Closes the log line.
-## Example:
-##   LOGGING.closeLogLine;
+# txt: Closes the log line.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.closeLogLine
+# use: LOGGING.closeLogLine;
 function LOGGING.closeLogLine() {
   export _DRY_WIT_LOG_LINE_OPEN=${FALSE};
 }
 
-## PRIVATE
-## Retrieves the timestamp used for logging.
-## <- RESULT: The timestamp.
-## Note: Override LOG_TIMESTAMP to modify the timestamp format.
-## Example:
-##   LOGGING.retrieveLogTimestamp;
-##   echo "The log timestamp is ${RESULT}";
+# txt: Retrieves the timestamp used for logging.
+# txt: Override LOG_TIMESTAMP to modify the timestamp format.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the timestamp.
+# fun: LOGGING.retrieveLogTimestamp
+# api: internal
+# use: LOGGING.retrieveLogTimestamp; echo "The log timestamp is ${RESULT}";
 function LOGGING.retrieveLogTimestamp() {
   export RESULT="$(date "${LOG_TIMESTAMP}")";
 }
 
-## PRIVATE
-## Retrieves the position of the timestamp in
-## the log prefix tokens array.
-## <- RESULT: the timestamp position.
-## Example:
-##   LOGGING.retrieveTimestampPositionInLogPrefix;
-##   echo "timestamp -> ${RESULT}";
+# txt: Retrieves the position of the timestamp in the log prefix tokens array.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the timestamp position.
+# fun: LOGGING.retrieveTimestampPositionInLogPrefix
+# api: internal
+# use: LOGGING.retrieveTimestampPositionInLogPrefix; echo "timestamp -> ${RESULT}";
 function LOGGING.retrieveTimestampPositionInLogPrefix() {
   export RESULT=${LOG_PREFIX_TIMESTAMP_POSITION};
 }
 
-## PRIVATE
-## Retrieves the position of the category in
-## the log prefix tokens array.
-## <- RESULT: the category position.
-## Example:
-##   LOGGING.retrieveCategoryPositionInLogPrefix;
-##   echo "category -> ${RESULT}";
+# txt: Retrieves the position of the category in the log prefix tokens array.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the category position.
+# fun: LOGGING.retrieveCategoryPositionInLogPrefix
+# api: internal
+# use: LOGGING.retrieveCategoryPositionInLogPrefix; echo "category -> ${RESULT}";
 function LOGGING.retrieveCategoryPositionInLogPrefix() {
   export RESULT=${LOG_PREFIX_CATEGORY_POSITION};
 }
 
-## PRIVATE
-## Retrieves the position of the log level in
-## the log prefix tokens array.
-## <- RESULT: the level position.
-## Example:
-##   LOGGING.retrieveLevelPositionInLogPrefix;
-##   echo "level -> ${RESULT}";
+# txt: Retrieves the position of the log level in the log prefix tokens array.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the level position.
+# fun: LOGGING.retrieveLevelPositionInLogPrefix
+# api: internal
+# use: LOGGING.retrieveLevelPositionInLogPrefix; echo "level -> ${RESULT}";
 function LOGGING.retrieveLevelPositionInLogPrefix() {
-    export RESULT=${LOG_PREFIX_LEVEL_POSITION};
+  export RESULT=${LOG_PREFIX_LEVEL_POSITION};
 }
 
-## PRIVATE
-## Retrieves the position of the outcome token in
-## the log outcome colors array.
-## <- RESULT: the outcome text position.
-## Example:
-##   LOGGING.retrieveOutcomeTextPositionInLogOutcome;
-##   echo "outcome text -> ${RESULT}";
+# txt: Retrieves the position of the outcome token in the log outcome colors array.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the outcome text position.
+# fun: LOGGING.retrieveOutcomeTextPositionInLogOutcome
+# api: internal
+# use: LOGGING.retrieveOutcomeTextPositionInLogOutcome; echo "outcome text -> ${RESULT}";
 function LOGGING.retrieveOutcomeTextPositionInLogOutcome() {
   export RESULT=${LOG_OUTCOME_TEXT_POSITION};
 }
 
-## PRIVATE
-## Retrieves the tokens composing the log prefix.
-## -> 1: The log category.
-## -> 2: The log level (optional).
-## Example:
-##    LOGGING.retrieveLogPrefixTokens "a:b:c" DEBUG;
-##    echo "${_DRY_WIT_LOG_PREFIX_TOKENS[*]}"
+# txt: Retrieves the tokens composing the log prefix.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.retrieveLogPrefixTokens category level
+# opt: category: The log category.
+# opt: level: The log level (optional).
+# api: internal
+# use: LOGGING.retrieveLogPrefixTokens "a:b:c" DEBUG; echo "${_DRY_WIT_LOG_PREFIX_TOKENS[*]}";
 function LOGGING.retrieveLogPrefixTokens() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
@@ -966,15 +958,13 @@ function LOGGING.retrieveLogPrefixTokens() {
   _DRY_WIT_LOG_PREFIX_TOKENS[${_levelPosition}]="${_level}";
 }
 
-## PRIVATE
-## Retrieves the tokens composing the log outcome.
-## -> 1: The outcome text.
-## <- RESULT: The output file to source to be able to use
-##            _DRY_WIT_LOG_OUTCOME_TOKENS array.
-## Example:
-##    LOGGING.retrieveLogOutcomeTokens "done";
-##    source ${RESULT};
-##    echo "${_DRY_WIT_LOG_OUTCOME_TOKENS[*]}"
+# txt: Retrieves the tokens composing the log outcome.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the output file to source to be able to use _DRY_WIT_LOG_OUTCOME_TOKENS array.
+# fun: LOGGING.retrieveLogOutcomeTokens text
+# opt: text: The outcome text.
+# api: internal
+# use: LOGGING.retrieveLogOutcomeTokens "done"; source ${RESULT}; echo "${_DRY_WIT_LOG_OUTCOME_TOKENS[*]}";
 function  LOGGING.retrieveLogOutcomeTokens() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
@@ -999,15 +989,13 @@ function  LOGGING.retrieveLogOutcomeTokens() {
   _DRY_WIT_LOG_OUTCOME_TOKENS[${_outcomeTextPosition}]="${_text}";
 }
 
-## PRIVATE
-## Retrieves the tokens composing the log outcome.
-## -> 1: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
-## <- RESULT: The output file to source to be able to use
-##            _DRY_WIT_LOG_OUTCOME_COLORS array.
-## Example:
-##    LOGGING.retrieveLogOutcomeColors SUCCESS "done";
-##    source ${RESULT};
-##    echo "${_DRY_WIT_LOG_OUTCOME_COLORS[*]}"
+# txt: Retrieves the tokens composing the log outcome.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the output file to source to be able to use _DRY_WIT_LOG_OUTCOME_COLORS array.
+# fun: LOGGING.retrieveLogOutcomeColors SUCCESS|FAILURE|IN_PROGRESS
+# opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# api: internal
+# use: LOGGING.retrieveLogOutcomeColors SUCCESS "done"; source ${RESULT}; echo "${_DRY_WIT_LOG_OUTCOME_COLORS[*]}";
 function LOGGING.retrieveLogOutcomeColors() {
   local _keyword="${1}";
   checkNotEmpty "keyword" "${_keyword}" 1;
@@ -1033,14 +1021,14 @@ function LOGGING.retrieveLogOutcomeColors() {
   _DRY_WIT_LOG_OUTCOME_COLORS[${_outcomeTextPosition}]="${_keywordColor}";
 }
 
-## PRIVATE
-## Retrieves the color for a given keyword.
-## -> 1: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
-## -> 2: The default color.
-## <- RESULT: The associated color.
-## Example:
-##   LOGGING.retrieveKeywordColor SUCCESS GREEN;
-##   echo "Color -> ${RESULT}"
+# txt: Retrieves the color for a given keyword.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the associated color.
+# fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|IN_PROGRESS defaultColor
+# txt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# txt: defaultColor: The default color.
+# api: internal
+# use: LOGGING.retrieveKeywordColor SUCCESS GREEN; echo "Color -> ${RESULT}";
 function LOGGING.retrieveKeywordColor() {
   local _keyword="${1}";
   checkNotEmpty "keyword" "${_keyword}" 1;
@@ -1062,12 +1050,13 @@ function LOGGING.retrieveKeywordColor() {
   export RESULT="${result}";
 }
 
-## PRIVATE
-## Prints the log prefix.
-## -> 1: The log category.
-## -> 2: The log level.
-## Example:
-##   LOGGING.echoLogPrefix "cat" DEBUG
+# txt: Prints the log prefix.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.echoLogPrefix category level
+# opt: category: The log category.
+# opt: level: The log level.
+# api: internal
+# use: LOGGING.echoLogPrefix "cat" DEBUG
 function LOGGING.echoLogPrefix() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
@@ -1081,13 +1070,13 @@ function LOGGING.echoLogPrefix() {
   LOGGING.echoColorAwareLogPrefix "${_category}" ${_allowsColors} "${_level}";
 }
 
-## PRIVATE
-## Retrieves the log prefix.
-## -> 1: The log category.
-## -> 2: The log level.
-## Example:
-##   LOGGING.retrieveLogPrefix "cat" DEBUG;
-##   echo "log prefix -> ${RESULT}";
+# txt: Retrieves the log prefix.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.retrieveLogPrefix category level
+# opt: category: The log category.
+# opt: level: The log level.
+# api: internal
+# use: LOGGING.retrieveLogPrefix "cat" DEBUG; echo "log prefix -> ${RESULT}";
 function LOGGING.retrieveLogPrefix() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
@@ -1099,13 +1088,14 @@ function LOGGING.retrieveLogPrefix() {
   export RESULT="${result}";
 }
 
-## PRIVATE
-## Prints the log prefix, for color terminals.
-## -> 1: The log category.
-## -> 2: ${TRUE} if using colors; ${FALSE} otherwise.
-## -> 3: The log level.
-## Example:
-##   LOGGING.echoColorAwareLogPrefix "cat" ${TRUE} DEBUG
+# txt: Prints the log prefix, for color terminals.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.echoColorAwareLogPrefix category TRUE|FALSE level
+# opt: category: The log category.
+# opt: TRUE|FALSE: ${TRUE} if using colors; ${FALSE} otherwise.
+# opt: level: The log level.
+# api: internal
+# use: LOGGING.echoColorAwareLogPrefix "cat" ${TRUE} DEBUG
 function LOGGING.echoColorAwareLogPrefix() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
@@ -1140,9 +1130,12 @@ function LOGGING.echoColorAwareLogPrefix() {
   echo -n " ";
 }
 
-## PRIVATE
-## Retrieves the log namespace.
-## <- RESULT: The log namespace.
+# txt: Retrieves the log namespace.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the log namespace.
+# fun: LOGGING.retrieveLogNamespace
+# api: internal
+# use: LOGGING.retrieveLogNamespace; echo "namespace: ${RESULT}";
 function LOGGING.retrieveLogNamespace() {
   local _namespace="${LOG_CATEGORY_NAMESPACE}";
   local _category="${LOG_CATEGORY}";
@@ -1163,13 +1156,14 @@ function LOGGING.retrieveLogNamespace() {
   export RESULT="${result}";
 }
 
-## PRIVATE
-## Prints the log outcome.
-## -> 1: The log level.
-## -> 2: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
-## -> 3: The outcome text.
-## Example:
-##   LOGGING.echoLogOutcome DEBUG SUCCESS "sample"
+# txt: Prints the log outcome.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.echoLogOutcome level SUCCESS|FAILURE|IN_PROGRESS text
+# opt: level: The log level.
+# opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: text: The outcome text.
+# api: internal
+# use: LOGGING.echoLogOutcome DEBUG SUCCESS "sample"
 function LOGGING.echoLogOutcome() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1226,13 +1220,14 @@ function LOGGING.echoLogOutcome() {
   fi
 }
 
-## PRIVATE
-## Prints the log outcome.
-## -> 1: The log level.
-## -> 2: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
-## -> 3: The outcome text.
-## Example:
-##   LOGGING.echoLogOutcome DEBUG SUCCESS "sample"
+# txt: Prints the log outcome, used when nesting log calls.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.echoLogOutcomeNested level SUCCESS|FAILURE|IN_PROGRESS text
+# opt: level: The log level.
+# opt: SUCCESS_FAILURE_IN_PROGRESS: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: text: The outcome text.
+# api: internal
+# use: LOGGING.echoLogOutcome DEBUG SUCCESS "sample"
 function LOGGING.echoLogOutcomeNested() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1266,13 +1261,13 @@ function LOGGING.echoLogOutcomeNested() {
   LOGGING.pushLogCategory "${_category}";
 }
 
-## PRIVATE
-## Writes spaces until the next message to print
-## is aligned to the right.
-## -> 1: The log-line message.
-## -> 2: The log outcome message.
-## Example:
-##  _alignRight "Finishing work" "done";
+# txt: Writes spaces until the next message to print is aligned to the right.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.alignRight message outcome
+# opt: message: The log-line message.
+# opt: outcome: The log outcome message.
+# api: internal
+# use: LOGGING.alignRight "Finishing work" "done";
 function LOGGING.alignRight() {
   local _logLineMessage="${1}";
   checkNotEmpty "message" "${_logLineMessage}" 1;
@@ -1321,13 +1316,13 @@ function LOGGING.alignRight() {
   fi
 }
 
-## PRIVATE
-## Prints a log message.
-## -> 1: The log level.
-## -> 2: The message.
-## Example:
-##   LOGGING.logMessage INFO "A message to log"
-##   # [...] A message to log
+# txt: Prints a log message.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logMessage level message
+# opt: level: The log level.
+# opt: message: The message.
+# api: internal
+# use: LOGGING.logMessage INFO "A message to log"
 function LOGGING.logMessage() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1339,12 +1334,13 @@ function LOGGING.logMessage() {
   echo;
 }
 
-## PRIVATE
-## Prints a log message, indicating some uncompleted task.
-## -> 1: The message.
-## Example:
-##   LOGGING.logInProgress "Calculating ...";
-##   # [...] Calculating ...
+# txt: Prints a log message, indicating some uncompleted task.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logInProgress level message
+# opt: level: The log level.
+# opt: message: The message.
+# api: internal
+# use: LOGGING.logInProgress INFO "Calculating ...";
 function LOGGING.logInProgress() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1367,15 +1363,14 @@ function LOGGING.logInProgress() {
   fi
 }
 
-## PRIVATE
-## Prints a log message, indicating some uncompleted task,
-## when there're nested tasks.
-## -> 1: The category.
-## -> 2: The log level.
-## -> 3: The message.
-## Example:
-##   LOGGING.logInProgressNested "cat" DEBUG "Calculating ...";
-##   # [...<cat>|o] Calculating ...
+# txt: Prints a log message, indicating some uncompleted task, when there're nested tasks.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logInProgressNested category level message
+# opt: category: The category.
+# opt: level: The log level.
+# opt: message: The message.
+# api: internal
+# use: LOGGING.logInProgressNested "cat" DEBUG "Calculating ...";
 function LOGGING.logInProgressNested() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
@@ -1403,15 +1398,14 @@ function LOGGING.logInProgressNested() {
   echoColorizedText "${_actualMessage}" "" "${DEFAULT_LOG_PREFIX_COLOR}";
 }
 
-## PRIVATE
-## Prints a log message, indicating some uncompleted task,
-## when there're no nested tasks.
-## -> 1: The log category.
-## -> 2: The log level.
-## -> 3: The message.
-## Example:
-##   LOGGING.logProgressNoNested "cat" INFO "Calculating ...";
-##   # [...<cat|.>] Calculating ...
+# txt: Prints a log message, indicating some uncompleted task, when there're no nested tasks.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logInProgressNoNested category level message
+# opt: category: The log category.
+# opt: level: The log level.
+# opt: message: The message.
+# api: internal
+# use: LOGGING.logProgressNoNested "cat" INFO "Calculating ...";
 function LOGGING.logInProgressNoNested() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
@@ -1433,13 +1427,15 @@ function LOGGING.logInProgressNoNested() {
   echoColorizedText "${_message}" "" "${DEFAULT_LOG_PREFIX_COLOR}";
 }
 
-## PRIVATE
-## Prints the result of a task.
-## -> 1: The log level.
-## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
-## -> 3: The outcome text.
-## Example:
-##   LOGGING.logCompleted INFO SUCCESS "done";
+
+# txt: Prints the result of a task.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logCompleted level SUCCESS|FAILURE|IN_PROGRESS outcome
+# opt: level: The log level.
+# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: outcome: The outcome text.
+# api: internal
+# use: LOGGING.logCompleted INFO SUCCESS "done";
 function LOGGING.logCompleted() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1462,13 +1458,14 @@ function LOGGING.logCompleted() {
   fi
 }
 
-## PRIVATE
-## Prints the result of a task.
-## -> 1: The log level.
-## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
-## -> 3: The outcome text.
-## Example:
-##   LOGGING.logCompletedNoNested INFO SUCCESS "done";
+# txt: Prints the result of a task.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logCompletedNoNested level SUCCESS|FAILURE|IN_PROGRESS outcome
+# opt: level: The log level.
+# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: outcome: The outcome text.
+# api: internal
+# use: LOGGING.logCompletedNoNested INFO SUCCESS "done";
 function LOGGING.logCompletedNoNested() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1479,7 +1476,7 @@ function LOGGING.logCompletedNoNested() {
   shift;
 
   local _text="${@}";
-  checkNotEmpty "text" "${_text}" 3;
+  checkNotEmpty "outcome" "${_text}" 3;
 
   LOGGING.echoLogOutcome "${_level}" "${_keyword}" "${_text}";
   LOGGING.popLog;
@@ -1488,13 +1485,14 @@ function LOGGING.logCompletedNoNested() {
   echo;
 }
 
-## PRIVATE
-## Prints the result of a task, when there're nested tasks.
-## -> 1: The log level.
-## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
-## -> 3: The outcome text.
-## Example:
-##   LOGGING.logCompletedNested INFO SUCCESS "done";
+# txt: Prints the result of a task, when there're nested tasks.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logCompletedNested level SUCCESS|FAILURE|IN_PROGRESS outcome
+# opt: level: The log level.
+# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: outcome: The outcome text.
+# api: internal
+# use: LOGGING.logCompletedNested INFO SUCCESS "done";
 function LOGGING.logCompletedNested() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1505,7 +1503,7 @@ function LOGGING.logCompletedNested() {
   shift
 
   local _message="$@";
-  checkNotEmpty "message" "${_message}" 3;
+  checkNotEmpty "outcome" "${_message}" 3;
 
   local _nestedTask;
   local _nestedTaskCategory;
@@ -1525,13 +1523,14 @@ function LOGGING.logCompletedNested() {
   echoColorizedText "${_nestedTask}" "" "${DEFAULT_LOG_RESUMING_TASK_COLOR}";
 }
 
-## PRIVATE
-## Prints the result of a task, when there're nested tasks.
-## -> 1: The log level.
-## -> 2: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
-## -> 3: The outcome text.
-## Example:
-##   LOGGING.logCompletedNested SUCCESS "done";
+# txt: Prints the result of a task, when there're nested tasks.
+# txt: Returns 0/TRUE always.
+# fun: LOGGING.logCompletedNestedNoPop level SUCCESS|FAILURE|IN_PROGRESS outcome
+# opt: level: The log level.
+# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
+# opt: outcome: The outcome text.
+# api: internal
+# use: LOGGING.logCompletedNested SUCCESS "done";
 function LOGGING.logCompletedNestedNoPop() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
@@ -1546,30 +1545,22 @@ function LOGGING.logCompletedNestedNoPop() {
   LOGGING.echoLogOutcomeNested "${_level}" "${_keyword}" "${_message}";
 }
 
+# txt: Logs the contents of a file, using the DEBUG level.
+# txt: Returns 0/TRUE always.
+# fun: logDebugFileContents file
+# opt: file: The file.
+# use: logDebugFileContents /tmp/my-file.log
 function logDebugFileContents() {
   if isDebugEnabled; then
     [ -f "$1" ] && sed 's ^\s+$  g' "$1" | awk '{printf("logDebug \"%s\"\n", $0);}' | sh
   fi
 }
 
-function logFlag() {
-  local _flag="$1";
-  local _value="$2";
-  local _placeholders=$3;
-  local _remaining="$4";
-
-  if isNotEmpty "${_value}"; then
-    _value=" ${_value}";
-  fi
-  if isNotEmpty "${_remaining}"; then
-    _remaining=" Remaining ${_remaining}";
-  fi
-  logTrace "Parsed ${_flag} ${_value}. Shifting ${_placeholders} placeholder(s).${_remaining}";
-}
-
-# Checks whether given keyword represents a success.
-# -> 1: The keyword.
-# <- 0/TRUE if the keyword is considered a success; 1/FALSE otherwise.
+# txt: Checks whether given keyword represents a success.
+# txt: Returns 0/TRUE if the keyword is considered a success; 1/FALSE otherwise.
+# fun: isSuccessKeyword keyword
+# opt: keyword: The keyword.
+# use: if isSuccessKeyword "${keyword}"; then logInfoResult SUCCESS "done"; fi
 function isSuccessKeyword() {
   local _keyword="${1}";
   local -i rescode=${FALSE};
@@ -1603,9 +1594,11 @@ function isSuccessKeyword() {
   return ${rescode};
 }
 
-# Checks whether given keyword represents a failure.
-# -> 1: The keyword.
-# <- 0/TRUE if the keyword is considered a failure; 1/FALSE otherwise.
+# txt: Checks whether given keyword represents a failure.
+# txt: Returns 0/TRUE if the keyword is considered a failure; 1/FALSE otherwise.
+# fun: isFailureKeyword keyword
+# opt: keyword: The keyword.
+# use: if isFailureKeyword "${keyword}"; then logInfoResult SUCCESS "done"; fi
 function isFailureKeyword() {
   local _keyword="${1}";
   local -i rescode=${FALSE};
