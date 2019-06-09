@@ -1,210 +1,298 @@
 # mod: file
+# api: dry-wit
+# txt: Functions dealing with files.
+
+# env: _CLEANUP_FILES: The temporary files to cleanup.
 declare -agx _CLEANUP_FILES;
 
 DW.import logging;
 
-# txt: Sources given file, if it exists.
-# txt: Returns 0/TRUE if the file is sourced; 1/FALSE otherwise.
-# fun: sourceFileIfExists file
-# opt: file: The file to source.
-# use: sourceFileIfExists "/tmp/my-env";
-function sourceFileIfExists() {
-  local _file="${1}";
-  local -i rescode=${FALSE};
+# fun: addFileToCleanup file
+# api: dry-wit
+# txt: Annotates a file to be removed.
+# opt: file: The file to delete.
+# txt: Returns 0/TRUE always.
+# use: addFileToCleanup "/tmp/my-log.txt";
+function addFileToCleanup() {
+    local _file="${1}";
+    #  logTrace "Appending ${result} to _CLEANUP_FILES";
 
-  checkNotEmpty "file" "${_file}" 1;
-
-  logTrace -n "Reading ${_file}";
-  if fileExists "${_file}"; then
-    rescode=${TRUE};
-    source "${_file}";
-    logTraceResult SUCCESS "done";
-  else
-    logTraceResult SUCCESS "not found";
-  fi
-
-  return ${rescode};
-}
-
-# txt: Finds a given file within a PATH variable.
-# txt: Prints the file path via (stdin).
-# fun: findInPath file
-# opt: file: The file name to look for.
-# use: local path="$(findInPath myFile)";
-function findInPath() {
-  local result="";
-  local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
-  local _path;
-
-  local _oldIFS="${IFS}";
-  IFS=$' \t\n';
-  for _path in $_paths; do
-    if [ -f "${_path}/$1" ]; then
-      result="${_path}/$1";
-      break;
+    if declare -p _CLEANUP_FILES > /dev/null 2>&1; then
+        upvars -a$((${#_CLEANUP_FILES[@]}+1)) _CLEANUP_FILES "${_CLEANUP_FILES[@]}" "${_file}";
+        export _CLEANUP_FILES;
+    else
+        export -a _CLEANUP_FILES=();
+        upvars -a1 _CLEANUP_FILES "${_file}";
+        export _CLEANUP_FILES;
     fi
-  done
-  IFS="${_oldIFS}";
-  echo ${result};
+
+    #  local _oldIFS="${IFS}";
+    #  IFS=$' \t\n';
+    #  _CLEANUP_FILES=(\
+        #    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
+        #      "${_file}" \
+        #  );
+    #  IFS="${_oldIFS}";
 }
 
-# txt: Retrieves the absolute path of given argument.
-# txt: Returns 0/TRUE if the file was found; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the absolute path.
-# fun: retrieveAbsolutePath relativePath.
-# opt: relativePath: The relative path.
-# use: if retrieveAbsolutePath './myfile'; then
-# use:   echo "absolute path: ${RESULT}"
-# use: fi
-function retrieveAbsolutePath() {
-  local _relativePath="${1}";
-
-  checkNotEmpty "relativePath" "${_relativePath}" 1;
-
-  readLink -f "${_relativePath}";
-
-  return $?;
-}
-
-# txt: Checks if the system is a MacOSX.
-# txt: Returns 0/TRUE if the system is MacOSX; 1/FALSE otherwise.
-# fun: isMacOSX
-# use: if isMacOSX; then
-# use:   echo "I'm running on a MacOSX";
-# use: fi
-function isMacOSX() {
+# fun: createTempFile
+# api: dry-wit
+# txt: Creates a new temporary file.
+# txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
+# use: if createTempFile; then
+#        echo "Temp file: ${RESULT}";
+#      fi
+function createTempFile() {
   local -i rescode;
-  if [ "$(uname -s)" == "Darwin" ]; then
-    rescode=${TRUE};
+  local result;
+
+  if createTempFileNoCleanup; then
+      result="${RESULT}";
+      addFileToCleanup "${result}";
+      rescode=${TRUE};
+      export RESULT="${result}";
   else
     rescode=${FALSE};
   fi
+
   return ${rescode};
 }
 
-# txt: Runs readlink (differs in Linux and in MacOSX).
-# txt: Returns the result code of readlink.
-# txt: The variable RESULT contains the output of readlink.
-# fun: readLink param*
-# opt: param: The readlink parameters.
-# use: if readLink -f "/bin/bash"; then
-# use:   echo "readlink result: ${RESULT}"
-# use: fi
-function readLink() {
+# fun: createTempFileNoCleanup
+# api: dry-wit
+# txt: Creates a new temporary file, without managing its cleanup.
+# txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
+# use: if createTempFileNoCleanup; then
+#        echo "Temp file: ${RESULT}";
+#      fi
+function createTempFileNoCleanup() {
   local -i rescode;
   local result;
 
-  if isMacOSX; then
-    result="$(greadlink $@)";
-    rescode=$?;
+  local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
+  local _dirname="$(dirname \"${SCRIPT_NAME}\")";
+#  local _prefix="$(echo "${SCRIPT_NAME}" | awk -F"/" '{print $NF;}')";
+#  local _dirname="$(dirname "${SCRIPT_NAME}")";
+  if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
+    _dirname="$PWD/${_dirname#\.}";
   else
-    result="$(readlink $@)";
-    rescode=$?;
+    _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  if isTrue ${rescode}; then
-    export RESULT="${result}";
+  FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
+  rescode=$?;
+
+  if isFalse ${rescode} ; then
+     FILE.mktempFile "${PWD}" ".${_prefix}.XXXXXXXXXX";
+     rescode=$?;
   fi
+
+  if isFalse ${rescode}; then
+    export RESULT="";
+    rm -f "${result}" > /dev/null 2>&1;
+  fi
+
   return ${rescode};
 }
 
-# txt: Retrieves the disk space available in the filesystem containing given folder. Prints the available space in bytes.
-# txt: Returns 0/TRUE if the space could be calculated; 1/FALSE otherwise.
-# fun: retrieveFreeDiskSpaceUnderFolder folder
-# opt: folder: The folder.
-# use: if retrieveFreeDiskSpaceUnderFolder "/tmp"; then
-# use:   echo "/tmp -> ${RESULT}";
-# use: fi
-function retrieveFreeDiskSpaceUnderFolder() {
+# fun: createTempFolder parent? prefix?
+# api: dry-wit
+# txt: Creates a temporary folder.
+# opt: parent: The parent folder. Optional.
+# opt: prefix: The folder name prefix. Optional.
+# txt: Returns 0/TRUE if the folder gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the new folder.
+# use: if createTempFolder; then
+#        echo "New folder: ${RESULT}";
+#      fi
+function createTempFolder() {
+  local _dirname="${1}";
+  local _prefix="${2}";
+  local -i rescode;
   local result;
-  local resultCode=1;
-  local _folder="$1";
-  local _aux="${_folder}";
 
-  if [ -d "${_folder}" ]; then
-    while isNotEmpty "${_aux}" -a areNotEqual "${_aux}" "/" && \
-          ! mountpoint -q "${_aux}"; do
-      _aux="${_aux%/*}";
-    done;
-
-    mountpoint -q "${_aux}";
-    resultCode=$?;
-
-    if isTrue ${resultCode}; then
-      result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
-      resultCode=$?;
-    fi
-  fi
-
-  export RESULT="${result}";
-
-  return ${resultCode};
-}
-
-# txt: Uncompresses given file to a concrete folder.
-# txt: Returns 0/TRUE if the file is uncompressed successfully; 1/FALSE if the format of the file is invalid; and 2 if there's some other error when uncompressing the file.
-# fun: uncompress file outputFolder
-# opt: file: The file.
-# opt: outputFolder: The output folder.
-# use: uncompress "my.zip" "/tmp"
-function uncompress() {
-  local _file="${1}";
-  local _destination="${2}";
-  local result=${TRUE};
-
-  createTempFile;
-  local _errorOutput="${RESULT}";
-
-  local _flags;
-
-  # First, check whether the bundle is compressed bzip2 format.
-  if file "${_file}" | cut -d ":" -f 2 | grep bzip2 > /dev/null 2>&1; then
-    _flags="xfj";
-  # Second try: check whether the bundle is compressed gzip format.
-  elif file "${_file}" | cut -d ":" -f 2 | grep gzip /dev/null 2>&1; then
-    _flags="xfz";
-  # Otherwise, it can also be a standard, uncompressed tar.
-  elif file "${_file}" | cut -d ":" -f 2 | grep tar /dev/null 2>&1; then
-    _flags="xf";
-  else
-    result=1;
-  fi
-
-  if [ ${result} == 0 ]; then
-    logDebug -n "Uncompressing ${_file}";
-    tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
-    if [ $? == 0 ]; then
-      logDebugResult "done";
+  if isEmpty "${_dirname}"; then
+    _dirname="$(dirname ${SCRIPT_NAME})";
+    if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
+      _dirname="${PWD}/${_dirname#\.}";
     else
-      logDebugResult "Failed";
-      logDebugFile "${_errorOutput}";
-      result=2;
+      _dirname="${PWD}/../${_dirname#\.\.}";
     fi
   fi
 
-  return ${result};
+  if isEmpty "${_prefix}"; then
+    _prefix="$(echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}')";
+  fi
+
+  FILE.mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
+  rescode=$?;
+  if isTrue ${rescode}; then
+    result="${RESULT}";
+  else
+    FILE.mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
+    rescode=$?;
+    if isTrue ${rescode}; then
+      result="${RESULT}";
+    fi
+  fi
+  if isTrue ${rescode}; then
+    addFileToCleanup "${result}";
+    export RESULT="${result}";
+  else
+    export RESULT="";
+  fi
+
+  return ${rescode};
 }
 
-# txt: Removes the extension from given file name.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the file name, without the extension.
-# fun: removeExtension fileName
-# opt: fileName: The file name.
-# use: removeExtension "myfile.sh" # -> RESULT="myfile"
-function removeExtension() {
-  local _file="$1";
-  local result="$(basename ${_file}$)";
-  result="${result%.*}";
+# fun: FILE.mktempFile baseFolder format
+# api: internal
+# txt: Runs mktemp variants in Linux and MacOSX, for creating a temporary file.
+# opt: baseFolder: The base folder.
+# opt: format: The file name format.
+# txt: Returns 0/TRUE if the file is created correctly; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the file name.
+# use:  if FILE.mktempFile /tmp .removeme.XXXX; then ...; fi
+function FILE.mktempFile() {
+  local _baseFolder="${1}";
+  local _format="${2}"
+  local -i rescode;
+  local result;
 
-  export RESULT="${result}";
+  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
+  checkNotEmpty "format" "${_format}" 2;
+
+  if isMacOSX; then
+    result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
+    rescode=$?;
+  else
+    result="$(mktemp -p ${_baseFolder} -t ${_format})"
+    rescode=$?;
+  fi
+
+  if isTrue ${rescode}; then
+      export RESULT="${result}";
+  fi
+
+  return ${rescode};
 }
 
-# txt: Finds the distance between two folders.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the distance.
+# fun: FILE.mktempFolder baseFolder format
+# api: internal
+# txt: Runs mktemp variants in Linux and MacOSX, for creating a temporary folder.
+# opt: baseFolder: The base folder.
+# opt: format: The file name format.
+# txt: Returns 0/TRUE if the file is created correctly; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the file name.
+# use: if FILE.mktempFolder /tmp .removeme.XXXX; then ...; fi
+function FILE.mktempFolder() {
+  local _baseFolder="${1}";
+  local _format="${2}"
+  local -i rescode;
+  local result;
+
+  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
+  checkNotEmpty "format" "${_format}" 2;
+
+  if isMacOSX; then
+    result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
+    rescode=$?;
+  else
+    result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
+    rescode=$?;
+  fi
+
+  if isTrue ${rescode}; then
+      export RESULT="${result}";
+  fi
+
+  return ${rescode};
+}
+
+# fun: fileExists file
+# api: dry-wit
+# txt: Checks if given file exists.
+# opt: file: The file to check.
+# txt: Returns 0/TRUE if the file exists; 1/FALSE otherwise.
+# use: if fileExists "/tmp/test.txt"; then ...; fi
+function fileExists() {
+  local _file="${1}";
+  if isNotEmpty "${_file}" && [[ -e ${_file} ]]; then
+    return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+# fun: fileIsNotEmpty file
+# api: dry-wit
+# txt: Checks if given file is not empty.
+# opt: file: The file to check.
+# txt: Returns 0/TRUE if the file is not empty; 1/FALSE otherwise.
+# use: if fileIsNotEmpty "/tmp/test.txt"; then ...; fi
+function fileIsNotEmpty() {
+    local _file="${1}";
+    if isNotEmpty "${_file}" && [[ -s ${_file} ]]; then
+        return ${TRUE};
+    else
+        return ${FALSE};
+    fi
+}
+
+# fun: fileIsReadable file
+# api: dry-wit
+# txt: Checks if given file is readable.
+# opt: file: The file to check.
+# txt: Returns 0/TRUE if the file is readable; 1/FALSE otherwise.
+# use: if fileIsReadable "/tmp/test.txt"; then ...; fi
+function fileIsReadable() {
+  local _file="${1}";
+  if isNotEmpty "${_file}" && [[ -r ${_file} ]]; then
+      return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+# fun: fileIsRegularFile file
+# api: dry-wit
+# txt: Checks if given file is a regular file.
+# opt: file: The file to check.
+# txt: Returns 0/TRUE if the file is a regular file; 1/FALSE otherwise.
+# use: if fileIsRegularFile "/tmp/test.txt"; then ...; fi
+function fileIsRegularFile() {
+    local _file="${1}";
+    if isNotEmpty "${_file}" && [[ -f ${_file} ]]; then
+        return ${TRUE};
+    else
+        return ${FALSE};
+    fi
+}
+
+# fun: fileIsWritable file
+# api: dry-wit
+# txt: Checks if given file is writable.
+# opt: file: The file to check.
+# txt: Returns 0/TRUE if the file is writable; 1/FALSE otherwise.
+# use: if fileIsWritable "/tmp/test.txt"; then ...; fi
+function fileIsWritable() {
+  local _file="${1}";
+  if isNotEmpty "${_file}" && [[ -w ${_file} ]]; then
+      return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
 # fun: findFolderDistance folderA folderB
+# api: dry-wit
+# txt: Finds the distance between two folders.
 # opt: folderA: The first folder.
 # opt: folderB: The second folder.
-# use: findFolderDistance "/home/myuser/a/b/c" "/home/myuser/a/b/d/e"
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the distance.
+# use: findFolderDistance "/home/myuser/a/b/c" "/home/myuser/a/b/d/e";
 function findFolderDistance() {
   local _pathA="$1";
   local _pathB="$2";
@@ -249,13 +337,78 @@ function findFolderDistance() {
   export RESULT="${result}";
 }
 
-# txt: Given two paths, A and B, finds the shortest way to reach B from A.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the relative path.
-# fun: findRelativePathBetweenFolders folderA folderB
+# fun: findGreatestCommonParentFolder folderA folderB
+# api: dry-wit
+# txt: Finds the greatest common parent folder
 # opt: folderA: The first folder.
 # opt: folderB: The second folder.
-# use: findRelativePathBetweenFolders ${HOME}/a/b/c ${HOME}/a/d/e
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the parent folder.
+# use: findGreatestCommonParentFolder ${HOME}/a/b/c ${HOME}/a/b/d/e;
+function findGreatestCommonParentFolder() {
+  local _pathA="$1";
+  local _pathB="$2";
+  local result="";
+
+  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
+  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
+  local _max=$((_maxA));
+  if [ $((_max)) -lt $((_maxB)) ]; then
+    _max=$((_maxB));
+  fi
+
+  local _index=1;
+  local _auxA;
+  local _auxB;
+
+  while [ $((_index)) -le $((_max)) ]; do
+    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
+    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
+    _index=$((_index+1));
+    if [ "${_auxA}" == "${_auxB}" ]; then
+      result="${result}/${_auxA}";
+    else
+      break;
+    fi
+  done
+
+  result=$(echo "${result}" | sed 's ^/  g');
+
+  export RESULT="${result}";
+}
+
+
+# fun: findInPath file
+# api: dry-wit
+# txt: Finds a given file within a PATH variable.
+# opt: file: The file name to look for.
+# txt: Prints the file path via (stdin).
+# use: local path="$(findInPath myFile)";
+function findInPath() {
+  local result="";
+  local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
+  local _path;
+
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+  for _path in $_paths; do
+    if [ -f "${_path}/$1" ]; then
+      result="${_path}/$1";
+      break;
+    fi
+  done
+  IFS="${_oldIFS}";
+  echo ${result};
+}
+
+# fun: findRelativePathBetweenFolders folderA folderB
+# api: dry-wit
+# txt: Given two paths, A and B, finds the shortest way to reach B from A.
+# opt: folderA: The first folder.
+# opt: folderB: The second folder.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the relative path.
+# use: findRelativePathBetweenFolders ${HOME}/a/b/c ${HOME}/a/d/e;
 function findRelativePathBetweenFolders() {
   # Given two paths, A and B, find the shortest way
   # to reach B from A.
@@ -299,129 +452,36 @@ function findRelativePathBetweenFolders() {
   export RESULT="${result}";
 }
 
-# txt: Finds the greatest common parent folder
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the parent folder.
-# fun: findGreatestCommonParentFolder folderA folderB
-# opt: folderA: The first folder.
-# opt: folderB: The second folder.
-# use: findGreatestCommonParentFolder ${HOME}/a/b/c ${HOME}/a/b/d/e
-function findGreatestCommonParentFolder() {
-  local _pathA="$1";
-  local _pathB="$2";
-  local result="";
-
-  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
-  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
-  local _max=$((_maxA));
-  if [ $((_max)) -lt $((_maxB)) ]; then
-    _max=$((_maxB));
-  fi
-
-  local _index=1;
-  local _auxA;
-  local _auxB;
-
-  while [ $((_index)) -le $((_max)) ]; do
-    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
-    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
-    _index=$((_index+1));
-    if [ "${_auxA}" == "${_auxB}" ]; then
-      result="${result}/${_auxA}";
-    else
-      break;
-    fi
-  done
-
-  result=$(echo "${result}" | sed 's ^/  g');
-
-  export RESULT="${result}";
-}
-
-# txt: Reads given configuration file.
-# txt: Returns 0/TRUE if the file is read successfully; 1/FALSE otherwise.
-# fun: readConfFile file
-# opt: file: The config file.
-# use: if readConfFile "/tmp/app.conf"; then
-# use:   echo "/tmp/app.conf read successfully";
-# use: fi
-function readConfFile() {
-  local _confFile="${1}";
-  checkNotEmpty "confFile" "${_confFile}" 1;
-  local result=${TRUE};
-
-  [ ! -e "${_confFile}" ] && result=${FALSE};
-
-  local _actualConfFile="${_confFile}";
-
-  createTempFile;
-  result=$?;
-
-  if isFalse ${result}; then
-    return ${result};
-  fi
-
-  _actualConfFile="${RESULT}";
-
-    grep -v '^#' "${_confFile}" | sed 's ${\(.*\)} _dollar{\1}_ g' \
-  | sed 's ^\(.*\)=\(.*\) echo\ -n\ \1\ |\ tr\ \[:lower:\]\ \[:upper:]\;\ echo\ -n\ =\;\ echo\ \2 g' \
-  | sh \
-  | sed 's _dollar{\(.*\)}_ ${\1} g' \
-  | sed 's_^\(.*\)=\(.*\)$_\1=\2; logTrace \1=\${\1};_ g' \
-  | sed 's_^_export _g' > "${_actualConfFile}";
-
-  . "${_actualConfFile}";
-
-  return ${result};
-}
-
-# txt: Checks whether given folder exists.
-# txt: Returns 0/TRUE if the folder exists; 1/FALSE otherwise.
 # fun: folderExists folder
+# api: dry-wit
+# txt: Checks whether given folder exists.
 # opt: folder: The folder to check.
-# use: if folderExists "/tmp"; then
-# use:   rm -rf /tmp/*;
-# use: fi
-function folderExists() {
-  local _folder="${1}";
-  local -i rescode;
-
-  checkNotEmpty "folder" "${_folder}" 1;
-
-  if [ -d "${_folder}" ]; then
-      rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-
-  return ${rescode};
-}
-
-# txt: Checks whether given path is a symlink.
-# txt: Returns 0/TRUE if the path is a symlink; 1/FALSE otherwise.
-# fun: isSymlink path
-# opt: path: The path to check.
-# use: if isSymlink "/tmp"; then ... fi
-function isSymlink() {
-  local _path="${1}";
-  local -i rescode;
-
-  checkNotEmpty "path" "${_path}" 1;
-
-  if [ -L "${_path}" ]; then
-      rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-
-  return ${rescode};
-}
-
-# txt: Checks whether given folder exists and it's not a symbolic link.
 # txt: Returns 0/TRUE if the folder exists; 1/FALSE otherwise.
+# use: if folderExists "/tmp"; then
+#        rm -rf /tmp/*;
+#      fi
+function folderExists() {
+    local _folder="${1}";
+    local -i rescode;
+
+    checkNotEmpty "folder" "${_folder}" 1;
+
+    if [ -d "${_folder}" ]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+
+    return ${rescode};
+}
+
+
 # fun: folderExistsAndIsNotASymlink folder
+# api: dry-wit
+# txt: Checks whether given folder exists and it's not a symbolic link.
 # opt: folder: The folder to check.
-# use: if folderExistsAndIsNotASymlink "/tmp"; then ... fi
+# txt: Returns 0/TRUE if the folder exists; 1/FALSE otherwise.
+# use: if folderExistsAndIsNotASymlink "/tmp"; then ...; fi
 function folderExistsAndIsNotASymlink() {
   local _folder="${1}";
   local -i rescode;
@@ -441,271 +501,242 @@ function folderExistsAndIsNotASymlink() {
   return ${rescode};
 }
 
-# txt: Runs mktemp variants in Linux and MacOSX, for creating a temporary file.
-# txt: Returns 0/TRUE if the file is created correctly; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the file name.
-# fun: FILE.mktempFile baseFolder format
-# opt: baseFolder: The base folder.
-# opt: format: The file name format.
-# api: internal
-# use:  if FILE.mktempFile /tmp .removeme.XXXX; then ... fi
-function FILE.mktempFile() {
-  local _baseFolder="${1}";
-  local _format="${2}"
-  local -i rescode;
-  local result;
-
-  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
-  checkNotEmpty "format" "${_format}" 2;
-
-  if isMacOSX; then
-    result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
-    rescode=$?;
-  else
-    result="$(mktemp -p ${_baseFolder} -t ${_format})"
-    rescode=$?;
-  fi
-
-  if isTrue ${rescode}; then
-      export RESULT="${result}";
-  fi
-
-  return ${rescode};
-}
-
-# txt: Runs mktemp variants in Linux and MacOSX, for creating a temporary folder.
-# txt: Returns 0/TRUE if the file is created correctly; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the file name.
-# fun: FILE.mktempFolder baseFolder format
-# opt: baseFolder: The base folder.
-# opt: format: The file name format.
-# api: internal
-# use: if FILE.mktempFolder /tmp .removeme.XXXX; then ... fi
-function FILE.mktempFolder() {
-  local _baseFolder="${1}";
-  local _format="${2}"
-  local -i rescode;
-  local result;
-
-  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
-  checkNotEmpty "format" "${_format}" 2;
-
-  if isMacOSX; then
-    result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
-    rescode=$?;
-  else
-    result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
-    rescode=$?;
-  fi
-
-  if isTrue ${rescode}; then
-      export RESULT="${result}";
-  fi
-
-  return ${rescode};
-}
-
-# txt: Creates a new temporary file, without managing its cleanup.
-# txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
-# fun: createTempFileNoCleanup
-# use: if createTempFileNoCleanup; then
-# use:   echo "Temp file: ${RESULT}";
-# use: fi
-function createTempFileNoCleanup() {
-  local -i rescode;
-  local result;
-
-  local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
-  local _dirname="$(dirname \"${SCRIPT_NAME}\")";
-#  local _prefix="$(echo "${SCRIPT_NAME}" | awk -F"/" '{print $NF;}')";
-#  local _dirname="$(dirname "${SCRIPT_NAME}")";
-  if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
-    _dirname="$PWD/${_dirname#\.}";
-  else
-    _dirname="$PWD/../${_dirname#\.\.}";
-  fi
-  FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
-  rescode=$?;
-
-  if isFalse ${rescode} ; then
-     FILE.mktempFile "${PWD}" ".${_prefix}.XXXXXXXXXX";
-     rescode=$?;
-  fi
-
-  if isFalse ${rescode}; then
-    export RESULT="";
-    rm -f "${result}" > /dev/null 2>&1;
-  fi
-
-  return ${rescode};
-}
-
-# txt: Creates a new temporary file.
-# txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
-# fun: createTempFile
-# use: if createTempFile; then
-# use:   echo "Temp file: ${RESULT}";
-# use: fi
-function createTempFile() {
-  local -i rescode;
-  local result;
-
-  if createTempFileNoCleanup; then
-      result="${RESULT}";
-      addFileToCleanup "${result}";
-      rescode=${TRUE};
-      export RESULT="${result}";
-  else
-    rescode=${FALSE};
-  fi
-
-  return ${rescode};
-}
-
-# txt: Checks if given file exists.
-# txt: Returns 0/TRUE if the file exists; 1/FALSE otherwise.
-# fun: fileExists file
-# opt: file: The file to check.
-# use: if fileExists "/tmp/test.txt"; then ...; fi
-function fileExists() {
-  local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -e ${_file} ]]; then
-    return ${TRUE};
-  else
-    return ${FALSE};
-  fi
-}
-
-# txt: Checks if given file is readable.
-# txt: Returns 0/TRUE if the file is readable; 1/FALSE otherwise.
-# fun: fileIsReadable file
-# opt: file: The file to check.
-# use: if fileIsReadable "/tmp/test.txt"; then ...; fi
-function fileIsReadable() {
-  local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -r ${_file} ]]; then
-      return ${TRUE};
-  else
-    return ${FALSE};
-  fi
-}
-
-# txt: Checks if given file is writable.
-# txt: Returns 0/TRUE if the file is writable; 1/FALSE otherwise.
-# fun: fileIsWritable file
-# opt: file: The file to check.
-# use: if fileIsWritable "/tmp/test.txt"; then ...; fi
-function fileIsWritable() {
-  local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -w ${_file} ]]; then
-      return ${TRUE};
-  else
-    return ${FALSE};
-  fi
-}
-
-# txt: Checks if given file is a regular file.
-# txt: Returns 0/TRUE if the file is a regular file; 1/FALSE otherwise.
-# fun: fileIsRegularFile file
-# opt: file: The file to check.
-# use: if fileIsRegularFile "/tmp/test.txt"; then ...; fi
-function fileIsRegularFile() {
-  local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -f ${_file} ]]; then
-      return ${TRUE};
-  else
-    return ${FALSE};
-  fi
-}
-
-# txt: Checks if given file is not empty.
-# txt: Returns 0/TRUE if the file is not empty; 1/FALSE otherwise.
-# fun: fileIsNotEmpty file
-# opt: file: The file to check.
-# use: if fileIsNotEmpty "/tmp/test.txt"; then ...; fi
-function fileIsNotEmpty() {
-  local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -s ${_file} ]]; then
-      return ${TRUE};
-  else
-    return ${FALSE};
-  fi
-}
-
-# txt: Creates a temporary folder.
-# txt: Returns 0/TRUE if the folder gets created successfully; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the new folder.
-# fun: createTempFolder parent? prefix?
-# opt: parent: The parent folder. Optional.
-# opt: prefix: The folder name prefix. Optional.
-# use: if createTempFolder; then
-# use:   echo "New folder: ${RESULT}";
-# use: fi
-function createTempFolder() {
-  local _dirname="${1}";
-  local _prefix="${2}";
-  local -i rescode;
-  local result;
-
-  if isEmpty "${_dirname}"; then
-    _dirname="$(dirname ${SCRIPT_NAME})";
-    if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
-      _dirname="${PWD}/${_dirname#\.}";
+# fun: isMacOSX
+# api: dry-wit
+# txt: Checks if the system is a MacOSX.
+# txt: Returns 0/TRUE if the system is MacOSX; 1/FALSE otherwise.
+# use: if isMacOSX; then
+#        echo "I'm running on a MacOSX";
+#      fi
+function isMacOSX() {
+    local -i rescode;
+    if [ "$(uname -s)" == "Darwin" ]; then
+        rescode=${TRUE};
     else
-      _dirname="${PWD}/../${_dirname#\.\.}";
+        rescode=${FALSE};
     fi
-  fi
-
-  if isEmpty "${_prefix}"; then
-    _prefix="$(echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}')";
-  fi
-
-  FILE.mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
-  rescode=$?;
-  if isTrue ${rescode}; then
-    result="${RESULT}";
-  else
-    FILE.mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
-    rescode=$?;
-    if isTrue ${rescode}; then
-      result="${RESULT}";
-    fi
-  fi
-  if isTrue ${rescode}; then
-    addFileToCleanup "${result}";
-    export RESULT="${result}";
-  else
-    export RESULT="";
-  fi
-
-  return ${rescode};
+    return ${rescode};
 }
 
-# txt: Annotates a file to be removed.
-# fun: addFileToCleanup file
-# opt: file: The file to delete.
-# use: addFileToCleanup "/tmp/my-log.txt";
-function addFileToCleanup() {
-  local _file="${1}";
-  #  logTrace "Appending ${result} to _CLEANUP_FILES";
+# fun: isSymlink path
+# api: dry-wit
+# txt: Checks whether given path is a symlink.
+# opt: path: The path to check.
+# txt: Returns 0/TRUE if the path is a symlink; 1/FALSE otherwise.
+# use: if isSymlink "/tmp"; then ...; fi
+function isSymlink() {
+    local _path="${1}";
+    local -i rescode;
 
-  if declare -p _CLEANUP_FILES > /dev/null 2>&1; then
-    upvars -a$((${#_CLEANUP_FILES[@]}+1)) _CLEANUP_FILES "${_CLEANUP_FILES[@]}" "${_file}";
-    export _CLEANUP_FILES;
+    checkNotEmpty "path" "${_path}" 1;
+
+    if [ -L "${_path}" ]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+
+    return ${rescode};
+}
+
+# fun: readConfFile file
+# api: dry-wit
+# txt: Reads given configuration file.
+# opt: file: The config file.
+# txt: Returns 0/TRUE if the file is read successfully; 1/FALSE otherwise.
+# use: if readConfFile "/tmp/app.conf"; then
+#        echo "/tmp/app.conf read successfully";
+#      fi
+function readConfFile() {
+    local _confFile="${1}";
+    checkNotEmpty "confFile" "${_confFile}" 1;
+    local result=${TRUE};
+
+    [ ! -e "${_confFile}" ] && result=${FALSE};
+
+    local _actualConfFile="${_confFile}";
+
+    createTempFile;
+    result=$?;
+
+    if isFalse ${result}; then
+        return ${result};
+    fi
+
+    _actualConfFile="${RESULT}";
+
+    grep -v '^#' "${_confFile}" | sed 's ${\(.*\)} _dollar{\1}_ g' \
+        | sed 's ^\(.*\)=\(.*\) echo\ -n\ \1\ |\ tr\ \[:lower:\]\ \[:upper:]\;\ echo\ -n\ =\;\ echo\ \2 g' \
+        | sh \
+        | sed 's _dollar{\(.*\)}_ ${\1} g' \
+        | sed 's_^\(.*\)=\(.*\)$_\1=\2; logTrace \1=\${\1};_ g' \
+        | sed 's_^_export _g' > "${_actualConfFile}";
+
+    . "${_actualConfFile}";
+
+    return ${result};
+}
+
+# fun: readLink param*
+# api: dry-wit
+# txt: Runs readlink (differs in Linux and in MacOSX).
+# opt: param: The readlink parameters.
+# txt: Returns the result code of readlink.
+# txt: The variable RESULT contains the output of readlink.
+# use: if readLink -f "/bin/bash"; then
+#        echo "readlink result: ${RESULT}"
+#      fi
+function readLink() {
+    local -i rescode;
+    local result;
+
+    if isMacOSX; then
+        result="$(greadlink $@)";
+        rescode=$?;
+    else
+        result="$(readlink $@)";
+        rescode=$?;
+    fi
+    if isTrue ${rescode}; then
+        export RESULT="${result}";
+    fi
+    return ${rescode};
+}
+
+# fun: removeExtension fileName
+# api: dry-wit
+# txt: Removes the extension from given file name.
+# opt: fileName: The file name.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the file name, without the extension.
+# use: removeExtension "myfile.sh" # -> RESULT="myfile";
+function removeExtension() {
+    local _file="$1";
+    local result="$(basename ${_file}$)";
+    result="${result%.*}";
+
+    export RESULT="${result}";
+}
+
+# fun: retrieveAbsolutePath relativePath.
+# api: dry-wit
+# txt: Retrieves the absolute path of given argument.
+# opt: relativePath: The relative path.
+# txt: Returns 0/TRUE if the file was found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the absolute path.
+# use: if retrieveAbsolutePath './myfile'; then
+#        echo "absolute path: ${RESULT}";
+#      fi
+function retrieveAbsolutePath() {
+  local _relativePath="${1}";
+
+  checkNotEmpty "relativePath" "${_relativePath}" 1;
+
+  readLink -f "${_relativePath}";
+
+  return $?;
+}
+
+# fun: retrieveFreeDiskSpaceUnderFolder folder
+# api: dry-wit
+# txt: Retrieves the disk space available in the filesystem containing given folder. Prints the available space in bytes.
+# opt: folder: The folder.
+# txt: Returns 0/TRUE if the space could be calculated; 1/FALSE otherwise.
+# use: if retrieveFreeDiskSpaceUnderFolder "/tmp"; then
+#        echo "/tmp -> ${RESULT}";
+#      fi
+function retrieveFreeDiskSpaceUnderFolder() {
+    local result;
+    local -i resultCode=${FALSE};
+    local _folder="$1";
+    local _aux="${_folder}";
+
+    if [ -d "${_folder}" ]; then
+        while isNotEmpty "${_aux}" -a areNotEqual "${_aux}" "/" && \
+                ! mountpoint -q "${_aux}"; do
+            _aux="${_aux%/*}";
+        done;
+
+        mountpoint -q "${_aux}";
+        resultCode=$?;
+
+        if isTrue ${resultCode}; then
+            result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
+            resultCode=$?;
+        fi
+    fi
+
+    export RESULT="${result}";
+
+    return ${resultCode};
+}
+
+# fun: sourceFileIfExists file
+# api: dry-wit
+# txt: Sources given file, if it exists.
+# opt: file: The file to source.
+# txt: Returns 0/TRUE if the file is sourced; 1/FALSE otherwise.
+# use: sourceFileIfExists "/tmp/my-env";
+function sourceFileIfExists() {
+    local _file="${1}";
+    local -i rescode=${FALSE};
+
+    checkNotEmpty "file" "${_file}" 1;
+
+    logTrace -n "Reading ${_file}";
+    if fileExists "${_file}"; then
+        rescode=${TRUE};
+        source "${_file}";
+        logTraceResult SUCCESS "done";
+    else
+        logTraceResult SUCCESS "not found";
+    fi
+
+    return ${rescode};
+}
+
+# fun: uncompress file outputFolder
+# api: dry-wit
+# txt: Uncompresses given file to a concrete folder.
+# opt: file: The file.
+# opt: outputFolder: The output folder.
+# txt: Returns 0/TRUE if the file is uncompressed successfully; 1/FALSE if the format of the file is invalid; and 2 if there's some other error when uncompressing the file.
+# use: uncompress "my.zip" "/tmp";
+function uncompress() {
+  local _file="${1}";
+  local _destination="${2}";
+  local result=${TRUE};
+
+  createTempFile;
+  local _errorOutput="${RESULT}";
+
+  local _flags;
+
+  # First, check whether the bundle is compressed bzip2 format.
+  if file "${_file}" | cut -d ":" -f 2 | grep bzip2 > /dev/null 2>&1; then
+    _flags="xfj";
+  # Second try: check whether the bundle is compressed gzip format.
+  elif file "${_file}" | cut -d ":" -f 2 | grep gzip /dev/null 2>&1; then
+    _flags="xfz";
+  # Otherwise, it can also be a standard, uncompressed tar.
+  elif file "${_file}" | cut -d ":" -f 2 | grep tar /dev/null 2>&1; then
+    _flags="xf";
   else
-    export -a _CLEANUP_FILES=();
-    upvars -a1 _CLEANUP_FILES "${_file}";
-    export _CLEANUP_FILES;
+    result=1;
   fi
 
-#  local _oldIFS="${IFS}";
-#  IFS=$' \t\n';
-#  _CLEANUP_FILES=(\
-#    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
-#      "${_file}" \
-#  );
-#  IFS="${_oldIFS}";
+  if [ ${result} == 0 ]; then
+    logDebug -n "Uncompressing ${_file}";
+    tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
+    if [ $? == 0 ]; then
+      logDebugResult "done";
+    else
+      logDebugResult "Failed";
+      logDebugFile "${_errorOutput}";
+      result=2;
+    fi
+  fi
+
+  return ${result};
 }
 #

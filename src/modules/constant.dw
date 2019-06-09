@@ -1,14 +1,17 @@
 # mod: constant
+# api: dry-wit
+# txt: Functions related to constants.
 
-# txt: Retrieves the value of a constant.
-# txt: The variable RESULT contains the constant value.
 # fun: evalConstant constantName
+# api: dry-wit
+# txt: Retrieves the value of a constant.
 # opt: constantName: The constant name.
-# api: evalConstant
-# use: _OTHERVAR="works"
-# use: _MYVAR="OTHERVAR";
-# use: evalConstant "${_MYVAR}";
-# use: echo "${_MYVAR}->${RESULT}" # _OTHERVAR->works
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the constant value.
+# use: OTHERVAR="works"
+#      MYVAR="OTHERVAR";
+#      evalConstant "${MYVAR}";
+#      echo "${MYVAR}->${RESULT}" # OTHERVAR->works
 function evalConstant() {
   local _constant="${1}";
 

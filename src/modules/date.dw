@@ -1,9 +1,70 @@
 # mod: date
-# txt: Converts given date (in days) to a formatted date.
-# txt: The variable RESULT contains "year month day"
+# api: dry-wit
+# txt: Functions to parse and format dates.
+
+# fun: date2jd year month day
+# api: dry-wit
+# txt: Converts given formatted date to a day-based one.
+# opt: year: The year.
+# opt: month: The month.
+# opt: day: The day.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the day-based timestamp.
+# use: date2jd 2019 6 2
+function date2jd() {
+    local result=0;
+
+    local _year=$1;
+    local _month=$2;
+    local _day=$3;
+
+    local _standardJd=$(( _day - 32075
+                          + 1461 * (_year + 4800 - (14 - _month)/12)/4
+                          + 367 * (_month - 2 + (14 - _month)/12*12)/12
+                          - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
+
+    result=$((_standardJd-2400001));
+
+    export RESULT=${result};
+}
+
+# fun: date2jds year month day hour minute second
+# api: dry-wit
+# txt: Converts given formatted date to a second-based one.
+# opt: year: The year.
+# opt: month: The month.
+# opt: day: The day.
+# opt: hour: The hour.
+# opt: minute: The minute.
+# opt: second: The second.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the number of seconds.
+# use: date2jjds 2019 6 2 18 13 56
+function date2jds() {
+    local result=0;
+
+    local _year=$1;
+    local _month=$2;
+    local _day=$3;
+    local _hour=$4;
+    local _minute=$5;
+    local _second=$6;
+
+    date2jd ${_year} ${_month} ${_day};
+    result=${RESULT};
+    result=$((result*24+_hour));
+    result=$((result*60+_minute));
+    result=$((result*60+_second));
+
+    export RESULT=${result};
+}
+
 # fun: jd2date date
+# api: dry-wit
+# txt: Converts given date (in days) to a formatted date.
 # opt: date: The day-based timestamp.
-# api: jd2date
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains "year month day"
 # use: jd2date 135353
 function jd2date() {
   local _standardJd;
@@ -31,36 +92,12 @@ function jd2date() {
   export RESULT="$_year $_month $_day";
 }
 
-# txt: Converts given formatted date to a day-based one.
-# txt: The variable RESULT contains the day-based timestamp.
-# fun: date2jd year month day
-# opt: year: The year.
-# opt: month: The month.
-# opt: day: The day.
-# api: date2jd
-# use: date2jd 2019 6 2
-function date2jd() {
-  local result=0;
-
-  local _year=$1;
-  local _month=$2;
-  local _day=$3;
-
-  local _standardJd=$(( _day - 32075
-       + 1461 * (_year + 4800 - (14 - _month)/12)/4
-       + 367 * (_month - 2 + (14 - _month)/12*12)/12
-       - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
-
-  result=$((_standardJd-2400001));
-
-  export RESULT=${result};
-}
-
-# txt: Converts given date (in seconds) to a formatted date.
-# txt: The variable RESULT contains "days hour minute second".
 # fun: jds2date timestamp
+# api: dry-wit
+# txt: Converts given date (in seconds) to a formatted date.
 # opt: timestamp: The timestamp, in seconds.
-# api: jds2date
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains "days hour minute second".
 # use: jds2date 112412542444
 function jds2date() {
   local _year;
@@ -84,35 +121,5 @@ function jds2date() {
   _second=$((_temp-_minute*60));
 
   export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}";
-}
-
-# txt: Converts given formatted date to a second-based one.
-# txt: The variable RESULT contains the number of seconds.
-# fun: date2jds year month day hour minute second
-# opt: year: The year.
-# opt: month: The month.
-# opt: day: The day.
-# opt: hour: The hour.
-# opt: minute: The minute.
-# opt: second: The second.
-# api: date2jds
-# use: date2jjds 2019 6 2 18 13 56
-function date2jds() {
-  local result=0;
-
-  local _year=$1;
-  local _month=$2;
-  local _day=$3;
-  local _hour=$4;
-  local _minute=$5;
-  local _second=$6;
-
-  date2jd ${_year} ${_month} ${_day};
-  result=${RESULT};
-  result=$((result*24+_hour));
-  result=$((result*60+_minute));
-  result=$((result*60+_second));
-
-  export RESULT=${result};
 }
 #
