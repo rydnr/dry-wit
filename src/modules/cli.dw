@@ -1,5 +1,5 @@
 # mod: cli
-# api: dry-wit
+# api: public
 # txt: Functions to parse and check command-line arguments.
 
 # env: EXPECTS_ARGUMENT: A constant to represent that a flag expects an argument.
@@ -12,7 +12,7 @@ declare -gx SINGLE=${FALSE};
 declare -gx MULTIPLE=${TRUE};
 
 # fun: addCommandLineFlag longName shortName description MANDATORY/OPTIONAL EXPECTS_ARGUMENT/NO_ARGUMENT defaultValue?
-# api: dry-wit
+# api: public
 # txt: Adds a command-line flag.
 # opt: longName: The long name of the flag.
 # opt: shortName: The short name of the flag.
@@ -74,7 +74,7 @@ function addCommandLineFlag() {
 }
 
 # fun: addCommandLineParameter paramName paramDescription MANDATORY/OPTIONAL SINGLE/MULTIPLE
-# api: dry-wit
+# api: public
 # txt: Declares the script expects another command-line parameter.
 # opt: paramName: The parameter name.
 # opt: paramDescription: The parameter description.
@@ -105,7 +105,7 @@ function addCommandLineParameter() {
 }
 
 # fun: flagEnabled flagName
-# api: dry-wit
+# api: public
 # txt: Checks whether a given flag is enabled.
 # opt: flagName: the name of the flag variable.
 # txt: Returns 0/TRUE if the flag is enabled, 1/FALSE otherwise.
@@ -130,7 +130,7 @@ function flagEnabled() {
 }
 
 # fun: removeCommandLineFlag shortOrLongName
-# api: dry-wit
+# api: public
 # txt: Removes a command-line flag.
 # opt: shortOrLongName: The flag (either short or long name).
 # txt: Returns 0/TRUE if the flag is removed successfully; 1/FALSE otherwise.
@@ -173,7 +173,7 @@ function removeCommandLineFlag() {
 }
 
 # fun: setScriptCopyright copyrightDescription
-# api: dry-wit
+# api: public
 # txt: Sets the script copyright message.
 # opt: copyrightDescription: The copyright message.
 # txt: Returns 0/TRUE always.
@@ -189,7 +189,7 @@ function setScriptCopyright() {
 }
 
 # fun: setScriptDescription description
-# api: dry-wit
+# api: public
 # txt: Defines the script description.
 # opt: description: The description.
 # txt: Returns 0/TRUE in any case.
@@ -203,7 +203,7 @@ function setScriptDescription() {
 }
 
 # fun: setScriptLicenseSummary licenseDescription
-# api: dry-wit
+# api: public
 # txt: Sets the script license summary.
 # opt: licenseDescription: The license message.
 # txt: Returns 0/TRUE always.
@@ -219,7 +219,7 @@ function setScriptLicenseSummary() {
 }
 
 # fun: usage
-# api: internal
+# api: private
 # txt: Prints the usage description.
 # txt: Returns 0/TRUE always.
 # use: usage
@@ -239,7 +239,7 @@ function usage() {
 }
 
 # fun: checkInput arguments
-# api: internal
+# api: private
 # txt: Checks the command-line arguments.
 # opt: arguments: The command-line arguments.
 # txt: Returns 0/TRUE if the command-line arguments were checked successfully; 1/FALSE otherwise.
@@ -270,7 +270,7 @@ function checkInput() {
 }
 
 # fun: parseInput arguments
-# api: internal
+# api: private
 # txt: Parses the command-line arguments.
 # opt: arguments: The command-line arguments.
 # txt: Returns 0/TRUE if the command-line arguments were parsed successfully; 1/FALSE otherwise.
@@ -305,7 +305,7 @@ function parseInput() {
 }
 
 # fun: dw_parse_debug_cli_flag
-# api: internal
+# api: private
 # txt: Callback function when the user includes the debug (-v|--debug) flag.
 # txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
 function dw_parse_debug_cli_flag() {
@@ -313,7 +313,7 @@ function dw_parse_debug_cli_flag() {
 }
 
 # fun: dw_parse_trace_cli_flag
-# api: internal
+# api: private
 # txt: Callback function when the user includes the trace (-vv|--trace) flag.
 # txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
 function dw_parse_trace_cli_flag() {
@@ -321,7 +321,7 @@ function dw_parse_trace_cli_flag() {
 }
 
 # fun: dw_parse_quiet_cli_flag
-# api: internal
+# api: private
 # txt: Callback function when the user includes the quiet (-q|--quiet) flag.
 # txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
 function dw_parse_quiet_cli_flag() {
@@ -329,7 +329,7 @@ function dw_parse_quiet_cli_flag() {
 }
 
 # fun: dw_parse_help_cli_flag
-# api: internal
+# api: private
 # txt: Callback function when the user includes the help (-h|--help) flag.
 # txt: It's based on a naming convention: dw_check_[flag]_cli_flag
 function dw_parse_help_cli_flag() {
@@ -337,7 +337,7 @@ function dw_parse_help_cli_flag() {
 }
 
 # fun: CLI.extractFlags cliArguments
-# api: internal
+# api: private
 # txt: Extracts the flags from the arguments.
 # txt: Prints the flags to stdout.
 # opt: cliArguments: The arguments to process.
@@ -349,7 +349,7 @@ function CLI.extractFlags() {
 }
 
 # fun: CLI.extractFlagValue flagName cliArguments
-# api: internal
+# api: private
 # txt: Extracts the flag value for the arguments.
 # txt: Prints the flag value to stdout.
 # opt: flagName: the name of the flag.
@@ -366,7 +366,7 @@ function CLI.extractFlagValue() {
 }
 
 # fun: CLI.retrieveCommandLineFlagShortNameForLongName longName
-# api: internal
+# api: private
 # txt: Retrieves the short format of the flag whose long name is provided.
 # opt: longName: The long name of the flag.
 # txt: Returns 0/TRUE if the long name is found; 1/FALSE otherwise.
@@ -393,7 +393,7 @@ function CLI.retrieveCommandLineFlagShortNameForLongName() {
 }
 
 # fun: CLI.isCommandLineFlagInLongFormat flag
-# api: internal
+# api: private
 # txt: Retrieves whether given flag is in long format.
 # opt: flag: the flag.
 # txt: Returns 0/TRUE if the flag is in long format; 1/FALSE otherwise.
@@ -416,7 +416,7 @@ function CLI.isCommandLineFlagInLongFormat() {
 }
 
 # fun: CLI.retrieveCommandLineFlagLongNameForShortName shortName
-# api: internal
+# api: private
 # txt: Retrieves the short format of the flag whose long name is provided.
 # opt: shortName: The short name of the flag.
 # txt: Returns 0/TRUE if the short name is found; 1/FALSE otherwise.
@@ -442,7 +442,7 @@ function CLI.retrieveCommandLineFlagLongNameForShortName() {
 }
 
 # fun: CLI.isCommandLineFlagInShortFormat flag
-# api: internal
+# api: private
 # txt: Retrieves whether given flag is in short format.
 # opt: flag: The flag.
 # txt: Returns 0/TRUE if the flag is in short format; 1/FALSE otherwise.
@@ -465,7 +465,7 @@ function CLI.isCommandLineFlagInShortFormat() {
 }
 
 # fun: CLI.checkFlag flag
-# api: internal
+# api: private
 # txt: Performs some checks on given flag.
 # opt: flag: The flag to check.
 # txt: It exits the script if the flag is unknown; otherwise returns 0/TRUE.
@@ -512,7 +512,7 @@ function CLI.checkFlag() {
 }
 
 # fun: CLI.retrieveCommandLineFlagLongName flag
-# api: internal
+# api: private
 # txt: Retrieves the long name of a flag.
 # opt: flag: The flag.
 # txt: Returns 0/TRUE if the long name was retrieved; 1/FALSE otherwise.
@@ -545,7 +545,7 @@ function CLI.retrieveCommandLineFlagLongName() {
 }
 
 # fun: CLI.retrieveCommandLineShortName flag
-# api: internal
+# api: private
 # txt: Retrieves the short name of a flag.
 # opt: flag: The flag.
 # txt: Returns 0/TRUE if the short name was retrieved; 1/FALSE otherwise.
@@ -578,7 +578,7 @@ function CLI.retrieveCommandLineFlagShortName() {
 }
 
 # fun: CLI.checkCommandLineFlag flagKey
-# api: internal
+# api: private
 # txt: Checks a command line flag.
 # opt: flagKey: The key of the flag.
 # use: CLI.checkCommandLineFlag "${_flagKey}";
@@ -620,7 +620,7 @@ function CLI.checkCommandLineFlag() {
 }
 
 # fun: CLI.checkForMissingMandatoryCommandLineFlags flags
-# api: internal
+# api: private
 # txt: Checks for mandatory command line flags that are declared but not provided.
 # opt: flags: The flags provided.
 # use: CLI.checkForMissingMandatoryCommandLineFlags "-f --file -v -vv";
@@ -653,7 +653,7 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
 }
 
 # fun: CLI.isCommandLineFlagAlreadyChecked alreadyCheckedFlags flagKey
-# api: internal
+# api: private
 # txt: Checks whether the flag has been already checked.
 # opt: alreadyCheckedFlags: The already-checked flags.
 # opt: flagKey: The flag key to check.
@@ -685,7 +685,7 @@ function CLI.isCommandLineFlagAlreadyChecked() {
 }
 
 # fun: CLI.checkCommandLineParameters parameter*
-# api: internal
+# api: private
 # txt: Checks the command-line parameters.
 # opt: parameter: The parameters provided.
 # txt: If the parameter checks fail, exits; otherwise returns 0/TRUE.
@@ -736,7 +736,7 @@ function CLI.checkCommandLineParameters() {
 }
 
 # fun: CLI.checkEnvironmentVariables
-# api: internal
+# api: private
 # txt: Checks the environment variables.
 # txt: If the environment variables checks fail, exits; otherwise returns 0/TRUE.
 # use: CLI.checkEnvironmentVariables;
@@ -778,7 +778,7 @@ function CLI.checkEnvironmentVariables() {
 }
 
 # fun: CLI.isFlagDefined flagKey
-# api: internal
+# api: private
 # txt: Checks whether given flag is defined.
 # opt: flagKey: The flag key.
 # txt: Returns 0/TRUE if the flag is defined; 1/FALSE otherwise.
@@ -798,7 +798,7 @@ function CLI.isFlagDefined() {
 }
 
 # fun: CLI.buildNameOfTheCallbackFunctionToParseFlag longName
-# api: internal
+# api: private
 # txt: Builds the name of the callback function used when parsing a flag.
 # opt: longName: The long name of the flag.
 # txt: RESULT will contain the name of the callback function.
@@ -813,7 +813,7 @@ function CLI.buildNameOfTheCallbackFunctionToParseFlag() {
 }
 
 # fun: CLI.parseCallbackDefinedForFlag longName
-# api: internal
+# api: private
 # txt: Checks whether the callback function to parse given flag (in its long-name version) exists.
 # opt: longName: The long name of the flag.
 # txt: Returns 0/TRUE if the callback function exists; 1/FALSE otherwise.
@@ -834,7 +834,7 @@ function CLI.parseCallbackDefinedForFlag() {
 }
 
 # fun: CLI.parseFlag flag remainingArguments
-# api: internal
+# api: private
 # txt: Parses given flag.
 # opt: flag: The flag to parse.
 # opt: remainingArguments: The rest of the command-line flags and parameters.
@@ -898,7 +898,7 @@ function CLI.parseFlag() {
 }
 
 # fun: CLI.retrieveFlagKey flag
-# api: internal
+# api: private
 # txt: Retrieves the command-line flag key from given flag representation (either long or short).
 # opt: flag: The flag.
 # txt: Returns 0/TRUE if the flag key was found; 1/FALSE otherwise.
@@ -932,7 +932,7 @@ function CLI.retrieveFlagKey() {
 }
 
 # fun: CLI.parseNotProvidedFlags providedFlags
-# api: internal
+# api: private
 # txt: Performs the parse step for any optional flag not provided.
 # opt: providedFlags: The provided flags.
 # txt: Returns 0/TRUE if the process succeeds; 1/FALSE otherwise.
@@ -991,7 +991,7 @@ function CLI.parseNotProvidedFlags() {
 }
 
 # fun: CLI.retrieveDefaultValueForOptionalFlag flagKey
-# api: internal
+# api: private
 # txt: Retrieves the default value for given optional flag.
 # opt: flagKey: The flag key.
 # txt: Returns 0/TRUE if the default value was defined; 1/FALSE otherwise.
@@ -1018,7 +1018,7 @@ function CLI.retrieveDefaultValueForOptionalFlag() {
 }
 
 # fun: CLI.parseCommandLineParameters parameter*
-# api: internal
+# api: private
 # txt: Parses the command-line parameters.
 # opt: parameter: The CLI parameters.
 # use: CLI.parseCommandLineParameters "/tmp/1.txt" "http://www.example.com"
@@ -1048,7 +1048,7 @@ function CLI.parseCommandLineParameters() {
 }
 
 # fun: CLI.buildCommandLineFlagKey shortName longName
-# api: internal
+# api: private
 # txt: Builds a key for given command-line flag.
 # opt: shortName: The short name of the flag.
 # opt: longName: The long name of the flag.
@@ -1106,7 +1106,7 @@ function CLI.retrieveCommandLineFlagKeyFromShortName() {
 }
 
 # fun: CLI.retrieveCommandLineFlagKeyFromLongName longName
-# api: internal
+# api: private
 # txt: Retrieves the key of a command-line flag from its long name.
 # opt: longNname: the long name of the flag.
 # txt: Returns 0/TRUE if the key was built successfully; 1/FALSE otherwise.
@@ -1142,7 +1142,7 @@ function CLI.retrieveCommandLineFlagKeyFromLongName() {
 }
 
 # fun: CLI.retrieveCommandLineFlagShortNameFromKey flagKey
-# api: internal
+# api: private
 # txt: Retrieves the short name of given command-line flag key.
 # opt: flagKey: The key.
 # txt: Returns 0/TRUE if the short name was found; 1/FALSE otherwise.
@@ -1169,7 +1169,7 @@ function CLI.retrieveCommandLineFlagShortNameFromKey() {
 }
 
 # fun: CLI.retrieveCommandLineFlagLongNameFromKey flagKey
-# api: internal
+# api: private
 # txt: Retrieves the long name of given command-line flag key.
 # opt: flagKey: The flag key.
 # txt: Returns 0/TRUE if the long name was found; 1/FALSE otherwise.
@@ -1196,7 +1196,7 @@ function CLI.retrieveCommandLineFlagLongNameFromKey() {
 }
 
 # fun: CLI.retrieveCommandLineFlagDescriptionFromKey flagKey
-# api: internal
+# api: private
 # txt: Retrieves the description of given command-line flag key.
 # opt: flagKey: The flag key.
 # txt: Returns 0/TRUE if the description was found; 1/FALSE otherwise.
@@ -1223,7 +1223,7 @@ function CLI.retrieveCommandLineFlagDescriptionFromKey() {
 }
 
 # fun: CLI.retrieveCommandLineFlagKey shortOrLongName
-# api: internal
+# api: private
 # txt: Retrieves the command-line flag flag.
 # opt: shortOrLongName: The flag (either short or long version).
 # txt: Returns 0/TRUE if the flag is defined; 1/FALSE otherwise.
@@ -1251,7 +1251,7 @@ function CLI.retrieveCommandLineFlagKey() {
 }
 
 # fun: CLI.isCommandLineFlagDefined shortOrLongName
-# api: internal
+# api: private
 # txt: Check whether a command-line flag is defined already or not.
 # opt: shortOrLongName: The flag (either short or long version).
 # txt: Returns 0/TRUE if the flag is defined; 1/FALSE otherwise.
@@ -1275,7 +1275,7 @@ function CLI.isCommandLineFlagDefined() {
 }
 
 # fun: CLI.isCommandLineFlagMandatory flagKey
-# api: internal
+# api: private
 # txt: Checks whether given flag is mandatory or not.
 # opt: flagKey: The flag key.
 # txt: Returns 0/TRUE if the flag is mandatory; 1/FALSE otherwise.
@@ -1303,7 +1303,7 @@ function CLI.isCommandLineFlagMandatory() {
 }
 
 # fun: CLI.doesCommandLineFlagExpectArgument flagKey
-# api: internal
+# api: private
 # txt: Checks whether given flag expects an argument.
 # opt: flagKey: The flag key.
 # txt: 0/TRUE if the flag expects an argument; 1/FALSE otherwise.
@@ -1331,7 +1331,7 @@ function CLI.doesCommandLineFlagExpectArgument() {
 }
 
 # fun: CLI.retrieveCommandLineParameterDescriptionFromName paramName
-# api: internal
+# api: private
 # txt: Retrieves the description of given command-line parameter.
 # opt: paramName: The name.
 # txt: Returns 0/TRUE if the description was found; 1/FALSE otherwise.
@@ -1358,7 +1358,7 @@ function CLI.retrieveCommandLineParameterDescriptionFromName() {
 }
 
 # fun: CLI.isCommandLineParameterMandatory paramName
-# api: internal
+# api: private
 # txt: Checks whether given parameter is mandatory or not.
 # opt: paramName: The parameter name.
 # txt: Returns 0/TRUE if the parameter is mandatory; 1/FALSE otherwise.
@@ -1385,7 +1385,7 @@ function CLI.isCommandLineParameterMandatory() {
 }
 
 # fun: CLI.isCommandLineParameterSingle paramName
-# api: internal
+# api: private
 # txt: Checks whether given parameter is single or not.
 # opt: paramName: The parameter name.
 # txt: Returns 0/TRUE if the parameter only expects a single value; 1/FALSE otherwise.
@@ -1412,7 +1412,7 @@ function CLI.isCommandLineParameterSingle() {
 }
 
 # fun: CLI.isCommandLineParameterMultiple paramName
-# api: internal
+# api: private
 # txt: Checks whether given parameter is multiple or not.
 # opt: paramName: The parameter name.
 # txt: Returns 0/TRUE if the parameter allows multiple values; 1/FALSE otherwise.
@@ -1435,7 +1435,7 @@ function CLI.isCommandLineParameterMultiple() {
 }
 
 # fun: CLI.commandLineFlagsUsage
-# api: internal
+# api: private
 # txt: Prints a line describing how to run the script.
 #      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
 # use: if CLI.commandLineFlagsUsage then ... fi
@@ -1477,7 +1477,7 @@ function CLI.commandLineFlagsUsage() {
 }
 
 # fun: CLI.scriptDescriptionUsage
-# api: internal
+# api: private
 # txt: Conditionally prints (to stdout) a line with the script description.
 #      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
 # use: if CLI.scriptDescriptionUsage then ... fi
@@ -1494,7 +1494,7 @@ function CLI.scriptDescriptionUsage() {
 }
 
 # fun: CLI.scriptLicenseSummaryUsage
-# api: internal
+# api: private
 # txt: Conditionally prints (to stdout) a line with the license summary.
 #      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
 # use: if CLI.scriptLicenseSummaryUsage then ... fi
@@ -1511,7 +1511,7 @@ function CLI.scriptLicenseSummaryUsage() {
 }
 
 # fun: CLI.scriptCopyrightUsage
-# api: internal
+# api: private
 # txt: Conditionally prints (to stdout) a line with the copyright.
 #      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
 # use: if CLI.scriptCopyrightUsage then ... fi
@@ -1529,7 +1529,7 @@ function CLI.scriptCopyrightUsage() {
 }
 
 # fun: CLI.commandLineFlagsDetailedUsage
-# api: internal
+# api: private
 # txt: Prints a line describing the details of the command-line flags.
 #      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
 # use: if CLI.commandLineFlagsDetailedUsage then ... fi
@@ -1575,7 +1575,7 @@ function CLI.commandLineFlagsDetailedUsage() {
 }
 
 # fun: CLI.commandLineParameterIsSingle paramName
-# api: internal
+# api: private
 # txt: Checks whether given parameter is single or not.
 # opt: paramName: The parameter name.
 # txt: Returns 0/TRUE if the parameter is single; 1/FALSE otherwise.
@@ -1602,7 +1602,7 @@ function CLI.commandLineParameterIsSingle() {
 }
 
 # fun: CLI.commandLineParameterIsMultiple paramName
-# api: internal
+# api: private
 # txt: Checks whether given parameter is multiple or not.
 # opt: paramName: The parameter name.
 # txt: Returns 0/TRUE if the parameter is multiple; 1/FALSE otherwise.
@@ -1625,7 +1625,7 @@ function CLI.commandLineParameterIsMultiple() {
 }
 
 # fun: CLI.commandLineParameterIsMandatory paramName
-# api: internal
+# api: private
 # txt: Checks whether given parameter is mandatory or not.
 # opt: paramName: The parameter name.
 # txt: Returns 0/TRUE if the parameter is mandatory; 1/FALSE otherwise.
@@ -1652,7 +1652,7 @@ function CLI.commandLineParameterIsMandatory() {
 }
 
 # fun: CLI.commandLineParametersUsage
-# api: internal
+# api: private
 # txt: Prints a line describing the script's flags.
 #      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
 # use: if CLI.commandLineParametersUsage then ... fi
@@ -1688,7 +1688,7 @@ function CLI.commandLineParametersUsage() {
 }
 
 # fun: CLI.commandLineParametersDetailedUsage
-# api: internal
+# api: private
 # txt: Prints a line describing the details of the command-line parameters.
 #      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
 # use: if CLI.commandLineParametersDetailedUsage then ... fi
@@ -1731,7 +1731,7 @@ function CLI.commandLineParametersDetailedUsage() {
 }
 
 # fun: CLI.defaultState
-# api: internal
+# api: private
 # txt: Sets up the default state.
 #      Returns 0/TRUE always.
 # use: CLI.defaultState
@@ -1744,7 +1744,7 @@ function CLI.defaultState() {
 }
 
 # fun: CLI.resetState
-# api: internal
+# api: private
 # txt: Resets the module state.
 #      Returns 0/TRUE always.
 # use: CLI.resetState

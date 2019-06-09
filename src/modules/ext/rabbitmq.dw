@@ -1,5 +1,5 @@
 # mod: rabbitmq
-# api: dry-wit
+# api: public
 # txt: Functions useful when bootstrapping RabbitMQ servers.
 # txt: You might be interested in importing rabbitmq-cli as well, to inject processing of the required environment variables above.
 
@@ -9,7 +9,7 @@
 # env: ADMIN_PASSWORD: The password of the 'admin' user.
 
 # fun: addUser username password
-# api: dry-wit
+# api: public
 # txt: Adds a new RabbitMQ user.
 # txt: Returns 0/TRUE if the user was added; 1/FALSE otherwise.
 # opt: username: The username.
@@ -39,7 +39,7 @@ function addUser() {
 }
 
 # fun: addVhost virtualHost
-# api: dry-wit
+# api: public
 # txt: Declares a virtual host.
 # opt: virtualHost: The virtual host.
 # txt: Returns 0/TRUE if the virtual host gets created successfully; 1/FALSE otherwise.
@@ -67,7 +67,7 @@ function addVhost() {
 }
 
 # fun: declareBdbinding source destinationType destination routingKey
-# api: dry-wit
+# api: public
 # txt: Declares a binding.
 # opt: source: The source.
 # opt: destinationType: The destination type.
@@ -103,7 +103,7 @@ function declareBinding() {
 }
 
 # fun: declareExchange name type durable internal args*
-# api: dry-wit
+# api: public
 # txt: Declares an exchange.
 # opt: name: The exchange name.
 # opt: type: The exchange type.
@@ -160,7 +160,7 @@ function declareExchange() {
 }
 
 # fun: declareQueue name durable
-# api: dry-wit
+# api: public
 # txt: Declares a queue.
 # opt: name: The queue name.
 # opt: durable: Whether it's durable or not.
@@ -190,7 +190,7 @@ function declareQueue() {
 }
 
 # fun: deleteUser user
-# api: dry-wit
+# api: public
 # txt: Deletes an user.
 # opt: user: The user.
 # txt: Returns 0/TRUE if the user gets deleted successfully; 1/FALSE otherwise.
@@ -232,7 +232,7 @@ function enableRabbitmqManagement() {
 }
 
 # fun: isRabbitmqRunning
-# api: dry-wit
+# api: public
 # txt: Checks whether RabbitMQ is running.
 # txt: Returns 0/TRUE if it's running; 1/FALSE otherwise.
 # use: if ! isRabbitmqRunning; then echo "RabbitMQ is not running"; fi
@@ -249,7 +249,7 @@ function isRabbitmqRunning() {
 }
 
 # fun: rabbitmq_migrate
-# api: dry-wit
+# api: public
 # txt: Migrates the RabbitMQ instance.
 # txt: Important: This function delegates the migration logic to an external function "rabbitmq_patch".
 # use: rabbitmq_migrate;
@@ -502,7 +502,7 @@ function RABBITMQ.retrieveRabbitmqadmin() {
   return ${_rescode};
 }
 # fun: setPermissions virtualHost user configurePermissions writePermissions readPermissions
-# api: dry-wit
+# api: public
 # txt: Sets RabbitMQ permissions.
 # opt: virtualHost: The virtualhost.
 # opt: user: The user.
@@ -541,7 +541,7 @@ function setPermissions() {
 }
 
 # fun: setPolicy name match body type
-# api: dry-wit
+# api: public
 # txt: Sets a policy.
 # opt: name: The policy name.
 # opt: match: The match.
@@ -577,7 +577,7 @@ function setPolicy() {
 }
 
 # fun: setUserTags user tags+
-# api: dry-wit
+# api: public
 # txt: Sets user tags.
 # opt: user: The user.
 # opt: tags: The tags.

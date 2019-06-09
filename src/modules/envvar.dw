@@ -1,5 +1,5 @@
 # mod: envvar
-# api: dry-wit
+# api: public
 # txt: Functions to define and evaluate environment variables.
 # txt: Using work from: http://fvue.nl/wiki/Bash:_Passing_variables_by_reference
 
@@ -22,7 +22,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # fun: defineButDoNotOverrideEnvVar varName description defaultValue command?
-# api: dry-wit
+# api: public
 # txt: Defines an environment variable, if it's not already defined.
 # opt: varName: The variable name.
 # opt: description: The variable description.
@@ -64,7 +64,7 @@ function defineButDoNotOverrideEnvVar() {
 
 
 # fun: defineEnvVar varName MANDATORY|OPTIONAL description defaultValue? command?
-# api: dry-wit
+# api: public
 # txt: Declares a new environment variable.
 # opt: varName: The variable name.
 # opt: MANDATORY|OPTIONAL: Whether is the variable is mandatory or not.
@@ -131,7 +131,7 @@ function defineEnvVar() {
 }
 
 # fun: evalEnvVars
-# api: dry-wit
+# api: public
 # txt: Resolves the value of all custom environment variables.
 # txt: Returns 0/TRUE always.
 # use: evalEnvVars;
@@ -148,7 +148,7 @@ function evalEnvVars() {
 }
 
 # fun: evalVar varName
-# api: dry-wit
+# api: public
 # txt: Retrieves the value of given variable.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the value could be retrieved; 1/FALSE otherwise.
@@ -172,7 +172,7 @@ function evalVar() {
 }
 
 # fun: isEnvVarDefined varName
-# api: dry-wit
+# api: public
 # txt: Checks whether giver variable is defined.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the variable is defined; 1/FALSE otherwise.
@@ -215,7 +215,7 @@ function isEnvVarDefined() {
 }
 
 # fun: isEnvVarMandatory varName
-# api: dry-wit
+# api: public
 # txt: Checks whether given environment variable is mandatory.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the variable is mandatory; 1/FALSE otherwise.
@@ -241,7 +241,7 @@ function isEnvVarMandatory() {
 }
 
 # fun: isEnvVarOptional varName
-# api: dry-wit
+# api: public
 # txt: Checks whether given environment variable is optional.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the variable is optional; 1/FALSE otherwise.
@@ -267,7 +267,7 @@ function isEnvVarOptional() {
 }
 
 # fun: overrideEnvVar varName varValue description
-# api: dry-wit
+# api: public
 # txt: Overrides the value of an environment variable.
 # opt: varName: The variable name.
 # opt: varValue: The variable value.
@@ -299,7 +299,7 @@ function overrideEnvVar() {
 }
 
 # fun: printEnvironment
-# api: dry-wit
+# api: public
 # txt: Prints the environment variables.
 # txt: Returns 0/TRUE always.
 # use:  printEnvironment;
@@ -350,7 +350,7 @@ EOF
 }
 
 # fun: retrieveCustomEnvironmentVariables
-# api: dry-wit
+# api: public
 # txt: Retrieves the custom environment variables.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the environment variables.
@@ -361,7 +361,7 @@ function retrieveCustomEnvironmentVariables() {
 }
 
 # fun: upvar varName value+
-# api: dry-wit
+# api: public
 # txt: Assigns a variable one scope above the caller.
 # opt: varName: The variable name to assign value to.
 # opt: value: The value(s) to assign. If multiple values, an array is assigned, otherwise a single value is assigned.
@@ -381,7 +381,7 @@ function upvar() {
 }
 
 # fun: upvars [-v varname value] | [-aN varname value+]
-# api: dry-wit
+# api: public
 # txt: Assign variables one scope above the caller
 # txt: Usage: local varname [varname ...] && upvars [-v varname value] | [-aN varname [value ...]] ...
 # opt:  -v: Assign single value to varname.
@@ -443,7 +443,7 @@ There is NO WARRANTY, to the extent permitted by law."
 }
 
 # fun: ENVVAR.addEnvVar varName varValue
-# api: internal
+# api: private
 # txt: Annotates given environment variable.
 # opt: varName: The variable name.
 # opt: varValue: The value.
@@ -462,7 +462,7 @@ function ENVVAR.addEnvVar() {
 }
 
 # fun: ENVVAR.addEnvVarCommand varName command
-# api: internal
+# api: private
 # txt: Annotates the command of given environment variable.
 # opt: varName: The variable name.
 # opt: command:: The command.
@@ -479,7 +479,7 @@ function ENVVAR.addEnvVarCommand() {
 }
 
 # fun: ENVVAR.addEnvVarDefault varName defaultValue
-# api: internal
+# api: private
 # txt: Annotates the default value of given environment variable.
 # opt: varName: The variable name.
 # opt: defaultValue: The default value.
@@ -496,7 +496,7 @@ function ENVVAR.addEnvVarDefault() {
 }
 
 # fun: ENVVAR.addEnvVarDescription varName description
-# api: internal
+# api: private
 # txt: Annotates the description of given environment variable.
 # opt: varName: The variable name.
 # opt: description: The description.
@@ -513,7 +513,7 @@ function ENVVAR.addEnvVarDescription() {
 }
 
 # fun: ENVVAR.addEnvVarMandatory varName MANDATORY|OPTIONAL
-# api: internal
+# api: private
 # txt: Annotates whether given environment variable is mandatory or optional.
 # opt: varName: The variable name.
 # opt: MANDATORY|OPTIONAL: Whether the variable is mandatory or optional.
@@ -530,7 +530,7 @@ function ENVVAR.addEnvVarMandatory() {
 }
 
 # fun: ENVVAR.addOverridenEnvVar varName value
-# api: internal
+# api: private
 # txt: Annotates given environment variable as overridden.
 # opt: varName: The variable name.
 # opt: value: The value.
@@ -549,7 +549,7 @@ function ENVVAR.addOverriddenEnvVar() {
 }
 
 # fun: ENVVAR.appendEnvVariable varName
-# api: internal
+# api: private
 # txt: Appends a new variable to __DW_ENVVAR_ENV_VARIABLES.
 # opt: varName: The item to add.
 # txt: Returns 0/TRUE always.
@@ -563,7 +563,7 @@ function ENVVAR.appendEnvVariable() {
 }
 
 # fun: ENVVAR.evalEnvVar varName
-# api: internal
+# api: private
 # txt: Evaluates given environment variable.
 # opt: varName: the variable name.
 # txt: Returns <- 0/TRUE if the environment variable is evaluated successfully; 1/FALSE otherwise.
@@ -625,7 +625,7 @@ function ENVVAR.evalEnvVar() {
 }
 
 # fun: ENVVAR.evalOverriddenVar varName
-# api: internal
+# api: private
 # txt: Evaluates given overridden variable.
 # opt: varName: The overridden variable.
 # txt: Returns 0/TRUE if the variable is indeed overridden; 1/FALSE otherwise.
@@ -652,7 +652,7 @@ function ENVVAR.evalOverriddenVar() {
 }
 
 # fun: ENVVAR.evalVarCommand varName
-# api: internal
+# api: private
 # txt: Retrieves the command defined to retrieve a variable's default value.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the command is defined; 1/FALSE otherwise.
@@ -679,7 +679,7 @@ function ENVVAR.evalVarCommand() {
 }
 
 # fun: ENVVAR.evalVarDefault varName
-# api: internal
+# api: private
 # txt: Retrieves the default value for given variable.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the default value is defined; 1/FALSE otherwise.
@@ -707,7 +707,7 @@ function ENVVAR.evalVarDefault() {
 }
 
 # fun: ENVVAR.evalVarDescription varName
-# api: internal
+# api: private
 # txt: Retrieves the variable description.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the variable description is defined; 1/FALSE otherwise.
@@ -734,7 +734,7 @@ function ENVVAR.evalVarDescription() {
 }
 
 # fun: ENVVAR.removeDollarSquareBrackets varName
-# api: internal
+# api: private
 # txt: Removes the ${..} envelope.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the envelope was removed; 1/FALSE otherwise.
@@ -761,7 +761,7 @@ function ENVVAR.removeDollarSquareBrackets() {
 }
 
 # fun: ENVVAR.resetState
-# api: internal
+# api: private
 # txt: Resets the state of the module.
 # txt: Returns 0/TRUE always.
 # use: ENVVAR.resetState;

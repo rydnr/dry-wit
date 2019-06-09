@@ -1,5 +1,5 @@
 # mod: logging
-# api: dry-wit
+# api: public
 # txt: Logging functions
 
 # env: SUCCESS_KEYWORDS: The success keywords.
@@ -214,7 +214,7 @@ export LOG_OUTCOME_TEXT_POSITION=1;
 
 
 # fun: definedTag tag
-# api: dry-wit
+# api: public
 # txt: Checks whether given tag is defined.
 # opt: tag: The tag to check.
 # txt: 0/TRUE if the tag is defined; 1/FALSE otherwise.
@@ -233,7 +233,7 @@ function definedTag() {
 }
 
 # fun: disableQuietMode
-# api: dry-wit
+# api: public
 # txt: Disables quiet mode.
 # txt: Returns 0/TRUE always.
 # use: disableQuietMode;
@@ -242,7 +242,7 @@ function disableQuietMode() {
 }
 
 # fun: enableQuietMode
-# api: dry-wit
+# api: public
 # txt: Enables quiet mode.
 # txt: Returns 0/TRUE always.
 # use: enableQuietMode;
@@ -251,7 +251,7 @@ function enableQuietMode() {
 }
 
 # fun: findOutKeyword text
-# api: dry-wit
+# api: public
 # txt: Guesses the type of keyword associated to given text.
 # opt: text: The text of the keyword.
 # txt: Returns SUCCESS, FAILURE, or UNDEFINED.
@@ -280,7 +280,7 @@ function findOutKeyword() {
 }
 
 # fun: getLogCategory
-# api: dry-wit
+# api: public
 # txt: Retrieves the log category.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log category.
@@ -291,7 +291,7 @@ function getLogCategory() {
 }
 
 # fun: getLogCategoryNamespace
-# api: dry-wit
+# api: public
 # txt: Retrieves the log category namespace.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log category namespace.
@@ -302,7 +302,7 @@ function getLogCategoryNamespace() {
 }
 
 # fun: isDebugEnabled
-# api: dry-wit
+# api: public
 # txt: Checks whether the debug level is enabled.
 # txt: Returns 0/TRUE if debug is allowed; 1/FALSE otherwise.
 # use: isDebugEnabled;
@@ -319,7 +319,7 @@ function isDebugEnabled() {
 }
 
 # fun: isFailureKeyword keyword
-# api: dry-wit
+# api: public
 # txt: Checks whether given keyword represents a failure.
 # opt: keyword: The keyword.
 # txt: Returns 0/TRUE if the keyword is considered a failure; 1/FALSE otherwise.
@@ -355,7 +355,7 @@ function isFailureKeyword() {
 }
 
 # fun: isInfoEnabled
-# api: dry-wit
+# api: public
 # txt: Checks whether the "info" level is enabled.
 # txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
 # use: if isInfoEnabled; then ...; fi
@@ -370,7 +370,7 @@ function isInfoEnabled() {
 }
 
 # fun: isLowerThanInfoEnabled
-# api: dry-wit
+# api: public
 # txt: Checks whether the enabled log level is lower than "info".
 # txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
 # use: if isLowerThanInfoEnabled; then ...; fi
@@ -383,7 +383,7 @@ function isLowerThanInfoEnabled() {
 }
 
 # fun: isQuietMode
-# api: dry-wit
+# api: public
 # txt: Retrieves whether the quiet mode is on or off.
 # txt: Returns 0/TRUE if the mode is enabled; 1/FALSE otherwise.
 # use: if isQuietMode; then ...; fi
@@ -400,7 +400,7 @@ function isQuietMode() {
 }
 
 # fun: isSuccessKeyword keyword
-# api: dry-wit
+# api: public
 # txt: Checks whether given keyword represents a success.
 # opt: keyword: The keyword.
 # txt: Returns 0/TRUE if the keyword is considered a success; 1/FALSE otherwise.
@@ -440,7 +440,7 @@ function isSuccessKeyword() {
 
 
 # fun: isTraceEnabled
-# api: dry-wit
+# api: public
 # txt: Checks whether trace is enabled.
 # txt: Returns 0/TRUE if trace is enabled; 1/FALSE otherwise.
 # use: isTraceEnabled;
@@ -457,7 +457,7 @@ function isTraceEnabled() {
 }
 
 # fun: log message
-# api: dry-wit
+# api: public
 # txt: Logs a message as "info".
 # opt: message: The message to log.
 # txt: Returns 0/TRUE always.
@@ -468,7 +468,7 @@ function log() {
 }
 
 # fun: logDebug message
-# api: dry-wit
+# api: public
 # txt: Logs given message under the "debug" level.
 # opt: message: The message to log.
 # txt: Returns 0/TRUE always.
@@ -481,7 +481,7 @@ function logDebug() {
 }
 
 # fun: logDebugFile file
-# api: dry-wit
+# api: public
 # txt: Logs the contents of given file, under the "debug" level.
 # opt: file: The file to log.
 # txt: Returns 0/TRUE always.
@@ -494,7 +494,7 @@ function logDebugFile() {
 }
 
 # fun: logDebugFileContents file
-# api: dry-wit
+# api: public
 # txt: Logs the contents of a file, using the DEBUG level.
 # opt: file: The file.
 # txt: Returns 0/TRUE always.
@@ -506,7 +506,7 @@ function logDebugFileContents() {
 }
 
 # fun: logDebugResult SUCCESS|FAILURE message
-# api: dry-wit
+# api: public
 # txt: Logs given outcome under the "debug" level.
 # opt: SUCCESS|FAILURE: The keyword.
 # opt: message: The outcome to log.
@@ -525,7 +525,7 @@ function logDebugResult() {
 }
 
 # fun: logFile file
-# api: dry-wit
+# api: public
 # txt: Logs the contents of a file, as "info".
 # opt: file: The file with the log messages.
 # txt: Returns 0/TRUE always.
@@ -536,7 +536,7 @@ function logFile() {
 }
 
 # fun: LOGGING.alignRight message outcome
-# api: internal
+# api: private
 # txt: Writes spaces until the next message to print is aligned to the right.
 # opt: message: The log-line message.
 # opt: outcome: The log outcome message.
@@ -591,7 +591,7 @@ function LOGGING.alignRight() {
 }
 
 # fun: LOGGING.closeLogLine
-# api: internal
+# api: private
 # txt: Closes the log line.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.closeLogLine;
@@ -600,7 +600,7 @@ function LOGGING.closeLogLine() {
 }
 
 # fun: LOGGING.echoColorAwareLogPrefix category TRUE|FALSE level
-# api: internal
+# api: private
 # txt: Prints the log prefix, for color terminals.
 # opt: category: The log category.
 # opt: TRUE|FALSE: ${TRUE} if using colors; ${FALSE} otherwise.
@@ -642,7 +642,7 @@ function LOGGING.echoColorAwareLogPrefix() {
 }
 
 # fun: LOGGING.echoLogOutcome level SUCCESS|FAILURE|IN_PROGRESS text
-# api: internal
+# api: private
 # txt: Prints the log outcome.
 # opt: level: The log level.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
@@ -706,7 +706,7 @@ function LOGGING.echoLogOutcome() {
 }
 
 # fun: LOGGING.echoLogOutcomeNested level SUCCESS|FAILURE|IN_PROGRESS text
-# api: internal
+# api: private
 # txt: Prints the log outcome, used when nesting log calls.
 # opt: level: The log level.
 # opt: SUCCESS_FAILURE_IN_PROGRESS: The keyword  (SUCCESS, FAILURE, IN_PROGRESS).
@@ -747,7 +747,7 @@ function LOGGING.echoLogOutcomeNested() {
 }
 
 # fun: LOGGING.echoLogPrefix category level
-# api: internal
+# api: private
 # txt: Prints the log prefix.
 # opt: category: The log category.
 # opt: level: The log level.
@@ -767,7 +767,7 @@ function LOGGING.echoLogPrefix() {
 }
 
 # fun: LOGGING.getLastLog
-# api: internal
+# api: private
 # txt: Retrieves the last log message.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the last log message.
@@ -778,7 +778,7 @@ function LOGGING.getLastLog() {
 }
 
 # fun: LOGGING.isLogLineOpen
-# api: internal
+# api: private
 # txt: Checks whether the log line is currently opened.
 # txt: Returns 0/TRUE if it's open; 1/FALSE otherwise.
 # use: if LOGGING.isLogLineOpen; then ...; fi
@@ -787,7 +787,7 @@ function LOGGING.isLogLineOpen() {
 }
 
 # fun: LOGGING.logCompleted level SUCCESS|FAILURE|IN_PROGRESS outcome
-# api: internal
+# api: private
 # txt: Prints the result of a task.
 # opt: level: The log level.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
@@ -817,7 +817,7 @@ function LOGGING.logCompleted() {
 }
 
 # fun: LOGGING.logCompletedNested level SUCCESS|FAILURE|IN_PROGRESS outcome
-# api: internal
+# api: private
 # txt: Prints the result of a task, when there're nested tasks.
 # opt: level: The log level.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
@@ -855,7 +855,7 @@ function LOGGING.logCompletedNested() {
 }
 
 # fun: LOGGING.logCompletedNestedNoPop level SUCCESS|FAILURE|IN_PROGRESS outcome
-# api: internal
+# api: private
 # txt: Prints the result of a task, when there're nested tasks.
 # opt: level: The log level.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
@@ -877,7 +877,7 @@ function LOGGING.logCompletedNestedNoPop() {
 }
 
 # fun: LOGGING.logCompletedNoNested level SUCCESS|FAILURE|IN_PROGRESS outcome
-# api: internal
+# api: private
 # txt: Prints the result of a task.
 # opt: level: The log level.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
@@ -904,7 +904,7 @@ function LOGGING.logCompletedNoNested() {
 }
 
 # fun: LOGGING.logInProgress level message
-# api: internal
+# api: private
 # txt: Prints a log message, indicating some uncompleted task.
 # opt: level: The log level.
 # opt: message: The message.
@@ -933,7 +933,7 @@ function LOGGING.logInProgress() {
 }
 
 # fun: LOGGING.logInProgressNested category level message
-# api: internal
+# api: private
 # txt: Prints a log message, indicating some uncompleted task, when there're nested tasks.
 # opt: category: The category.
 # opt: level: The log level.
@@ -968,7 +968,7 @@ function LOGGING.logInProgressNested() {
 }
 
 # fun: LOGGING.logInProgressNoNested category level message
-# api: internal
+# api: private
 # txt: Prints a log message, indicating some uncompleted task, when there're no nested tasks.
 # opt: category: The log category.
 # opt: level: The log level.
@@ -998,7 +998,7 @@ function LOGGING.logInProgressNoNested() {
 
 
 # fun: LOGGING.logMessage level message
-# api: internal
+# api: private
 # txt: Prints a log message.
 # opt: level: The log level.
 # opt: message: The message.
@@ -1016,7 +1016,7 @@ function LOGGING.logMessage() {
 }
 
 # fun: LOGGING.logStuff level [-n]? message
-# api: internal
+# api: private
 # txt: Main logging logic.
 # opt: level: The logging level.
 # opt: -n: Whether to use a new line character at the end or not.
@@ -1040,7 +1040,7 @@ function LOGGING.logStuff() {
 }
 
 # fun: LOGGING.logStuffResult level SUCCESS|FAILURE message
-# api: internal
+# api: private
 # txt: Logs the outcome of an operation.
 # opt: level: The log level.
 # opt: SUCCESS|FAILURE: The outcome.
@@ -1069,7 +1069,7 @@ function LOGGING.logStuffResult() {
 }
 
 # fun: LOGGING.numberOfNestedInProgressTasks
-# api: internal
+# api: private
 # txt: Retrieves the number of "in-progress" tasks pending.
 # txt: Returns such count.
 # use: LOGGING.numberOfNestedInProgressTasks; local count=$?;
@@ -1080,7 +1080,7 @@ function LOGGING.numberOfNestedInProgressTasks() {
 }
 
 # fun: LOGGING.openLogLine
-# api: internal
+# api: private
 # txt: Opens the log line.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.openLogLine;
@@ -1089,7 +1089,7 @@ function LOGGING.openLogLine() {
 }
 
 # fun: LOGGING.peekLog
-# api: internal
+# api: private
 # txt: Peeks given message from top of the log stack.
 # txt: Returns 0/TRUE if the stack contains at least the returned item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the message.
@@ -1113,7 +1113,7 @@ function LOGGING.peekLog() {
 }
 
 # fun: LOGGING.peekLogCategory
-# api: internal
+# api: private
 # txt: Peeks given category from the log category stack.
 # txt: Returns 0/TRUE if the stack contained at least the returned item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the category.
@@ -1139,7 +1139,7 @@ function LOGGING.peekLogCategory() {
 }
 
 # fun: LOGGING.peekLogLevel
-# api: internal
+# api: private
 # txt: Peeks given level from the log level stack.
 # txt: Returns 0/TRUE if the stack contained at least the returned item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the level.
@@ -1167,7 +1167,7 @@ function LOGGING.peekLogLevel() {
 }
 
 # fun: LOGGING.popLog
-# api: internal
+# api: private
 # txt: Pops given message from the log stack.
 # txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the popped message.
@@ -1192,7 +1192,7 @@ function LOGGING.popLog() {
 }
 
 # fun: LOGGING.popLogCategory
-# api: internal
+# api: private
 # txt: Pops given category from the log category stack.
 # txt: 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the popped category.
@@ -1213,7 +1213,7 @@ function LOGGING.popLogCategory() {
 }
 
 # fun: LOGGING.popLogLevel
-# api: internal
+# api: private
 # txt: Pops given level from the log level stack.
 # txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the popped level.
@@ -1236,7 +1236,7 @@ function LOGGING.popLogLevel() {
 }
 
 # fun: LOGGING.pushLog message
-# api: internal
+# api: private
 # txt: Pushes given message to the log stack.
 # opt: message: The message to push.
 # txt: Returns 0/TRUE always.
@@ -1246,7 +1246,7 @@ function LOGGING.pushLog() {
 }
 
 # fun: LOGGING.pushLogCategory category
-# api: internal
+# api: private
 # txt: Pushes given category to the log category stack.
 # opt: category: The category to push.
 # txt: Returns 0/TRUE always.
@@ -1256,7 +1256,7 @@ function LOGGING.pushLogCategory() {
 }
 
 # fun: LOGGING.pushLogLevel level
-# api: internal
+# api: private
 # txt: Pushes given level to the log level stack.
 # opt: level: The level to push.
 # txt: Returns 0/TRUE always.
@@ -1266,7 +1266,7 @@ function LOGGING.pushLogLevel() {
 }
 
 # fun: LOGGING.retrieveCategoryPositionInLogPrefix
-# api: internal
+# api: private
 # txt: Retrieves the position of the category in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the category position.
@@ -1276,7 +1276,7 @@ function LOGGING.retrieveCategoryPositionInLogPrefix() {
 }
 
 # fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|IN_PROGRESS defaultColor
-# api: internal
+# api: private
 # txt: Retrieves the color for a given keyword.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
 # opt: defaultColor: The default color.
@@ -1305,7 +1305,7 @@ function LOGGING.retrieveKeywordColor() {
 }
 
 # fun: LOGGING.retrieveLevelPositionInLogPrefix
-# api: internal
+# api: private
 # txt: Retrieves the position of the log level in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the level position.
@@ -1315,7 +1315,7 @@ function LOGGING.retrieveLevelPositionInLogPrefix() {
 }
 
 # fun: LOGGING.retrieveLogNamespace
-# api: internal
+# api: private
 # txt: Retrieves the log namespace.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log namespace.
@@ -1341,7 +1341,7 @@ function LOGGING.retrieveLogNamespace() {
 }
 
 # fun: LOGGING.retrieveLogOutcomeColors SUCCESS|FAILURE|IN_PROGRESS
-# api: internal
+# api: private
 # txt: Retrieves the tokens composing the log outcome.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
 # txt: Returns 0/TRUE always.
@@ -1373,7 +1373,7 @@ function LOGGING.retrieveLogOutcomeColors() {
 }
 
 # fun: LOGGING.retrieveLogOutcomeTokens text
-# api: internal
+# api: private
 # txt: Retrieves the tokens composing the log outcome.
 # opt: text: The outcome text.
 # txt: Returns 0/TRUE always.
@@ -1404,7 +1404,7 @@ function  LOGGING.retrieveLogOutcomeTokens() {
 }
 
 # fun: LOGGING.retrieveLogPrefix category level
-# api: internal
+# api: private
 # txt: Retrieves the log prefix.
 # opt: category: The log category.
 # opt: level: The log level.
@@ -1422,7 +1422,7 @@ function LOGGING.retrieveLogPrefix() {
 }
 
 # fun: LOGGING.retrieveLogPrefixTokens category level
-# api: internal
+# api: private
 # txt: Retrieves the tokens composing the log prefix.
 # opt: category: The log category.
 # opt: level: The log level (optional).
@@ -1467,7 +1467,7 @@ function LOGGING.retrieveLogPrefixTokens() {
 }
 
 # fun: LOGGING.retrieveLogTimestamp
-# api: internal
+# api: private
 # txt: Retrieves the timestamp used for logging.
 # txt: Override LOG_TIMESTAMP to modify the timestamp format.
 # txt: Returns 0/TRUE always.
@@ -1478,7 +1478,7 @@ function LOGGING.retrieveLogTimestamp() {
 }
 
 # fun: LOGGING.retrieveOutcomeTextPositionInLogOutcome
-# api: internal
+# api: private
 # txt: Retrieves the position of the outcome token in the log outcome colors array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the outcome text position.
@@ -1488,7 +1488,7 @@ function LOGGING.retrieveOutcomeTextPositionInLogOutcome() {
 }
 
 # fun: LOGGING.retrieveTimestampPositionInLogPrefix
-# api: internal
+# api: private
 # txt: Retrieves the position of the timestamp in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the timestamp position.
@@ -1499,7 +1499,7 @@ function LOGGING.retrieveTimestampPositionInLogPrefix() {
 
 
 # fun: LOGGING.setLastLog message
-# api: internal
+# api: private
 # txt: Annotates the last log message.
 # opt: message: The message.
 # txt: Returns 0/TRUE always.
@@ -1509,7 +1509,7 @@ function LOGGING.setLastLog() {
 }
 
 # fun: logInfo message
-# api: dry-wit
+# api: public
 # txt: Logs a message as "info".
 # opt: message: The message to log.
 # txt: Returns 0/TRUE always.
@@ -1522,7 +1522,7 @@ function logInfo() {
 }
 
 # fun: logInfoFile file
-# api: dry-wit
+# api: public
 # txt: Logs the contents of a file as "info".
 # opt: file: The file containing the text to log.
 # txt: Returns 0/TRUE always.
@@ -1535,7 +1535,7 @@ function logInfoFile() {
 }
 
 # fun: logInfoResult SUCCESS|FAILURE message
-# api: dry-wit
+# api: public
 # txt: Logs the outcome of an operation as "info"
 # opt: SUCCESS|FAILURE: The outcome.
 # opt: message: The message to log.
@@ -1554,7 +1554,7 @@ function logInfoResult() {
 }
 
 # fun: logResult SUCCESS|FAILURE message
-# api: dry-wit
+# api: public
 # txt: Logs the outcome of an operation, as "info".
 # opt: SUCCESS|FAILURE: The outcome.
 # opt: message: The message.
@@ -1569,7 +1569,7 @@ function logResult() {
 }
 
 # fun: logTrace message
-# api: dry-wit
+# api: public
 # txt: Logs given message under the "trace" level.
 # opt: message: The message to log.
 # txt: Returns 0/TRUE always.
@@ -1582,7 +1582,7 @@ function logTrace() {
 }
 
 # fun: logTraceFile file
-# api: dry-wit
+# api: public
 # txt: Logs the contents of given file, under the "trace" level.
 # opt: file: The file to log.
 # txt: Returns 0/TRUE always.
@@ -1595,7 +1595,7 @@ function logTraceFile() {
 }
 
 # fun: logTraceResult keyword message
-# api: dry-wit
+# api: public
 # txt: Logs given text as a log result, under the "trace" level.
 # opt: keyword: The keyword.
 # opt: message: The result message to log.
@@ -1614,7 +1614,7 @@ function logTraceResult() {
 }
 
 # fun: resolveVerbosity
-# api: dry-wit
+# api: public
 # txt: Retrieves the verbosity flag.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains '-vv' if trace is enabled; '-v' if debug is enabled; empty string otherwise.
@@ -1634,7 +1634,7 @@ function resolveVerbosity() {
 }
 
 # fun: setDebugEnabled
-# api: dry-wit
+# api: public
 # txt: Enables the debug level.
 # txt: Returns 0/TRUE always.
 # use: setDebugEnabled
@@ -1644,7 +1644,7 @@ function setDebugEnabled() {
 }
 
 # fun: setInfoEnabled
-# api: dry-wit
+# api: public
 # txt: Enables the "info" level.
 # txt: Returns 0/TRUE always.
 # use: setInfoEnabled;
@@ -1653,7 +1653,7 @@ function setInfoEnabled() {
 }
 
 # fun: setLogCategory
-# api: dry-wit
+# api: public
 # txt: Specifies the log category.
 # txt: Returns 0/TRUE always.
 # use: setLogCategory;
@@ -1662,7 +1662,7 @@ function setLogCategory() {
 }
 
 # fun: setLogCategoryNamespace namespace
-# api: dry-wit
+# api: public
 # txt: Sets the log category namespace.
 # opt: namespace: The namespace.
 # txt: Returns 0/TRUE always.
@@ -1672,7 +1672,7 @@ function setLogCategoryNamespace() {
 }
 
 # fun: setQuietMode mode
-# api: dry-wit
+# api: public
 # txt: Sets the quiet mode on or off.
 # opt: mode: The mode (0/TRUE or 1/FALSE).
 # txt: Returns 0/TRUE always.
@@ -1686,7 +1686,7 @@ function setQuietMode() {
 }
 
 # fun: setTraceEnabled
-# api: dry-wit
+# api: public
 # txt: Enables the trace level.
 # txt: Returns 0/TRUE always.
 # use: setTraceEnabled;

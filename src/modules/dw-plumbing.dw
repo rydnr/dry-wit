@@ -1,5 +1,5 @@
 # mod: dw-plumbing
-# api: dry-wit
+# api: public
 # txt: Functions internal to dry-wit
 
 # IFS stuff
@@ -12,7 +12,7 @@ declare -gx MANDATORY=${TRUE};
 declare -gx OPTIONAL=${FALSE};
 
 # fun: checkReq dependency errorCode?
-# api: dry-wit
+# api: public
 # txt: Performs the checks for a required dependency.
 # opt: dependency: The dependency.
 # opt: errorCode: The error code, optional.
@@ -31,7 +31,7 @@ function checkReq() {
 }
 
 # fun: cleanup
-# api: dry-wit
+# api: public
 # txt: Cleans up temporary resources.
 # txt: Returns 0/TRUE always.
 # use: cleanup;
@@ -87,7 +87,7 @@ function cleanup() {
 }
 
 # fun: isFunctionMissing funcName scriptFile?
-# api: dry-wit
+# api: public
 # txt: Checks if given function is missing.
 # opt: funcName: The function name.
 # opt: scriptFile: The script file. Optional.
@@ -112,7 +112,7 @@ function isFunctionMissing() {
 }
 
 # fun: isFunctionPresent funcName scriptFile?
-# api: dry-wit
+# api: public
 # txt: Checks if given function is present.
 # opt: funcName: The function name.
 # opt: scriptFile: The script file. Optional.
@@ -159,7 +159,7 @@ function isFunctionPresent() {
 }
 
 # fun: DRYWIT.addBuiltInError name message
-# api: internal
+# api: private
 # txt: Annotates a new built-in error.
 # opt: name: The error name.
 # opt: message: The error message.
@@ -177,7 +177,7 @@ function DRYWIT.addBuiltInError() {
 }
 
 # fun: DRYWIT.addMissingDependencyError dependency
-# api: internal
+# api: private
 # txt: Annotates a new error describing a missing dependency.
 # opt: message: The the missing dependency.
 # txt: Returns 0/TRUE always.
@@ -192,7 +192,7 @@ function DRYWIT.addMissingDependencyError() {
 }
 
 # fun: DRYWIT.appendBuiltInError error
-# api: internal
+# api: private
 # txt: Appends a new built-in error to BUILTIN_ERRORS.
 # opt: error: The error to add.
 # txt: Returns 0/TRUE always.
@@ -210,7 +210,7 @@ function DRYWIT.appendBuiltInError() {
 }
 
 # fun: DRYWIT.checkDependency name errorCode
-# api: internal
+# api: private
 # txt: Checks a required dependency is available.
 # opt: name: The program name.
 # opt: errorCode: The error code to throw if the dependency is not available. Optional.
@@ -233,7 +233,7 @@ function DRYWIT.checkDependency() {
 }
 
 # fun: DRYWIT.checkScript script
-# api: internal
+# api: private
 # txt: Performs some checks on the script itself.
 # opt: script: The script.
 # txt: Returns 0/TRUE always.
@@ -272,7 +272,7 @@ function DRYWIT.checkScript() {
 }
 
 # fun: DRYWIT.defineDryWitErrorMessages
-# api: internal
+# api: private
 # txt: Declares dry-wit's error messages.
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.defineDryWitErrorMessages;
@@ -287,7 +287,7 @@ function DRYWIT.defineDryWitErrorMessages() {
 }
 
 # fun: DRYWIT.defineDryWitRequirements
-# api: internal
+# api: private
 # txt: Checks dry-wit's own requirements.
 # txt: Returns 0/TRUE always, unless it finds missing requirements and exits.
 # use: DRYWIT.defineDryWitRequirements
@@ -297,7 +297,7 @@ function DRYWIT.defineDryWitRequirements() {
 }
 
 # fun: DRYWIT.main script
-# api: internal
+# api: private
 # txt: dry-wit's core process.
 # opt: script: The script to run.
 # txt: Returns 0/TRUE always.
@@ -361,7 +361,7 @@ function DRYWIT.main() {
 }
 
 # fun: DRYWIT.retrieveSettingsFiles
-# api: internal
+# api: private
 # txt: Retrieves the settings files.
 # txt: The variable RESULT contains a space-separated list of settings files.
 # use: DRYWIT.retrieveSettingsFiles;
@@ -391,7 +391,7 @@ function DRYWIT.retrieveSettingsFiles() {
 }
 
 # fun: DRYWIT.setup
-# api: internal
+# api: private
 # txt: Performs the dry-wit setup process.
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.setup;
@@ -415,7 +415,7 @@ function DRYWIT.setup() {
 }
 
 # fun: DRYWIT.trapSignals
-# api: internal
+# api: private
 # txt: Traps required signals
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.trapSignals;

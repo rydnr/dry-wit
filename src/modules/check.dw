@@ -1,5 +1,5 @@
 # mod: check
-# api: dry-wit
+# api: public
 # txt: Functions to provide ways for checking parameters.
 
 DW.import stdlib;
@@ -7,7 +7,7 @@ DW.import error;
 DW.import dw-plumbing;
 
 # fun: checkFunctionPresent paramName function paramIndex
-# api: dry-wit
+# api: public
 # txt: Checks whether a function is present.
 # opt: paramName: The parameter name.
 # opt: function: The function name.
@@ -37,7 +37,7 @@ function checkFunctionPresent() {
 }
 
 # fun: checkMandatoryOrOptional paramName paramValue paramIndex
-# api: dry-wit
+# api: public
 # txt: Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
 # opt: paramName: The parameter name.
 # opt: paramValue: The parameter value.
@@ -53,7 +53,7 @@ function checkMandatoryOrOptional() {
 }
 
 # fun: checkNotEmpty paramName paramValue paramIndex
-# api: dry-wit
+# api: public
 # txt: Performs a precondition check on given parameter to ensure it's not empty. Exits if the check fails.
 # opt: paramName: The parameter name.
 # opt: paramValue: The parameter value.
@@ -79,7 +79,7 @@ function checkNotEmpty() {
 }
 
 # fun: checkOneOf paramName paramValue validValues paramIndex
-# api: dry-wit
+# api: public
 # txt: Performs a precondition check on given parameter to ensure it's included in a predefined list.
 # opt: paramName: The parameter name.
 # opt: paramValue: The parameter value.
@@ -99,7 +99,7 @@ function checkOneOf() {
 ## PRIVATE functions
 
 # fun: CHECK.checkOneOf callStackOffset paramName paramValue validValues paramIndex
-# api: internal
+# api: private
 # txt: Performs a precondition check on given parameter to ensure it's included in a predefined list.
 # opt: callStackOffset: The call stack offset.
 # opt: paramName: The parameter name.

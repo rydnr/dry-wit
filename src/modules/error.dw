@@ -1,11 +1,11 @@
 # mod: error
-# api: dry-wit
+# api: public
 # txt: Functions related to declaring and using errors.
 
 DW.import envvar;
 
 # fun: addError label message
-# api: dry-wit
+# api: public
 # txt: Annotates a new error.
 # opt: label: The error label.
 # opt: message: The error message.
@@ -27,7 +27,7 @@ function addError() {
 }
 
 # fun: appendErrorMessage error
-# api: dry-wit
+# api: public
 # txt: Appends a new error to ERROR_MESSAGES.
 # opt: error: The error to add.
 # txt: Returns 0/TRUE always.
@@ -41,7 +41,7 @@ function appendErrorMessage() {
 }
 
 # fun: exitWithError label message
-# api: dry-wit
+# api: public
 # txt: Exits with an error.
 # opt: label: The error label.
 # opt: message: The error message.
@@ -62,7 +62,7 @@ function exitWithError() {
 }
 
 # fun: exitWithErrorCode label
-# api: dry-wit
+# api: public
 # txt: Exits with an error code associated with given error label.
 # opt: label: The error label.
 # use: exitWithErrorCode UNKNOWN_OPTION;
@@ -81,7 +81,7 @@ function exitWithErrorCode() {
 }
 
 # fun: isErrorDefined label
-# api: dry-wit
+# api: public
 # txt: Checks whether an error is defined.
 # opt: label: The error label.
 # txt: 0/TRUE if the error is defined; 1/FALSE otherwise.
@@ -104,7 +104,7 @@ function isErrorDefined() {
 }
 
 # fun: isErrorUndefined label
-# api: dry-wit
+# api: public
 # txt: Checks whether an error is undefined.
 # opt: label: The error label.
 # txt: Returns 0/TRUE if the error is undefined; 1/FALSE otherwise.
@@ -127,7 +127,7 @@ function isErrorUndefined() {
 }
 
 # fun: printErrorMessage label
-# api: dry-wit
+# api: public
 # txt: Prints the error message for given label.
 # opt: label: The error label.
 # txt: Returns 0/TRUE if the error is found and gets printed; 1/FALSE otherwise.
@@ -203,7 +203,7 @@ EOF
 }
 
 # fun: printExitValues
-# api: dry-wit
+# api: public
 # txt: Prints the exit values.
 # txt: Returns 0/TRUE always.
 # use: printExitValues;
@@ -234,7 +234,7 @@ EOF
 }
 
 # fun: ERROR.printError message
-# api: internal
+# api: private
 # txt: Prints given error.
 # opt: message: The error message.
 # txt: Returns 0/TRUE always.
@@ -244,7 +244,7 @@ function ERROR.printError() {
 }
 
 # fun: ERROR.resetState
-# api: internal
+# api: private
 # txt: Resets the state of the module.
 # use: ERROR.resetState;
 function ERROR.resetState() {

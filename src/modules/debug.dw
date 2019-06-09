@@ -1,9 +1,9 @@
 # mod: debug
-# api: dry-wit
+# api: public
 # txt: Functions to help while debugging scripts.
 
 # fun: debugArray arrayName
-# api: dry-wit
+# api: public
 # txt: Prints the contents of given array.
 # opt: arrayName: The name of the array.
 # txt: Returns 0/TRUE always.
@@ -16,7 +16,7 @@ function debugArray() {
 }
 
 # fun: debugAssociativeArray arrayName
-# api: dry-wit
+# api: public
 # txt: Prints the contents of given associative array.
 # opt: arrayName: The name of the associative array.
 # txt: Returns 0/TRUE always.
@@ -36,7 +36,7 @@ function debugAssociativeArray() {
 }
 
 # fun: debugAssociativeArrayEntry key value
-# api: dry-wit
+# api: public
 # txt: Callback to be called to debug a specific entry in an associative array.
 # opt: key: The entry key. Mandatory.
 # opt: value: The entry value. Could be empty.
@@ -52,7 +52,7 @@ function debugAssociativeArrayEntry() {
 }
 
 # fun: debugEcho message
-# api: dry-wit
+# api: public
 # txt: Echoes a line to stdout. Useful for locating them easily when debugging.
 # opt: message: The message to print.
 # txt: Returns 0/TRUE always.
@@ -68,7 +68,7 @@ function debugEcho() {
 }
 
 # fun: debugVariable varName varValue+
-# api: dry-wit
+# api: public
 # txt: Tries to declare a variable with given arguments.
 # opt: varName: The variable name.
 # opt: varValue: The variable value(s).
@@ -84,7 +84,7 @@ function debugVariable() {
 }
 
 # fun: isDebugEchoEnabled
-# api: dry-wit
+# api: public
 # txt: Retrieves whether "debugEcho" is enabled.
 # txt: Returns  0/TRUE if it's enabled; 1/FALSE otherwise.
 # use: if isDebugEchoEnabled; then ...; fi
@@ -101,7 +101,7 @@ function isDebugEchoEnabled() {
 }
 
 # fun: setDebugEchoEnabled bool
-# api: dry-wit
+# api: public
 # txt: Specifies whether "debugEcho" is enabled.
 # opt: bool: That condition.
 # txt: Returns 0/TRUE always.
@@ -119,7 +119,7 @@ function setDebugEchoEnabled() {
 }
 
 # fun: setDebugLogFile fileName
-# api: dry-wit
+# api: public
 # txt: Specifies the log file for debugging purposes.
 # opt: fileName: The log file.
 # txt: Returns 0/TRUE if the log file can be used for writing; 1/FALSE otherwise.
@@ -142,7 +142,7 @@ function setDebugLogFile() {
 }
 
 # fun: traceApiCall
-# api: dry-wit
+# api: public
 # txt: Traces the API call to the default log file using in development.
 # txt: Returns 0/TRUE always.
 # use: traceApiCall;
@@ -160,7 +160,7 @@ function traceApiCall() {
 }
 
 # fun: DEBUG.getDebugLogFile
-# api: internal
+# api: private
 # txt: Retrieves the log file for debugging purposes.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the path of the debug file.
@@ -171,7 +171,7 @@ function DEBUG.getDebugLogFile() {
 }
 
 # fun: DEBUG.defaultState
-# api: internal
+# api: private
 # txt: Reverts the module to the default state.
 # txt: Returns 0/TRUE always.
 # use: DEBUG.defaultState;
@@ -181,7 +181,7 @@ function DEBUG.defaultState() {
 }
 
 # fun: DEBUG.resetState
-# api: internal
+# api: private
 # txt: Resets the module.
 # txt: Returns 0/TRUE always.
 # use: DEBUG.resetState;

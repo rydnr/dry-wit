@@ -1,9 +1,9 @@
 # mod: vault
-# api: dry-wit
+# api: public
 # txt: Functions useful when interacting with Hashicorp's Vault.
 
 # fun: authorizeInVault
-# api: dry-wit
+# api: public
 # txt: Performs the Vault authorization.
 # use: authorizeInVault;
 function authorizeInVault() {
@@ -39,7 +39,7 @@ function authorizeInVault() {
 }
 
 # fun: buildPipelineParameterPathInVault folder team pipeline parameter
-# api: dry-wit
+# api: public
 # txt: Builds the path of a pipeline parameter in Vault.
 # opt: folder: The Concourse folder.
 # opt: team: The Concourse team.
@@ -67,7 +67,7 @@ function buildPipelineParameterPathInVault() {
 }
 
 # fun: checkVaultRunning
-# api: dry-wit
+# api: public
 # txt: Checks if a Vault container (whose name is matches ${VAULT_CONTAINER_NAME}) is running.
 # txt: Returns 0/TRUE if Vault is running; 1/FALSE otherwise.
 # use: if checkVaultRunning; then echo "${VAULT_CONTAINER_NAME} is running"; fi
@@ -82,7 +82,7 @@ function checkVaultRunning() {
     fi
 }
 # fun: createOrStartVaultContainer virtualHost network
-# api: dry-wit
+# api: public
 # txt: Creates the Vault container if it does not exist, or starts the already existing Vault container.
 # opt: virtualHost: The virtual host.
 # opt: network: The network.
@@ -155,7 +155,7 @@ function createOrStartVaultContainer() {
 }
 
 # fun: deleteVaultContainer containerName
-# api: dry-wit
+# api: public
 # txt: Deletes the Vault container if it exists.
 # opt: containerName: The name of the Vault container.
 # txt: Returns 0/TRUE if the container was running and could be deleted, or if it didn't exist; 1/FALSE otherwise.
@@ -191,7 +191,7 @@ function deleteVaultContainer() {
 }
 
 # fun: generateVaultHclFile file leaseTTL maxLeaseTTL vaultIP
-# api: dry-wit
+# api: public
 # txt: Generates the vault.hcl file.
 # opt: file: The vault.hcl file.
 # opt: leaseTTL: The lease TTL.
@@ -258,7 +258,7 @@ EOF
 }
 
 # fun: retrieveVaultToken file
-# api: dry-wit
+# api: public
 # txt: Retrieves a Vault token from given file.
 # opt: file: The file.
 # txt: Returns 0/TRUE if the token is retrieved; 1/FALSE otherwise.
@@ -287,7 +287,7 @@ function retrieveVaultToken() {
 }
 
 # fun: retrieveVaultUrl
-# api: dry-wit
+# api: public
 # txt: Builds the Vault url.
 # txt: Returns 0/TRUE if the Vault url was built; 1/FALSE otherwise.
 # txt: If the funcion returns 0/TRUE, the variable RESULT contains the Vault url.
@@ -312,7 +312,7 @@ function retrieveVaultUrl() {
 }
 
 # fun: runVaultCommand command args*
-# api: dry-wit
+# api: public
 # txt: Runs a command inside the Vault container.
 # opt: command: The command to run.
 # opt: args: The command arguments. Optional.
@@ -341,7 +341,7 @@ function runVaultCommand() {
 }
 
 # fun: writeFileInVault source destination
-# api: dry-wit
+# api: public
 # txt: Writes a file in Vault.
 # opt: source: The source path.
 # opt: destination: The destination path.
@@ -365,7 +365,7 @@ function writeFileInVault() {
 }
 
 # fun: writeValueInVault destination value
-# api: dry-wit
+# api: public
 # txt: Writes a setting in Vault.
 # opt: destination: The destination.
 # opt: value: The value.

@@ -1,5 +1,5 @@
 # mod: file
-# api: dry-wit
+# api: public
 # txt: Functions dealing with files.
 
 # env: _CLEANUP_FILES: The temporary files to cleanup.
@@ -8,7 +8,7 @@ declare -agx _CLEANUP_FILES;
 DW.import logging;
 
 # fun: addFileToCleanup file
-# api: dry-wit
+# api: public
 # txt: Annotates a file to be removed.
 # opt: file: The file to delete.
 # txt: Returns 0/TRUE always.
@@ -36,7 +36,7 @@ function addFileToCleanup() {
 }
 
 # fun: createTempFile
-# api: dry-wit
+# api: public
 # txt: Creates a new temporary file.
 # txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
@@ -60,7 +60,7 @@ function createTempFile() {
 }
 
 # fun: createTempFileNoCleanup
-# api: dry-wit
+# api: public
 # txt: Creates a new temporary file, without managing its cleanup.
 # txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
@@ -97,7 +97,7 @@ function createTempFileNoCleanup() {
 }
 
 # fun: createTempFolder parent? prefix?
-# api: dry-wit
+# api: public
 # txt: Creates a temporary folder.
 # opt: parent: The parent folder. Optional.
 # opt: prefix: The folder name prefix. Optional.
@@ -147,7 +147,7 @@ function createTempFolder() {
 }
 
 # fun: FILE.mktempFile baseFolder format
-# api: internal
+# api: private
 # txt: Runs mktemp variants in Linux and MacOSX, for creating a temporary file.
 # opt: baseFolder: The base folder.
 # opt: format: The file name format.
@@ -179,7 +179,7 @@ function FILE.mktempFile() {
 }
 
 # fun: FILE.mktempFolder baseFolder format
-# api: internal
+# api: private
 # txt: Runs mktemp variants in Linux and MacOSX, for creating a temporary folder.
 # opt: baseFolder: The base folder.
 # opt: format: The file name format.
@@ -211,7 +211,7 @@ function FILE.mktempFolder() {
 }
 
 # fun: fileExists file
-# api: dry-wit
+# api: public
 # txt: Checks if given file exists.
 # opt: file: The file to check.
 # txt: Returns 0/TRUE if the file exists; 1/FALSE otherwise.
@@ -226,7 +226,7 @@ function fileExists() {
 }
 
 # fun: fileIsNotEmpty file
-# api: dry-wit
+# api: public
 # txt: Checks if given file is not empty.
 # opt: file: The file to check.
 # txt: Returns 0/TRUE if the file is not empty; 1/FALSE otherwise.
@@ -241,7 +241,7 @@ function fileIsNotEmpty() {
 }
 
 # fun: fileIsReadable file
-# api: dry-wit
+# api: public
 # txt: Checks if given file is readable.
 # opt: file: The file to check.
 # txt: Returns 0/TRUE if the file is readable; 1/FALSE otherwise.
@@ -256,7 +256,7 @@ function fileIsReadable() {
 }
 
 # fun: fileIsRegularFile file
-# api: dry-wit
+# api: public
 # txt: Checks if given file is a regular file.
 # opt: file: The file to check.
 # txt: Returns 0/TRUE if the file is a regular file; 1/FALSE otherwise.
@@ -271,7 +271,7 @@ function fileIsRegularFile() {
 }
 
 # fun: fileIsWritable file
-# api: dry-wit
+# api: public
 # txt: Checks if given file is writable.
 # opt: file: The file to check.
 # txt: Returns 0/TRUE if the file is writable; 1/FALSE otherwise.
@@ -286,7 +286,7 @@ function fileIsWritable() {
 }
 
 # fun: findFolderDistance folderA folderB
-# api: dry-wit
+# api: public
 # txt: Finds the distance between two folders.
 # opt: folderA: The first folder.
 # opt: folderB: The second folder.
@@ -338,7 +338,7 @@ function findFolderDistance() {
 }
 
 # fun: findGreatestCommonParentFolder folderA folderB
-# api: dry-wit
+# api: public
 # txt: Finds the greatest common parent folder
 # opt: folderA: The first folder.
 # opt: folderB: The second folder.
@@ -379,7 +379,7 @@ function findGreatestCommonParentFolder() {
 
 
 # fun: findInPath file
-# api: dry-wit
+# api: public
 # txt: Finds a given file within a PATH variable.
 # opt: file: The file name to look for.
 # txt: Prints the file path via (stdin).
@@ -402,7 +402,7 @@ function findInPath() {
 }
 
 # fun: findRelativePathBetweenFolders folderA folderB
-# api: dry-wit
+# api: public
 # txt: Given two paths, A and B, finds the shortest way to reach B from A.
 # opt: folderA: The first folder.
 # opt: folderB: The second folder.
@@ -453,7 +453,7 @@ function findRelativePathBetweenFolders() {
 }
 
 # fun: folderExists folder
-# api: dry-wit
+# api: public
 # txt: Checks whether given folder exists.
 # opt: folder: The folder to check.
 # txt: Returns 0/TRUE if the folder exists; 1/FALSE otherwise.
@@ -477,7 +477,7 @@ function folderExists() {
 
 
 # fun: folderExistsAndIsNotASymlink folder
-# api: dry-wit
+# api: public
 # txt: Checks whether given folder exists and it's not a symbolic link.
 # opt: folder: The folder to check.
 # txt: Returns 0/TRUE if the folder exists; 1/FALSE otherwise.
@@ -502,7 +502,7 @@ function folderExistsAndIsNotASymlink() {
 }
 
 # fun: isMacOSX
-# api: dry-wit
+# api: public
 # txt: Checks if the system is a MacOSX.
 # txt: Returns 0/TRUE if the system is MacOSX; 1/FALSE otherwise.
 # use: if isMacOSX; then
@@ -519,7 +519,7 @@ function isMacOSX() {
 }
 
 # fun: isSymlink path
-# api: dry-wit
+# api: public
 # txt: Checks whether given path is a symlink.
 # opt: path: The path to check.
 # txt: Returns 0/TRUE if the path is a symlink; 1/FALSE otherwise.
@@ -540,7 +540,7 @@ function isSymlink() {
 }
 
 # fun: readConfFile file
-# api: dry-wit
+# api: public
 # txt: Reads given configuration file.
 # opt: file: The config file.
 # txt: Returns 0/TRUE if the file is read successfully; 1/FALSE otherwise.
@@ -578,7 +578,7 @@ function readConfFile() {
 }
 
 # fun: readLink param*
-# api: dry-wit
+# api: public
 # txt: Runs readlink (differs in Linux and in MacOSX).
 # opt: param: The readlink parameters.
 # txt: Returns the result code of readlink.
@@ -604,7 +604,7 @@ function readLink() {
 }
 
 # fun: removeExtension fileName
-# api: dry-wit
+# api: public
 # txt: Removes the extension from given file name.
 # opt: fileName: The file name.
 # txt: Returns 0/TRUE always.
@@ -619,7 +619,7 @@ function removeExtension() {
 }
 
 # fun: retrieveAbsolutePath relativePath.
-# api: dry-wit
+# api: public
 # txt: Retrieves the absolute path of given argument.
 # opt: relativePath: The relative path.
 # txt: Returns 0/TRUE if the file was found; 1/FALSE otherwise.
@@ -638,7 +638,7 @@ function retrieveAbsolutePath() {
 }
 
 # fun: retrieveFreeDiskSpaceUnderFolder folder
-# api: dry-wit
+# api: public
 # txt: Retrieves the disk space available in the filesystem containing given folder. Prints the available space in bytes.
 # opt: folder: The folder.
 # txt: Returns 0/TRUE if the space could be calculated; 1/FALSE otherwise.
@@ -672,7 +672,7 @@ function retrieveFreeDiskSpaceUnderFolder() {
 }
 
 # fun: sourceFileIfExists file
-# api: dry-wit
+# api: public
 # txt: Sources given file, if it exists.
 # opt: file: The file to source.
 # txt: Returns 0/TRUE if the file is sourced; 1/FALSE otherwise.
@@ -696,7 +696,7 @@ function sourceFileIfExists() {
 }
 
 # fun: uncompress file outputFolder
-# api: dry-wit
+# api: public
 # txt: Uncompresses given file to a concrete folder.
 # opt: file: The file.
 # opt: outputFolder: The output folder.
