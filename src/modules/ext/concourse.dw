@@ -1,11 +1,48 @@
 # mod: concourse
+# api: dry-wit
+# txt: ConcourseCI-related functions.
 
-# txt: Runs a fly command.
+# fun: flyLogin target url
+# api: dry-wit
+# txt: Runs a fly login command.
+# opt: target: The Concourse target.
+# opt: url: The Concourse url.
 # txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
+# use: if flyLogin ci http://concourse:8080; then ...; fi
+function flyLogin() {
+  local _concourseTarget="${1}";
+  local _concourseUrl="${2}";
+  local -i _rescode;
+  local _output;
+  local _fly="$(which fly)";
+
+  checkNotEmpty "target" "${_concourseTarget}" 1;
+  checkNotEmpty "url" "${_concourseUrl}" 2;
+
+  logTrace -n "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl} 2>&1";
+  echo "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl}" >> "${TRACE_FILE}"
+  exec 5>&1
+  _output=$(${FLY_PATH} -t ${_concourseTarget} login -c ${_concourseUrl} 2>&1 | tee >(cat - >&5))
+  _rescode=$?;
+  echo ${_output};
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    _rescode=${FALSE};
+    logTraceResult FAILURE "failed";
+    export RESULT="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: runFlyCommand y|Y|yes|YES|n|N|no|NO command arg*
+# api: dry-wit
+# txt: Runs a fly command.
 # opt: y|Y|yes|YES|n|N|no|NO-> 1: Whether to assume 'y' or 'n' to any question.
 # opt: command: The command to run.
 # opt: arg: The command arguments. Optional.
+# txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
 # use: if runFlyCommand y -t ci set-pipeline -p main; then echo "fly -t ci set-pipeline -p main -> ${RESULT}"; fi
 function runFlyCommand() {
   local _yesOrNo="${1}";
@@ -42,39 +79,6 @@ function runFlyCommand() {
   fi
 
   export RESULT="${_result}";
-
-  return ${_rescode};
-}
-
-# txt: Runs a fly login command.
-# txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
-# fun: flyLogin target url
-# opt: target: The Concourse target.
-# opt: url: The Concourse url.
-# use: if flyLogin ci http://concourse:8080; then ...; fi
-function flyLogin() {
-  local _concourseTarget="${1}";
-  local _concourseUrl="${2}";
-  local -i _rescode;
-  local _output;
-  local _fly="$(which fly)";
-
-  checkNotEmpty "target" "${_concourseTarget}" 1;
-  checkNotEmpty "url" "${_concourseUrl}" 2;
-
-  logTrace -n "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl} 2>&1";
-  echo "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl}" >> "${TRACE_FILE}"
-  exec 5>&1
-  _output=$(${FLY_PATH} -t ${_concourseTarget} login -c ${_concourseUrl} 2>&1 | tee >(cat - >&5))
-  _rescode=$?;
-  echo ${_output};
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "done";
-  else
-    _rescode=${FALSE};
-    logTraceResult FAILURE "failed";
-    export RESULT="${_output}";
-  fi
 
   return ${_rescode};
 }

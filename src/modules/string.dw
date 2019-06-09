@@ -1,10 +1,13 @@
 # mod: string
+# api: dry-wit
+# txt: String-related functions.
 
-# txt: Checks whether the first parameter contains the second value.
-# txt: Returns 0/TRUE if the text contains the substring; 1/FALSE otherwise.
 # fun: contains text substring
+# api: dry-wit
+# txt: Checks whether the first parameter contains the second value.
 # opt: text: The text.
 # opt: substring: The substring to check.
+# txt: Returns 0/TRUE if the text contains the substring; 1/FALSE otherwise.
 # use: if contains "${text}" "b"; then echo "${text} contains b"; fi
 function contains() {
   local _container="${1}";
@@ -23,34 +26,12 @@ function contains() {
   return ${_rescode};
 }
 
-# txt: Checks whether the first parameter starts with the second value.
-# txt: Returns 0/TRUE if the text starts with the substring; 1/FALSE otherwise.
-# fun: startsWith text substring
-# opt: text:: The text.
-# opt: substring: The substring to check.
-# use: if startsWith "${text}" "a"; then echo "${text} starts with a"; fi
-function startsWith() {
-  local _container="${1}";
-  local _substring="${2}";
-  local -i _rescode;
-
-  checkNotEmpty "container" "${_container}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
-
-  if areEqual "${_container#${_substring}}" "${_container}"; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
-  fi
-
-  return ${_rescode};
-}
-
-# txt: Checks whether the first parameter ends with the second value.
-# txt: Returns 0/TRUE if the text ends with the substring; 1/FALSE otherwise.
 # fun: endsWith text substring
+# api: dry-wit
+# txt: Checks whether the first parameter ends with the second value.
 # opt: text: The text.
 # opt: substring: The substring to check.
+# txt: Returns 0/TRUE if the text ends with the substring; 1/FALSE otherwise.
 # use: if endsWith "${text}" "c"; then echo "${text} ends with c"; fi
 function endsWith() {
   local _container="${1}";
@@ -69,42 +50,41 @@ function endsWith() {
   return ${_rescode};
 }
 
-# txt: Converts given string to upper case.
+# fun: normalize text
+# api: dry-wit
+# txt: Normalizes given string: converts non-alphanumeric characters to underscore.
+# opt: text: The text to normalize.
 # txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the string in upper case.
-# fun: toUpper text
-# opt: text: The string to convert.
-# use: local _text="abc";
-# use: toUpper "${_text}";
-# use: local _upcased="${RESULT}";
-function toUpper() {
+# txt: The variable RESULT contains the normalized string.
+# use: normalize "a_b.C" # returns "a_b_C";
+function normalize() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
-  local result=$(echo "${_text}" | awk '{print toupper($0);}');
+  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g');
   export RESULT="${result}";
 }
 
-# txt: Converts given string to lower case.
+# fun: normalizeUppercase string
+# api: dry-wit
+# txt: Normalizes given string: converts non-alphanumeric characters to underscore, and converts it to upper case.
+# opt: string: The string to convert.
 # txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the converted string.
-# fun: toLower text
-# opt: text: The string to convert.
-# use: local _text="ABC";
-# use: toLower "${_text}";
-# use: local _lowerCase="${RESULT}";
-function toLower() {
+# txt: The variable RESULT contains the normalized string.
+# use: normalize "a_b.C" # returns "A_B_C";
+function normalizeUppercase() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
-  local result=$(echo "${_text}" | awk '{print tolower($0);}');
+  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
   export RESULT="${result}";
 }
 
-# txt: Removes the prefix of given string.
-# txt: Returns 0/TRUE if the prefix was removed; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the string without the prefix.
 # fun: removePrefix text prefix
+# api: dry-wit
+# txt: Removes the prefix of given string.
 # opt: text: The string to process.
 # opt: prefix: The prefix to remove.
+# txt: Returns 0/TRUE if the prefix was removed; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the string without the prefix.
 # use: if removePrefix "${_text}" "--*"; then echo "${_text} -> ${RESULT}"; fi
 function removePrefix() {
   local _text="${1}";
@@ -124,12 +104,13 @@ function removePrefix() {
   return ${_rescode};
 }
 
-# txt: Removes the suffix of given string.
-# txt: Returns 0/TRUE if the suffix was removed; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the string without the suffix.
 # fun: removeSuffix text suffix
+# api: dry-wit
+# txt: Removes the suffix of given string.
 # opt: text: The string to process.
 # opt: suffix: The suffix to remove.
+# txt: Returns 0/TRUE if the suffix was removed; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the string without the suffix.
 # use: if removeSuffix "${_text}" "-*"; then echo "${_text} -> ${RESULT}"; fi
 function removeSuffix() {
   local _text="${1}";
@@ -154,40 +135,15 @@ function removeSuffix() {
   return ${_rescode};
 }
 
-# txt: Normalizes given string: converts non-alphanumeric characters to underscore.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the normalized string.
-# fun: normalize text
-# opt: text: The text to normalize.
-# use: normalize "a_b.C" # returns "a_b_C";
-function normalize() {
-  local _text="${1}";
-  checkNotEmpty "text" "${_text}" 1;
-  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g');
-  export RESULT="${result}";
-}
-
-# txt: Normalizes given string: converts non-alphanumeric characters to underscore, and converts it to upper case.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the normalized string.
-# fun: normalizeUppercase string
-# opt: string: The string to convert.
-# use: normalize "a_b.C" # returns "A_B_C";
-function normalizeUppercase() {
-  local _text="${1}";
-  checkNotEmpty "text" "${_text}" 1;
-  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
-  export RESULT="${result}";
-}
-
-# txt: Replaces the n leftmost tokens from given text.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the new text.
 # fun: replaceNLeftmostTokens text newToken n separator
+# api: dry-wit
+# txt: Replaces the n leftmost tokens from given text.
 # opt: text: The text to process.
 # opt: newToken: The token replacement.
 # opt: n: The number of tokens to replace.
 # opt: separator: The separator.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the new text.
 # use: replaceNLeftmostTokens "a a a b b" "b" 3 " " # "b b b b b"
 function replaceNLeftmostTokens() {
   local _text="$1";
@@ -198,14 +154,15 @@ function replaceNLeftmostTokens() {
   export RESULT="${result}";
 }
 
-# txt: Replaces the n rightmost tokens from given text.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the new text.
 # fun: replaceNRightmostTokens text newToken n separator
-# opt: text: The text to process.
-# opt: newToken: The token replacement.
-# opt: n: The number of tokens to replace.
-# opt: separator: The separator.
+# api: dry-wit
+# txt: replaces the n rightmost tokens from given text.
+# opt: text: the text to process.
+# opt: newtoken: the token replacement.
+# opt: n: the number of tokens to replace.
+# opt: separator: the separator.
+# txt: returns 0/true always.
+# txt: the variable result contains the new text.
 # use: replaceNRightmostTokens "a a a b b" "a" 2 " " # "a a a a a"
 function replaceNRightmostTokens() {
   local _text="$1";
@@ -214,5 +171,61 @@ function replaceNRightmostTokens() {
   local _separator="$4";
   local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
   export RESULT="${result}";
+}
+
+# fun: startsWith text substring
+# api: dry-wit
+# txt: Checks whether the first parameter starts with the second value.
+# opt: text:: The text.
+# opt: substring: The substring to check.
+# txt: Returns 0/TRUE if the text starts with the substring; 1/FALSE otherwise.
+# use: if startsWith "${text}" "a"; then echo "${text} starts with a"; fi
+function startsWith() {
+    local _container="${1}";
+    local _substring="${2}";
+    local -i _rescode;
+
+    checkNotEmpty "container" "${_container}" 1;
+    checkNotEmpty "substring" "${_substring}" 2;
+
+    if areEqual "${_container#${_substring}}" "${_container}"; then
+        _rescode=${FALSE};
+    else
+        _rescode=${TRUE};
+    fi
+
+    return ${_rescode};
+}
+
+# fun: toLower text
+# api: dry-wit
+# txt: Converts given string to lower case.
+# opt: text: The string to convert.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the converted string.
+# use: local _text="ABC";
+#      toLower "${_text}";
+#      local _lowerCase="${RESULT}";
+function toLower() {
+    local _text="${1}";
+    checkNotEmpty "text" "${_text}" 1;
+    local result=$(echo "${_text}" | awk '{print tolower($0);}');
+    export RESULT="${result}";
+}
+
+# fun: toUpper text
+# api: dry-wit
+# txt: Converts given string to upper case.
+# opt: text: The string to convert.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the string in upper case.
+# use: local _text="abc";
+#      toUpper "${_text}";
+#      local _upcased="${RESULT}";
+function toUpper() {
+    local _text="${1}";
+    checkNotEmpty "text" "${_text}" 1;
+    local result=$(echo "${_text}" | awk '{print toupper($0);}');
+    export RESULT="${result}";
 }
 #

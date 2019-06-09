@@ -1,162 +1,13 @@
 # mod: stdlib
+# api: dry-wit
+# txt: Standard, general-purpose functions.
 
-# txt: Checks whether given value is empty.
-# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# fun: isEmpty value
-# opt: value: The value to check.
-# use: if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
-function isEmpty() {
-  local -i rescode;
-
-  if [ -z "${1}" ]; then
-    rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-
-  return ${rescode};
-}
-
-# txt: Checks whether given value is not empty.
-# txt: Returns 0/TRUE if the value is not empty; 1/FALSE otherwise.
-# fun: isNotEmpty value
-# opt: value: The value to check.
-# use: if isNotEmpty "${MYVAR}"; then echo "MYVAR is not empty"; fi
-function isNotEmpty() {
-  local -i rescode;
-
-  if isEmpty "${1}"; then
-      rescode=${FALSE};
-  else
-    rescode=${TRUE};
-  fi
-
-  return ${rescode};
-}
-
-# txt: Checks whether given value is defined.
-# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# fun: isDefined var
-# opt: var: The variable to check.
-# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
-function isDefined() {
-  local -i rescode;
-  if [ -z ${1+x} ]; then
-    rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-  return ${rescode};
-}
-
-# txt: Checks whether given variable is defined.
-# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# fun: isVariableDefined var
-# opt: var: The variable value to check.
-# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
-function isVariableDefined() {
-  local _var="${1}";
-  local -i rescode;
-#  set +o nounset  # allow unset variables
-#  eval "[ -v \${$1} ] 2> /dev/null"
-  #  eval "[ -v ${1} ] 2> /dev/null"
-  checkNotEmpty "var" "${_var}" 1
-
-  if [ -v "${_var}" ]; then
-    rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-#  set -o nounset  # terminate on any unset variable
-
-  return ${rescode};
-}
-
-# txt: Checks whether given value is zero.
-# txt: Returns 0/TRUE: if the value is zero; 1/FALSE otherwise.
-# fun: isZero value
-# opt: value: The value.
-# use: if isZero "${MYVAR}"; then ...; fi
-function isZero() {
-  local _value="${1}";
-  local  -i rescode;
-
-  if isEmpty "${_value}"; then
-    rescode=${FALSE};
-  elif [[ "${_value}" == "0" ]]; then
-      rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-  return ${rescode};
-}
-
-# txt: Checks whether given value is true.
-# txt: Returns 0/TRUE if the value is true; 1/FALSE otherwise.
-# fun: isTrue value
-# opt: value: The value.
-# use: if isTrue "${MYVAR}"; then ...; fi
-function isTrue() {
-  local _value="${1}";
-#  checkNotEmpty "value" "${_value}" 1;
-
-  local  -i rescode;
-  if isZero ${_value}; then
-      rescode=${TRUE};
-  elif [ "${_value}" == "${TRUE}" ]; then
-    rescode=${TRUE};
-  elif [ "${_value}" == TRUE ]; then
-    rescode=${TRUE};
-  elif [ "${_value}" == "true" ]; then
-    rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-
-  return ${rescode};
-}
-
-# txt: Checks whether given value is not zero.
-# txt: Returns 0/TRUE if the value is zero; 1/FALSE otherwise.
-# fun: isNotZero value
-# opt: value: The value.
-# use: if isNotZero "${MYVAR}"; then ...; fi
-function isNotZero() {
-  local _value="${1}";
-  #  checkNotEmpty "value" "${_value}" 1;
-
-  local  -i rescode;
-  if [[ ${_value} -ne 0 ]]; then
-      rescode=${TRUE};
-  else
-    rescode=${FALSE};
-  fi
-
-  return ${rescode};
-}
-
-# txt: Checks whether given value is false.
-# txt: Returns 0/TRUE if the value is false; 1/FALSE otherwise.
-# fun: isFalse value
-# opt: value: The value.
-# use: if isFalse "${MYVAR}"; then ...; fi
-function isFalse() {
-  local -i rescode;
-  checkNotEmpty "value" "${1}" 1;
-
-  if isTrue $*; then
-    rescode=${FALSE};
-  else
-    rescode=${TRUE};
-  fi
-  return ${rescode};
-}
-
-# txt: Checks whether given parameters are equal.
-# txt: Returns 0/TRUE if both values are equal; 1/FALSE otherwise.
 # fun: areEqual first second
+# api: dry-wit
+# txt: Checks whether given parameters are equal.
 # opt: first: The first value.
 # opt: second: The second value.
+# txt: Returns 0/TRUE if both values are equal; 1/FALSE otherwise.
 # use: if areEqual "${param}" "${expected}"; then echo "param equals expected (${param})"; fi
 function areEqual() {
   local _first="${1}";
@@ -180,11 +31,12 @@ function areEqual() {
   return ${_rescode};
 }
 
-# txt: Checks whether given parameters are not equal.
-# txt: Returns 0/TRUE if both values aren't equal; 1/FALSE otherwise.
 # fun: areNotEqual first second
+# api: dry-wit
+# txt: Checks whether given parameters are not equal.
 # opt: first: The first value.
 # opt: second: The second value.
+# txt: Returns 0/TRUE if both values aren't equal; 1/FALSE otherwise.
 # use: if areEqual "${param}" "${expected}"; then echo "param (${param}) and expected ${expected} are not equal"; fi
 function areNotEqual() {
   local _first="${1}";
@@ -200,10 +52,63 @@ function areNotEqual() {
   return ${_rescode};
 }
 
-# txt: Checks if a given function is defined.
-# txt: Returns 0/TRUE if the function is defined; 1/FALSE otherwise.
+# fun: isDefined var
+# api: dry-wit
+# txt: Checks whether given value is defined.
+# opt: var: The variable to check.
+# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
+# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+function isDefined() {
+    local -i rescode;
+    if [ -z ${1+x} ]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+    return ${rescode};
+}
+
+# fun: isEmpty value
+# api: dry-wit
+# txt: Checks whether given value is empty.
+# opt: value: The value to check.
+# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
+# use: if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
+function isEmpty() {
+    local -i rescode;
+
+    if [ -z "${1}" ]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+
+    return ${rescode};
+}
+
+# fun: isFalse value
+# api: dry-wit
+# txt: Checks whether given value is false.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the value is false; 1/FALSE otherwise.
+# use: if isFalse "${MYVAR}"; then ...; fi
+function isFalse() {
+    local -i rescode;
+    checkNotEmpty "value" "${1}" 1;
+
+    if isTrue $*; then
+        rescode=${FALSE};
+    else
+        rescode=${TRUE};
+    fi
+    return ${rescode};
+}
+
 # fun: isFunctionDefined functionName
+# api: dry-wit
+# txt: Checks if a given function is defined.
 # opt: functionName: The function name.
+# txt: Returns 0/TRUE if the function is defined; 1/FALSE otherwise.
 # use: if functionDefined "readFile"; then readFile ...; fi
 function isFunctionDefined() {
   local _function="${1}";
@@ -214,5 +119,113 @@ function isFunctionDefined() {
   _rescode=$?;
 
   return ${_rescode};
+}
+
+# fun: isNotEmpty value
+# api: dry-wit
+# txt: Checks whether given value is not empty.
+# opt: value: The value to check.
+# txt: Returns 0/TRUE if the value is not empty; 1/FALSE otherwise.
+# use: if isNotEmpty "${MYVAR}"; then echo "MYVAR is not empty"; fi
+function isNotEmpty() {
+    local -i rescode;
+
+    if isEmpty "${1}"; then
+        rescode=${FALSE};
+    else
+        rescode=${TRUE};
+    fi
+
+    return ${rescode};
+}
+
+# fun: isNotZero value
+# api: dry-wit
+# txt: Checks whether given value is not zero.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the value is zero; 1/FALSE otherwise.
+# use: if isNotZero "${MYVAR}"; then ...; fi
+function isNotZero() {
+    local _value="${1}";
+    #  checkNotEmpty "value" "${_value}" 1;
+
+    local  -i rescode;
+    if [[ ${_value} -ne 0 ]]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+
+    return ${rescode};
+}
+
+# fun: isTrue value
+# api: dry-wit
+# txt: Checks whether given value is true.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the value is true; 1/FALSE otherwise.
+# use: if isTrue "${MYVAR}"; then ...; fi
+function isTrue() {
+    local _value="${1}";
+    #  checkNotEmpty "value" "${_value}" 1;
+
+    local  -i rescode;
+    if isZero ${_value}; then
+        rescode=${TRUE};
+    elif [ "${_value}" == "${TRUE}" ]; then
+        rescode=${TRUE};
+    elif [ "${_value}" == TRUE ]; then
+        rescode=${TRUE};
+    elif [ "${_value}" == "true" ]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+
+    return ${rescode};
+}
+
+# fun: isVariableDefined var
+# api: dry-wit
+# txt: Checks whether given variable is defined.
+# opt: var: The variable value to check.
+# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
+# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+function isVariableDefined() {
+    local _var="${1}";
+    local -i rescode;
+    #  set +o nounset  # allow unset variables
+    #  eval "[ -v \${$1} ] 2> /dev/null"
+    #  eval "[ -v ${1} ] 2> /dev/null"
+    checkNotEmpty "var" "${_var}" 1
+
+    if [ -v "${_var}" ]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+    #  set -o nounset  # terminate on any unset variable
+
+    return ${rescode};
+}
+
+# fun: isZero value
+# api: dry-wit
+# txt: Checks whether given value is zero.
+# opt: value: The value.
+# txt: Returns 0/TRUE: if the value is zero; 1/FALSE otherwise.
+# use: if isZero "${MYVAR}"; then ...; fi
+function isZero() {
+    local _value="${1}";
+    local  -i rescode;
+
+    if isEmpty "${_value}"; then
+        rescode=${FALSE};
+    elif [[ "${_value}" == "0" ]]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+    return ${rescode};
 }
 #

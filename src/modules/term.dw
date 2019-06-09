@@ -1,50 +1,12 @@
-# term functions
 # mod: term
+# api: dry-wit
+# txt: Terminal-related functions
 
-# txt: Retrieves the TERM variable
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the TERM variable.
-# fun: retrieveTERM
-# use: retrieveTERM;
-# use: echo "TERM -> ${RESULT}";
-function retrieveTERM() {
-  local result="${TERM}";
-
-  if isEmpty "${result}"; then
-    result="dumb";
-  fi
-
-  case ${result} in
-    dumb) result="$(uname | tr '[:upper:]' '[:lower:]')";
-         ;;
-      *) ;;
-  esac
-
-  export RESULT="${result}";
-
-  return ${TRUE};
-}
-
-# txt: Retrieves the column width, from an environment variable.
-# txt: Returns 0/TRUE if the term width is specified via an environment variable; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the column width.
-# fun: TERM.retrieveTermWidthFromEnvVar
-# api: internal
-# use: if retrieveTermWidthFromEnvVar; then width=${RESULT}; fi
-function TERM.retrieveTermWidthFromEnvVar() {
-  local -i rescode=${FALSE};
-  if isNotEmpty "${DW_TERM_WIDTH}"; then
-    rescode=${TRUE};
-    export RESULT="${DW_TERM_WIDTH}";
-  fi
-
-  return ${rescode};
-}
-
+# fun: getTermWidth
+# api: dry-wit
 # txt: Retrieves the width of the term.
 # txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
-# fun: getTermWidth
 # use: if getTermWidth; then echo "term width -> ${RESULT}"; fi
 function getTermWidth() {
   local result;
@@ -66,11 +28,12 @@ function getTermWidth() {
   return ${rescode};
 }
 
+# fun: getTermWidthForTerm term
+# api: dry-wit
 # txt: Retrieves the width of the term.
+# opt: term: the TERM value.
 # txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
-# fun: getTermWidthForTerm term
-# opt: term: the TERM value.
 # use: if getTermWidthForTerm "${TERM}"; then ...; fi
 function getTermWidthForTerm() {
   local -i rescode;
@@ -105,6 +68,47 @@ function getTermWidthForTerm() {
 
   if isTrue ${rescode}; then
       export RESULT=${result};
+  fi
+
+  return ${rescode};
+}
+
+# fun: retrieveTERM
+# api: dry-wit
+# txt: Retrieves the TERM variable
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the TERM variable.
+# use: retrieveTERM;
+#      echo "TERM -> ${RESULT}";
+function retrieveTERM() {
+  local result="${TERM}";
+
+  if isEmpty "${result}"; then
+    result="dumb";
+  fi
+
+  case ${result} in
+    dumb) result="$(uname | tr '[:upper:]' '[:lower:]')";
+         ;;
+      *) ;;
+  esac
+
+  export RESULT="${result}";
+
+  return ${TRUE};
+}
+
+# fun: TERM.retrieveTermWidthFromEnvVar
+# api: internal
+# txt: Retrieves the column width, from an environment variable.
+# txt: Returns 0/TRUE if the term width is specified via an environment variable; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the column width.
+# use: if retrieveTermWidthFromEnvVar; then width=${RESULT}; fi
+function TERM.retrieveTermWidthFromEnvVar() {
+  local -i rescode=${FALSE};
+  if isNotEmpty "${DW_TERM_WIDTH}"; then
+    rescode=${TRUE};
+    export RESULT="${DW_TERM_WIDTH}";
   fi
 
   return ${rescode};

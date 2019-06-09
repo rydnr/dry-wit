@@ -1,0 +1,626 @@
+# mod: rabbitmq
+# api: dry-wit
+# txt: Functions useful when bootstrapping RabbitMQ servers.
+# txt: You might be interested in importing rabbitmq-cli as well, to inject processing of the required environment variables above.
+
+# env: BOOTSTRAPPED_FILE: The path of the file used for indicating whether the bootstrapping was completed.
+# env: LOCK_FILE: The path of the file used to lock the bootstrapping process.
+# env: RABBITMQ_NODENAME: The name of the RabbitMQ node.
+# env: ADMIN_PASSWORD: The password of the 'admin' user.
+
+# fun: addUser username password
+# api: dry-wit
+# txt: Adds a new RabbitMQ user.
+# txt: Returns 0/TRUE if the user was added; 1/FALSE otherwise.
+# opt: username: The username.
+# opt: password: The password.
+# use: if addUser "admin" "secret"; then echo "User admin added successfully"; fi
+function addUser() {
+    local _user="${1}";
+    local _password="${2}";
+    local -i _rescode;
+    local _log;
+
+    checkNotEmpty "user" "${_user}" 1;
+    checkNotEmpty "password" "${_password}" 2;
+
+    logTrace -n "Adding ${_user}";
+    rabbitmqctl -n ${RABBITMQ_NODENAME} add_user ${_user} "${_password}" > /dev/null 2>&1;
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+        logTraceResult SUCCESS "done";
+    else
+        logTraceResult FAILURE "failed";
+        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} add_user ${_user} "${_password}" 2>&1)";
+        logTrace "${_log}";
+    fi
+
+    return ${_rescode};
+}
+
+# fun: addVhost virtualHost
+# api: dry-wit
+# txt: Declares a virtual host.
+# opt: virtualHost: The virtual host.
+# txt: Returns 0/TRUE if the virtual host gets created successfully; 1/FALSE otherwise.
+# use: if ! addVhost "/"; then echo "Could not add vhost /"; fi
+function addVhost() {
+    local _vhost="${1}";
+    local -i _rescode;
+    local _log;
+
+    checkNotEmpty "vhost" "${_vhost}" 1;
+
+    logTrace -n "Adding virtual host ${_vhost}";
+
+    rabbitmqctl -n ${RABBITMQ_NODENAME} add_vhost "${_vhost}" > /dev/null 2>&1;
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+        logTraceResult SUCCESS "done";
+    else
+        logTraceResult FAILURE "failed";
+        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} add_vhost "${_vhost}" 2>&1;)";
+        logTrace "${_log}";
+    fi
+
+    return ${_rescode};
+}
+
+# fun: declareBdbinding source destinationType destination routingKey
+# api: dry-wit
+# txt: Declares a binding.
+# opt: source: The source.
+# opt: destinationType: The destination type.
+# opt: destination: The destination.
+# opt: routingKey: The routing key.
+# txt: Returns 0/TRUE if the binding gets created successfully; 1/FALSE othervise.
+# use: if declareBinding "my-exchange" "queue" "my-queue" "#"; then echo "binding created successfully"; fi
+function declareBinding() {
+  local _source="${1}";
+  local _destinationType="${2}";
+  local _destination="${3}";
+  local _routingKey="${4}";
+  local -i _rescode;
+  local _log;
+
+  checkNotEmpty "source" "${_source}" 1;
+  checkNotEmpty "destinationType" "${_destinationType}" 2;
+  checkNotEmpty "destination" "${_destination}" 3;
+  checkNotEmpty "routingKey" "${_routingKey}" 4;
+
+  logTrace -n "Declaring binding: source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey}";
+  rabbitmqadmin -N ${RABBITMQ_NODENAME}  -u admin -p ${ADMIN_PASSWORD} declare binding source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey} > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqadmin -N ${RABBITMQ_NODENAME}  -u admin -p ${ADMIN_PASSWORD} declare binding source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey} 2>&1)";
+    logTrace "${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: declareExchange name type durable internal args*
+# api: dry-wit
+# txt: Declares an exchange.
+# opt: name: The exchange name.
+# opt: type: The exchange type.
+# opt: durable: Whether the exchange is durable. Optional.
+# opt: internal: Whether the exchange is internal. Optional.
+# opt: args: Additional arguments. Optional.
+# txt: Returns 0/TRUE if the exchange gets created successfully; 1/FALSE otherwise.
+# use: if declareExchange "ex" "topic"; then echo "ex exchange created successfully"; fi
+function declareExchange() {
+  local _name="${1}";
+  local _type="${2}";
+  local _durable;
+  local _internal;
+  local _extra;
+  local -i _rescode;
+  local _log;
+  shift;
+  shift;
+  _durable="${1}";
+
+  if ! isEmpty "${_durable}"; then
+    shift;
+    _internal="${1}";
+    if ! isEmpty "${_internal}"; then
+      shift;
+      _extra="${@}";
+    fi
+  fi
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+  checkNotEmpty "type" "${_type}" 2;
+
+  if ! isEmpty "${_durable}"; then
+    _durable="durable=${_durable}";
+  fi
+
+  if ! isEmpty "${_internal}"; then
+    _internal="internal=${_internal}";
+  fi
+
+  logTrace -n "Declaring exchange name=${_name} type=${_type} ${_durable} ${_internal} ${_extra}";
+  rabbitmqadmin -N ${RABBITMQ_NODENAME}  -u admin -p ${ADMIN_PASSWORD} declare exchange name=${_name} type=${_type} ${_durable} ${_internal} ${_extra} > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqadmin -N ${RABBITMQ_NODENAME} -u admin -p ${ADMIN_PASSWORD} declare exchange name=${_name} type=${_type} ${_durable} ${_internal} ${_extra} 2>&1)";
+    logTrace "${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: declareQueue name durable
+# api: dry-wit
+# txt: Declares a queue.
+# opt: name: The queue name.
+# opt: durable: Whether it's durable or not.
+# txt: Returns 0/TRUE if the queue is created successfully; 1/FALSE otherwise.
+# use: if declareQueue "my-queue" "true"; then echo "Queue my-queue created successfully"; fi
+function declareQueue() {
+  local _name="${1}";
+  local _durable="${2}";
+  local -i _rescode=$?;
+  local _log;
+
+  checkNotEmpty "name" "${_name}" 1;
+  checkNotEmpty "durable" "${_durable}" 2;
+
+  logTrace -n "Declaring queue name=${_name} durable=${_durable}";
+  rabbitmqadmin -N ${RABBITMQ_NODENAME}  -u admin -p ${ADMIN_PASSWORD} declare queue name=${_name} durable=${_durable} > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqadmin -N ${RABBITMQ_NODENAME}  -u admin -p ${ADMIN_PASSWORD} declare queue name=${_name} durable=${_durable} 2>&1)";
+    logTrace "${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteUser user
+# api: dry-wit
+# txt: Deletes an user.
+# opt: user: The user.
+# txt: Returns 0/TRUE if the user gets deleted successfully; 1/FALSE otherwise.
+# use: if deleteUser "guest"; then echo "guest user deleted successfully"; fi
+function deleteUser() {
+    local _name="${1}";
+    local -i _rescode;
+    local _log;
+
+    checkNotEmpty "name" "${_name}" 1;
+
+    logTrace -n "Deleting user ${_name}";
+
+    rabbitmqctl -n ${RABBITMQ_NODENAME} delete_user ${_name} > /dev/null 2>&1;
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+        logTraceResult SUCCESS "done";
+    else
+        logTraceResult FAILURE "failed";
+        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} delete_user ${_name} 2>&1;)";
+        logTrace "${_log}";
+    fi
+
+    return ${_rescode};
+}
+
+# fun: enableRabbitmqManagement
+# api: dry-wti
+# txt: Enables the plugin-management mode.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# use: if ! enableRabbitmqManagement; then echo "Cannot enable plugin management mode"; fi
+function enableRabbitmqManagement() {
+    local -i _rescode;
+
+    rabbitmq-plugins -n ${RABBITMQ_NODENAME} --offline enable rabbitmq_management > /dev/null 2>&1;
+    _rescode=$?;
+
+    return ${_rescode};
+}
+
+# fun: isRabbitmqRunning
+# api: dry-wit
+# txt: Checks whether RabbitMQ is running.
+# txt: Returns 0/TRUE if it's running; 1/FALSE otherwise.
+# use: if ! isRabbitmqRunning; then echo "RabbitMQ is not running"; fi
+function isRabbitmqRunning() {
+    local -i _rescode;
+
+    #  rabbitmqctl status --offline > /dev/null
+    exec 6<>/dev/tcp/127.0.0.1/15672;
+    _rescode=$?;
+    exec 6>&- # close output connection
+    exec 6<&- # close input connection
+
+    return ${_rescode};
+}
+
+# fun: rabbitmq_migrate
+# api: dry-wit
+# txt: Migrates the RabbitMQ instance.
+# txt: Important: This function delegates the migration logic to an external function "rabbitmq_patch".
+# use: rabbitmq_migrate;
+function rabbitmq_migrate() {
+  local -i _initialized=${FALSE};
+  local -i _running=${FALSE};
+
+  if RABBITMQ.inForceMode; then
+    logDebug -n "Skipping bootstrap checks";
+    logDebugResult SUCCESS "done";
+  else
+    logDebug -n "Checking if the instance is already bootstrapped";
+    if RABBITMQ.alreadyBootstrapped; then
+      logDebugResult SUCCESS "already done";
+    else
+      logDebugResult SUCCESS "ok";
+
+      logDebug -n "Ensuring we can take exclusive control of the instance";
+      if RABBITMQ.acquireBootstrapLock; then
+        logDebugResult SUCCESS "ok";
+      else
+        logDebugResult FAILURE "failed";
+        exitWithErrorCode CANNOT_ACQUIRE_LOCK;
+      fi
+    fi
+  fi
+
+  logDebug -n "Checking if RabbitMQ is running";
+  if isRabbitmqRunning; then
+    logDebugResult SUCCESS "running";
+  else
+    logDebugResult FAILURE "stopped";
+    RABBITMQ.releaseBootstrapLockIfFailFast;
+    RABBITMQ.exitWithErrorCodeIfFailFast RABBITMQ_NOT_RUNNING;
+  fi
+
+  logDebug -n "Retrieving rabbitmqadmin"
+  if RABBITMQ.retrieveRabbitmqadmin http://127.0.0.1:15672/cli/rabbitmqadmin /usr/local/bin/rabbitmqadmin; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQ.releaseBootstrapLockIfFailFast;
+    RABBITMQ.exitWithErrorCodeIfFailFast CANNOT_RETRIEVE_RABBITMQADMIN;
+  fi
+
+  logDebug -n "Patching rabbitmqadmin"
+  if RABBITMQ.fixRabbitmqadmin /usr/local/bin/rabbitmqadmin; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQ.releaseBootstrapLockIfFail_fast;
+    RABBITMQ.exitWithErrorCodeIfFailFast CANNOT_FIX_RABBITMQADMIN;
+  fi
+
+  logDebug -n "Enabling plugin management";
+  if enableRabbitmqManagement; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    releaseBootstrapLockIfFailFast;
+    exitWithErrorCodeIfFailFast CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT;
+  fi
+
+  logDebug -n "Adding admin user";
+  if addUser admin ${ADMIN_PASSWORD}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    releaseBootstrapLockIfFail_fast;
+    exitWithErrorCodeIfFailFast CANNOT_ADD_ADMIN_USER;
+  fi
+
+  # Hook to implement!!!
+  rabbitmq_patch;
+
+  logDebug -n "Deleting the guest user";
+  if deleteUser guest; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult WARNING "failed";
+  fi
+
+  if ! RABBITMQ.inForceMode; then
+    logDebug -n "Marking the instance as bootstrapped";
+    if RABBITMQ.markAsBootstrapped; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+      RABBITMQ.releaseBootstrapLockIfFailFast;
+      RABBITMQ.exitWithErrorCodeIfFailFast CANNOT_MARK_AS_BOOTSTRAPPED;
+    fi
+
+    RABBITMQ.releaseBootstrapLock;
+  fi
+}
+
+# fun: RABBITMQ.acquireBootstrapLock
+# api: private
+# txt: Checks whether there's a concurrent bootstrap process.
+# txt: Returns 0/TRUE if a concurrent bootstrap process has not yet finished; 1/FALSE otherwise.
+# use: if RABBITMQ.acquireBootstrapLock; then ...; fi
+function RABBITMQ.acquireBootstrapLock() {
+    local -i _rescode;
+
+    if [ -e ${LOCK_FILE} ]; then
+        _rescode=${FALSE};
+    else
+        touch ${LOCK_FILE};
+        _rescode=${TRUE};
+    fi
+
+    return ${_rescode};
+}
+
+# fun: RABBITMQ.alreadyBootstrapped
+# api: private
+# txt: Checks whether the RabbitMQ instance is already bootstrapped.
+# txt: Returns 0/TRUE if the bootstrap has already done in the past; 1/FALSE otherwise.
+# use: if RABBITMQ.alreadyBootstrapped; then echo "Instance already bootstrapped"; fi
+function RABBITMQ.alreadyBootstrapped() {
+    local -i _rescode;
+
+    if [ -e ${BOOTSTRAPPED_FILE} ]; then
+        _rescode=${TRUE};
+    else
+        _rescode=${FALSE};
+    fi
+
+    return ${_rescode};
+}
+
+# fun: RABBITMQ.exitWithErrorCodeIfFailFast errorLabel
+# api: private
+# opt: errorLabel: The error label.
+# txt: Exits with an error code if FAIL_FAST flag is active; otherwise returns 0/TRUE.
+# use: RABBITMQ.exitWithErrorCodeIfFailFast CANNOT_ACQUIRE_LOCK
+function RABBITMQ.exitWithErrorCodeIfFailFast() {
+    local _label="${1}";
+    shift;
+    if RABBITMQ.inFailFastMode; then
+        exitWithErrorCode "${_label}" $@;
+    fi
+}
+
+# fun: RABBITMQ.fixRabbitmqadmin file
+# api: private
+# txt: Fixes rabbitmqadmin script.
+# opt: file: The rabbitmqadmin location.
+# txt: Returns 0/TRUE if the script was fixed; 1/FALSE otherwise.
+# use: if RABBITMQ.fixRabbitmqadmin /usr/sbin/rabbitmqadmin; then echo "/usr/sbin/rabbitmqadmin fixed"; fi
+function RABBITMQ.fixRabbitmqadmin() {
+    local _rabbitmqadmin="${1}";
+    local -i _rescode;
+
+    checkNotEmpty "rabbitmqadmin" "${_rabbitmqadmin}" 1;
+
+    chmod a+x "${_rabbitmqadmin}";
+    _rescode=$?;
+
+    if isTrue ${_rescode}; then
+        sed -i 's|#!/usr/bin/env python|#!/usr/bin/env python3|g' "${_rabbitmqadmin}";
+        _rescode=$?;
+    fi
+
+    return ${_rescode};
+}
+
+# fun: RABBITMQ.inFailFastMode
+# api: private
+# txt: Checks whether FAIL_FAST mode is active.
+# txt: Returns 0/TRUE if the script is running in fail-fast mode; 1/FALSE otherwise.
+# use: if RABBITMQ.inFailFastMode; then echo "Running in fail-fast mode"; fi
+function RABBITMQ.inFailFastMode() {
+    flagEnabled FAIL_FAST;
+}
+
+# fun: RABBITMQ.inForceMode
+# api: private
+# txt: Checks whether FORCE mode is active.
+# txt: Returns 0/TRUE if the script is running in forcing mode; 1/FALSE otherwise.
+# use: if RABBITMQ.inForceMode; then echo "Running in force mode"; fi
+function RABBITMQ.inForceMode() {
+  flagEnabled FORCE;
+}
+
+# fun: RABBITMQ.markAsBoostrapped
+# api: private
+# txt: Marks the RabbitMQ instance as already bootstrapped.
+# txt: Returns 0/TRUE if the bootstrap has been annotated successfully; 1/FALSE otherwise.
+# use: if RABBITMQ.markAsBootstrapped; then echo "Instance annotated as bootstrapped"; fi
+function RABBITMQ.markAsBootstrapped() {
+    local -i _rescode;
+
+    touch ${BOOTSTRAPPED_FILE};
+    _rescode=$?;
+
+    return ${_rescode};
+}
+
+# fun: RABBITMQ.releaseBootstrapLock
+# api: private
+# txt: Releases the bootstrap lock.
+# txt: Returns 0/TRUE if the lock can be released; 1/FALSE otherwise.
+# use: if RABBITMQ.releaseBootstrapLock; then echo "Error: Could not release bootstrap lock"; fi
+function RABBITMQ.releaseBootstrapLock() {
+  local -i _rescode;
+
+  if ! RABBITMQ.inForceMode; then
+    if [ -e ${LOCK_FILE} ]; then
+      _rescode=${TRUE};
+      rm -f ${LOCK_FILE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: RABBITMQ.releaseBootstrapLockIfFailFast
+# api: private
+# txt: Releases the lock file if FAIL_FAST flag is active.
+# use: RABBITMQ.releaseBootstrapLockIfFailFast;
+function RABBITMQ.releaseBootstrapLockIfFailFast() {
+    if RABBITMQ.inFailFastMode; then
+        RABBITMQ.releaseBootstrapLock;
+    fi
+}
+
+# fun: RABBITMQ.retrieveRabbitmqadmin url outputFile
+# api: private
+# txt: Retrieves the rabbitmqadmin script.
+# opt: url: The url of RabbitMQ CLI interface.
+# opt: outputFile: The output file.
+# txt: Returns 0/TRUE if the script was retrieved successfully; 1/FALSE otherwise.
+# use: if RABBITMQ.retrieveRabbitmqadmin /tmp/rabbitmqadmin; then ...; fi
+function RABBITMQ.retrieveRabbitmqadmin() {
+  local _url="${1}";
+  local _output="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "url" "${_url}" 1;
+  checkNotEmpty "output" "${_output}" 2;
+
+  wget -O "${_output}" "${_url}" 2> /dev/null
+  _rescode=$?;
+
+  return ${_rescode};
+}
+# fun: setPermissions virtualHost user configurePermissions writePermissions readPermissions
+# api: dry-wit
+# txt: Sets RabbitMQ permissions.
+# opt: virtualHost: The virtualhost.
+# opt: user: The user.
+# opt: configurePermissions: The configure permissions.
+# opt: writePermissions: The write permissions.
+# opt: readPermissions: The read permissions.
+# txt: Returns 0/TRUE if the permissions were set successfully; 1/FALSE otherwise.
+# use: if ! setPermissions / admin ".*" ".*" ".*"; then echo "Could not set permissions for admin"; fi
+function setPermissions() {
+  local _vhost="${1}";
+  local _user="${2}";
+  local _configure="${3}";
+  local _write="${4}";
+  local _read="${5}";
+  local -i _rescode;
+  local _log;
+
+  checkNotEmpty "vhost" "${_vhost}" 1;
+  checkNotEmpty "user" "${_user}" 2;
+  checkNotEmpty "configure" "${_configure}" 3;
+  checkNotEmpty "write" "${_write}" 4;
+  checkNotEmpty "read" "${_read}" 5;
+
+  logTrace -n "Setting permissions: vhost ${_vhost}, user ${_user}, configure ${_configure}, write ${_write}, read ${_read}";
+  rabbitmqctl -n ${RABBITMQ_NODENAME} set_permissions -p ${_vhost} ${_user} "${_configure}" "${_write}" "${_read}" > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} set_permissions -p ${_vhost} ${_user} ${_configure} ${_write} ${_read} 2>&1;)";
+    logTrace "${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: setPolicy name match body type
+# api: dry-wit
+# txt: Sets a policy.
+# opt: name: The policy name.
+# opt: match: The match.
+# opt: body: The policy body.
+# opt: type: The object type: which objects apply.
+# txt: Returns 0/TRUE if the policy gets created successfully; 1/FALSE otherwise.
+# use: if setPolicy "my-dlx" "^my-ex" '{"dead-letter-exchange":"my-dlx"}' "queues"; then echo "Policy created successfully"; fi
+function setPolicy() {
+  local _name="${1}";
+  local _match="${2}";
+  local _body="${3}";
+  local _objectType="${4}";
+  local -i _rescode;
+  local _log;
+
+  checkNotEmpty "name" "${_name}" 1;
+  checkNotEmpty "match" "${_match}" 2;
+  checkNotEmpty "body" "${_body}" 3;
+  checkNotEmpty "objectType" "${_objectType}" 4;
+
+  logTrace -n "Setting policy  ${_name} ${_match} ${_body} --apply-to ${_objectType}";
+  rabbitmqctl -n ${RABBITMQ_NODENAME} set_policy "${_name}" "${_match}" "${_body}" --apply-to "${_objectType}" > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} set_policy ${_name} ${_match} ${_body} --apply-to ${_objectType} 2>&1;)";
+    logTrace "${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: setUserTags user tags+
+# api: dry-wit
+# txt: Sets user tags.
+# opt: user: The user.
+# opt: tags: The tags.
+# txt: Returns 0/TRUE if the tags were set successfully; 1/FALSE otherwise.
+# use: if ! setUserTags admin Admin; then echo "Could not set Admin tag for admin user"; fi
+function setUserTags() {
+    local _user="${1}";
+    local _tags="${@}";
+    local -i _rescode;
+    local _log;
+
+    checkNotEmpty "user" "${_user}" 1;
+    checkNotEmpty "tags" "${_tags}" 2;
+
+    logTrace -n "Setting ${_user} tags: ${_tags}";
+    rabbitmqctl -n ${RABBITMQ_NODENAME} set_user_tags ${_user} ${_tags} > /dev/null 2>&1;
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+        logTraceResult SUCCESS "done";
+    else
+        logTraceResult FAILURE "failed";
+        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} set_user_tags ${_user} ${_tags} 2>&1;)";
+        logTrace "${_log}";
+    fi
+
+    return ${_rescode};
+}
+
+
+addError WGET_NOT_INSTALLED "wget is not installed";
+checkReq wget WGET_NOT_INSTALLED;
+addError CHMOD_NOT_AVAILABLE "chmod is not available";
+checkReq chmod CHMOD_NOT_AVAILABLE;
+addError RABBITMQCTL_NOT_AVAILABLE "rabbitmqctl is not available";
+checkReq rabbitmqctl RABBITMQCTL_NOT_AVAILABLE;
+
+addError BOOTSTRAPPED_FILE_ENV_VAR_IS_MANDATORY "BOOTSTRAPPED_FILE environment variable is mandatory";
+addError LOCK_FILE_ENV_VAR_IS_MANDATORY "LOCK_FILE environment variable is mandatory";
+addError CANNOT_ACQUIRE_LOCK "Cannot acquire lock";
+addError RABBITMQ_NOT_RUNNING "RabbitMQ is not running";
+addError CANNOT_RETRIEVE_RABBITMQADMIN "Cannot retrieve rabbitmqadmin";
+addError CANNOT_FIX_RABBITMQADMIN "Cannot patch rabbitmqadmin";
+addError CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT "Cannot enable plugin management";
+addError CANNOT_ADD_ADMIN_USER "Cannot add admin user";
+addError CANNOT_DELETE_GUEST_USER "Cannot delete guest user";
+#
