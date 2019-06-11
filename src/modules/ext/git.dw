@@ -1,0 +1,44 @@
+# mod: git
+# api: public
+# txt: git-related functions
+
+# fun: retrieveGitBranch
+# api: public
+# txt: Finds out the current branch.
+# txt: Returns 0/TRUE if the branch could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the branch.
+# use: if findOutCurrentBranch; then echo "The current branch is ${RESULT}"; fi
+function retrieveGitBranch() {
+  local -i _rescode;
+  local _result;
+
+  _result="$(git rev-parse --abbrev-ref HEAD)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveGitRepositoryUrl
+# api: public
+# txt: Finds out the URL of the git repository.
+# txt: Returns 0/TRUE if the url could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the repository url.
+# use: if findOutGitRepositoryUrl; then echo "The repository url is ${RESULT}"; fi
+function retrieveGitRepositoryUrl() {
+  local -i _rescode;
+  local _result;
+
+  _result="$(git config --get remote.origin.url)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+#

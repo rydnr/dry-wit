@@ -1,0 +1,1798 @@
+# mod: cli
+# api: public
+# txt: Functions to parse and check command-line arguments.
+
+# env: EXPECTS_ARGUMENT: A constant to represent that a flag expects an argument.
+declare -gx EXPECTS_ARGUMENT=${TRUE};
+# env: NO_ARGUMENT: A constant to represent that a flag doesn'n expect an argument.
+declare -gx NO_ARGUMENT=${FALSE};
+# env: SINGLE: A constant to represent a parameter only accepts a value.
+declare -gx SINGLE=${FALSE};
+#env: MULTIPLE: A constant to represent a parameter accepts multiple values.
+declare -gx MULTIPLE=${TRUE};
+
+# fun: addCommandLineFlag longName shortName description MANDATORY/OPTIONAL EXPECTS_ARGUMENT/NO_ARGUMENT defaultValue?
+# api: public
+# txt: Adds a command-line flag.
+# opt: longName: The long name of the flag.
+# opt: shortName: The short name of the flag.
+# opt: description: The flag description.
+# opt: MANDATORY/OPTIONAL: MANDATORY if the flag is mandatory; OPTIONAL otherwise.
+# opt: EXPECTS_ARGUMENT/NO_ARGUMENT: EXPECTS_ARGUMENT if the flag contains a value; NO_ARGUMENT otherwise.
+# opt: defaultValue: The default value (if the flag is optional).
+# txt: Returns 0/TRUE if the flag is added successfully; 1/FALSE otherwise.
+# use: if addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT "/tmp/file.log"; then
+# use:   echo "-f|--file flag added"
+# use: fi
+function addCommandLineFlag() {
+  local _longName="${1}";
+  local _shortName="${2}";
+  local _description="${3}";
+  local _mandatory="${4}";
+  local _expectsArgument="${5}";
+  local _defaultValue="${6}";
+  local -i _rescode=${TRUE};
+  local _flagKey;
+  local _longNameInUpperCase;
+
+  checkNotEmpty "longName" "${_longName}" 1;
+  checkNotEmpty "shortName" "${_shortName}" 2;
+  checkNotEmpty "description" "${_description}" 3;
+  checkOneOf "mandatory" "${_mandatory}" "MANDATORY OPTIONAL" 4;
+  checkOneOf "expectsArgument" "${_expectsArgument}" "EXPECTS_ARGUMENT NO_ARGUMENT" 5;
+
+  if removePrefix "${_longName}" "-*"; then
+    _longName="${RESULT}";
+  fi
+  if removePrefix "${_shortName}" "-*"; then
+    _shortName="${RESULT}";
+  fi
+
+  CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
+  _flagKey="${RESULT}";
+
+  if   isEmpty "${__DW_CLI_FLAG_KEYS[*]}" \
+    || arrayDoesNotContain "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"; then
+    __DW_CLI_FLAG_KEYS[${#__DW_CLI_FLAG_KEYS[@]}]="${_flagKey}";
+    __DW_CLI_FLAG_SHORT_NAMES[${_longName}]="${_shortName}";
+    __DW_CLI_FLAG_LONG_NAMES[${_shortName}]="${_longName}";
+    __DW_CLI_FLAG_DESCRIPTIONS[${_flagKey}]="${_description}";
+    normalizeUppercase "${_longName}";
+    _longNameInUpperCase="${RESULT}";
+    if areEqual "${_mandatory}" "MANDATORY"; then
+      addError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} is mandatory";
+    fi
+    __DW_CLI_MANDATORY_FLAGS[${_flagKey}]=${_mandatory};
+    if areEqual "${_expectsArgument}" "EXPECTS_ARGUMENT"; then
+      addError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} expects an argument";
+    fi
+    __DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}]="${_expectsArgument}";
+    __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES[${_flagKey}]="${_defaultValue}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: addCommandLineParameter paramName paramDescription MANDATORY/OPTIONAL SINGLE/MULTIPLE
+# api: public
+# txt: Declares the script expects another command-line parameter.
+# opt: paramName: The parameter name.
+# opt: paramDescription: The parameter description.
+# opt: MANDATORY/OPTIONAL: MANDATORY if the parameter is mandatory; OPTIONAL otherwise.
+# opt: SINGLE/MULTIPLE: SINGLE if the parameter can not be repeated; MULTIPLE otherwise.
+# txt: Returns 0/TRUE always.
+# use: addCommandLineParameter "project" "The project to process" MANDATORY SINGLE;
+function addCommandLineParameter() {
+  local _name="${1}";
+  local _description="${2}";
+  local _mandatoryOrOptional="${3}";
+  local _singleOrMultiple="${4}";
+
+  checkNotEmpty "name" "${_name}" 1;
+  checkNotEmpty "description" "${_description}" 2;
+  checkOneOf "mandatory/optional" "${_mandatoryOrOptional}" "MANDATORY OPTIONAL" 3;
+  checkOneOf "single/multiple" "${_singleOrMultiple}" "SINGLE MULTIPLE" 4;
+
+  if    isEmpty "${__DW_CLI_PARAMETER_NAMES[*]}" \
+     || arrayDoesNotContain "${__DW_CLI_PARAMETER_NAMES[*]}" "${_name}"; then
+    __DW_CLI_PARAMETER_NAMES[${#__DW_CLI_PARAMETER_NAMES[@]}]="${_name}";
+    __DW_CLI_PARAMETER_DESCRIPTIONS["${_name}"]="${_description}";
+    __DW_CLI_MANDATORY_PARAMETERS["${_name}"]="${_mandatoryOrOptional}";
+    __DW_CLI_SINGLE_PARAMETERS["${_name}"]="${_singleOrMultiple}";
+  fi
+
+  return ${TRUE};
+}
+
+# fun: flagEnabled flagName
+# api: public
+# txt: Checks whether a given flag is enabled.
+# opt: flagName: the name of the flag variable.
+# txt: Returns 0/TRUE if the flag is enabled, 1/FALSE otherwise.
+# use: if flagEnabled MY_FLAG; then ...
+function flagEnabled() {
+    local _flagVar="${1}";
+    local _flagVal;
+    local -i rescode;
+
+    checkNotEmpty "flagVar" "${_flagVar}" 1;
+
+    evalVar "${_flagVar}";
+    _flagVal="${RESULT}";
+    if    areEqual "${_flagVal}" "${TRUE}" \
+            || areEqual "${_flagVal}" "TRUE"; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+
+    return ${rescode};
+}
+
+# fun: removeCommandLineFlag shortOrLongName
+# api: public
+# txt: Removes a command-line flag.
+# opt: shortOrLongName: The flag (either short or long name).
+# txt: Returns 0/TRUE if the flag is removed successfully; 1/FALSE otherwise.
+# use: if removeCommandLineFlag "--file"; then
+#        echo "--file flag removed";
+#      fi
+function removeCommandLineFlag() {
+  local _flag="${1}";
+  local _longName;
+  local _shortName;
+  local -i _rescode;
+  local _flagKey;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.retrieveCommandLineFlagKey "${_flag}"; then
+    _flagKey="${RESULT}";
+
+    if   isNotEmpty "${_flagKey}" \
+      && isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}" \
+      && arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"; then
+      __DW_CLI_FLAG_KEYS=( "${__DW_CLI_FLAG_KEYS[@]/${_flagKey}}" );
+      CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
+      _longName="${RESULT}";
+      CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
+      _shortName="${RESULT}";
+      unset __DW_CLI_FLAG_SHORT_NAMES[${_longName}];
+      unset __DW_CLI_FLAG_LONG_NAMES[${_shortName}];
+      unset __DW_CLI_FLAG_DESCRIPTIONS[${_flagKey}];
+      unset __DW_CLI_MANDATORY_FLAGS[${_flagKey}];
+      unset __DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}];
+      unset __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES[${_flagKey}];
+    fi
+
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: setScriptCopyright copyrightDescription
+# api: public
+# txt: Sets the script copyright message.
+# opt: copyrightDescription: The copyright message.
+# txt: Returns 0/TRUE always.
+# use: setScriptCopyright "2018-today Acme Inc.";
+function setScriptCopyright() {
+  local _copyright="${1}";
+
+  checkNotEmpty "copyright" "${_copyright}" 1;
+
+  __DW_CLI_SCRIPT_COPYRIGHT="${_copyright}";
+
+  return ${TRUE};
+}
+
+# fun: setScriptDescription description
+# api: public
+# txt: Defines the script description.
+# opt: description: The description.
+# txt: Returns 0/TRUE in any case.
+# use: setScriptDescription "This script calculates fibonacci sequence items"
+function setScriptDescription() {
+    local _description="${1}";
+
+    checkNotEmpty "description" "${_description}" 1;
+
+    __DW_CLI_SCRIPT_DESCRIPTION="${_description}";
+}
+
+# fun: setScriptLicenseSummary licenseDescription
+# api: public
+# txt: Sets the script license summary.
+# opt: licenseDescription: The license message.
+# txt: Returns 0/TRUE always.
+# use: setScriptLicenseSummary "Distributed this under the GNU General Public License v3.";
+function setScriptLicenseSummary() {
+  local _license="${1}";
+
+  checkNotEmpty "license" "${_license}" 1;
+
+  __DW_CLI_SCRIPT_LICENSE_SUMMARY="${_license}";
+
+  return ${TRUE};
+}
+
+# fun: usage
+# api: private
+# txt: Prints the usage description.
+# txt: Returns 0/TRUE always.
+# use: usage
+function usage() {
+  CLI.commandLineFlagsUsage
+  if ! CLI.commandLineParametersUsage; then
+    echo;
+  fi
+  CLI.scriptCopyrightUsage
+  CLI.scriptLicenseSummaryUsage;
+  if ! CLI.scriptDescriptionUsage; then
+    echo;
+  fi
+  echo "Where:"
+  CLI.commandLineFlagsDetailedUsage
+  CLI.commandLineParametersDetailedUsage
+}
+
+# fun: checkInput arguments
+# api: private
+# txt: Checks the command-line arguments.
+# opt: arguments: The command-line arguments.
+# txt: Returns 0/TRUE if the command-line arguments were checked successfully; 1/FALSE otherwise.
+# use: if checkInput *@; then ... fi
+function checkInput() {
+    local _flags=$(CLI.extractFlags $@);
+    local _flag;
+    local -a _flagsChecked=();
+    local _oldIFS="${IFS}";
+
+    # Flags
+    IFS="${DWIFS}";
+    for _flag in ${_flags}; do
+        IFS="${_oldIFS}";
+        _flagCount=$((_flagCount+1));
+        shift;
+
+        CLI.checkFlag "${_flag}" $@;
+        _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
+    done
+    IFS="${_oldIFS}";
+
+    CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[*]}";
+
+    CLI.checkCommandLineParameters $@;
+
+    CLI.checkEnvironmentVariables;
+}
+
+# fun: parseInput arguments
+# api: private
+# txt: Parses the command-line arguments.
+# opt: arguments: The command-line arguments.
+# txt: Returns 0/TRUE if the command-line arguments were parsed successfully; 1/FALSE otherwise.
+# use: parseInput *@
+function parseInput() {
+    local _flags=$(CLI.extractFlags $@);
+    local _oldIFS="${IFS}";
+    local -i _i;
+    local -a _providedFlags=();
+    local _flag;
+
+    # Flags
+    IFS="${DWIFS}";
+    for _flag in ${_flags}; do
+        IFS="${_oldIFS}";
+        shift;
+        _providedFlags[${#_providedFlags[@]}]="${_flag}";
+
+        CLI.parseFlag "${_flag}" ${@};
+        _shifts=$?;
+        IFS="${DWIFS}";
+        for _i in $(seq 1 ${_shifts}); do
+            IFS="${_oldIFS}";
+            shift;
+        done
+    done
+    IFS="${_oldIFS}";
+
+    CLI.parseNotProvidedFlags "${_providedFlags[*]}";
+
+    CLI.parseCommandLineParameters ${@};
+}
+
+# fun: dw_parse_debug_cli_flag
+# api: private
+# txt: Callback function when the user includes the debug (-v|--debug) flag.
+# txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
+function dw_parse_debug_cli_flag() {
+    setDebugEnabled;
+}
+
+# fun: dw_parse_trace_cli_flag
+# api: private
+# txt: Callback function when the user includes the trace (-vv|--trace) flag.
+# txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
+function dw_parse_trace_cli_flag() {
+    setTraceEnabled;
+}
+
+# fun: dw_parse_quiet_cli_flag
+# api: private
+# txt: Callback function when the user includes the quiet (-q|--quiet) flag.
+# txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
+function dw_parse_quiet_cli_flag() {
+    export QUIET=${TRUE};
+}
+
+# fun: dw_parse_help_cli_flag
+# api: private
+# txt: Callback function when the user includes the help (-h|--help) flag.
+# txt: It's based on a naming convention: dw_check_[flag]_cli_flag
+function dw_parse_help_cli_flag() {
+    printHelp;
+}
+
+# fun: CLI.extractFlags cliArguments
+# api: private
+# txt: Extracts the flags from the arguments.
+# txt: Prints the flags to stdout.
+# opt: cliArguments: The arguments to process.
+# use: local _myFlags=$(CLI.extractFlags $*);
+function CLI.extractFlags() {
+  echo " $@" \
+    | awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' \
+    | awk -F" " '{print $1;}'
+}
+
+# fun: CLI.extractFlagValue flagName cliArguments
+# api: private
+# txt: Extracts the flag value for the arguments.
+# txt: Prints the flag value to stdout.
+# opt: flagName: the name of the flag.
+# opt: cliArguments: The arguments to process.
+# use: local _Ext=$(CLI.extractFlagValue "ext" $*);
+function CLI.extractFlagValue() {
+  local _flag=${1};
+  shift;
+  echo " $@" \
+    | awk -F" -" '{printf("-"); for (i=2; i<=NF; i++){if(i%2 == 1) {printf("-");}; printf("%s \n", $i);}}' \
+    | grep -e "^${_flag} " \
+    | awk -v f="${_flag}" '{printf("echo \"%s\" | sed -e \"s_^%s __g\"\n", $2, f);}' \
+    | sh;
+}
+
+# fun: CLI.retrieveCommandLineFlagShortNameForLongName longName
+# api: private
+# txt: Retrieves the short format of the flag whose long name is provided.
+# opt: longName: The long name of the flag.
+# txt: Returns 0/TRUE if the long name is found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the short name of the flag.
+# use: if CLI.retrieveCommandLineFlagShortNameForLongName "file"; then
+#        echo "Short name of 'file' is ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagShortNameForLongName() {
+  local _longName="${1}";
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "longName" "${_longName}" 1;
+
+  _result="${__DW_CLI_FLAG_SHORT_NAMES[${_longName}]}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.isCommandLineFlagInLongFormat flag
+# api: private
+# txt: Retrieves whether given flag is in long format.
+# opt: flag: the flag.
+# txt: Returns 0/TRUE if the flag is in long format; 1/FALSE otherwise.
+# use: if CLI.isCommandLineFlagInLongFormat "${flag}"; then
+#        echo "Flag ${flag} is in long format";
+#      fi
+function CLI.isCommandLineFlagInLongFormat() {
+  local _flag="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if areEqual "${_flag}" "${_flag#--}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineFlagLongNameForShortName shortName
+# api: private
+# txt: Retrieves the short format of the flag whose long name is provided.
+# opt: shortName: The short name of the flag.
+# txt: Returns 0/TRUE if the short name is found; 1/FALSE otherwise.
+# use: if CLI.retrieveCommandLineFlagLongNameForShortName "f"; then
+#        echo "Long name of 'f' is ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagLongNameForShortName() {
+  local _shortName="${1}";
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "shortName" "${_shortName}" 1;
+
+  _result="${__DW_CLI_FLAG_LONG_NAMES[${_shortName}]}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.isCommandLineFlagInShortFormat flag
+# api: private
+# txt: Retrieves whether given flag is in short format.
+# opt: flag: The flag.
+# txt: Returns 0/TRUE if the flag is in short format; 1/FALSE otherwise.
+# use: if CLI.isCommandLineFlagInShortFormat "${flag}"; then
+#        echo "Flag ${flag} is in short format";
+#      fi
+function CLI.isCommandLineFlagInShortFormat() {
+  local _flag="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if areEqual "${_flag}" "${_flag#-}" || CLI.isCommandLineFlagInLongFormat "${_flag}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.checkFlag flag
+# api: private
+# txt: Performs some checks on given flag.
+# opt: flag: The flag to check.
+# txt: It exits the script if the flag is unknown; otherwise returns 0/TRUE.
+# use: CLI.checkFlag "-f";
+function CLI.checkFlag() {
+  local _flag="${1}";
+  shift;
+  local _flagKey;
+  local _shortName;
+  local _longName;
+  local _continue=${TRUE};
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  case ${_flag} in
+    --)
+      shift;
+      _continue=${FALSE};
+      ;;
+  esac
+
+  if isTrue ${_continue}; then
+    if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
+      _longName="${RESULT}";
+    else
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+    fi
+
+    if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
+      _shortName="${RESULT}";
+    else
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+    fi
+
+    CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
+    _flagKey="${RESULT}";
+
+    if arrayDoesNotContain "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"; then
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+    fi
+
+    CLI.checkCommandLineFlag "${_flagKey}" "${_longName}" $@;
+  fi
+}
+
+# fun: CLI.retrieveCommandLineFlagLongName flag
+# api: private
+# txt: Retrieves the long name of a flag.
+# opt: flag: The flag.
+# txt: Returns 0/TRUE if the long name was retrieved; 1/FALSE otherwise.
+# txt: If the script returns 0/TRUE, the variable RESULT will contain the long name of the flag.
+# use: if CLI.retrieveCommandLineFlagLongName "-f"; then
+#        echo "long name: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagLongName() {
+  local _flag="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.isCommandLineFlagInLongFormat "${_flag}"; then
+    _result="${_flag#--}";
+    _rescode=${TRUE};
+  elif CLI.isCommandLineFlagInShortFormat "${_flag}" && CLI.retrieveCommandLineFlagLongNameForShortName "${_flag#-}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineShortName flag
+# api: private
+# txt: Retrieves the short name of a flag.
+# opt: flag: The flag.
+# txt: Returns 0/TRUE if the short name was retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, then the variable RESULT contains the short name of the flag.
+# use: if CLI.retrieveCommandLineShortName "--file"; then
+#        echo "short name: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagShortName() {
+  local _flag="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.isCommandLineFlagInLongFormat "${_flag}" && CLI.retrieveCommandLineFlagShortNameForLongName "${_flag#--}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  elif CLI.isCommandLineFlagInShortFormat "${_flag}"; then
+    _result="${_flag#-}";
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.checkCommandLineFlag flagKey
+# api: private
+# txt: Checks a command line flag.
+# opt: flagKey: The key of the flag.
+# use: CLI.checkCommandLineFlag "${_flagKey}";
+function CLI.checkCommandLineFlag() {
+  local _flagKey="${1}";
+  local _longName="${2}";
+  shift;
+  shift;
+  local _argument;
+  local _longNameInUpperCase;
+  local -i _functionDefined;
+  local -i _mandatory;
+
+  checkNotEmpty "flagKey" "${_flagKey}" 1;
+  checkNotEmpty "longName" "${_longName}" 2;
+
+  if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+    _functionDefined=${TRUE};
+  fi
+
+  if CLI.isCommandLineFlagMandatory "${_flagKey}"; then
+    _mandatory=${TRUE};
+  fi
+
+  if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
+    _argument="${1}";
+    shift;
+    toUpper "${_longName}";
+    _longNameInUpperCase="${RESULT}";
+    if isTrue ${_mandatory} && isEmpty "${_argument}"; then
+      exitWithError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} flag expects an argument";
+    fi
+    if isTrue ${_functionDefined}; then
+      "dw_check_${_longName}_cli_flag" "${_argument}";
+    fi
+  elif isTrue ${_functionDefined}; then
+    "dw_check_${_longName}_cli_flag";
+  fi
+}
+
+# fun: CLI.checkForMissingMandatoryCommandLineFlags flags
+# api: private
+# txt: Checks for mandatory command line flags that are declared but not provided.
+# opt: flags: The flags provided.
+# use: CLI.checkForMissingMandatoryCommandLineFlags "-f --file -v -vv";
+function CLI.checkForMissingMandatoryCommandLineFlags() {
+  local _flagsChecked="$@";
+  local _key;
+  local _longName;
+  local _longNameInUpperCase;
+  local _oldIFS="${IFS}";
+
+  if isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}"; then
+    IFS="${DWIFS}";
+    for _key in ${__DW_CLI_FLAG_KEYS[*]}; do
+      IFS="${_oldIFS}";
+      CLI.retrieveCommandLineFlagLongNameFromKey "${_key}";
+      _longName="${RESULT}";
+      toUpper "${_longName}";
+      _longNameInUpperCase="${RESULT}";
+      if isEmpty "${_flagsChecked}" || ! CLI.isCommandLineFlagAlreadyChecked "${_flagsChecked}" "${_key}"; then
+        if CLI.isCommandLineFlagMandatory "${_key}"; then
+          exitWithError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} flag is mandatory";
+        fi
+      fi
+      if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+        "dw_check_${_longName}_cli_flag";
+      fi
+    done
+    IFS="${_oldIFS}";
+  fi
+}
+
+# fun: CLI.isCommandLineFlagAlreadyChecked alreadyCheckedFlags flagKey
+# api: private
+# txt: Checks whether the flag has been already checked.
+# opt: alreadyCheckedFlags: The already-checked flags.
+# opt: flagKey: The flag key to check.
+# txt: Returns 0/TRUE if the flag has been checked; 1/FALSE otherwise.
+# use: if CLI.isCommandLineFlagAlreadyChecked "-f -v -h" "${flagKey}"; then
+#        echo "${flagKey} already checked";
+#      fi
+function CLI.isCommandLineFlagAlreadyChecked() {
+  local _flagsAlreadyChecked="${1}";
+  local _flagKey="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "flagsAlreadyChecked" "${_flagsAlreadyChecked}" 1;
+  checkNotEmpty "flagKey" "${_flagKey}" 2;
+
+  CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
+  _longName="--${RESULT}";
+  CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
+  _shortName="-${RESULT}";
+
+  if    arrayContains "${_flagsAlreadyChecked}" "${_longName}" \
+     || arrayContains "${_flagsAlreadyChecked}" "${_shortName}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.checkCommandLineParameters parameter*
+# api: private
+# txt: Checks the command-line parameters.
+# opt: parameter: The parameters provided.
+# txt: If the parameter checks fail, exits; otherwise returns 0/TRUE.
+# use: CLI.checkCommandLineParameters "/tmp/1.txt" "http://www.example.com";
+function CLI.checkCommandLineParameters() {
+  local _parameterName;
+  local _parameterValue;
+  local _parameterNameInUpperCase;
+  local -i _callbackDefined;
+  local -i _mandatory;
+  local -i _multiple;
+
+  # Parameters
+  IFS="${DWIFS}";
+  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
+    IFS="${_oldIFS}";
+    _parameterValue="${1}";
+    shift;
+    if CLI.isCommandLineParameterMandatory "${_parameterName}"; then
+      _mandatory=${TRUE};
+    else
+      _mandatory=${FALSE};
+    fi
+    if isFunctionDefined "dw_check_${_parameterName}_cli_parameter"; then
+      _callbackDefined=${TRUE};
+    else
+      _callbackDefined=${FALSE};
+    fi
+    if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
+      _multiple=${TRUE};
+    else
+      _multiple=${FALSE};
+    fi
+    if isEmpty "${_parameterValue}" && isTrue ${_mandatory}; then
+      toUpper "${_parameterName}";
+      _parameterNameInUpperCase="${RESULT}";
+      exitWithError "${_parameterNameInUpperCase}_IS_MANDATORY" "${_parameterName} is mandatory";
+    fi
+    if isTrue ${_callbackDefined}; then
+      if isTrue ${_multiple}; then
+        "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}" ${@};
+      else
+        "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}";
+      fi
+    fi
+  done
+  IFS="${_oldIFS}";
+}
+
+# fun: CLI.checkEnvironmentVariables
+# api: private
+# txt: Checks the environment variables.
+# txt: If the environment variables checks fail, exits; otherwise returns 0/TRUE.
+# use: CLI.checkEnvironmentVariables;
+function CLI.checkEnvironmentVariables() {
+  local _envVars;
+  local -i _callbackDefined;
+  local _envVarName;
+  local _envVarValue;
+  local _envVarNameInLowerCase;
+  local _oldIFS="${IFS}";
+
+  retrieveCustomEnvironmentVariables;
+  _envVars="${RESULT}";
+
+  IFS="${DWIFS}";
+  for _envVarName in ${_envVars}; do
+    IFS="${_oldIFS}";
+
+    if isEnvVarMandatory "${_envVarName}"; then
+      evalVar "${_envVarName}";
+      _envVarValue="${RESULT}";
+      if isEmpty "${_envVarValue}"; then
+        exitWithError "${_envVarName}_IS_MANDATORY" "${_envVarName} environment variable is mandatory";
+      fi
+    fi
+
+    toLower "${_envVarName}";
+    _envVarNameInLowerCase="${RESULT}";
+    if isFunctionDefined "dw_check_${_envVarNameInLowerCase}_cli_envvar"; then
+      _callbackDefined=${TRUE};
+    else
+      _callbackDefined=${FALSE};
+    fi
+    if isTrue ${_callbackDefined}; then
+      "dw_check_${_envVarNameInLowerCase}_cli_envvar" "${_envVar}"
+    fi
+  done
+  IFS="${_oldIFS}";
+}
+
+# fun: CLI.isFlagDefined flagKey
+# api: private
+# txt: Checks whether given flag is defined.
+# opt: flagKey: The flag key.
+# txt: Returns 0/TRUE if the flag is defined; 1/FALSE otherwise.
+# use: if CLI.isFlagDefined "f|file"; then
+#        echo "f/file is defined";
+#      fi
+function CLI.isFlagDefined() {
+  local _flagKey="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "flagKey" "${_flagKey}" 1;
+
+  arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: CLI.buildNameOfTheCallbackFunctionToParseFlag longName
+# api: private
+# txt: Builds the name of the callback function used when parsing a flag.
+# opt: longName: The long name of the flag.
+# txt: RESULT will contain the name of the callback function.
+# use: CLI.buildNameOfTheCallbackFunctionToParseFlag "file";
+#      echo "callback function: ${RESULT}";
+function CLI.buildNameOfTheCallbackFunctionToParseFlag() {
+  local _longName="${1}";
+
+  checkNotEmpty "longName" "${_longName}" 1;
+
+  export RESULT="dw_parse_${_longName}_cli_flag";
+}
+
+# fun: CLI.parseCallbackDefinedForFlag longName
+# api: private
+# txt: Checks whether the callback function to parse given flag (in its long-name version) exists.
+# opt: longName: The long name of the flag.
+# txt: Returns 0/TRUE if the callback function exists; 1/FALSE otherwise.
+# use: if CLI.parseCallbackDefinedForFlag "file"; then
+#        echo "The callback function to parse 'file' flag exists";
+#      fi
+function CLI.parseCallbackDefinedForFlag() {
+  local _longName="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "longName" "${_longName}" 1;
+
+  CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
+  isFunctionDefined "${RESULT}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: CLI.parseFlag flag remainingArguments
+# api: private
+# txt: Parses given flag.
+# opt: flag: The flag to parse.
+# opt: remainingArguments: The rest of the command-line flags and parameters.
+# txt: Returns the number of parameters to shift.
+# use: CLI.parseFlag "-f" $@;
+#      echo "Must shift $?";
+function CLI.parseFlag() {
+  local _flag="${1}";
+  shift;
+  local -i _result=0;
+  local _flagCount;
+  local _longName;
+  local _shortName;
+  local _flagKey;
+  local _callbackFunction;
+  local -i _continue=${TRUE};
+
+  checkNotEmpty "${_flag}" "flag" 1;
+
+  _flagCount=$((_flagCount+1));
+  case ${_flag} in
+    --)
+      _continue=${FALSE};
+      ;;
+  esac
+
+  if isTrue ${_continue}; then
+    if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
+      _longName="${RESULT}";
+    else
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+    fi
+
+    if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
+      _shortName="${RESULT}";
+    else
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+    fi
+
+    CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
+    _flagKey="${RESULT}";
+
+    if CLI.isFlagDefined "${_flagKey}"; then
+      if CLI.parseCallbackDefinedForFlag "${_longName}"; then
+        CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
+        _callbackFunction="${RESULT}";
+        if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
+          _argument="${1}";
+          _result=$((_result+1));
+          "${_callbackFunction}" "${_argument}";
+        else
+          "${_callbackFunction}";
+        fi
+      fi
+    else
+      exitWithError INVALID_OPTION "Unexpected flag: ${_flag}";
+    fi
+  fi
+
+  return ${_result};
+}
+
+# fun: CLI.retrieveFlagKey flag
+# api: private
+# txt: Retrieves the command-line flag key from given flag representation (either long or short).
+# opt: flag: The flag.
+# txt: Returns 0/TRUE if the flag key was found; 1/FALSE otherwise.
+#      If the function returs 0/TRUE, the variable RESULT contains the flag key.
+# use: if CLI.retrieveFlagKey "-f"; then
+#        echo "flag key: ${RESULT}";
+#      fi
+function CLI.retrieveFlagKey() {
+  local _flag="${1}";
+  local -i _rescode;
+  local _longName;
+  local _shortName;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
+    _longName="${RESULT}";
+    if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
+      _shortName="${RESULT}";
+      CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
+      # implicit RESULT
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.parseNotProvidedFlags providedFlags
+# api: private
+# txt: Performs the parse step for any optional flag not provided.
+# opt: providedFlags: The provided flags.
+# txt: Returns 0/TRUE if the process succeeds; 1/FALSE otherwise.
+# use: if CLI.parseNotProvidedFlags "-f -v"; then
+#        echo "Parsing not provided flags succeeded";
+#      fi
+function CLI.parseNotProvidedFlags() {
+  local _providedFlags="${1}";
+  local -a _notProvidedFlags=();
+  local _flag;
+  local _providedFlag;
+  local _longName;
+  local _upcasedLongName;
+  local _flagKey;
+  local -i _rescode;
+  local _oldIFS="${IFS}";
+
+  IFS="${DWIFS}";
+  for _flagKey in ${__DW_CLI_FLAG_KEYS[*]}; do
+    _provided=${FALSE};
+    for _providedFlag in ${_providedFlags}; do
+      IFS="${_oldIFS}";
+      CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
+      _longName="${RESULT}";
+      CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
+      _shortName="${RESULT}";
+      if    areEqual "${_providedFlag}" "${_longName}" \
+         || areEqual "${_providedFlag}" "${_shortName}"; then
+        _provided=${TRUE};
+        break;
+      fi
+    done
+
+    IFS="${_oldIFS}";
+    if isFalse ${_provided}; then
+      if CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
+        _defaultValueDefined=${TRUE};
+        _defaultValue="${RESULT}";
+      fi
+      if isTrue ${_defaultValueDefined}; then
+        if CLI.parseCallbackDefinedForFlag "${_longName}"; then
+          CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
+          _callbackFunction="${RESULT}";
+          "${_callbackFunction}" "${_defaultValue}";
+        else
+          normalizeUppercase "${_longName}";
+          _upcasedLongName="${RESULT}";
+          export ${_upcasedLongName}="${_defaultValue}";
+        fi
+      fi
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveDefaultValueForOptionalFlag flagKey
+# api: private
+# txt: Retrieves the default value for given optional flag.
+# opt: flagKey: The flag key.
+# txt: Returns 0/TRUE if the default value was defined; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the default value, if it's defined.
+# use: if CLI.retrieveDefalutValueForOptionalFlag "f|file"; then
+#        echo "f|file -> ${RESULT}";
+#      fi
+function CLI.retrieveDefaultValueForOptionalFlag() {
+  local _flagKey="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "flagKey" "${_flagKey}" 1;
+
+  _result="${__DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES[${_flagKey}]}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.parseCommandLineParameters parameter*
+# api: private
+# txt: Parses the command-line parameters.
+# opt: parameter: The CLI parameters.
+# use: CLI.parseCommandLineParameters "/tmp/1.txt" "http://www.example.com"
+function CLI.parseCommandLineParameters() {
+  local _parameterName;
+  local _parameterValue;
+  local _oldIFS="${IFS}";
+
+  IFS="${DWIFS}";
+  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
+    IFS="${_oldIFS}";
+    if isFunctionDefined "dw_parse_${_parameterName}_cli_parameter"; then
+      if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
+        "dw_parse_${_parameterName}_cli_parameter" ${@};
+      else
+        _parameterValue="${1}";
+        shift;
+        "dw_parse_${_parameterName}_cli_parameter" "${_parameterValue}";
+      fi
+    else
+      toUpper "${_parameterName}";
+      _parameterNameInUpperCase="${RESULT}";
+      exitWithError "MISSING_PARSE_FUNCTION_FOR_PARAMETER_${_parameterNameInUpperCase}" "dw_parse_${_parameterName}_cli_parameter function is not defined";
+    fi
+  done
+  IFS="${_oldIFS}";
+}
+
+# fun: CLI.buildCommandLineFlagKey shortName longName
+# api: private
+# txt: Builds a key for given command-line flag.
+# opt: shortName: The short name of the flag.
+# opt: longName: The long name of the flag.
+# txt: Returns 0/TRUE if the key was built successfully; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the key.
+# use: if CLI.buildCommandLineFlagKey "f" "file"; then
+#        echo "key: ${RESULT}";
+#      fi
+function CLI.buildCommandLineFlagKey() {
+  local _shortName="${1}";
+  local _longName="${2}";
+  local -i _rescode=${TRUE};
+
+  checkNotEmpty "shortName" "${_shortName}" 1;
+  checkNotEmpty "longName" "${_longName}" 2;
+
+  export RESULT="${_shortName}|${_longName}";
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineFlagKeyFromShortName shortName
+# txt: Retrieves the key of a command-line flag from its short name.
+# opt: shortName: The short name of the flag.
+# txt: Returns 0/TRUE if the key was built successfully; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the key.
+# use: if CLI.retrieveCommandLineFlagKeyFromShortName "f"; then
+#        echo "key: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagKeyFromShortName() {
+  local _shortName="${1}";
+  local -i _rescode=${TRUE};
+
+  checkNotEmpty "shortName" "${_shortName}" 1;
+
+  if removePrefix "${_shortName}" "-*"; then
+    _shortName="${RESULT}";
+  fi
+  _longName="${__DW_CLI_FLAG_LONG_NAMES[${_shortName}]}";
+
+  if isNotEmpty "${_longName}"; then
+    if CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}"; then
+      _rescode=${TRUE};
+      ## RESULT is passed directly.
+    else
+      _rescode=${FALSE};
+      export RESULT="";
+    fi
+  else
+    _rescode=${FALSE};
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineFlagKeyFromLongName longName
+# api: private
+# txt: Retrieves the key of a command-line flag from its long name.
+# opt: longNname: the long name of the flag.
+# txt: Returns 0/TRUE if the key was built successfully; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the key.
+# use: if CLI.retrieveCommandLineFlagKeyFromLongName "file"; then
+#        echo "key: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagKeyFromLongName() {
+  local _longName="${1}";
+  local -i _rescode=${true};
+
+  checkNotEmpty "longName" "${_longName}" 1;
+
+  if removePrefix "${_longName}" "-*"; then
+    _longName="${RESULT}";
+  fi
+
+  _shortName="${__DW_CLI_FLAG_SHORT_NAMES[${_longName}]}";
+  if isNotEmpty "${_shortName}"; then
+    if CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}"; then
+      _rescode=${TRUE};
+      ## RESULT is passed directly.
+    else
+      _rescode=${FALSE};
+      export RESULT="";
+    fi
+  else
+    _rescode=${FALSE};
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineFlagShortNameFromKey flagKey
+# api: private
+# txt: Retrieves the short name of given command-line flag key.
+# opt: flagKey: The key.
+# txt: Returns 0/TRUE if the short name was found; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the short name.
+# use: if CLI.retrieveCommandLineFlagShortNameFromKey "f|file"; then
+#        echo "short name: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagShortNameFromKey() {
+  local _key="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "key" "${_key}" 1;
+
+  _result="${_key%%|*}";
+  if areEqual "${_result}" "${_key}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineFlagLongNameFromKey flagKey
+# api: private
+# txt: Retrieves the long name of given command-line flag key.
+# opt: flagKey: The flag key.
+# txt: Returns 0/TRUE if the long name was found; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the long name.#
+# use: if CLI.retrieveCommandLineFlagLongNameFromKey "f|file"; then
+#        echo "long name: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagLongNameFromKey() {
+  local _key="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "key" "${_key}" 1;
+
+  _result="${_key##*|}";
+  if areEqual "${_result}" "${_key}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineFlagDescriptionFromKey flagKey
+# api: private
+# txt: Retrieves the description of given command-line flag key.
+# opt: flagKey: The flag key.
+# txt: Returns 0/TRUE if the description was found; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the description.
+# use: if CLI.retrieveCommandLineFlagDescriptionFromKey "f|file"; then
+#        echo "Description: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagDescriptionFromKey() {
+  local _key="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "key" "${_key}" 1;
+
+  _result="${__DW_CLI_FLAG_DESCRIPTIONS[${_key}]}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineFlagKey shortOrLongName
+# api: private
+# txt: Retrieves the command-line flag flag.
+# opt: shortOrLongName: The flag (either short or long version).
+# txt: Returns 0/TRUE if the flag is defined; 1/FALSE otherwise.
+# use: if CLI.retrieveCommandLineFlagKey "-f"; then
+#        echo "flag key for -f: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineFlagKey() {
+  local _flag="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.retrieveCommandLineFlagKeyFromShortName "${_flag}"; then
+    _rescode=${TRUE};
+    ## RESULT gets passed through.
+  elif CLI.retrieveCommandLineFlagKeyFromLongName "${_flag}"; then
+    _rescode=${TRUE};
+    ## RESULT gets passed through.
+  else
+    _rescode=${FALSE};
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.isCommandLineFlagDefined shortOrLongName
+# api: private
+# txt: Check whether a command-line flag is defined already or not.
+# opt: shortOrLongName: The flag (either short or long version).
+# txt: Returns 0/TRUE if the flag is defined; 1/FALSE otherwise.
+# use: if CLI.isCommandLineFlagDefined "-f"; then
+#        echo "-f is already defined";
+#      fi
+function CLI.isCommandLineFlagDefined() {
+  local _flag="${1}";
+  local -i _rescode;
+  local _flagKey;
+
+  checkNotEmpty "flag" "${_flag}" 1;
+
+  if CLI.retrieveCommandLineFlagKey "${_flag}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.isCommandLineFlagMandatory flagKey
+# api: private
+# txt: Checks whether given flag is mandatory or not.
+# opt: flagKey: The flag key.
+# txt: Returns 0/TRUE if the flag is mandatory; 1/FALSE otherwise.
+# use: if CLI.isCommandLineFlagMandatory ${flagKey}"; then
+#        echo "${flagKey} is mandatory";
+#       fi
+function CLI.isCommandLineFlagMandatory() {
+  local _flagKey="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "flagKey" "${_flagKey}" 1;
+
+  _value="${__DW_CLI_MANDATORY_FLAGS[${_flagKey}]}";
+
+  if   isEmpty "${_value}" \
+    || isTrue "${_value}" \
+    || areEqual "${_value}" "${MANDATORY}" \
+    || areEqual "${_value}" "MANDATORY"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.doesCommandLineFlagExpectArgument flagKey
+# api: private
+# txt: Checks whether given flag expects an argument.
+# opt: flagKey: The flag key.
+# txt: 0/TRUE if the flag expects an argument; 1/FALSE otherwise.
+# use: if CLI.doesCommandLineFlagExpectArgument ${flagKey}"; then
+#        echo "${flagKey} expects an argument";
+#      fi
+function CLI.doesCommandLineFlagExpectArgument() {
+  local _flagKey="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "flagKey" "${_flagKey}" 1;
+
+  _value="${__DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}]}";
+
+  if     isEmpty "${_value}" \
+      || isTrue "${_value}" \
+      || areEqual "${_value}" "${EXPECTS_ARGUMENT}" \
+      || areEqual "${_value}" "EXPECTS_ARGUMENT"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.retrieveCommandLineParameterDescriptionFromName paramName
+# api: private
+# txt: Retrieves the description of given command-line parameter.
+# opt: paramName: The name.
+# txt: Returns 0/TRUE if the description was found; 1/FALSE otherwise.
+#      If the function returns 0/TRUE, the variable RESULT contains the description.
+# use: if CLI.retrieveCommandLineParameterDescriptionFromName "project"; then
+#        echo "Description: ${RESULT}";
+#      fi
+function CLI.retrieveCommandLineParameterDescriptionFromName() {
+  local _name="${1}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _result="${__DW_CLI_PARAMETER_DESCRIPTIONS[${_name}]}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.isCommandLineParameterMandatory paramName
+# api: private
+# txt: Checks whether given parameter is mandatory or not.
+# opt: paramName: The parameter name.
+# txt: Returns 0/TRUE if the parameter is mandatory; 1/FALSE otherwise.
+# use: if CLI.isCommandLineParameterMandatory "file"; then
+#        echo "file is mandatory";
+#      fi
+function CLI.isCommandLineParameterMandatory() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_MANDATORY_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "MANDATORY"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.isCommandLineParameterSingle paramName
+# api: private
+# txt: Checks whether given parameter is single or not.
+# opt: paramName: The parameter name.
+# txt: Returns 0/TRUE if the parameter only expects a single value; 1/FALSE otherwise.
+# use: if CLI.isCommandLineParameterSingle "file"; then
+#        echo "file accepts only one value";
+#      fi
+function CLI.isCommandLineParameterSingle() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_SINGLE_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "SINGLE"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.isCommandLineParameterMultiple paramName
+# api: private
+# txt: Checks whether given parameter is multiple or not.
+# opt: paramName: The parameter name.
+# txt: Returns 0/TRUE if the parameter allows multiple values; 1/FALSE otherwise.
+# use: if CLI.isCommandLineParameterMultiple "file"; then
+#        echo "file can accept multiple values";
+#      fi
+function CLI.isCommandLineParameterMultiple() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  if CLI.isCommandLineParameterSingle "${_name}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineFlagsUsage
+# api: private
+# txt: Prints a line describing how to run the script.
+#      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.commandLineFlagsUsage then ... fi
+function CLI.commandLineFlagsUsage() {
+  local -i _rescode=${TRUE};
+  local _message="${SCRIPT_NAME}";
+  local _flagKey;
+  local _shortName;
+  local _longName;
+  local _oldIFS="${IFS}";
+  local _mandatory;
+  IFS=$' \t\n';
+
+  for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+    IFS="${_oldIFS}";
+    CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
+    _shortName="${RESULT}";
+    CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
+    _longName="${RESULT}";
+    _message="${_message} ";
+    CLI.isCommandLineFlagMandatory "${_flagKey}";
+    _mandatory=$?;
+    if isFalse ${_mandatory}; then
+      _message="${_message}[";
+    fi
+    _message="${_message}-${_shortName}|--${_longName}";
+    if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
+      _message="${_message} arg";
+    fi
+    if isFalse ${_mandatory}; then
+      _message="${_message}]";
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  echo -n "${_message}";
+
+  return ${_rescode};
+}
+
+# fun: CLI.scriptDescriptionUsage
+# api: private
+# txt: Conditionally prints (to stdout) a line with the script description.
+#      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.scriptDescriptionUsage then ... fi
+function CLI.scriptDescriptionUsage() {
+  local -i _rescode;
+  if isEmpty "${__DW_CLI_SCRIPT_DESCRIPTION}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -e "\n${__DW_CLI_SCRIPT_DESCRIPTION}\n";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.scriptLicenseSummaryUsage
+# api: private
+# txt: Conditionally prints (to stdout) a line with the license summary.
+#      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.scriptLicenseSummaryUsage then ... fi
+function CLI.scriptLicenseSummaryUsage() {
+  local -i _rescode;
+  if isEmpty "${__DW_CLI_SCRIPT_LICENSE_SUMMARY}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+    echo "${__DW_CLI_SCRIPT_LICENSE_SUMMARY}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.scriptCopyrightUsage
+# api: private
+# txt: Conditionally prints (to stdout) a line with the copyright.
+#      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.scriptCopyrightUsage then ... fi
+function CLI.scriptCopyrightUsage() {
+  local -i _rescode;
+
+  if isEmpty "${__DW_CLI_SCRIPT_COPYRIGHT}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo "${__DW_CLI_SCRIPT_COPYRIGHT}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineFlagsDetailedUsage
+# api: private
+# txt: Prints a line describing the details of the command-line flags.
+#      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.commandLineFlagsDetailedUsage then ... fi
+function CLI.commandLineFlagsDetailedUsage() {
+  local -i _rescode;
+  local _message;
+  local _flagKey;
+  local _shortName;
+  local _longName;
+  local _description;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+
+  for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+    IFS="${_oldIFS}";
+    CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
+    _shortName="${RESULT}";
+    CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
+    _longName="${RESULT}";
+    CLI.retrieveCommandLineFlagDescriptionFromKey "${_flagKey}";
+    _description="${RESULT}";
+    _message="${_message}  * -${_shortName}|--${_longName}";
+    if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
+      _message="${_message} arg";
+    fi
+    _message="${_message}: ${_description}.";
+    if CLI.isCommandLineFlagMandatory "${_flagKey}"; then
+      _message="${_message} Mandatory.\n";
+    else
+      _message="${_message} Optional.\n";
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_message}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -n -e "${_message}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineParameterIsSingle paramName
+# api: private
+# txt: Checks whether given parameter is single or not.
+# opt: paramName: The parameter name.
+# txt: Returns 0/TRUE if the parameter is single; 1/FALSE otherwise.
+# use: if CLI.commandLineParameterIsSingle ${name}"; then
+#        echo "${name} is multiple";
+#      fi
+function CLI.commandLineParameterIsSingle() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_SINGLE_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "SINGLE"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineParameterIsMultiple paramName
+# api: private
+# txt: Checks whether given parameter is multiple or not.
+# opt: paramName: The parameter name.
+# txt: Returns 0/TRUE if the parameter is multiple; 1/FALSE otherwise.
+# use: if CLI.commandLineParameterIsMultiple ${name}"; then
+#        echo "${name} is multiple";
+#      fi
+function CLI.commandLineParameterIsMultiple() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  if CLI.commandLineParameterIsSingle "${_name}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineParameterIsMandatory paramName
+# api: private
+# txt: Checks whether given parameter is mandatory or not.
+# opt: paramName: The parameter name.
+# txt: Returns 0/TRUE if the parameter is mandatory; 1/FALSE otherwise.
+# use: if CLI.commandLineParameterIsMandatory ${name}"; then
+#        echo "${name} is mandatory";
+#      fi
+function CLI.commandLineParameterIsMandatory() {
+  local _name="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "name" "${_name}" 1;
+
+  _value="${__DW_CLI_MANDATORY_PARAMETERS[${_name}]}";
+
+  if    isEmpty "${_value}" \
+      || isTrue "${_value}" \
+      || areEqual "${_value}" "MANDATORY"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineParametersUsage
+# api: private
+# txt: Prints a line describing the script's flags.
+#      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.commandLineParametersUsage then ... fi
+function CLI.commandLineParametersUsage() {
+  local -i _rescode;
+  local _message;
+  local _name;
+  local _oldIFS="${IFS}";
+  local _mandatory;
+  IFS=$' \t\n';
+
+  for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+    IFS="${_oldIFS}";
+    _message="${_message} ${_name}";
+    if CLI.commandLineParameterIsMultiple "${_name}"; then
+      if CLI.isCommandLineParameterMandatory "${_name}"; then
+        _message="${_message}+";
+      else
+        _message="${_message}*";
+      fi
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_message}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -e "${_message}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineParametersDetailedUsage
+# api: private
+# txt: Prints a line describing the details of the command-line parameters.
+#      Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.commandLineParametersDetailedUsage then ... fi
+function CLI.commandLineParametersDetailedUsage() {
+  local -i _rescode;
+  local _message;
+  local _name;
+  local _description;
+  local _oldIFS="${IFS}";
+  IFS=$' \t\n';
+
+  for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+    IFS="${_oldIFS}";
+    if isNotEmpty "${_message}"; then
+      _message="\n";
+    fi
+    CLI.retrieveCommandLineParameterDescriptionFromName "${_name}";
+    _description="${RESULT}";
+    _message="${_message}  * ${_name}";
+    if CLI.commandLineParameterIsMultiple "${_name}"; then
+      _message="${_message}*";
+    fi
+    _message="${_message}: ${_description}.";
+    if CLI.commandLineParameterIsMandatory "${_name}"; then
+      _message="${_message} Mandatory.";
+    else
+      _message="${_message} Optional.";
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_message}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    echo -e "${_message}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.defaultState
+# api: private
+# txt: Sets up the default state.
+#      Returns 0/TRUE always.
+# use: CLI.defaultState
+function CLI.defaultState() {
+  ## Built-in flags.
+  addCommandLineFlag "debug" "v" "Display debug messages" OPTIONAL NO_ARGUMENT;
+  addCommandLineFlag "trace" "vv" "Display trace messages" OPTIONAL NO_ARGUMENT;
+  addCommandLineFlag "quiet" "q" "Be silent" OPTIONAL NO_ARGUMENT;
+  addCommandLineFlag "help" "h" "Display information about how to use the script" OPTIONAL NO_ARGUMENT;
+}
+
+# fun: CLI.resetState
+# api: private
+# txt: Resets the module state.
+#      Returns 0/TRUE always.
+# use: CLI.resetState
+function CLI.resetState() {
+  __DW_CLI_FLAG_KEYS=();
+  clearAssociativeArray __DW_CLI_FLAG_LONG_NAMES;
+  clearAssociativeArray __DW_CLI_FLAG_SHORT_NAMES;
+  clearAssociativeArray __DW_CLI_MANDATORY_FLAGS;
+  clearAssociativeArray __DW_CLI_FLAG_EXPECTING_ARGUMENTS;
+  clearAssociativeArray __DW_CLI_FLAG_DESCRIPTIONS;
+  clearAssociativeArray __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES;
+  __DW_CLI_PARAMETER_NAMES=();
+  clearAssociativeArray __DW_CLI_PARAMETER_DESCRIPTIONS;
+  clearAssociativeArray __DW_CLI_MANDATORY_PARAMETERS;
+  clearAssociativeArray __DW_CLI_SINGLE_PARAMETERS;
+  __DW_CLI_SCRIPT_DESCRIPTION="";
+  __DW_CLI_SCRIPT_COPYRIGHT="";
+  __DW_CLI_SCRIPT_LICENSE_SUMMARY="";
+}
+
+# env: __DW_CLI_FLAG_KEYS: The CLI flags' keys.
+declare -ag __DW_CLI_FLAG_KEYS;
+# env: __DW_CLI_FLAG_LONG_NAMES: The CLI flags' long names.
+declare -Ag __DW_CLI_FLAG_LONG_NAMES;
+# env: __DW_CLI_FLAG_SHORT_NAMES: The CLI flags' short names.
+declare -Ag __DW_CLI_FLAG_SHORT_NAMES;
+# env: __DW_CLI_MANDATORY_FLAGS: The CLI flags' mandatory information.
+declare -Ag __DW_CLI_MANDATORY_FLAGS;
+# env: __DW_CLI_FLAG_EXPECTING_ARGUMENTS: Whether each CLI flag expects an argument or not.
+declare -Ag __DW_CLI_FLAG_EXPECTING_ARGUMENTS;
+# env: __DW_CLI_FLAG_DESCRIPTIONS: The description of each CLI flag.
+declare -Ag __DW_CLI_FLAG_DESCRIPTIONS;
+# env: __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES: The default value of each CLI flag.
+declare -Ag __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES;
+# env: __DW_CLI_PARAMETER_NAMES: The names of the CLI parameters.
+declare -ag __DW_CLI_PARAMETER_NAMES;
+# env: __DW_CLI_PARAMETER_DESCRIPTIONS: The descriptions of the CLI parameters.
+declare -Ag __DW_CLI_PARAMETER_DESCRIPTIONS;
+# env: __DW_CLI_MANDATORY_PARAMETERS: Whether each CLI parameter is mandatory or not.
+declare -Ag __DW_CLI_MANDATORY_PARAMETERS;
+# env: __DW_CLI_SINGLE_PARAMETERS: Whether each CLI parameter is single or not.
+declare -Ag __DW_CLI_SINGLE_PARAMETERS;
+# env: __DW_CLI_SCRIPT_DESCRIPTION: The description of the script.
+declare -g __DW_CLI_SCRIPT_DESCRIPTION;
+# env: __DW_CLI_SCRIPT_COPYRIGHT: The copyright of the script.
+declare -g __DW_CLI_SCRIPT_COPYRIGHT;
+# env: __DW_CLI_SCRIPT_LICENSE_SUMMARY: The license of the script.
+declare -g __DW_CLI_SCRIPT_LICENSE_SUMMARY;
+
+CLI.resetState;
+CLI.defaultState;

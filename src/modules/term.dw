@@ -1,0 +1,116 @@
+# mod: term
+# api: public
+# txt: Terminal-related functions
+
+# fun: getTermWidth
+# api: public
+# txt: Retrieves the width of the term.
+# txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
+# use: if getTermWidth; then echo "term width -> ${RESULT}"; fi
+function getTermWidth() {
+  local result;
+  local -i rescode;
+  local _term;
+
+  TERM.retrieveTermWidthFromEnvVar;
+  rescode=$?;
+  if ! isTrue ${rescode}; then
+    retrieveTERM;
+    _term="${RESULT}";
+    getTermWidthForTerm "${_term}";
+    rescode=$?;
+    if ! isTrue ${rescode}; then
+        export RESULT="";
+    fi
+  fi
+
+  return ${rescode};
+}
+
+# fun: getTermWidthForTerm term
+# api: public
+# txt: Retrieves the width of the term.
+# opt: term: the TERM value.
+# txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
+# use: if getTermWidthForTerm "${TERM}"; then ...; fi
+function getTermWidthForTerm() {
+  local -i rescode;
+  local result;
+  local _term="${1}";
+
+  checkNotEmpty "term" "${_term}" 1;
+
+  $(tput cols &> /dev/null > /dev/null 2>&1);
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    result=$(tput cols);
+  fi
+
+  if    isEmpty ${result} \
+     || [ $((result)) -le 0 ]; then
+
+    if isNotEmpty "${_term}"; then
+
+      $(tput -T ${_term} cols > /dev/null 2>&1);
+
+      if isTrue ${rescode}; then
+        result=$(tput -T ${_term} cols);
+      fi
+    fi
+  fi
+  if    isEmpty ${result} \
+     || [ $((result)) -le 0 ]; then
+    result=${_DRY_WIT_DEFAULT_TERM_WIDTH};
+  fi
+
+  if isTrue ${rescode}; then
+      export RESULT=${result};
+  fi
+
+  return ${rescode};
+}
+
+# fun: retrieveTERM
+# api: public
+# txt: Retrieves the TERM variable
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the TERM variable.
+# use: retrieveTERM;
+#      echo "TERM -> ${RESULT}";
+function retrieveTERM() {
+  local result="${TERM}";
+
+  if isEmpty "${result}"; then
+    result="dumb";
+  fi
+
+  case ${result} in
+    dumb) result="$(uname | tr '[:upper:]' '[:lower:]')";
+         ;;
+      *) ;;
+  esac
+
+  export RESULT="${result}";
+
+  return ${TRUE};
+}
+
+# fun: TERM.retrieveTermWidthFromEnvVar
+# api: private
+# txt: Retrieves the column width, from an environment variable.
+# txt: Returns 0/TRUE if the term width is specified via an environment variable; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the column width.
+# use: if retrieveTermWidthFromEnvVar; then width=${RESULT}; fi
+function TERM.retrieveTermWidthFromEnvVar() {
+  local -i rescode=${FALSE};
+  if isNotEmpty "${DW_TERM_WIDTH}"; then
+    rescode=${TRUE};
+    export RESULT="${DW_TERM_WIDTH}";
+  fi
+
+  return ${rescode};
+}
+#

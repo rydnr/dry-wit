@@ -1,0 +1,163 @@
+# mod: check
+# api: public
+# txt: Functions to provide ways for checking parameters.
+
+DW.import stdlib;
+DW.import error;
+DW.import dw-plumbing;
+
+# fun: checkFunctionPresent paramName function paramIndex
+# api: public
+# txt: Checks whether a function is present.
+# opt: paramName: The parameter name.
+# opt: function: The function name.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: checkFunctionPresent "callback" "echo" 1;
+function checkFunctionPresent() {
+  local _name="${1}";
+  local _functionName="${2}";
+  local _index="${3}";
+
+  if isEmpty "${_name}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_index}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_functionName}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
+
+  if isFunctionMissing "${_functionName}"; then
+    exitWithError UNACCEPTABLE_API_CALL "${_name} (parameter at position ${_index}) is a non-existent function when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+}
+
+# fun: checkMandatoryOrOptional paramName paramValue paramIndex
+# api: public
+# txt: Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: checkMandatoryOrOptional "option" "${option}" 1 # -> throws an error if the first (1) parameter ("option") is neither MANDATORY or OPTIONAL.
+function checkMandatoryOrOptional() {
+    local _name="${1}";
+    local _value="${2}";
+    local _index="${3}";
+
+    CHECK.checkOneOf 1 "${_name}" "${_value}" "MANDATORY OPTIONAL" "${_index}";
+}
+
+# fun: checkNotEmpty paramName paramValue paramIndex
+# api: public
+# txt: Performs a precondition check on given parameter to ensure it's not empty. Exits if the check fails.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: checkNotEmpty "user" "${user}" 1 # -> throws an error if the first (1) parameter ("user") is empty.
+function checkNotEmpty() {
+  local _name="${1}";
+  local _value="${2}";
+  local _index="${3}";
+
+  if isEmpty "${_name}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_index}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_value}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
+}
+
+# fun: checkOneOf paramName paramValue validValues paramIndex
+# api: public
+# txt: Performs a precondition check on given parameter to ensure it's included in a predefined list.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: validValues: The list of allowed values.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: checkOneOf "option" "${option}" "VALID INVALID" 1 # -> throws an error if the first (1) parameter ("option") is neither VALID nor INVALID.
+function checkOneOf() {
+  local _name="${1}";
+  local _value="${2}";
+  local _validValues="${3}";
+  local _index="${4}";
+
+  CHECK.checkOneOf 1 "${_name}" "${_value}" "${_validValues}" "${_index}";
+}
+
+## PRIVATE functions
+
+# fun: CHECK.checkOneOf callStackOffset paramName paramValue validValues paramIndex
+# api: private
+# txt: Performs a precondition check on given parameter to ensure it's included in a predefined list.
+# opt: callStackOffset: The call stack offset.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: validValues: The list of allowed values.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: CHECK.checkOneOf 0 "option" "${option}" "VALID INVALID" 1 # -> throws an error if the first (1) parameter ("option") is neither VALID nor INVALID.
+function CHECK.checkOneOf() {
+  local _callStackOffset="${1}";
+  local _name="${2}";
+  local _value="${3}";
+  local _validValues="${4}";
+  local _index="${5}";
+  local _validValue;
+  local _oldIFS="${IFS}";
+  local _valid=${FALSE};
+  local _message="";
+  local _oldIFS="${IFS}";
+  local _callee="${FUNCNAME[${_callStackOffset}]}";
+  local _caller="${FUNCNAME[((_callStackOffset+1))]}";
+  local _parentCaller="${FUNCNAME[((_callStackOffset+2))]}";
+
+  if isEmpty "${_callStackOffset}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'callStackOffset' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_name}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_value}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${_callee}. Review ${_caller}";
+  fi
+
+  if isEmpty "${_validValues}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'validValues' (${_validValues}) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_index}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'index' (4) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  IFS=$' \t\n';
+  for _validValue in ${_validValues}; do
+    IFS="${_oldIFS}";
+    if areEqual "${_value}" "${_validValue}"; then
+      _valid=${TRUE};
+    fi
+    if isNotEmpty "${_message}"; then
+      _message="${_message}, ";
+    fi
+    _message="${_message}${_validValue}";
+  done
+  IFS="${_oldIFS}";
+
+  if isFalse ${_valid}; then
+    exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_value}) is not valid when calling ${_caller}. Review ${_parentCaller}";
+  fi
+}
+#

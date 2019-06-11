@@ -1,0 +1,34 @@
+# mod: sudo
+# api: public
+# txt: sudo-related functions.
+
+# fun: checkPasswordlessSudo
+# api: public
+# txt: Checks the current user can run sudo commands without password.
+# txt: Returns 0/TRUE if the current user can run sudo commands without password; 1/FALSE otherwise.
+# use: if checkPasswordlessSudo; then ...; fi
+function checkPasswordlessSudo() {
+  local -i rescode;
+
+  which sudo > /dev/null 2>&1;
+  rescode=$?;
+
+  if isTrue ${rescode}; then
+    local _tmp="${TEMP}";
+    if [ ! -r "${_tmp}" ]; then
+      _tmp="/tmp";
+    fi
+    if [ ! -r "${_tmp}" ]; then
+      _tmp="$PWD";
+    fi
+    if [ -r "${_tmp}" ]; then
+      echo "" | sudo -S sudo ls "${_tmp}" 2> /dev/null > /dev/null
+      rescode=$?;
+    else
+      rescode=${FALSE};
+    fi
+  fi
+
+  return ${rescode};
+}
+#

@@ -1,0 +1,259 @@
+# mod: error
+# api: public
+# txt: Functions related to declaring and using errors.
+
+DW.import envvar;
+
+# fun: addError label message
+# api: public
+# txt: Annotates a new error.
+# opt: label: The error label.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: addError INVALID_NAME "The name is not valid";
+function addError() {
+  local _label="${1}";
+  local _message="${2}";
+  local _normalizedLabel;
+
+  checkNotEmpty "label" "${_label}" 1;
+  checkNotEmpty "message" "${_message}" 2;
+
+  normalizeUppercase "${_label}";
+  _normalizedLabel="${RESULT}";
+  appendErrorMessage "${_normalizedLabel}";
+  declare -gx "${_normalizedLabel}"="${_message}";
+  debugEcho "${_normalizedLabel} -> ${_message}"
+}
+
+# fun: appendErrorMessage error
+# api: public
+# txt: Appends a new error to ERROR_MESSAGES.
+# opt: error: The error to add.
+# txt: Returns 0/TRUE always.
+# use: appendErrorMessage "item";
+function appendErrorMessage() {
+    local _error="${1}";
+
+    checkNotEmpty "error" "${_error}" 1;
+
+    ERROR_MESSAGES[${#ERROR_MESSAGES[@]}]="${_error}";
+}
+
+# fun: exitWithError label message
+# api: public
+# txt: Exits with an error.
+# opt: label: The error label.
+# opt: message: The error message.
+# use: exitWithError UNKNOWN_OPTION "Unknown option";
+function exitWithError() {
+    local _label="${1}";
+    shift;
+    local _message="${@}";
+    local -i _rescode;
+
+    checkNotEmpty "label" "${_label}" 1;
+
+    if isErrorUndefined "${_label}"; then
+        addError "${_label}" "${_message}";
+    fi
+
+    exitWithErrorCode "${_label}";
+}
+
+# fun: exitWithErrorCode label
+# api: public
+# txt: Exits with an error code associated with given error label.
+# opt: label: The error label.
+# use: exitWithErrorCode UNKNOWN_OPTION;
+function exitWithErrorCode() {
+    local _label="${1}";
+    shift;
+    local -i _rescode;
+
+    checkNotEmpty "label" "${_label}" 1;
+
+    printErrorMessage "${_label}" "$@";
+    _rescode=$?;
+    cleanup;
+
+    exit ${_rescode};
+}
+
+# fun: isErrorDefined label
+# api: public
+# txt: Checks whether an error is defined.
+# opt: label: The error label.
+# txt: 0/TRUE if the error is defined; 1/FALSE otherwise.
+# use: if isErrorDefined INVALID_NAME; then
+#        echo "INVALID_NAME already defined";
+#      fi
+function isErrorDefined() {
+  local _label="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  if isNotEmpty "${ERROR_MESSAGES[*]}" && arrayContains "${ERROR_MESSAGES[*]}" "${_label}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isErrorUndefined label
+# api: public
+# txt: Checks whether an error is undefined.
+# opt: label: The error label.
+# txt: Returns 0/TRUE if the error is undefined; 1/FALSE otherwise.
+# use: if isErrorUndefined INVALID_NAME; then
+#        addError INVALID_NAME "The name is not valid";
+#      fi
+function isErrorUndefined() {
+  local _label="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  if isErrorDefined "${_label}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: printErrorMessage label
+# api: public
+# txt: Prints the error message for given label.
+# opt: label: The error label.
+# txt: Returns 0/TRUE if the error is found and gets printed; 1/FALSE otherwise.
+# use: if printErrorMessage INVALID_OPTION; then ...; fi
+function printErrorMessage() {
+  local _label="${1}";
+  shift;
+  local -i rescode=${TRUE};
+  local _message;
+  local _error;
+  local -i _interruption=${TRUE};
+  local _i;
+  local _oldIFS="${IFS}";
+
+  #  set +o nounset  # allow unset variables
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  IFS="${DWIFS}";
+  for _i in ${BUILTIN_ERRORS[@]}; do
+    IFS="${_oldIFS}";
+    rescode=$((rescode+1));
+    debugEcho "error_message (${rescode}): ${_i}";
+    if areEqual "${_i}" "${_label}"; then
+      _message="${_i}";
+      break;
+    fi;
+  done
+  IFS="${_oldIFS}";
+
+  # TODO set -o nounset  # disallow unset variables
+
+  if isEmpty "${_message}"; then
+    # IFS issue
+#    rescode=${TRUE};
+    IFS="${DWIFS}";
+    for _i in ${ERROR_MESSAGES[@]}; do
+      IFS="${_oldIFS}";
+      rescode=$((rescode+1));
+      debugEcho "error_message (${rescode}): ${_i}";
+      if areEqual "${_i}" "${_label}"; then
+          _message="${_i}";
+          break;
+      fi;
+    done
+  fi
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_message}"; then
+    _error="Error ${_label}, but no error message defined. Fix this script";
+    rescode=-1;
+  else
+    _error="$(echo ${_message} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
+  fi
+
+  if [ ${#@} -gt 0 ]; then
+      if [ ${#@} -gt 1 ]; then
+          _error="$(cat <<EOF
+${_error}
+$@
+EOF
+)";
+      else
+        _error="${_error} $@";
+      fi
+  fi
+
+  if isDebugEnabled; then
+    printUsage "${SCRIPT_NAME}";
+  fi
+  ERROR.printError "${_error}";
+  return ${rescode};
+}
+
+# fun: printExitValues
+# api: public
+# txt: Prints the exit values.
+# txt: Returns 0/TRUE always.
+# use: printExitValues;
+function printExitValues() {
+    local -i i=0;
+    local -i j=0;
+    local _oldIFS="${IFS}";
+
+    if isTraceEnabled; then
+        cat <<EOF
+Exit values:
+  0: No error.
+EOF
+        if [ ${#BUILTIN_ERRORS[@]} -gt 0 ]; then
+            IFS=$"${DWIFS}";
+            for ((i = 0; i < ${#BUILTIN_ERRORS[@]}; i++)); do
+                echo "  $((i+1)): $(echo ${BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
+            done
+        fi
+        if [ ${#ERROR_MESSAGES[@]} -gt 0 ]; then
+            IFS=$"${DWIFS}";
+            for ((j = 0; j < ${#ERROR_MESSAGES[@]}; j++)); do
+                echo "  $((j+i+1)): $(echo ${ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
+            done
+        fi
+        IFS="${_oldIFS}";
+    fi
+}
+
+# fun: ERROR.printError message
+# api: private
+# txt: Prints given error.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: ERROR.printError "My error message.";
+function ERROR.printError() {
+  echo "Error: $@.";
+}
+
+# fun: ERROR.resetState
+# api: private
+# txt: Resets the state of the module.
+# use: ERROR.resetState;
+function ERROR.resetState() {
+  BUILTIN_ERRORS=();
+  ERROR_MESSAGES=();
+}
+
+# env: BUILTIN_ERRORS: The built-in errors.
+declare -agx BUILTIN_ERRORS;
+# env: ERROR_MESSAGES: The error messages.
+declare -agx ERROR_MESSAGES;
+#

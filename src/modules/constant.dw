@@ -1,0 +1,34 @@
+# mod: constant
+# api: public
+# txt: Functions related to constants.
+
+# fun: evalConstant constantName
+# api: public
+# txt: Retrieves the value of a constant.
+# opt: constantName: The constant name.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the constant value.
+# use: OTHERVAR="works"
+#      MYVAR="OTHERVAR";
+#      evalConstant "${MYVAR}";
+#      echo "${MYVAR}->${RESULT}" # OTHERVAR->works
+function evalConstant() {
+  local _constant="${1}";
+
+  local result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
+
+  if isEmpty "${result}" ; then
+    result="${2}";
+  fi
+
+  if isEmpty "${result}" ; then
+    result="${_constant}";
+  fi
+  #  if [ "${DEBUG}" == "1" ]; then
+  #    echo "";
+  #    echo "${_constant} converts to ${result}";
+  #  fi
+
+  export RESULT="${result}";
+}
+#

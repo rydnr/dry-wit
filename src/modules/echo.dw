@@ -1,0 +1,193 @@
+# mod: echo
+# api: public
+# txt: Functions related to displaying text to stdout.
+
+DW.import constant;
+DW.import envvar;
+
+# fun: allowsColors
+# api: public
+# txt: Checks whether the terminal allows colors or not.
+# txt: Returns 0/TRUE if the terminal supports colors; 1/FALSE otherwise.
+# use: if allowsColors; then ...; fi
+function allowsColors() {
+  local -i result;
+
+  $(tput colors > /dev/null 2>&1);
+  if isTrue $?; then
+    _colors=$(tput colors);
+    if [ ${_colors} -ge 8 ]; then
+      env | grep -e '^_=' | grep env > /dev/null 2>&1;
+      if isTrue $?; then
+        result=${TRUE};
+      else
+        result=${FALSE};
+      fi
+    else
+      result=${FALSE};
+    fi
+  else
+    result=${FALSE};
+  fi;
+
+  return ${result};
+}
+
+# fun: echoColorizedText text keyword defaultColor?
+# api: public
+# txt: Echoes given text, colorized.
+# opt: text: The text to colorize.
+# opt: keyword: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text).
+# opt: defaultColor: The default color (optional).
+# txt: Returns 0/TRUE always.
+# use: echoColorizeText "done" SUCCESS;
+function echoColorizedText() {
+  local _text="${1}";
+  local _keyword="${2}";
+  local _defaultColor="${3:-${UNDEFINED_COLOR}}";
+  local _color="";
+  allowsColors;
+  _allowsColors=$?;
+
+  if isTrue ${_allowsColors}; then
+    getColor ${_defaultColor};
+    _undefinedColor="${RESULT}";
+    getColor ${SUCCESS_COLOR};
+    _successColor="${RESULT}";
+    getColor ${FAILURE_COLOR};
+    _failureColor="${RESULT}";
+    case ${_keyword} in
+      ${SUCCESS}) _color="${_successColor}";
+         ;;
+      ${FAILURE}) _color="${_failureColor}";
+         ;;
+      *) if isSuccessKeyword "${_text}"; then
+           _color="${_successColor}";
+         elif isFailureKeyword "${_text}"; then
+           _color="${_failureColor}";
+         else
+           _color="${_undefinedColor}";
+         fi
+         ;;
+    esac
+  fi
+  echoColorizedTextWithColor -n "${_color}" "${_text}";
+}
+
+# fun: echoColorizedTextWithColor [-n]? colorName text
+# api: public
+# txt: Echoes given text, colorized.
+# opt: -n: Whether to include a new line at the end of the text.
+# opt: colorName: The name of the color.
+# opt: text: The text to colorize.
+# txt: Returns 0/TRUE always.
+# use: echoColorizeTextWithColor WHITE "done";
+function echoColorizedTextWithColor() {
+  local _flagMinusN;
+  if [ "${1}" == "-n" ]; then
+    _flagMinusN=${TRUE};
+    shift;
+  else
+    _flagMinusN=${FALSE};
+  fi
+  evalConstant "${1}";
+  local _color="${RESULT}";
+  local _text="${2}";
+  local result;
+
+  local _allowsColors;
+  allowsColors;
+  _allowsColors=$?;
+
+  if isTrue ${_allowsColors}; then
+    if isTrue ${_flagMinusN}; then
+      echoInColor -n "${_color}" "${_text}";
+    else
+      echoInColor "${_color}" "${_text}";
+    fi
+    resetColor;
+  elif isTrue ${_flagMinusN}; then
+    echo -n "${_text}";
+  else
+    echo "${_text}";
+  fi
+}
+
+# fun: echoInColor [-n]? colorName text
+# api: public
+# txt: Prints a text in color.
+# opt: -n: Whether to remove the CRLF from the end (optional).
+# opt: colorName: The name of the color.
+# opt: text: The text to echo.
+# txt: Returns 0/TRUE always.
+# use: echoInColor -n RED "Work in progress";
+function echoInColor() {
+  local _flagMinusN;
+  local _colorAux;
+  if [ "${1}" == "-n" ]; then
+    _flagMinusN=${TRUE};
+    shift;
+  else
+    _flagMinusN=${FALSE};
+  fi
+  local _color="${1}";
+  checkNotEmpty "color" "${_color}" 1;
+
+  local _text="${2}";
+  checkNotEmpty "text" "${_text}" 2;
+  local _colorAux="";
+  local _inColor=${FALSE};
+
+  if allowsColors; then
+    if isVariableDefined "${_color}"; then
+      _inColor=${TRUE};
+      evalVar "${_color}";
+      _colorAux="${RESULT}";
+    fi
+  fi
+
+  if isTrue ${_flagMinusN}; then
+    if isTrue ${_inColor}; then
+      echo -en "${_colorAux}${_text}${NO_COLOR}";
+    else
+      echo -n "${_text}";
+    fi
+  else
+    if isTrue ${_inColor}; then
+        echo -e "${_colorAux}${_text}${NO_COLOR}";
+    else
+      echo "${_text}";
+    fi
+  fi
+}
+
+# fun: getColor name defaultColor?
+# api: public
+# txt: Retrieves the color for given name.
+# opt: name: The color name.
+# opt: defaultColor: The fallback color. Optional.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the color value.
+# use: getColor RED;
+function getColor() {
+    local _colorConstant="${1}";
+    local _defaultColor="${2:-${UNDEFINED_COLOR}}"
+    local result;
+
+    if allowsColors; then
+        evalConstant "${_colorConstant}" "${_defaultColor}";
+        result="${RESULT}";
+    fi
+
+    export RESULT="${result}";
+}
+
+# fun: resetColor
+# api: public
+# txt: Resets the color for future calls to "echo".
+# txt: Returns 0/TRUE always.
+# use: resetColor;
+function resetColor() {
+  echo -en ${NO_COLOR};
+}
+#

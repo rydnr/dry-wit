@@ -1,0 +1,85 @@
+# mod: concourse
+# api: public
+# txt: ConcourseCI-related functions.
+
+# fun: flyLogin target url
+# api: public
+# txt: Runs a fly login command.
+# opt: target: The Concourse target.
+# opt: url: The Concourse url.
+# txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
+# use: if flyLogin ci http://concourse:8080; then ...; fi
+function flyLogin() {
+  local _concourseTarget="${1}";
+  local _concourseUrl="${2}";
+  local -i _rescode;
+  local _output;
+  local _fly="$(which fly)";
+
+  checkNotEmpty "target" "${_concourseTarget}" 1;
+  checkNotEmpty "url" "${_concourseUrl}" 2;
+
+  logTrace -n "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl} 2>&1";
+  echo "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl}" >> "${TRACE_FILE}"
+  exec 5>&1
+  _output=$(${FLY_PATH} -t ${_concourseTarget} login -c ${_concourseUrl} 2>&1 | tee >(cat - >&5))
+  _rescode=$?;
+  echo ${_output};
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    _rescode=${FALSE};
+    logTraceResult FAILURE "failed";
+    export RESULT="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: runFlyCommand y|Y|yes|YES|n|N|no|NO command arg*
+# api: public
+# txt: Runs a fly command.
+# opt: y|Y|yes|YES|n|N|no|NO-> 1: Whether to assume 'y' or 'n' to any question.
+# opt: command: The command to run.
+# opt: arg: The command arguments. Optional.
+# txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
+# use: if runFlyCommand y -t ci set-pipeline -p main; then echo "fly -t ci set-pipeline -p main -> ${RESULT}"; fi
+function runFlyCommand() {
+  local _yesOrNo="${1}";
+  shift;
+  local _args="${@}";
+  local -i _rescode;
+  local _result;
+
+  checkNotEmpty "yesOrNo" "${_yesOrNo}" 1;
+  checkNotEmpty "args" "${_args}" 2;
+
+  case "${_yesOrNo}" in
+    y | yes | Y | YES) _yesOrNo="y";
+                       ;;
+    n | no | N | NO) _yesOrNo="n";
+                     ;;
+    *) exitWithErrorCode RUN_FLY_COMMAND_Y_N_REQUIRED;
+       ;;
+  esac
+
+  echo "fly $(echo "${_args}" | tr '\n' ' ') 2>&1" >> "${TRACE_FILE}";
+  logTrace -n "fly $(echo "${_args}" | tr '\n' ' ') 2>&1";
+  if [[ "${_yesOrNo}" == "y" ]]; then
+    _result="$(yes | fly $(echo "${_args}"))";
+  else
+    _result="$(yes n | fly $(echo "${_args}"))";
+  fi
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    _rescode=${TRUE};
+    logTraceResult WARNING "failed";
+  fi
+
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
+#
