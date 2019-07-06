@@ -126,25 +126,25 @@ function BOOTSTRAP.failsafeCheckNotEmpty() {
   fi
 }
 
-# fun: BOOTSTRAP.failsafeIsTraceEnabled
+# fun: BOOTSTRAP.failsafeIsDebugEnabled
 # api: private
-# txt: A fail-safe version of isTraceEnabled.
-# txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
-# use: if BOOTSTRAP.failsafeIsTraceEnabled; then ...; fi
-function BOOTSTRAP.failsafeIsTraceEnabled() {
+# txt: A fail-safe version of isDebugEnabled.
+# txt: Returns 0/TRUE if DEBUG logging is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.failsafeIsDebugEnabled; then ...; fi
+function BOOTSTRAP.failsafeIsDebugEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  if BOOTSTRAP.failsafeIsFunctionDefined "isTraceEnabled"; then
-    isTraceEnabled;
+  if BOOTSTRAP.failsafeIsFunctionDefined "isDebugEnabled"; then
+    isDebugEnabled;
     _rescode=$?;
   else
     IFS="${DWIFS}";
     for _flag in ${BASH_ARGV[@]}; do
       IFS="${_oldIFS}";
-      if [ "${_flag}" == "-vv" ]; then
-	_rescode=${TRUE};
-	break;
+      if [ "${_flag}" == "-v" ]; then
+	        _rescode=${TRUE};
+	        break;
       fi
     done
     IFS="${_oldIFS}";
@@ -153,13 +153,40 @@ function BOOTSTRAP.failsafeIsTraceEnabled() {
   return ${_rescode};
 }
 
-# fun: BOOTSTRAP.failsafeLogTrace
+# fun: BOOTSTRAP.failsafeIsTraceEnabled
 # api: private
-# txt: A fail-safe version of logTrace.
+# txt: A fail-safe version of isTraceEnabled.
+# txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.failsafeIsTraceEnabled; then ...; fi
+function BOOTSTRAP.failsafeIsTraceEnabled() {
+    local -i _rescode=${FALSE};
+    local _oldIFS="${IFS}";
+
+    if BOOTSTRAP.failsafeIsFunctionDefined "isTraceEnabled"; then
+        isTraceEnabled;
+        _rescode=$?;
+    else
+        IFS="${DWIFS}";
+        for _flag in ${BASH_ARGV[@]}; do
+            IFS="${_oldIFS}";
+            if [ "${_flag}" == "-vv" ]; then
+	              _rescode=${TRUE};
+	              break;
+            fi
+        done
+        IFS="${_oldIFS}";
+    fi
+
+    return ${_rescode};
+}
+
+# fun: BOOTSTRAP.failsafeLogDebug
+# api: private
+# txt: A fail-safe version of logDebug.
 # opt: -n: Whether to omit a newline. Optional.
 # opt: message: The message.
-# use: BOOTSTRAP.failsafeLogTrace "Processing file ${file}";
-function BOOTSTRAP.failsafeLogTrace() {
+# use: BOOTSTRAP.failsafeLogDebug "Processing file ${file}";
+function BOOTSTRAP.failsafeLogDebug() {
   local _message="${1}";
   local -i _newline=0;
   local -i _position=1;
@@ -174,14 +201,66 @@ function BOOTSTRAP.failsafeLogTrace() {
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTrace is loaded.
-  if BOOTSTRAP.failsafeIsFunctionDefined "logTrace"; then
-    logTrace $@;
-  elif BOOTSTRAP.failsafeIsTraceEnabled; then
+  if BOOTSTRAP.failsafeIsFunctionDefined "logDebug"; then
+    logDebug $@;
+  elif BOOTSTRAP.failsafeIsDebugEnabled; then
     if [ ${_newline} -eq 0 ]; then
-      command echo "${_message}";
+      command echo "[dry-wit:bootstrap] ${_message}";
     else
-      command echo "${_message} ... ";
+      command echo "[dry-wit:bootstrap] ${_message} ... ";
     fi
+  fi
+}
+
+# fun: BOOTSTRAP.failsafeLogTrace
+# api: private
+# txt: A fail-safe version of logTrace.
+# opt: -n: Whether to omit a newline. Optional.
+# opt: message: The message.
+# use: BOOTSTRAP.failsafeLogTrace "Processing file ${file}";
+function BOOTSTRAP.failsafeLogTrace() {
+    local _message="${1}";
+    local -i _newline=0;
+    local -i _position=1;
+
+    if [ "${_message}" == "-n" ]; then
+        _newline=1;
+        _message="${2}";
+        _position=2;
+    fi
+
+    BOOTSTRAP.failsafeCheckNotEmpty "message" "${_message}" ${_position};
+
+    ## Needed since this function is used in bootstrapping, and could be loaded before
+    ## logTrace is loaded.
+    if BOOTSTRAP.failsafeIsFunctionDefined "logTrace"; then
+        logTrace $@;
+    elif BOOTSTRAP.failsafeIsTraceEnabled; then
+        if [ ${_newline} -eq 0 ]; then
+            command echo "[dry-wit:bootstrap] ${_message}";
+        else
+            command echo "[dry-wit:bootstrap] ${_message} ... ";
+        fi
+    fi
+}
+
+# fun: BOOTSTRAP.failsafeLogDebugResult.
+# api: private
+# txt: A fail-safe version of logDebugResult.
+# opt: outcome: The outcome.
+# opt: message: The message.
+# use: BOOTSTRAP.failsafeLogDebugResult SUCCESS "done"
+function BOOTSTRAP.failsafeLogDebugResult() {
+  local _outcome="${1}";
+  local _outcomeMessage="${2}";
+
+  BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
+  BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## logTraceResult is loaded.
+  if BOOTSTRAP.failsafeIsFunctionDefined "logDebugResult"; then
+    logDebugResult ${_outcome} "${_outcomeMessage}";
   fi
 }
 
@@ -192,17 +271,17 @@ function BOOTSTRAP.failsafeLogTrace() {
 # opt: message: The message.
 # use: BOOTSTRAP.failsafeLogTraceResult SUCCESS "done"
 function BOOTSTRAP.failsafeLogTraceResult() {
-  local _outcome="${1}";
-  local _outcomeMessage="${2}";
+    local _outcome="${1}";
+    local _outcomeMessage="${2}";
 
-  BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
-  BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
+    BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
+    BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTraceResult is loaded.
-  if BOOTSTRAP.failsafeIsFunctionDefined "logTraceResult"; then
-    logTraceResult ${_outcome} "${_outcomeMessage}";
-  fi
+    ## Needed since this function is used in bootstrapping, and could be loaded before
+    ## logTraceResult is loaded.
+    if BOOTSTRAP.failsafeIsFunctionDefined "logTraceResult"; then
+        logTraceResult ${_outcome} "${_outcomeMessage}";
+    fi
 }
 
 # fun: BOOTSTRAP.failsafeIsFunctionDefined
@@ -266,14 +345,14 @@ function downloadModule() {
 
   mkdir -p "${DRYWIT_MODULE_PATH}";
 
-  BOOTSTRAP.failsafeLogTrace -n "Downloading '${_module}' module from ${DRYWIT_MODULE_URL}/${_module}.dw to ${DRYWIT_MODULE_PATH}/${_module}.dw";
+  BOOTSTRAP.failsafeLogDebug -n "Downloading ${DRYWIT_MODULE_URL}/${_module}.dw to ${DRYWIT_MODULE_PATH}/${_module}.dw";
   curl -s "${DRYWIT_MODULE_URL}/${_module}.dw" > "${DRYWIT_MODULE_PATH}/${_module}.dw";
   _rescode=$?;
   if [[ ${_rescode} -eq ${TRUE} ]]; then
-    BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
+    BOOTSTRAP.failsafeLogDebugResult SUCCESS "done";
     export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw";
   else
-    BOOTSTRAP.failsafeLogTraceResult FAILURE "failed";
+    BOOTSTRAP.failsafeLogDebugResult FAILURE "failed";
   fi
 
   return ${_rescode};
