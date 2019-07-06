@@ -15,6 +15,9 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with dry-wit.  If not, see <http://www.gnu.org/licenses/>.
+# mod: bootstrap
+# api: private
+# txt: Bootstrap functions.
 
 #set -o errexit  # terminate on any unhandled error
 #set -o nounset  # terminate on any unset variable
@@ -25,11 +28,18 @@ if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
   return;
 fi
 
+# env: DRY_WIT_SCRIPT_PATH: The path of the script.
 declare -gx DRY_WIT_SCRIPT_PATH="${1}";
+# env: DRY_WIT_SCRIPT_FOLDER: The folder of the script.
 declare -gx DRY_WIT_SCRIPT_FOLDER="$(dirname "${DRY_WIT_SCRIPT_PATH}")";
 
+# env: DWIFS: The IFS used by dry-wit.
 declare -gx DWIFS=$' \t\n';
+
+# env: TRUE: A synomim for 0.
 export TRUE=0;
+
+# env: FALSE: A synomim for 1.
 export FALSE=1;
 
 if [ "${SCRIPT_NAME}" == "" ]; then
@@ -41,6 +51,7 @@ if [ "${SCRIPT_NAME}" == "" ]; then
   fi
 fi
 
+# env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
 declare -ag __DRYWIT_BOOTSTRAP_MODULES=(\
    "stdlib" \
    "string" \
@@ -60,20 +71,27 @@ declare -ag __DRYWIT_BOOTSTRAP_MODULES=(\
    "debug" \
 );
 
+# env: __DRYWIT_IMPORTED_MODULES: The modules eventually imported in the bootstrap process.
 declare -agx __DRYWIT_IMPORTED_MODULES;
 
+# env: DRYWIT_MODULE_TAG: The dry-wit git tag used to download modules from github.
 export DRYWIT_MODULE_TAG="master";
+
+# env: DRYWIT_MODULE_URL: The url to download dry-wit modules.
 export DRYWIT_MODULE_URL="https://raw.githubusercontent.com/rydnr/dry-wit/${DRYWIT_MODULE_TAG}/src/modules";
+
+# env: DRYWIT_MODULE_PATH: Where to download dry-wit modules.
 export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/src/modules"
 
-## A fail-safe version of checkNotEmpty.
-## -> 1: The parameter name.
-## -> 2: The parameter value.
-## -> 3: The parameter index.
-## <- Exits if the parameter value is empty.
-## Example:
-##   DRYWIT.failsafeLogTrace SUCCESS "done"
-function DRYWIT.failsafeCheckNotEmpty() {
+# fun: BOOTSTRAP.failsafeCheckNotEmpty
+# api: private
+# txt: A fail-safe version of checkNotEmpty.
+# opt: name: The parameter name.
+# opt: value: The parameter value.
+# opt: index: The parameter index.
+# txt: Exits if the parameter value is empty.
+# use: BOOTSTRAP.failsafeCheckNotEmply module "${module}" 1
+function BOOTSTRAP.failsafeCheckNotEmpty() {
   local _name="${1}";
   if [ -z "${_name}" ]; then
     exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
@@ -90,52 +108,96 @@ function DRYWIT.failsafeCheckNotEmpty() {
   fi
 }
 
-## A fail-safe version of logTrace.
-## -> 1: The outcome.
-## -> 2: The message.
-## Example:
-##   DRYWIT.failsafeLogTrace SUCCESS "done"
-function DRYWIT.failsafeLogTrace() {
-  local _message="${1}";
+# fun: BOOTSTRAP.failsafeIsTraceEnabled
+# api: private
+# txt: A fail-safe version of isTraceEnabled.
+# txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.failsafeIsTraceEnabled; then ...; fi
+function BOOTSTRAP.failsafeIsTraceEnabled() {
+  local -i _rescode=${FALSE};
+  local _oldIFS="${IFS}";
 
-  DRYWIT.failsafeCheckNotEmpty "module" "${_module}" 1;
+  if BOOTSTRAP.failsafeIsFunctionDefined "isTraceEnabled"; then
+    isTraceEnabled;
+    _rescode=$?;
+  else
+    IFS="${DWIFS}";
+    for _flag in ${BASH_ARGV[@]}; do
+      IFS="${_oldIFS}";
+      if [ "${_flag}" == "-vv" ]; then
+	_rescode=${TRUE};
+	break;
+      fi
+    done
+    IFS="${_oldIFS}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: BOOTSTRAP.failsafeLogTrace
+# api: private
+# txt: A fail-safe version of logTrace.
+# opt: -n: Whether to omit a newline. Optional.
+# opt: message: The message.
+# use: BOOTSTRAP.failsafeLogTrace "Processing file ${file}";
+function BOOTSTRAP.failsafeLogTrace() {
+  local _message="${1}";
+  local -i _newline=0;
+  local -i _position=1;
+
+  if [ "${_message}" == "-n" ]; then
+    _newline=1;
+    _message="${2}";
+    _position=2;
+  fi
+
+  BOOTSTRAP.failsafeCheckNotEmpty "message" "${_message}" ${_position};
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTrace is loaded.
-  if DRYWIT.failsafeIsFunctionDefined "logTrace"; then
-    logTrace -n "${_message}";
+  if BOOTSTRAP.failsafeIsFunctionDefined "logTrace"; then
+    logTrace $@;
+  elif BOOTSTRAP.failsafeIsTraceEnabled; then
+    if [ ${_newline} -eq 0 ]; then
+      command echo "${_message}";
+    else
+      command echo "${_message} ... ";
+    fi
   fi
 }
 
-## A fail-safe version of logTraceResult.
-## -> 1: The outcome.
-## -> 2: The message.
-## Example:
-##   DRYWIT.failsafeLogTraceResult SUCCESS "done"
-function DRYWIT.failsafeLogTraceResult() {
+# fun: BOOTSTRAP.failsafeLogTraceResult.
+# api: private
+# txt: A fail-safe version of logTraceResult.
+# opt: outcome: The outcome.
+# opt: message: The message.
+# use: BOOTSTRAP.failsafeLogTraceResult SUCCESS "done"
+function BOOTSTRAP.failsafeLogTraceResult() {
   local _outcome="${1}";
   local _outcomeMessage="${2}";
 
-  DRYWIT.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
-  DRYWIT.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
+  BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
+  BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTraceResult is loaded.
-  if DRYWIT.failsafeIsFunctionDefined "logTraceResult"; then
+  if BOOTSTRAP.failsafeIsFunctionDefined "logTraceResult"; then
     logTraceResult ${_outcome} "${_outcomeMessage}";
   fi
 }
 
-## Checks if a given function is defined.
-## -> 1: The function name.
-## <- 0/${TRUE} if the function is defined; 1/${FALSE} otherwise.
-## Example:
-##   if DRYWIT.failsafeIsFunctionDefined "readFile"; then
-##     echo "readFile defined";
-##   fi
-function DRYWIT.failsafeIsFunctionDefined() {
+# fun: BOOTSTRAP.failsafeIsFunctionDefined
+# api: private
+# txt: A fail-safe version of isFunctionDefined.
+# opt: name: The function name.
+# txt: Returns 0/TRUE if the function is defined; 1/FALSE otherwise.
+# use: if BOOTSTRAP.failsafeIsFunctionDefined "readFile"; then echo "readFile defined"; fi
+function BOOTSTRAP.failsafeIsFunctionDefined() {
   local _function="${1}";
   local -i _rescode;
+
+  BOOTSTRAP.failsafeCheckNotEmpty "function" "${_function}" 1;
 
   type "${_function}" 2> /dev/null | grep -q 'function';
   _rescode=$?;
@@ -143,23 +205,24 @@ function DRYWIT.failsafeIsFunctionDefined() {
   return ${_rescode};
 }
 
-## Checks if an element is already contained in an array.
-## -> 1: The array (passed as "${array[@]}".
-## -> 2: The element to check.
-## <- 0/${TRUE}: If the element is present in the array; 1/${FALSE} otherwise.
-## Example:
-##   a=("one" "two" "three" "other number")
-##   if DRYWIT.failsafeArrayContains "${array[@]}" "other number"; then
-##     ...
-##   fi
-function DRYWIT.failsafeArrayContains() {
+# fun: BOOTSTRAP.failsafeArrayContains
+# api: private
+# txt: A fail-safe version of arrayContains.
+# opt: array: The array (passed as "${array[@]}".
+# opt: element: The element to check.
+# txt: Returns 0/TRUE: If the element is present in the array; 1/FALSE otherwise.
+# use: a=("one" "two" "three" "other number"); if BOOTSTRAP.failsafeArrayContains "${a[@]}" "other number"; then ...; fi
+function BOOTSTRAP.failsafeArrayContains() {
   local _array="${1}";
   local _item="${2}";
   local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  IFS=$' \t\n';
+  BOOTSTRAP.failsafeCheckNotEmpty "array" "${_array}" 1;
+  BOOTSTRAP.failsafeCheckNotEmpty "item" "${_item}" 2;
+
+  IFS="${DWIFS}";
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
     if [[ "${_aux}" == "${_item}" ]]; then
@@ -172,36 +235,39 @@ function DRYWIT.failsafeArrayContains() {
   return ${_rescode};
 }
 
-## Downloads given module.
-## -> 1: The module name.
-## <- 0/${TRUE} if the module is downloaded; 1/${FALSE} otherwise.
-## Example:
-##   if downloadModule "fibonacci"; then
-##     echo "fibonacci module downloaded";
-##   fi
-function DW.downloadModule() {
+# fun: downloadModule
+# api: public
+# txt: Downloads given module.
+# opt: name: The module name.
+# txt: Returns 0/TRUE if the module is downloaded; 1/FALSE otherwise.
+# use:  if downloadModule "fibonacci"; then echo "fibonacci module downloaded"; fi
+function downloadModule() {
   local _module="${1}";
   local -i _rescode;
   local _result="";
 
-  DRYWIT.failsafeCheckNotEmpty "module" "${_module}" 1;
+  BOOTSTRAP.failsafeCheckNotEmpty "module" "${_module}" 1;
 
   mkdir -p "${DRYWIT_MODULE_PATH}";
 
-  DRYWIT.failsafeLogTrace "Downloading '${_module}' module from ${DRYWIT_MODULE_URL}/${_module}.dw";
+  BOOTSTRAP.failsafeLogTrace -n "Downloading '${_module}' module from ${DRYWIT_MODULE_URL}/${_module}.dw to ${DRYWIT_MODULE_PATH}/${_module}.dw";
   curl -s "${DRYWIT_MODULE_URL}/${_module}.dw" > "${DRYWIT_MODULE_PATH}/${_module}.dw";
   _rescode=$?;
   if [[ ${_rescode} -eq ${TRUE} ]]; then
-    DRYWIT.failsafeLogTraceResult SUCCESS "done";
+    BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
     export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw";
   else
-    DRYWIT.failsafeLogTraceResult FAILURE "failed";
+    BOOTSTRAP.failsafeLogTraceResult FAILURE "failed";
   fi
 
   return ${_rescode};
 }
 
-function DRYWIT.bootstrap() {
+# fun: BOOTSTRAP.bootstrap
+# txt: Bootstraps dry-wit.
+# txt: Returns always 0/TRUE.
+# use: BOOTSTRAP.bootstrap;
+function BOOTSTRAP.bootstrap() {
   local _module;
   local _modulePath;
   local _oldIFS="${IFS}";
@@ -215,33 +281,43 @@ function DRYWIT.bootstrap() {
   IFS="${_oldIFS}";
 }
 
+# fun: DW.import
+# api: public
+# txt: Imports given module.
+# opt: module: The module to import.
+# txt: Returns 0/TRUE always. If the module cannot be imported, exits.
+# use: DW.import logging;
 function DW.import() {
   local _module="${1}";
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## checkNotEmpty is loaded.
-  DRYWIT.failsafeCheckNotEmpty "module" "${_module}" 1;
+  BOOTSTRAP.failsafeCheckNotEmpty "module" "${_module}" 1;
 
-  if DW.findModule "${_module}"; then
+  if findModule "${_module}"; then
     _modulePath="${RESULT}";
-  elif DW.downloadModule "${_module}"; then
+  elif downloadModule "${_module}"; then
     _modulePath="${RESULT}";
   else
     echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?"
     exit 1;
   fi
 
-  if DRYWIT.failsafeArrayContains "${__DRYWIT_IMPORTED_MODULES[*]}" "${_module}"; then
-    DRYWIT.failsafeLogTrace "Not sourcing ${_modulePath} since it's already sourced";
-  else
-    DRYWIT.failsafeLogTrace -n "Loading ${_modulePath}";
+  if ! BOOTSTRAP.failsafeArrayContains "${__DRYWIT_IMPORTED_MODULES[*]}" "${_module}"; then
+    BOOTSTRAP.failsafeLogTrace -n "Loading ${_modulePath}";
     source "${_modulePath}";
-    DRYWIT.failsafeLogTraceResult SUCCESS "done";
+    BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
     __DRYWIT_IMPORTED_MODULES[${#__DRYWIT_IMPORTED_MODULES[@]}]="${_module}";
   fi
 }
 
-function DW.findModule() {
+# fun: findModule
+# api: public
+# txt: Finds given module locally.
+# opt: module: The name of the module.
+# txt: Returns 0/TRUE if the module is found; 1/FALSE otherwise.
+# use: if findModule "fibonacci"; then DW.import fibonacci; fi
+function findModule() {
   local _module="${1}";
   local -i _rescode=${FALSE};
 
@@ -253,7 +329,7 @@ function DW.findModule() {
   return ${_rescode};
 }
 
-DRYWIT.bootstrap;
+BOOTSTRAP.bootstrap;
 
 if    endsWith "${SCRIPT_NAME}" "-tests.sh" \
    || endsWith "${SCRIPT_NAME}" "-test.sh"; then
