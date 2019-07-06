@@ -115,7 +115,8 @@ function isFunctionDefined() {
   local -i _rescode;
 
   checkNotEmpty "function" "${_function}" 1;
-  isFunctionDefined "${_function}";
+
+  type "${_function}" 2> /dev/null | grep -q 'function';
   _rescode=$?;
 
   return ${_rescode};
