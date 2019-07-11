@@ -69,9 +69,16 @@ function exitWithError() {
 function exitWithErrorCode() {
     local _label="${1}";
     shift;
+    local _level;
     local -i _rescode;
 
     checkNotEmpty "label" "${_label}" 1;
+
+    if isLogLineOpen; then
+      getLogLevel;
+      _level="${RESULT}";
+      logResult "${_level}" FAILURE "aborted";
+    fi
 
     printErrorMessage "${_label}" "$@";
     _rescode=$?;

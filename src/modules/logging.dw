@@ -60,6 +60,12 @@ if [ -z ${_DRY_WIT_LOG_LINE_OPEN+x} ]; then
   export _DRY_WIT_LOG_LINE_OPEN=${FALSE};
 fi
 
+# env: _DRY_WIT_LAST_LOG: The last message logged.
+export _DRY_WIT_LAST_LOG;
+
+# env: _DRY_WIT_LAST_LOG_LEVEL: The level (info, debug, etc.) of the last message logged.
+export _DRY_WIT_LAST_LOG_LEVEL;
+
 if [ -z ${NESTED_TASK_IN_PROGRESS+x} ]; then
   export NESTED_TASK_IN_PROGRESS="....";
 fi
@@ -212,8 +218,7 @@ export LOG_OUTCOME_TOKENS=(\
 # env: LOG_OUTCOME_TEXT_POSITION: The position of the text in LOG_OUTCOME_TOKENS.
 export LOG_OUTCOME_TEXT_POSITION=1;
 
-
-# fun: definedTag tag
+ fun: definedTag tag
 # api: public
 # txt: Checks whether given tag is defined.
 # opt: tag: The tag to check.
@@ -777,12 +782,12 @@ function LOGGING.getLastLog() {
     export RESULT="${_DRY_WIT_LAST_LOG}";
 }
 
-# fun: LOGGING.isLogLineOpen
-# api: private
+# fun: isLogLineOpen
+# api: public
 # txt: Checks whether the log line is currently opened.
 # txt: Returns 0/TRUE if it's open; 1/FALSE otherwise.
-# use: if LOGGING.isLogLineOpen; then ...; fi
-function LOGGING.isLogLineOpen() {
+# use: if isLogLineOpen; then ...; fi
+function isLogLineOpen() {
     return ${_DRY_WIT_LOG_LINE_OPEN};
 }
 
@@ -1031,12 +1036,34 @@ function LOGGING.logStuff() {
   if [ "-n" == "${_minusN}" ]; then
     shift;
   fi
+  _DRY_WIT_LAST_LOG_LEVEL="${_level}";
   LOGGING.logInProgress "${_level}" "$@";
   if [ "-n" != "${_minusN}" ]; then
     echo;
     LOGGING.popLog;
     LOGGING.popLogCategory;
   fi
+}
+
+# fun: LOGGING.setLastLogLevel level
+# api: private
+# txt: Annotates the level of the last logged message.
+# opt: level: The log level.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.setLastLogLevel INFO;
+function LOGGING.setLastLogLevel() {
+  local _level="${1}";
+  checkNotEmpty "level" "${_level}" 1;
+  _DRY_WIT_LAST_LOG_LEVEL="${_level}";
+}
+
+# fun: getLastLogLevel
+# txt: Retrieves the level of the last logged message.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains the log level.
+# use: getLastLogLevel; echo "Last log level: ${RESULT}";
+function getLastLogLevel() {
+  export RESULT="${_DRY_WIT_LAST_LOG_LEVEL}";
 }
 
 # fun: LOGGING.logStuffResult level SUCCESS|FAILURE message
@@ -1497,7 +1524,6 @@ function LOGGING.retrieveTimestampPositionInLogPrefix() {
     export RESULT=${LOG_PREFIX_TIMESTAMP_POSITION};
 }
 
-
 # fun: LOGGING.setLastLog message
 # api: private
 # txt: Annotates the last log message.
@@ -1506,6 +1532,16 @@ function LOGGING.retrieveTimestampPositionInLogPrefix() {
 # use: LOGGING.setLastLog "Operation in progress";
 function LOGGING.setLastLog() {
     _DRY_WIT_LAST_LOG="${@}";
+}
+
+# fun: getLastLog message
+# api: public
+# txt: Retrieves the last log message.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains the last log.
+# use: getLastLog; echo "Last log: ${RESULT}";
+function LOGGING.setLastLog() {
+    export RESULT="${_DRY_WIT_LAST_LOG}";
 }
 
 # fun: logInfo message
@@ -1553,19 +1589,26 @@ function logInfoResult() {
   fi
 }
 
-# fun: logResult SUCCESS|FAILURE message
+# fun: logResult level SUCCESS|FAILURE message
 # api: public
-# txt: Logs the outcome of an operation, as "info".
+# txt: Logs the outcome of an operation, as "info", under a certain level.
+# txt: The level is assumed to be enabled already.
+# opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
 # opt: SUCCESS|FAILURE: The outcome.
 # opt: message: The message.
 # txt: Returns 0/TRUE always.
 # use: logResult SUCCESS "done";
 function logResult() {
+    local _level="${1}";
+    shift;
     local _outcome="${1}";
     shift;
     local _message="${@}";
+    checkNotEmpty "level" "${_level}" 1;
+    checkNotEmpty "outcome" "${_outcome}" 2;
+    checkNotEmpty "message" "${_message}" 3;
 
-    logInfoResult "${_outcome}" "${_message}";
+    logResult "${_level}" "${_outcome}" "${_message}";
 }
 
 # fun: logTrace message
