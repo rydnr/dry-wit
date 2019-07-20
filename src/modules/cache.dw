@@ -1,12 +1,23 @@
-# Adapted from http://unix.stackexchange.com/questions/38101/does-bash-have-a-built-in-caching-command-available-sort-of-like-mktemp-or-spon
+# mod: cache
+# api: public
+# txt: Memoization support.
+# txt: Adapted from http://unix.stackexchange.com/questions/38101/does-bash-have-a-built-in-caching-command-available-sort-of-like-mktemp-or-spon
 typeset -A result_cache;
 typeset -A rescode_cache;
 
+# fun: cache function functionArguments
+# api: public
+# txt: Memoizes a function call: Annotates its output, to speed up future invocations.
+# opt: function: the name of the function to call.
+# opt: functionArguments: the arguments of the function.
+# txt: Returns the result of the function call.
+# use: cache findPrimeNumbers 100000 # takes a long time
+#      cache findPrimeNumbers 100000 # returns instantly
 function cache() {
   local IFS='
   ';
   local _key="$*";
-  local rescode;
+  local -i rescode;
   local result;
   local _cachedRescode=${rescode_cache["${_key}"]:--1};
 
@@ -25,6 +36,13 @@ function cache() {
   return ${rescode};
 }
 
+# fun: uncache function functionArguments
+# api: public
+# txt: Discards previous memoized values for a function call.
+# opt: function: the name of the function..
+# opt: functionArguments: the arguments of the function.
+# txt: Returns 0/TRUE always.
+# use: uncache findPrimeNumbers 100000
 function uncache() {
   local IFS='
   ';

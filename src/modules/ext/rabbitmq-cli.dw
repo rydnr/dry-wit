@@ -1,14 +1,20 @@
+# mod: rabbitmq-cli
+# txt: Useful module for RabbitMQ bootstrapping scripts.
+# txt: This module declares the following command-line flags:
+# opt: -f|--failFast: Whether to fail as soon as any step in the bootstrap process fails. It's declared optional.
 addCommandLineFlag "failFast" "f" "Whether to fail as soon as any step in the bootstrap process fails." OPTIONAL NO_ARGUMENT;
 
 function dw_parse_failfast_cli_parameter() {
   export FAIL_FAST=TRUE;
 }
 
+# opt: --force: Forces the bootstrap process, regardless of whether it's been done already or it's currently in progress. It's declared optional.
 addCommandLineFlag "force" "F" "Forces the bootstrap process, regardless of whether it's been done already or it's currently in progress." OPTIONAL NO_ARGUMENT;
 function dw_parse_force_cli_parameter() {
   export FORCE=TRUE;
 }
 
+# env: RABBITMQ_NODENAME: The RabbitMQ nodename.
 defineEnvVar RABBITMQ_NODENAME MANDATORY "The RabbitMQ nodename" "${NODENAME}";
 function dw_check_rabbitmq_nodename_cli_envvar() {
   local _result="${RABBITMQ_NODENAME}"
@@ -26,7 +32,8 @@ addError INVALID_OPTION "Unknown option";
 addError RABBITMQCTL_NOT_AVAILABLE "rabbitmqctl is not available";
 checkReq rabbitmqctl RABBITMQCTL_NOT_AVAILABLE;
 
-defineEnvVar BOOTSTRAPPED_FILE MANDATORY "The file indicating the RabbitMQ instance has already been bootstrapped" "/backup/rabbitmq/data/mnesia/.bats-rabbitmq-bbvaatsforms.bootstrapped";
+# env: BOOTSTRAPPED_FILE: The file indicating the RabbitMQ instance has already been bootstrapped.
+defineEnvVar BOOTSTRAPPED_FILE MANDATORY "The file indicating the RabbitMQ instance has already been bootstrapped" "/backup/rabbitmq/data/mnesia/.rabbitmq.bootstrapped";
 
 addError BOOTSTRAPPED_FILE_ENV_VAR_IS_MANDATORY "BOOTSTRAPPED_FILE environment variable is mandatory";
 function dw_check_bootstrapped_file_cli_envvar() {
@@ -36,6 +43,7 @@ function dw_check_bootstrapped_file_cli_envvar() {
   fi
 }
 
+# env: LOCK_FILE: The file indicating there's an ongoing bootstrap process.
 defineEnvVar LOCK_FILE MANDATORY "The file indicating there's an ongoing bootstrap process" "/var/lock/bats-rabbitmq-bootstrap-bbvaatsforms.lock";
 addError LOCK_FILE_ENV_VAR_IS_MANDATORY "LOCK_FILE environment variable is mandatory";
 function dw_check_lock_file_cli_envvar() {
@@ -45,6 +53,7 @@ function dw_check_lock_file_cli_envvar() {
   fi
 }
 
+# env: ADMIN_PASSWORD: The password of the 'admin' user.
 defineEnvVar ADMIN_PASSWORD MANDATORY "The password of the 'admin' user" "";
 addError ADMIN_PASSWORD_ENV_VAR_IS_MANDATORY "ADMIN_PASSWORD environment variable is mandatory";
 function dw_check_admin_password_cli_envvar() {
@@ -60,3 +69,4 @@ addError CANNOT_RETRIEVE_RABBITMQADMIN "Cannot retrieve rabbitmqadmin";
 addError CANNOT_FIX_RABBITMQADMIN "Cannot patch rabbitmqadmin";
 addError CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT "Cannot enable plugin management";
 addError CANNOT_DECLARE_THE_BINDINGS "Cannot declare the bindings";
+#

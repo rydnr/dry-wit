@@ -1,6 +1,71 @@
-# Converts given date (in days) to a formatted date.
-# -> 1: The day-based timestamp.
-# <- RESULT: year month day
+# mod: date
+# api: public
+# txt: Functions to parse and format dates.
+
+# fun: date2jd year month day
+# api: public
+# txt: Converts given formatted date to a day-based one.
+# opt: year: The year.
+# opt: month: The month.
+# opt: day: The day.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the day-based timestamp.
+# use: date2jd 2019 6 2
+function date2jd() {
+    local result=0;
+
+    local _year=$1;
+    local _month=$2;
+    local _day=$3;
+
+    local _standardJd=$(( _day - 32075
+                          + 1461 * (_year + 4800 - (14 - _month)/12)/4
+                          + 367 * (_month - 2 + (14 - _month)/12*12)/12
+                          - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
+
+    result=$((_standardJd-2400001));
+
+    export RESULT=${result};
+}
+
+# fun: date2jds year month day hour minute second
+# api: public
+# txt: Converts given formatted date to a second-based one.
+# opt: year: The year.
+# opt: month: The month.
+# opt: day: The day.
+# opt: hour: The hour.
+# opt: minute: The minute.
+# opt: second: The second.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the number of seconds.
+# use: date2jjds 2019 6 2 18 13 56
+function date2jds() {
+    local result=0;
+
+    local _year=$1;
+    local _month=$2;
+    local _day=$3;
+    local _hour=$4;
+    local _minute=$5;
+    local _second=$6;
+
+    date2jd ${_year} ${_month} ${_day};
+    result=${RESULT};
+    result=$((result*24+_hour));
+    result=$((result*60+_minute));
+    result=$((result*60+_second));
+
+    export RESULT=${result};
+}
+
+# fun: jd2date date
+# api: public
+# txt: Converts given date (in days) to a formatted date.
+# opt: date: The day-based timestamp.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains "year month day"
+# use: jd2date 135353
 function jd2date() {
   local _standardJd;
   local _temp1;
@@ -27,31 +92,13 @@ function jd2date() {
   export RESULT="$_year $_month $_day";
 }
 
-# Converts given formatted date to a day-based one.
-# -> 1: The year.
-# -> 2: The month.
-# -> 3: The day.
-# <- RESULT: The day-based timestamp.
-function date2jd() {
-  local result=0;
-
-  local _year=$1;
-  local _month=$2;
-  local _day=$3;
-
-  local _standardJd=$(( _day - 32075
-       + 1461 * (_year + 4800 - (14 - _month)/12)/4
-       + 367 * (_month - 2 + (14 - _month)/12*12)/12
-       - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
-
-  result=$((_standardJd-2400001));
-
-  export RESULT=${result};
-}
-
-# Converts given date (in seconds) to a formatted date.
-# -> 1: The timestamp, in seconds.
-# <- RESULT: days hour minute second
+# fun: jds2date timestamp
+# api: public
+# txt: Converts given date (in seconds) to a formatted date.
+# opt: timestamp: The timestamp, in seconds.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains "days hour minute second".
+# use: jds2date 112412542444
 function jds2date() {
   local _year;
   local _month;
@@ -75,30 +122,4 @@ function jds2date() {
 
   export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}";
 }
-
-# Converts given formatted date to a second-based one.
-# -> 1: The year.
-# -> 2: The month.
-# -> 3: The day.
-# -> 4: The hour.
-# -> 5: The minute.
-# -> 6: The second.
-# <- RESULT: The number of seconds.
-function date2jds() {
-  local result=0;
-
-  local _year=$1;
-  local _month=$2;
-  local _day=$3;
-  local _hour=$4;
-  local _minute=$5;
-  local _second=$6;
-
-  date2jd ${_year} ${_month} ${_day};
-  result=${RESULT};
-  result=$((result*24+_hour));
-  result=$((result*60+_minute));
-  result=$((result*60+_second));
-
-  export RESULT=${result};
-}
+#

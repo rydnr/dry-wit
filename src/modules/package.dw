@@ -1,10 +1,13 @@
-## Checks a required package is installed.
-## -> 1: The program name.
-## <- 0/${TRUE} if given program is available in the PATH; 1/${FALSE} otherwise.
-## Example:
-##   if ! isInstalled "ifconfig"; then
-##     echo "ifconfig is not available";
-##   fi
+# mod: package
+# api: public
+# txt: Package functions.
+
+# fun: isInstalled program
+# api: public
+# txt: Checks a required package is installed.
+# opt: program: The program name.
+# txt: Returns 0/TRUE if given program is available in the PATH; 1/FALSE otherwise.
+# use: if ! isInstalled "ifconfig"; then echo "ifconfig is not available"; fi
 function isInstalled() {
   local _req="${1}";
   local -i _rescode;
@@ -16,4 +19,4 @@ function isInstalled() {
 
   return ${_rescode};
 }
-
+#

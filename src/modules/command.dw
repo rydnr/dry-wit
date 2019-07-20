@@ -1,15 +1,21 @@
+# mod: command
+# api: public
+# txt: Functions to run external commands.
+
 DW.import user;
 DW.import logging;
 
-# Runs a command supporting logging of command-line and output.
-# The output is stored in a single variable. If it's expected to
-# be longer use 'runCommandLongOutput' instead.
-# Parameters:
-# - Command: The command to run.
+# fun: runCommand command
+# api: public
+# txt: Runs a command supporting logging of command-line and output.
+# opt: command: The command to run.
+# txt: Returns the result of the command.
+# txt: The output is stored in the variable RESULT. If it's expected to be longer use 'runCommandLongOutput' instead.
+# use: if runCommand "nmap -Pn"; then ...; fi
 function runCommand() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
   local result;
-  local resultCode;
+  local -i resultCode;
 
   getLogCategory;
   local _previousLogCategory="${RESULT}";
@@ -22,53 +28,21 @@ function runCommand() {
   export RESULT="${result}";
 
   setLogCategory "${_previousLogCategory}";
-  return ${resultCode};
-}
-
-# TODO: find out why this fails. result gets modified
-# externally in the getLogCategory/setLogCategory/logDebug block
-# Runs a command supporting logging of command-line and output,
-# even if it's long, since it uses a temporary file to store it.
-# Parameters:
-# - Command: The command to run.
-function runCommandLongOutput() {
-  local _command="$(echo $@ | sed 's_\n_ _g')";
-  local result;
-  local resultCode;
-
-  createTempFile;
-  result="${RESULT}";
-
-  getLogCategory;
-  local _previousLogCategory="${RESULT}";
-  setLogCategory "${_previousLogCategory}*";
-
-  logDebug "${_command}";
-
-  if isDebugEnabled; then
-    $@ 2>&1 | tee "${result}";
-    resultCode=${PIPESTATUS[0]};
-  else
-    $@ > "${result}" 2>&1;
-    resultCode=$?;
-  fi
-
-  export RESULT="${result}";
-
-  setLogCategory "${_previousLogCategory}";
 
   return ${resultCode};
 }
 
-## Runs the command in a folder, under a given user.
-## -> 1: The user id.
-## -> 2: The group id.
-## -> 3: the folder.
-## -> 4+: the command.
-## Example:
-##  if runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"; then
-##    echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
-##  fi
+# fun: runCommandAsUidGid uid gid folder command+
+# api: public
+# txt: Runs a command in a folder, under a given user.
+# opt: uid: The user id.
+# opt: gid: The group id.
+# opt: folder: the folder.
+# opt: command: the command.
+# txt: Returns the result of the command.
+# use: if runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"; then
+#        echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
+#      fi
 function runCommandAsUidGid() {
   local _uid="${1}";
   local _gid="${2}";
@@ -89,15 +63,17 @@ function runCommandAsUidGid() {
   runCommandAsUserAndGroup "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
 }
 
-## Runs the command in a folder, under a given user.
-## -> 1: The user.
-## -> 2: The group.
-## -> 3: the folder.
-## -> 4+: the command.
-## Example:
-##  if runCommandAsUserAndGroup root root /tmp "ls -ltrhia"; then
-##    echo "ls -ltrhia run successfully as root/root, on /tmp";
-##  fi
+# fun: runCommandAsUserAndGroup user group folder command+
+# api: public
+# txt: Runs the command in a folder, under a given user.
+# opt: user: The user.
+# opt: group: The group.
+# opt: folder: the folder.
+# opt: command: the command.
+# txt: Returns the result of the command.
+# use: if runCommandAsUserAndGroup root root /tmp "ls -ltrhia"; then
+#        echo "ls -ltrhia run successfully as root/root, on /tmp";
+#      fi
 function runCommandAsUserAndGroup() {
   local _user="${1}";
   local _group="${2}";
@@ -143,3 +119,39 @@ EOF
   return ${rescode};
 }
 
+# fun: runCommandLongOutput command
+# api: public
+# txt: Runs a command supporting logging of command-line and output, even if it's long, since it uses a temporary file to store it.
+# opt: command: The command to run.
+# txt: Returns the result of the command.
+# TODO: find out why this fails. result gets modified externally in the getLogCategory/setLogCategory/logDebug block
+# use: if runCommandLongOutput "nmap -Pn"; then ...; fi
+function runCommandLongOutput() {
+    local _command="$(echo $@ | sed 's_\n_ _g')";
+    local result;
+    local -i resultCode;
+
+    createTempFile;
+    result="${RESULT}";
+
+    getLogCategory;
+    local _previousLogCategory="${RESULT}";
+    setLogCategory "${_previousLogCategory}*";
+
+    logDebug "${_command}";
+
+    if isDebugEnabled; then
+        $@ 2>&1 | tee "${result}";
+        resultCode=${PIPESTATUS[0]};
+    else
+        $@ > "${result}" 2>&1;
+        resultCode=$?;
+    fi
+
+    export RESULT="${result}";
+
+    setLogCategory "${_previousLogCategory}";
+
+    return ${resultCode};
+}
+#

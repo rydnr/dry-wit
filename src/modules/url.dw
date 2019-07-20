@@ -1,9 +1,14 @@
-## Encodes given url.
-## -> 1: The url to encode.
-## <- (stdout) The encoded url.
-## Example:
-## local encoded="$(urlEncode 'http://www.example.com')";
-## echo "URL encoded: ${encoded}"
+# mod: url
+# api: public
+# txt: URL-related functions.
+
+# fun: urlEncode url
+# api: public
+# txt: Encodes given url.
+# opt: url: The url to encode.
+# txt: Prints the encoded url to stdout.
+# use: local encoded="$(urlEncode 'http://www.example.com')";
+#      echo "URL encoded: ${encoded}";
 function urlEncode() {
   local _text="$1";
   checkNotEmpty "text" "${_text}" 1;

@@ -1,9 +1,22 @@
+# mod: ssh
+# api: public
+# txt: SSH-related functions.
+
+# fun: remoteSshCommand user server command
+# api: public
+# txt: Runs a command in a remote server, via SSH.
+# opt: user: The user name.
+# opt: server: The remote server.
+# opt: command: The command to run.
+# txt: Returns the result code of the command.
+# txt: If the function returns 0/TRUE; then the variable RESULT contains the output of the command.
+# use: if remoteSshCommand user ssh.example.com "who"; then echo "Remote logged users: ${RESULT}"; fi
 function remoteSshCommand() {
   local result;
-  local resultCode=${TRUE};
+  local -i resultCode=${TRUE};
   local _user="$1";
   local _server="$2";
-  local _command="$3";
+  local _command="$*";
 
   result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
   resultCode=$?;
@@ -14,9 +27,19 @@ function remoteSshCommand() {
   return ${resultCode};
 }
 
+# fun: remoteSshCommandPipe user server command previousPipe
+# api: public
+# txt: Pipes through a command in a remote server, via SSH.
+# opt: user: The user name.
+# opt: server: The remote server.
+# opt: command: The command to run in the remote server.
+# opt: previousPipe: The pipe to read from, which is piped to the remote command.
+# txt: Returns the result code of the remote command.
+# txt: If the function returns 0/TRUE; then the variable RESULT contains the output of the command.
+# use: if remoteSshCommandPipe user ssh.example.com "tar -cvfz - /www" "cat > www.tar.gz"
 function remoteSshCommandPipe() {
   local result;
-  local resultCode=${TRUE};
+  local -i resultCode=${TRUE};
   local _user="$1";
   local _server="$2";
   local _command="$3";
@@ -35,4 +58,4 @@ function remoteSshCommandPipe() {
 
   return ${resultCode};
 }
-
+#

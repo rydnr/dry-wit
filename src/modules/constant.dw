@@ -1,12 +1,17 @@
-## PUBLIC
-## Retrieves the value of a constant.
-## -> 1: The constant name.
-## <- RESULT: The constant value.
-## Example:
-##  _OTHERVAR="works"
-##  _MYVAR="OTHERVAR";
-##  evalConstant "${_MYVAR}";
-##  echo "${_MYVAR}->${RESULT}" # _OTHERVAR->works
+# mod: constant
+# api: public
+# txt: Functions related to constants.
+
+# fun: evalConstant constantName
+# api: public
+# txt: Retrieves the value of a constant.
+# opt: constantName: The constant name.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the constant value.
+# use: OTHERVAR="works"
+#      MYVAR="OTHERVAR";
+#      evalConstant "${MYVAR}";
+#      echo "${MYVAR}->${RESULT}" # OTHERVAR->works
 function evalConstant() {
   local _constant="${1}";
 
@@ -26,4 +31,4 @@ function evalConstant() {
 
   export RESULT="${result}";
 }
-
+#

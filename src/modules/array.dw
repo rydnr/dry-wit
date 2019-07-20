@@ -1,12 +1,15 @@
-## Checks if an element is already contained in an array.
-## -> 1: The array (passed as "${array[@]}".
-## -> 2: The element to check.
-## <- 0/${TRUE}: If the element is present in the array; 1/${FALSE} otherwise.
-## Example:
-##   a=("one" "two" "three" "other number")
-##   if arrayContains "${array[@]}" "other number"; then
-##     ...
-##   fi
+# mod: array
+# api: public
+# txt: Functions related to arrays and associative arrays.
+
+# fun: arrayContains array element
+# api: public
+# txt: Checks if an element is already contained in an array.
+# opt: array: The array (passed as "${array[@]}").
+# opt: element: The element to check.
+# txt: Returns 0/TRUE if the element is present in the array; 1/FALSE otherwise.
+# use: a=("one" "two" "three" "other number")
+#      if arrayContains "${a[@]}" "other number"; then ...; fi
 function arrayContains() {
   local _array="${1}";
   local _item="${2}";
@@ -32,15 +35,14 @@ function arrayContains() {
   return ${_rescode};
 }
 
-## Checks if an element is not already contained in an array.
-## -> 1: The array (passed as "${array[@]}".
-## -> 2: The element to check.
-## <- 0/${TRUE}: If the element is not present in the array; 1/${FALSE}: Otherwise
-## Example:
-##   a=("one" "two" "three" "other number")
-##   if arrayDoesNotContain "${array[@]}" "four"; then
-##     ...
-##   fi
+# fun: arrayDoesNotContain array element
+# api: public
+# txt: Checks if an element is not already contained in an array.
+# opt: array: The array (passed as "${array[@]}").
+# opt: element: The element to check.
+# txt: Returns 0/TRUE if the element is not present in the array; 1/FALSE Otherwise.
+# use: a=("one" "two" "three" "other number")
+#      if arrayDoesNotContain "${a[@]}" "four"; then ...; fi
 function arrayDoesNotContain() {
   local _array="${1}";
   local _item="${2}";
@@ -60,15 +62,35 @@ function arrayDoesNotContain() {
   return ${_rescode};
 }
 
-## PUBLIC
-## Flattens an array, using given separator.
-## -> 1: The name of the array variable.
-## -> 2: The separator to use.
-## <- RESULT: The resulting string.
-## Example:
-##   A=(a b c);
-##   flattenArray A "x";
-##   echo "A->${RESULT}" # axbxc
+# fun: clearAssociativeArray array
+# api: public
+# txt: Clears given associative array.
+# opt: array: The associative array.
+# txt: Returns 0/TRUE always.
+# use: clearAssociativeArray myArray;
+function clearAssociativeArray() {
+    local _arrayName="${1}";
+    local _key;
+
+    checkNotEmpty "arrayName" "${_arrayName}" 1;
+
+    declare -n _directArray="${_arrayName}";
+
+    IFS="${DWIFS}";
+    for _key in "${!_directArray[@]}"; do
+        IFS="${_oldIFS}";
+        unset _directArray[${_key}];
+    done
+    IFS="${_oldIFS}";
+}
+
+# fun: flattenArray array separator
+# api: public
+# txt: Flattens an array, using given separator.
+# opt: array: The name of the array variable.
+# opt: separator: The separator to use.
+# txt: The variable RESULT contains the resulting string.
+# use: A=(a b c); flattenArray A "x"; echo "A->${RESULT}" # axbxc
 function flattenArray() {
   local _arrayName="${1}";
   local _separator="${2}";
@@ -98,16 +120,64 @@ function flattenArray() {
   export RESULT="${result}";
 }
 
-## Extracts the keys of given associate array.
-## --> 1: The array name.
-## <-- RESULT: the list of the keys, wrapped in double quotes.
-## Example:
-##   myMapping=([foo]=bar [with spaces]="with spaces");
-##   retrieveAssociateArrayKeys myMapping;
-##   for key in ${RESULT}; do
-##     ..
-##   done
-function retrieveAssociateArrayKeys() {
+# fun: forEachAssociativeArrayEntryDo array callback
+# api: public
+# txt: Calls a given function for each entry found in given associative array.
+# opt: array: The name of the associative array variable.
+# opt: callback: The name of the callback function.
+# txt: Returns 0/TRUE always.
+# use: function process_code() {
+#        echo "Code: ${1}, description: ${2}";
+#      }
+#      ...
+#      forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
+function forEachAssociativeArrayEntryDo() {
+    local _arrayName="${1}";
+    local _callback="${2}";
+    local _key;
+    local _oldIFS="${IFS}";
+
+    checkNotEmpty "arrayName" "${_arrayName}" 1;
+    checkFunctionPresent "callback" "${_callback}" 2;
+
+    declare -n _directArray="${_arrayName}";
+
+    IFS="${DWIFS}";
+    for _key in "${!_directArray[@]}"; do
+        IFS="${_oldIFS}";
+        ${_callback} "${_key}" "${_directArray[${_key}]}";
+    done
+    IFS="${_oldIFS}";
+}
+
+# fun: isArrayEmpty array
+# api: public
+# txt: Checks whether given array is empty.
+# opt: array: The name of the array.
+# txt: Returns 0/TRUE if the array is empty; 1/FALSE otherwise.
+# use: if isArrayEmpty array; then ...; fi
+function isArrayEmpty() {
+    local _arrayName="${1}";
+    local -i _rescode;
+
+    if isEmpty "${_arrayName}"; then
+        _rescode=${TRUE};
+    else
+        _rescode=${FALSE};
+    fi
+
+    return ${_rescode};
+}
+
+# fun: retrieveAssociativeArrayKeys array
+# api: public
+# txt: Extracts the keys of given associative array.
+# opt: array: The array name.
+# txt: The variable RESULT contains the list of the keys, wrapped in double quotes.
+# use: myMapping=([foo]=bar [with spaces]="with spaces");
+#      retrieveAssociativeArrayKeys myMapping;
+#      for key in ${RESULT}; do ...; done
+function retrieveAssociativeArrayKeys() {
   local _arrayName="${1}";
   local _key;
   local _result;
@@ -127,66 +197,5 @@ function retrieveAssociateArrayKeys() {
   IFS="${_oldIFS}";
 
   export RESULT="${_result}";
-}
-
-## Calls a given function for each entry found in given associative array.
-## -> 1: The name of the associative array variable.
-## -> 2: The name of the callback function.
-## Example:
-## function process_code() {
-##   echo "Code: ${1}, description: ${2}";
-## }
-##   ..
-##   forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
-function forEachAssociativeArrayEntryDo() {
-  local _arrayName="${1}";
-  local _callback="${2}";
-  local _key;
-  local _oldIFS="${IFS}";
-
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
-  checkFunctionPresent "callback" "${_callback}" 2;
-
-  declare -n _directArray="${_arrayName}";
-
-  IFS="${DWIFS}";
-  for _key in "${!_directArray[@]}"; do
-    IFS="${_oldIFS}";
-    ${_callback} "${_key}" "${_directArray[${_key}]}";
-  done
-  IFS="${_oldIFS}";
-}
-
-## Clears given associative array.
-## -> 1: The associative array.
-## Example:
-##   clearAssociativeArray myArray;
-function clearAssociativeArray() {
-  local _arrayName="${1}";
-  local _key;
-
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
-
-  declare -n _directArray="${_arrayName}";
-
-  IFS="${DWIFS}";
-  for _key in "${!_directArray[@]}"; do
-    IFS="${_oldIFS}";
-    unset _directArray[${_key}];
-  done
-  IFS="${_oldIFS}";
-}
-
-function isArrayEmpty() {
-  local _arrayName="${1}";
-  local -i _rescode;
-
-  if isEmpty "${_arrayName}"; then
-    _rescode=${TRUE};
-  else
-    _rescode=${FALSE};
-  fi
-
-  return ${_rescode};
 }
 #

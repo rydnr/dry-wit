@@ -1,13 +1,57 @@
-# Network functions
+# mod: net
+# api: public
+# txt: Network functions
 
 import DW.package;
 
-## Retrieves all regular (excluding localhost, VPN, Docker, VirtualBox, etc) network interfaces.
-## <- RESULT: the interface names.
-## Usage:
-##   if retrieveIfaces; then
-##     echo "Interfaces: ${RESULT}";
-##   fi
+# fun: hostIsReachable host
+# api: public
+# txt: Checks whether given host is reachable.
+# opt: host: The host to check.
+# txt: Returns 0/TRUE if the host is reachable; 1/FALSE otherwise.
+# use: if hostIsReachable "www.google.com"; then echo "www.google.com is reachable"; fi
+function hostIsReachable() {
+    local _host="${1}";
+    local -i _rescode;
+
+    checkNotEmpty "host" "${_host}" 1;
+
+    ping -c1 -W1 ${_host} > /dev/null
+    _rescode=$?;
+
+    return ${_rescode};
+}
+
+# fun: retrieveIface
+# api: public
+# txt: Retrieves the first network interface.
+# txt: Returns 0/TRUE if first network interface was found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the first interface.
+# use: if retrieveIface; then echo "Interface candidate: ${RESULT}"; fi
+function retrieveIface() {
+  local _result;
+  local -i _rescode=${FALSE};
+
+  if retrieveIfaces; then
+    _result="$(echo "${RESULT}" | awk -F' ' '{print $1;}')";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveIfaces
+# api: public
+# txt: Retrieves all regular (excluding localhost, VPN, Docker, VirtualBox, etc) network interfaces.
+# txt: Returns 0/TRUE if network interfaces were found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the interface names.
+# use: if retrieveIfaces; then echo "Interfaces: ${RESULT}"; fi
 function retrieveIfaces() {
   local _result;
   local -i _rescode;
@@ -37,69 +81,13 @@ function retrieveIfaces() {
   return ${_rescode};
 }
 
-## Retrieves the first network interface.
-## <- RESULT: such interface name.
-## Usage:
-##   if retrieveIface; then
-##     echo "Interface candidate: ${RESULT}";
-##   fi
-function retrieveIface() {
-  local _result;
-  local -i _rescode=${FALSE};
-
-  if retrieveIfaces; then
-    _result="$(echo "${RESULT}" | awk -F' ' '{print $1;}')";
-    _rescode=$?;
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_result}";
-  else
-    export RESULT="";
-  fi
-
-  return ${_rescode};
-}
-
-## Retrieves the /24 subnet of given network interface.
-## -> 1: The interface name.
-## <- 0/${TRUE} if the subnet information is available; 1/${FALSE} otherwise.
-## <- RESULT: the device where the root filesystem is stored.
-## Usage:
-##   if retrieveSubnet24 "eth0"; then
-##     echo "The /24 subnet for eth0 is ${RESULT}"
-##   fi
-function retrieveSubnet24() {
-  local _iface="${1}";
-  local _ip;
-  local -i rescode=${FALSE};
-  local _result;
-
-  checkNotEmpty "iface" "${_iface}" 1;
-
-  if retrieveIp "${_iface}"; then
-      _ip="${RESULT}";
-      _result="$(echo ${_ip} | awk -F'.' '{printf("%d.%d.%d.0/24\n", $1, $2, $3);}')";
-
-      if isEmpty ${_result}; then
-          rescode=${FALSE}
-      else
-        export RESULT="${_result}";
-        rescode=${TRUE};
-      fi
-  fi
-
-  return ${rescode};
-}
-
-## Retrieves the IP for given interface.
-## -> 1: the interface name.
-## <- 0/${TRUE} if the IP is up; 1/${FALSE} otherwise.
-## <- RESULT: The IP.
-## Example:
-##   if retrieveIp "eth0"; then
-##     echo "IP: ${RESULT}";
-##   fi
+# fun: retrieveIp interface
+# api: public
+# txt: Retrieves the IP for given interface.
+# opt: interface: The interface name.
+# txt: Returns 0/TRUE if the IP is up; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the IP.
+# use: if retrieveIp "eth0"; then echo "IP: ${RESULT}"; fi
 function retrieveIp() {
   local _iface="${1}";
   local -i _rescode;
@@ -125,13 +113,12 @@ function retrieveIp() {
   return ${_rescode};
 }
 
-## Retrieves the IP of the default interface.
-## <- 0/${TRUE} if the IP can be retrieved; 1/${FALSE} otherwise.
-## <- RESULT: The IP.
-## Example:
-##   if retrieveOwnIp; then
-##     echo "My IP is ${RESULT}";
-##   fi
+# fun: retrieveOwnIp
+# api: public
+# txt: Retrieves the IP of the default interface.
+# txt: Returns 0/TRUE if the IP can be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the IP.
+# use: if retrieveOwnIp; then echo "My IP is ${RESULT}"; fi
 function retrieveOwnIp() {
   local -i _rescode;
   local _result;
@@ -162,21 +149,33 @@ function retrieveOwnIp() {
   return ${_rescode};
 }
 
-## Checks whether given host is reachable.
-## -> 1: The host to check.
-## <- 0/${TRUE} if the host is reachable; 1/${FALSE} otherwise.
-## Example:
-##   if hostIsReachable "www.google.com"; then
-##     echo "www.google.com is reachable";
-##   fi
-function hostIsReachable() {
-  local _host="${1}";
-  local -i _rescode;
+# fun: retrieveSubnet24 interface
+# api: public
+# txt: Retrieves the /24 subnet of given network interface.
+# opt: interface: The interface name.
+# txt: Returns 0/TRUE if the subnet information is available; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains /24 subnet.
+# use: if retrieveSubnet24 "eth0"; then echo "The /24 subnet for eth0 is ${RESULT}"; fi
+function retrieveSubnet24() {
+    local _iface="${1}";
+    local _ip;
+    local -i rescode=${FALSE};
+    local _result;
 
-  checkNotEmpty "host" "${_host}" 1;
+    checkNotEmpty "iface" "${_iface}" 1;
 
-  ping -c1 -W1 ${_host} > /dev/null
-  _rescode=$?;
+    if retrieveIp "${_iface}"; then
+        _ip="${RESULT}";
+        _result="$(echo ${_ip} | awk -F'.' '{printf("%d.%d.%d.0/24\n", $1, $2, $3);}')";
 
-  return ${_rescode};
+        if isEmpty ${_result}; then
+            rescode=${FALSE}
+        else
+            export RESULT="${_result}";
+            rescode=${TRUE};
+        fi
+    fi
+
+    return ${rescode};
 }
+#

@@ -1,9 +1,16 @@
-## Builds a new color.
-## -> 1: The color name.
-## -> 2: The foreground value.
-## -> 3: The background value.
-## Example:
-##   buildColor "GREEN" "32" "42";
+# mod: color
+# api: public
+# txt: Functions to create color constants.
+
+# fun: buildColor name foreground background
+# api: public
+# txt: Builds a new color.
+# opt: name: The color name.
+# opt: foreground: The foreground value.
+# opt: background: The background value.
+# txt: Returns 0/TRUE always.
+#      Exports [COLOR]_FG, [COLOR]_BG, LIGHT_[COLOR]_FG, UNDERSCORE_[COLOR]_FG, BLINK_[COLOR]_FG and CONCEALED_[COLOR]_FG variables.
+# use: buildColor "GREEN" "32" "42";
 function buildColor() {
   local _color="${1}";
   local _fgValue="${2}";
