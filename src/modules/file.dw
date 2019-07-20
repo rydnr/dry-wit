@@ -686,3 +686,51 @@ function addFileToCleanup() {
 #  IFS="${_oldIFS}";
 }
 
+# fun: updateFilePermissions
+# api: public
+# txt: Changes the permissions of given file.
+# opt: file: The file to update.
+# opt: user: The user.
+# opt: group: The group.
+# txt: Returns 0/TRUE if the file permissions were updated successfully; 1/FALSE otherwise.
+# use: if updateFilePermissions /tmp/pass.txt root admin; then echo "/tmp/pass.txt permissions updated"; fi
+function updateFilePermissions() {
+  local _file="${1}";
+  local _user="${2}";
+  local _group="${3}";
+  local -i _rescode;
+
+  checkNotEmpty "file" "${_file}" 1;
+  checkNotEmpty "user" "${_user}" 2;
+  checkNotEmpty "group" "${_group}" 3;
+
+  chown ${_user}:${_group} ${_file};
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: updateFolderPermissions
+# api: public
+# txt: Changes the permissions of given folder.
+# opt: folder: The folder to update.
+# opt: user: The user.
+# opt: group: The group.
+# txt: Returns 0/TRUE if the folder permissions were updated successfully; 1/FALSE otherwise.
+# use: if updateFolderPermissions /tmp root admin; then echo "/tmp permissions updated"; fi
+function updateFolderPermissions() {
+  local _folder="${1}";
+  local _user="${2}";
+  local _group="${3}";
+  local -i _rescode;
+
+  checkNotEmpty "folder" "${_folder}" 1;
+  checkNotEmpty "user" "${_user}" 2;
+  checkNotEmpty "group" "${_group}" 3;
+
+  chown -R ${_user}:${_group} ${_folder};
+  _rescode=$?;
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

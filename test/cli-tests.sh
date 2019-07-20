@@ -12,6 +12,8 @@ function test_reset() {
   commandLineParameterParsingCallbackCalled=${FALSE};
   optionalEnvVarCheckingCallbackCalled=${FALSE};
   optionalEnvVarParsingCallbackCalled=${FALSE};
+  compoundCommandLineFlagCheckingCallbackCalled=${FALSE};
+  compoundCommandLineFlagParsingCallbackCalled=${FALSE};
   CLI.resetState;
   CLI.defaultState;
   ENVVAR.resetState;
@@ -56,6 +58,14 @@ function dw_parse_repository_cli_parameter() {
   export REPOSITORY="${1}";
 }
 
+function dw_check_rootPassword_cli_parameter() {
+  compoundCommandLineParameterCheckingCallbackCalled=${TRUE};
+}
+
+function dw_parse_rootPassword_cli_parameter() {
+  compoundCommandLineParameterParsingCallbackCalled=${TRUE};
+}
+
 function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   local _result="$(checkInput "/tmp/1.txt")";
@@ -67,6 +77,13 @@ function addCommandLineParameter_checking_callback_is_called_in_checkInput_test(
   checkInput "/tmp/1.txt";
   Assert.isTrue ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was not called in checkInput";
   Assert.isFalse ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was called in checkInput";
+}
+
+function addCommandLineParameter_checking_callback_is_called_in_checkInput_for_a_compound_parameter_test() {
+  addCommandLineParameter "rootPassword" "The root password" MANDATORY SINGLE;
+  checkInput "secret";
+  Assert.isTrue ${compoundCommandLineParameterCheckingCallbackCalled} "dw_check_rootPassword_cli_parameter was not called in checkInput";
+  Assert.isFalse ${compoundCommandLineParameterParsingCallbackCalled} "dw_parse_rootPassword_cli_parameter was called in checkInput";
 }
 
 function setScriptCopyright_is_included_in_the_usage_test() {
@@ -289,5 +306,6 @@ declare -ig commandLineParameterCheckingCallbackCalled=${FALSE};
 declare -ig commandLineParameterParsingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarCheckingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarParsingCallbackCalled=${FALSE};
+declare -ig compoundCommandLineParameterCheckingCallbackCalled=${FALSE};
+declare -ig compoundCommandLineParameterParsingCallbackCalled=${FALSE};
 #
-

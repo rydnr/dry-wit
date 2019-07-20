@@ -1613,6 +1613,8 @@ function usage() {
   CLI.commandLineParametersDetailedUsage
 }
 
+addError INVALID_OPTION "Invalid option";
+
 ## Callback function when the user includes the debug (-v|--debug) flag.
 ## It's based on a naming convention: dw_parse_[flag]_cli_flag
 function dw_parse_debug_cli_flag() {
@@ -1645,6 +1647,7 @@ function CLI.defaultState() {
   addCommandLineFlag "quiet" "q" "Be silent" OPTIONAL NO_ARGUMENT;
   addCommandLineFlag "help" "h" "Display information about how to use the script" OPTIONAL NO_ARGUMENT;
 }
+
 
 function CLI.resetState() {
   __DW_CLI_FLAG_KEYS=();
