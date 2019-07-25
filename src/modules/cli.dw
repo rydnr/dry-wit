@@ -604,8 +604,8 @@ function CLI.checkCommandLineFlag() {
   fi
 
   if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
-    _argument="${1}";
     shift;
+    _argument="${1}";
     toUpper "${_longName}";
     _longNameInUpperCase="${RESULT}";
     if isTrue ${_mandatory} && isEmpty "${_argument}"; then
