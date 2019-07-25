@@ -225,7 +225,22 @@ function fileExists() {
   fi
 }
 
-# fun: fileIsNotEmpty file
+# fun: folderExists
+# api: public
+# txt: Checks if given folder exists.
+# opt: folder: The folder to check.
+# txt: Returns 0/TRUE if the folder exists; 1/FALSE otherwise.
+# use: if folderExists "/tmp"; then ...; fi
+function folderExists() {
+  local _folder="${1}";
+  if isNotEmpty "${_folder}" && [[ -e ${_folder} ]]; then
+    return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+# fun: fileIsNotEmpty
 # api: public
 # txt: Checks if given file is not empty.
 # opt: file: The file to check.
@@ -280,6 +295,21 @@ function fileIsWritable() {
   local _file="${1}";
   if isNotEmpty "${_file}" && [[ -w ${_file} ]]; then
       return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+# fun: folderIsWritable file
+# api: public
+# txt: Checks if given folder is writable.
+# opt: folder: The folder to check.
+# txt: Returns 0/TRUE if the folder is writable; 1/FALSE otherwise.
+# use: if folderIsWritable "/tmp"; then ...; fi
+function folderIsWritable() {
+  local _folder="${1}";
+  if isNotEmpty "${_folder}" && [[ -w ${_folder} ]]; then
+    return ${TRUE};
   else
     return ${FALSE};
   fi
