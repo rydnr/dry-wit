@@ -73,4 +73,9 @@ function normalizeUppercase_test() {
   local _result="${RESULT}";
   Assert.areEqual "X_DEFAULT_VALUES" "${_result}" "normalize failed for 'X:default-values'";
 }
+
+function areEqual_test() {
+  areEqual "a" "a";
+  Assert.isTrue $? "areEqual \"a\" \"a\" failed";
+}
 #
