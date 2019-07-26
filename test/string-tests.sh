@@ -78,5 +78,9 @@ function replaceAll_test() {
   replaceAll "a b c" " " ",";
   local _result="${RESULT}";
   Assert.areEqual "a,b,c" "${_result}" "replaceAll 'a b c' failed";
+
+function areEqual_test() {
+  areEqual "a" "a";
+  Assert.isTrue $? "areEqual \"a\" \"a\" failed";
 }
 #
