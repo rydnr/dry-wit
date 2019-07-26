@@ -258,6 +258,12 @@ function checkInput() {
         shift;
 
         CLI.checkFlag "${_flag}" $@;
+        _shifts=$?;
+        IFS="${DWIFS}";
+        for _i in $(seq 1 ${_shifts}); do
+          IFS="${_oldIFS}";
+          shift;
+        done
         _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
     done
     IFS="${_oldIFS}";
@@ -468,15 +474,17 @@ function CLI.isCommandLineFlagInShortFormat() {
 # api: private
 # txt: Performs some checks on given flag.
 # opt: flag: The flag to check.
-# txt: It exits the script if the flag is unknown; otherwise returns 0/TRUE.
-# use: CLI.checkFlag "-f";
+# txt: It exits the script if the flag is unknown; otherwise returns the number of parameters to shift.
+# use: CLI.checkFlag "-f" $@;
+#      echo "Must shift $?";
 function CLI.checkFlag() {
   local _flag="${1}";
   shift;
   local _flagKey;
   local _shortName;
   local _longName;
-  local _continue=${TRUE};
+  local -i _continue=${TRUE};
+  local -i _result=0;
 
   checkNotEmpty "flag" "${_flag}" 1;
 
@@ -508,7 +516,10 @@ function CLI.checkFlag() {
     fi
 
     CLI.checkCommandLineFlag "${_flagKey}" "${_longName}" $@;
+    _result=$((_result+$?));
   fi
+
+  return ${_result};
 }
 
 # fun: CLI.retrieveCommandLineFlagLongName flag
@@ -581,6 +592,7 @@ function CLI.retrieveCommandLineFlagShortName() {
 # api: private
 # txt: Checks a command line flag.
 # opt: flagKey: The key of the flag.
+# txt: If the check is successful it returns the number of arguments to shift. Otherwise it exits with an error.
 # use: CLI.checkCommandLineFlag "${_flagKey}";
 function CLI.checkCommandLineFlag() {
   local _flagKey="${1}";
@@ -591,6 +603,7 @@ function CLI.checkCommandLineFlag() {
   local _longNameInUpperCase;
   local -i _functionDefined;
   local -i _mandatory;
+  local -i _result=0;
 
   checkNotEmpty "flagKey" "${_flagKey}" 1;
   checkNotEmpty "longName" "${_longName}" 2;
@@ -604,7 +617,6 @@ function CLI.checkCommandLineFlag() {
   fi
 
   if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
-    shift;
     _argument="${1}";
     toUpper "${_longName}";
     _longNameInUpperCase="${RESULT}";
@@ -613,10 +625,13 @@ function CLI.checkCommandLineFlag() {
     fi
     if isTrue ${_functionDefined}; then
       "dw_check_${_longName}_cli_flag" "${_argument}";
+      _result=1;
     fi
   elif isTrue ${_functionDefined}; then
     "dw_check_${_longName}_cli_flag";
   fi
+
+  return ${_result};
 }
 
 # fun: CLI.checkForMissingMandatoryCommandLineFlags flags
