@@ -73,4 +73,10 @@ function normalizeUppercase_test() {
   local _result="${RESULT}";
   Assert.areEqual "X_DEFAULT_VALUES" "${_result}" "normalize failed for 'X:default-values'";
 }
+
+function replaceAll_test() {
+  replaceAll "a b c" " " ",";
+  local _result="${RESULT}";
+  Assert.areEqual "a,b,c" "${_result}" "replaceAll 'a b c' failed";
+}
 #

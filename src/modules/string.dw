@@ -228,4 +228,35 @@ function toUpper() {
     local result=$(echo "${_text}" | awk '{print toupper($0);}');
     export RESULT="${result}";
 }
+
+# fun: replaceAll
+# api: public
+# txt: Replaces all occurrences of a string in given text.
+# opt: text: The text to process.
+# opt: old: The string to replace.
+# opt: replacement: The replacement.
+# txt: Returns 0/TRUE if anything was replaced; 1/FALSE otherwise.
+# use: if replaceAll "a b c" " " ","; then ...; fi
+function replaceAll() {
+  local _text="${1}";
+  local _old="${2}";
+  local _replacement="${3}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty text "${_text}" 1;
+  checkNotEmpty old "${_old}" 2;
+  checkNotEmpty replacement "${_replacement}" 3;
+
+  _result="${_text//${_old}/${_replacement}}";
+
+  if areEqual "${_text}" "${_result}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
 #
