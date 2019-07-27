@@ -601,15 +601,24 @@ function CLI.checkCommandLineFlag() {
   shift;
   local _argument;
   local _longNameInUpperCase;
-  local -i _functionDefined;
+  local _checkCallback;
+  local -i _functionDefined=${FALSE};
   local -i _mandatory;
   local -i _result=0;
 
   checkNotEmpty "flagKey" "${_flagKey}" 1;
   checkNotEmpty "longName" "${_longName}" 2;
 
-  if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+  CLI.buildNameOfTheCallbackFunctionToCheckFlag "${_longName}";
+  _checkCallback="${RESULT}";
+  if isFunctionDefined "${_checkCallback}"; then
     _functionDefined=${TRUE};
+  else
+    toLower "${_checkCallback}";
+    _checkCallback="${RESULT}";
+    if isFunctionDefined "${_checkCallback}"; then
+      _functionDefined=${TRUE};
+    fi
   fi
 
   if CLI.isCommandLineFlagMandatory "${_flagKey}"; then
@@ -624,11 +633,11 @@ function CLI.checkCommandLineFlag() {
       exitWithError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} flag expects an argument";
     fi
     if isTrue ${_functionDefined}; then
-      "dw_check_${_longName}_cli_flag" "${_argument}";
-      _result=1;
+      "${_checkCallback}" "${_argument}";
     fi
+    _result=1;
   elif isTrue ${_functionDefined}; then
-    "dw_check_${_longName}_cli_flag";
+    "${_checkCallback}";
   fi
 
   return ${_result};
@@ -712,6 +721,7 @@ function CLI.checkCommandLineParameters() {
   local -i _callbackDefined;
   local -i _mandatory;
   local -i _multiple;
+  local _oldIFS="${IFS}";
 
   # Parameters
   IFS="${DWIFS}";
@@ -812,6 +822,21 @@ function CLI.isFlagDefined() {
   return ${_rescode};
 }
 
+# fun: CLI.buildNameOfTheCallbackFunctionToCheckFlag
+# api: private
+# txt: Builds the name of the callback function used when checking a flag.
+# opt: longName: The long name of the flag.
+# txt: RESULT will contain the name of the callback function.
+# use: CLI.buildNameOfTheCallbackFunctionToCheckFlag "file";
+#      echo "callback function: ${RESULT}";
+function CLI.buildNameOfTheCallbackFunctionToCheckFlag() {
+  local _longName="${1}";
+
+  checkNotEmpty "longName" "${_longName}" 1;
+
+  export RESULT="dw_check_${_longName}_cli_flag";
+}
+
 # fun: CLI.buildNameOfTheCallbackFunctionToParseFlag longName
 # api: private
 # txt: Builds the name of the callback function used when parsing a flag.
@@ -832,18 +857,25 @@ function CLI.buildNameOfTheCallbackFunctionToParseFlag() {
 # txt: Checks whether the callback function to parse given flag (in its long-name version) exists.
 # opt: longName: The long name of the flag.
 # txt: Returns 0/TRUE if the callback function exists; 1/FALSE otherwise.
-# use: if CLI.parseCallbackDefinedForFlag "file"; then
-#        echo "The callback function to parse 'file' flag exists";
-#      fi
+# txt: The variable RESULT contains the parse callback function.
+# use: if CLI.parseCallbackDefinedForFlag "file"; then echo "The callback function to parse 'file' flag exists: ${RESULT}"; fi
 function CLI.parseCallbackDefinedForFlag() {
   local _longName="${1}";
+  local _parseCallback;
   local -i _rescode;
 
   checkNotEmpty "longName" "${_longName}" 1;
 
   CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
-  isFunctionDefined "${RESULT}";
+  _parseCallback="${RESULT}";
+  isFunctionDefined "${_parseCallback}";
   _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    toLower "${_parseCallback}";
+    isFunctionDefined "${RESULT}";
+    _rescode=$?;
+  fi
 
   return ${_rescode};
 }
@@ -894,7 +926,6 @@ function CLI.parseFlag() {
 
     if CLI.isFlagDefined "${_flagKey}"; then
       if CLI.parseCallbackDefinedForFlag "${_longName}"; then
-        CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
         _callbackFunction="${RESULT}";
         if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
           _argument="${1}";
@@ -1032,6 +1063,49 @@ function CLI.retrieveDefaultValueForOptionalFlag() {
   return ${_rescode};
 }
 
+# fun: CLI.buildNameOfTheCallbackFunctionToParseParameter longName
+# api: private
+# txt: Builds the name of the callback function used when parsing a parameter.
+# opt: longName: The long name of the parameter.
+# txt: RESULT will contain the name of the callback function.
+# use: CLI.buildNameOfTheCallbackFunctionToParseParameter "file";
+#      echo "callback function: ${RESULT}";
+function CLI.buildNameOfTheCallbackFunctionToParseParameter() {
+  local _longName="${1}";
+
+  checkNotEmpty "longName" "${_longName}" 1;
+
+  export RESULT="dw_parse_${_longName}_cli_parameter";
+}
+
+# fun: CLI.parseCallbackDefinedForParameter
+# api: private
+# txt: Checks whether the callback function to parse given parameter exists.
+# opt: longName: The long name of the parameter.
+# txt: Returns 0/TRUE if the callback function exists; 1/FALSE otherwise.
+# txt: The variable RESULT contains the parse callback function.
+# use: if CLI.parseCallbackDefinedForParameter "file"; then echo "The callback function to parse 'file' parameter exists: ${RESULT}"; fi
+function CLI.parseCallbackDefinedForParameter() {
+  local _longName="${1}";
+  local _parseCallback;
+  local -i _rescode;
+
+  checkNotEmpty "longName" "${_longName}" 1;
+
+  CLI.buildNameOfTheCallbackFunctionToParseParameter "${_longName}";
+  _parseCallback="${RESULT}";
+  isFunctionDefined "${_parseCallback}";
+  _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    toLower "${_parseCallback}";
+    isFunctionDefined "${RESULT}";
+    _rescode=$?;
+  fi
+
+  return ${_rescode};
+}
+
 # fun: CLI.parseCommandLineParameters parameter*
 # api: private
 # txt: Parses the command-line parameters.
@@ -1040,23 +1114,27 @@ function CLI.retrieveDefaultValueForOptionalFlag() {
 function CLI.parseCommandLineParameters() {
   local _parameterName;
   local _parameterValue;
+  local _parseCallback;
   local _oldIFS="${IFS}";
 
   IFS="${DWIFS}";
   for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
     IFS="${_oldIFS}";
-    if isFunctionDefined "dw_parse_${_parameterName}_cli_parameter"; then
+
+    if CLI.parseCallbackDefinedForParameter "${_parameterName}"; then
+      _parseCallback="${RESULT}";
       if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
-        "dw_parse_${_parameterName}_cli_parameter" ${@};
+        "${_parseCallback}" ${@};
+        break;
       else
         _parameterValue="${1}";
         shift;
-        "dw_parse_${_parameterName}_cli_parameter" "${_parameterValue}";
+        "${_parseCallback}" "${_parameterValue}";
       fi
     else
       toUpper "${_parameterName}";
       _parameterNameInUpperCase="${RESULT}";
-      exitWithError "MISSING_PARSE_FUNCTION_FOR_PARAMETER_${_parameterNameInUpperCase}" "dw_parse_${_parameterName}_cli_parameter function is not defined";
+      exitWithError "MISSING_PARSE_FUNCTION_FOR_PARAMETER_${_parameterNameInUpperCase}" "${_parseCallback} function is not defined";
     fi
   done
   IFS="${_oldIFS}";
