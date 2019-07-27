@@ -142,7 +142,7 @@ function evalEnvVars() {
     IFS="${DWIFS}";
     for _var in ${__DW_ENVVAR_ENV_VARIABLES[@]}; do
         IFS="${_oldIFS}";
-        ENVVAR.evalEnvVar "${_var}";
+        evalEnvVar "${_var}";
     done
     IFS="${_oldIFS}";
 }
@@ -562,15 +562,15 @@ function ENVVAR.appendEnvVariable() {
     __DW_ENVVAR_ENV_VARIABLES[${#__DW_ENVVAR_ENV_VARIABLES[@]}]="${_variable}";
 }
 
-# fun: ENVVAR.evalEnvVar varName
-# api: private
+# fun: evalEnvVar varName
+# api: public
 # txt: Evaluates given environment variable.
 # opt: varName: the variable name.
 # txt: Returns <- 0/TRUE if the environment variable is evaluated successfully; 1/FALSE otherwise.
-# use: if ENVVAR.evalEnvVar "MY_VAR"; then
+# use: if evalEnvVar "MY_VAR"; then
 #        echo "MY_VAR -> ${RESULT}";
 #      fi
-function ENVVAR.evalEnvVar() {
+function evalEnvVar() {
   local _varName="${1}";
   local -i rescode;
   local _defaultValue="";
@@ -578,7 +578,7 @@ function ENVVAR.evalEnvVar() {
   checkNotEmpty "varName" "${_varName}" 1;
 
   if ENVVAR.removeDollarSquareBrackets "${_varName}"; then
-    ENVVAR.evalEnvVar "${RESULT}";
+    evalEnvVar "${RESULT}";
   else
     if ENVVAR.evalVarDefault "${_varName}"; then
       _defaultValue="${RESULT}";
