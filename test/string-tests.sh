@@ -120,4 +120,36 @@ function removeSurrounding_test() {
   removeSurrounding "${_text}" "'";
   Assert.isFalse $? "removeSurrounding \"${_text}\" \"'\" succeed and it shouldn't";
 }
+
+function keyValueSplit_test() {
+  local _text='key1="value1"';
+  keyValueSplit "${_text}";
+  Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
+
+  _text='key1="value1" key2="value2"';
+  keyValueSplit "${_text}";
+  Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
+
+  _text='key1="value1" key2="value2" key3="value3 with spaces"';
+  keyValueSplit "${_text}";
+  Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
+  Assert.areEqual 'key1="value1"
+key2="value2"
+key3="value3 with spaces"' "${RESULT}"  "keyValueSplit \"${_text}\" failed";
+
+  local _text='key1=value1';
+  keyValueSplit "${_text}";
+  Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
+
+  _text='key1="value1" key2=value2';
+  keyValueSplit "${_text}";
+  Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
+
+  _text='key1=value1 key2=value2 key3="value3 with spaces"';
+  keyValueSplit "${_text}";
+  Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
+  Assert.areEqual 'key1=value1
+key2=value2
+key3="value3 with spaces"' "${RESULT}"  "keyValueSplit \"${_text}\" failed";
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

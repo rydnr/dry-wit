@@ -26,17 +26,27 @@ EOF
 Hello John!
 (today)
 EOF
-     _actual=$(cat "${_processedFile}");
-     Assert.areEqual "${_expected}" "${_actual}" "replaceVariableInFile failed";
+    _actual=$(cat "${_processedFile}");
+    Assert.areEqual "${_expected}" "${_actual}" "replaceVariableInFile failed";
   else
       Assert.fail "replaceVariableInFile failed";
   fi
 
-
   if replaceVariablesInFile "${_sourceFile}" "${_processedFile}" "NAME=Mary" "DATE=${_date}"; then
-      read -r -d '' _expected <<EOF
+    read -r -d '' _expected <<EOF
 Hello Mary!
 (${_date})
+EOF
+    _actual=$(cat "${_processedFile}");
+    Assert.areEqual "${_expected}" "${_actual}" "replaceVariableInFile failed";
+  else
+    Assert.fail "replaceVariableInFile failed";
+  fi
+
+  if replaceVariablesInFile "${_sourceFile}" "${_processedFile}" "NAME=Name with spaces" "DATE=${_date} AC"; then
+      read -r -d '' _expected <<EOF
+Hello Name with spaces!
+(${_date} AC)
 EOF
       _actual=$(cat "${_processedFile}");
       Assert.areEqual "${_expected}" "${_actual}" "replaceVariableInFile failed";

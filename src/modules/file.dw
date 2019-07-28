@@ -809,6 +809,12 @@ function replaceVariablesInFile() {
       fi
       if extractValueInPair "${_pair}"; then
           _value="${RESULT}";
+          if removeSurrounding "${_value}" '"'; then
+              _value="${RESULT}";
+          fi
+          if replaceAll "${_value}" '"' '\"'; then
+              _value="${RESULT}";
+          fi
       else
           _rescode=${FALSE};
           break;
@@ -825,6 +831,7 @@ function replaceVariablesInFile() {
   done
   IFS="${_oldIFS}";
 
+  echo "${_env} envsubst '${_envsubstDecl}'"
   echo "${_env} envsubst '${_envsubstDecl}' < ${_file}" | sh > "${_output}";
   _rescode=$?;
 

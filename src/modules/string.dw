@@ -354,5 +354,54 @@ function removeSurrounding() {
   return ${_rescode};
 }
 
+# fun: keyValueSplit
+# api: public
+# txt: Splits given text into a newline-delimited key=value pairs.
+# opt: text: The text.
+# txt: Returns 0/TRUE if the text was splitted successfuly; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the splitted pairs.
+# use: if keyValueSplit "${vars}"; then IFS='\n' for var in ${vars}; do echo "var: ${var}"; fi
+function keyValueSplit() {
+  local _text="${1}";
+  local -i _rescode;
+  local _result;
+  local _oldIFS="${IFS}";
+
+  checkNotEmpty text "${_text}" 1;
+
+  _result="$(echo -e "${_text}" | awk -F'=' '\
+function printKey(text,     value, len) {
+  len=split(text, value, " ");
+  if (len > 1) {
+    printf("%s=", value[len]);
+  }
+}
+function printValue(text,   value, len, a) {
+  len=split(text, value, " ");
+  if (len > 1) {
+    for (a=1; a<len-1; a++) {
+      printf("%s ", value[a]);
+    };
+    printf("%s\n", value[len-1]);
+  }
+}
+{ printf("%s=", $1); for (i=2; i<NF; i++) {printValue($i); printKey($i);}; printf("%s\n", $NF); }')";
+
+#  len=split(text, value, " ");
+#  if (len > 1) {
+#         printf("%s=", value[0]);
+#         for (i=1; i<len-2; i++) {
+#                 printf("%s ", value[i]);
+#             };
+#             print;
+#     }
+
+  export RESULT="${_result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
 

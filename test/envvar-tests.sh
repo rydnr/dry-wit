@@ -59,12 +59,12 @@ function extractKeyInPair_test() {
 }
 
 function extractValueInPair_test() {
-    local pair="name1=value1"
-    if extractValueInPair "${pair}"; then
-        Assert.areEqual "value1" "${RESULT}" "extractValueInPair ${pair} failed";
-    else
-        Assert.fail "extractValueInPair ${pair} failed";
-    fi
+  local pair="name1=value1"
+  if extractValueInPair "${pair}"; then
+    Assert.areEqual "value1" "${RESULT}" "extractValueInPair ${pair} failed";
+  else
+    Assert.fail "extractValueInPair ${pair} failed";
+  fi
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
