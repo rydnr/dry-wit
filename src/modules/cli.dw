@@ -997,7 +997,7 @@ function CLI.parseNotProvidedFlags() {
   local _oldIFS="${IFS}";
 
   IFS="${DWIFS}";
-  for _flagKey in ${__DW_CLI_FLAG_KEYS[*]}; do
+  for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
     _provided=${FALSE};
     for _providedFlag in ${_providedFlags}; do
       IFS="${_oldIFS}";
@@ -1005,8 +1005,8 @@ function CLI.parseNotProvidedFlags() {
       _longName="${RESULT}";
       CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
       _shortName="${RESULT}";
-      if    areEqual "${_providedFlag}" "${_longName}" \
-         || areEqual "${_providedFlag}" "${_shortName}"; then
+      if    areEqual "${_providedFlag}" "--${_longName}" \
+         || areEqual "${_providedFlag}" "-${_shortName}"; then
         _provided=${TRUE};
         break;
       fi

@@ -19,7 +19,13 @@ function arrayContains() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  checkNotEmpty "array" "${_array}" 1;
+  # array can be empty, and the first parameter is actually the item.
+  if isEmpty "${_item}"; then
+    _array="";
+    _item="${1}";
+  else
+    checkNotEmpty "array" "${_array}" 1;
+  fi
   checkNotEmpty "item" "${_item}" 2;
 
   IFS="${DWIFS}";
@@ -215,9 +221,9 @@ function nth() {
   local -i _rescode=${FALSE};
 
   checkNotEmpty "array" "${_array}" 1;
-  checkNotEmpty "nth" "${_nth}" 2;
+  checkNumber "nth" "${_nth}" 2;
 
-  if isNumber ${_nth} && isGreaterOrEqualTo ${_nth} 0; then
+  if isGreaterOrEqualTo ${_nth} 0; then
     declare -a _aux="($(echo "${_array}"))";
     if isLessThan ${_nth} ${#_aux[*]}; then
       _result=${_aux[${_nth}]};

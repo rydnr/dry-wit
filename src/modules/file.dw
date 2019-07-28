@@ -803,34 +803,36 @@ function replaceVariablesInFile() {
 
   IFS=$'\n';
   for _pair in ${_splittedVariables}; do
-      IFS="${_oldIFS}";
-      if extractKeyInPair "${_pair}"; then
-         _key="${RESULT}";
-      else
-          _rescode=${FALSE};
-          break;
-      fi
-      if extractValueInPair "${_pair}"; then
+    IFS="${_oldIFS}";
+    if extractKeyInPair "${_pair}"; then
+      _key="${RESULT}";
+    else
+      _rescode=${FALSE};
+      break;
+    fi
+    if extractValueInPair "${_pair}"; then
+      _value="${RESULT}";
+      if isNotEmpty "${_value}"; then
+        if removeSurrounding "${_value}" '"'; then
           _value="${RESULT}";
-          if removeSurrounding "${_value}" '"'; then
-              _value="${RESULT}";
-          fi
-          if replaceAll "${_value}" '"' '\"'; then
-              _value="${RESULT}";
-          fi
-      else
-          _rescode=${FALSE};
-          break;
+        fi
+        if replaceAll "${_value}" '"' '\"'; then
+          _value="${RESULT}";
+        fi
       fi
+    else
+      _rescode=${FALSE};
+      break;
+    fi
 
-      if isNotEmpty "${_env}"; then
-          _env="${_env} ";
-      fi
-      _env="${_env}${_key}=\"${_value}\"";
-      if isNotEmpty "${_envsubstDecl}"; then
-          _envsubstDecl="${_envsubstDecl} ";
-      fi
-      _envsubstDecl=$(echo -n "${_envsubstDecl}$"; echo -n "{${_key}}");
+    if isNotEmpty "${_env}"; then
+      _env="${_env} ";
+    fi
+    _env="${_env}${_key}=\"${_value}\"";
+    if isNotEmpty "${_envsubstDecl}"; then
+      _envsubstDecl="${_envsubstDecl} ";
+    fi
+    _envsubstDecl=$(echo -n "${_envsubstDecl}$"; echo -n "{${_key}}");
   done
   IFS="${_oldIFS}";
 
