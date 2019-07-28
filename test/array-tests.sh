@@ -4,8 +4,6 @@
 
 # set -o xtrace
 
-DW.import array;
-
 function test_reset() {
   forEachAssociativeArrayEntryDoCalled=${FALSE};
   forEachAssociativeArrayEntryDoCalls=();
@@ -97,5 +95,5 @@ declare -Ag associativeArrayWithSpacesInKeys=( [with spaces]="dummy value" );
 declare -Ag forEachAssociativeArrayEntryDoCalls=();
 declare -ig forEachAssociativeArrayEntryDoCalled=${FALSE};
 
-setScriptDescription "Runs all tests implemented for .dw";
+#setScriptDescription "Runs all tests implemented for .dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
