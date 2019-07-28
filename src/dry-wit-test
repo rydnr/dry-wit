@@ -572,7 +572,6 @@ function DRYWITTEST.dwtest() {
   local _t;
   local _oldIFS="${IFS}";
   local _scriptName;
-  retrieveScriptName;
 
   logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
   DRYWITTEST.retrieveTests ${SCRIPT_NAME};
@@ -945,30 +944,33 @@ function Assert.arrayDoesNotContain() {
 # txt: Returns 0/TRUE if the Subject-under-test is found; 1/FALSE otherwise.
 # use: DRYWITTEST.sourceSUT;
 function DRYWITTEST.sourceSUT() {
-  local -i _rescode;
+  local -i _rescode=${TRUE};
   local _sutFilename;
   local _sutFilePath;
 
   if removeSuffix "${SCRIPT_NAME}" "-tests.sh"; then
     _sutFilename="${RESULT}.sh";
-    _rescode=${TRUE};
   elif removeSuffix "${SCRIPT_NAME}" "-test.sh"; then
     _sutFilename="${RESULT}.sh";
-    _rescode=${TRUE};
   else
-    echo "Could not find out the name of the sut for ${SCRIPT_NAME}";
-    _rescode=${FALSE};
+    _sutFilename="${SCRIPT_NAME}";
   fi
 
-  if isTrue ${_rescode}; then
-    if fileExists "$(dirname $0)/${_sutFilename}"; then
-      _sutFilePath="$(dirname $0)/${_sutFilename}";
-    elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
-      _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
-    else
-      echo "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
-      _rescode=${FALSE};
-    fi
+  if removeSuffix "${_sutFilename}" ".sh"; then
+    _sutFilename="${RESULT}.dw";
+  fi
+
+  if fileExists "$(dirname $0)/${_sutFilename}"; then
+    _sutFilePath="$(dirname $0)/${_sutFilename}";
+  elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
+    _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
+  elif fileExists "$(dirname $0)/../src/modules/${_sutFilename}"; then
+    _sutFilePath="$(dirname $0)/../src/modules/${_sutFilename}";
+  elif fileExists "$(dirname $0)/../../src/modules/ext/${_sutFilename}"; then
+    _sutFilePath="$(dirname $0)/../../src/modules/ext/${_sutFilename}";
+  else
+    echo "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
+    _rescode=${FALSE};
   fi
 
   if isTrue ${_rescode}; then

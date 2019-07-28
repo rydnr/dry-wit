@@ -152,4 +152,6 @@ key3="value3 with spaces"' "${RESULT}"  "keyValueSplit \"${_text}\" failed";
 key2=value2
 key3="value3 with spaces"' "${RESULT}"  "keyValueSplit \"${_text}\" failed";
 }
+
+setScriptDescription "Runs all tests implemented for string.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -35,4 +35,6 @@ function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
-#
+
+setScriptDescription "Runs all tests implemented for debug.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

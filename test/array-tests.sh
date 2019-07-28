@@ -65,6 +65,30 @@ function nth_test() {
   else
     Assert.fail "nth \"${_array}\" \"${_position}\" failed";
   fi
+
+  _array="a b c";
+  _position=1;
+  if nth "${_array}" "${_position}"; then
+      Assert.areEqual "b" "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
+  else
+      Assert.fail "nth \"${_array}\" \"${_position}\" failed";
+  fi
+
+  _array="a b c";
+  _position=2;
+  if nth "${_array}" "${_position}"; then
+      Assert.areEqual "c" "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
+  else
+      Assert.fail "nth \"${_array}\" \"${_position}\" failed";
+  fi
+
+  _array='"value with spaces" b c';
+  _position=0;
+  if nth "${_array}" "${_position}"; then
+      Assert.areEqual 'value with spaces' "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
+  else
+      Assert.fail "nth \"${_array}\" \"${_position}\" failed";
+  fi
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo]=bar [foo2]=bar2 );
@@ -72,5 +96,6 @@ declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING2=( [foo]=bar [foo2]=bar2 );
 declare -Ag associativeArrayWithSpacesInKeys=( [with spaces]="dummy value" );
 declare -Ag forEachAssociativeArrayEntryDoCalls=();
 declare -ig forEachAssociativeArrayEntryDoCalled=${FALSE};
-#
 
+setScriptDescription "Runs all tests implemented for .dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

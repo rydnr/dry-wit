@@ -55,4 +55,6 @@ function exitWithErrorCode_finds_declared_error_test() {
   _result=$?;
   Assert.isFalse ${_result} "exitWithErrorCode finds ERROR_SAMPLE";
 }
-#
+
+setScriptDescription "Runs all tests implemented for error.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

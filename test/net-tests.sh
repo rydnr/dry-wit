@@ -4,17 +4,15 @@
 
 # set -o xtrace
 
+DW.import net;
+
 function retrieveOwnIp_test() {
-  local _ip;
-  local -i _rescode;
-
-  DW.import net;
-
-  retrieveOwnIp;
-  _rescode=$?;
-  _ip="${RESULT}";
-  Assert.isTrue $? "retrieveOwnIp failed";
-  Assert.isNotEmpty "${_ip}" "IP is empty";
+  if retrieveOwnIp; then
+      Assert.isNotEmpty "${RESULT}" "IP is empty";
+  else
+      Assert.fail "retrieveOwnIp failed";
+  fi
 }
 
-setScriptDescription "Runs all tests implemented for net.dw.";
+setScriptDescription "Runs all tests implemented for net.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

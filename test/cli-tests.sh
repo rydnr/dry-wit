@@ -289,5 +289,6 @@ declare -ig commandLineParameterCheckingCallbackCalled=${FALSE};
 declare -ig commandLineParameterParsingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarCheckingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarParsingCallbackCalled=${FALSE};
-#
 
+setScriptDescription "Runs all tests implemented for cli.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

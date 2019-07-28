@@ -2,8 +2,6 @@
 # api: public
 # txt: Network functions
 
-import DW.package;
-
 # fun: hostIsReachable host
 # api: public
 # txt: Checks whether given host is reachable.
@@ -58,24 +56,29 @@ function retrieveIfaces() {
 
   if isInstalled "ip"; then
     logTrace -n "Finding out the names of the network interfaces";
-    _result="$(ip addr show 2> /dev/null | awk '/inet.*brd/{print $NF}'  | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth' | grep -v -e '^br-')";
+    _result="$(ip addr show 2> /dev/null | awk '/inet .*/{print $NF}' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth' | grep -v -e '^br-')";
     _rescode=$?;
     if isTrue ${_rescode}; then
       logTraceResult SUCCESS "$(echo ${_result})";
-      export RESULT="${_result}";
     else
       logTraceResult FAILED "failed";
     fi
-  elif isInstalled "ifconfig"; then
+  fi
+  if isFalse ${_rescode} && isInstalled "ifconfig"; then
     logTrace -n "Finding out the names of the network interfaces";
     _result="$(ifconfig 2> /dev/null | cut -d' ' -f1 | grep -v -e '^$' | tr ' ' '\n' | tr -d ':' | grep -v -e '^docker' | grep -v -e '^lo$' | grep -v -e '^tun' | grep -v -e '^vbox' | grep -v -e '^veth' | grep -v -e '^br-')";
     _rescode=$?;
     if isTrue ${_rescode}; then
       logTraceResult SUCCESS "$(echo ${_result})";
-      export RESULT="${_result}";
     else
       logTraceResult FAILED "failed";
     fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export RESULT="";
   fi
 
   return ${_rescode};
@@ -107,7 +110,7 @@ function retrieveIp() {
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT=${_result};
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};
@@ -125,18 +128,19 @@ function retrieveOwnIp() {
   local _oldIFS="${IFS}";
   local _iface;
   local _ifaces;
-  IFS=$' \t\n';
 
   if retrieveIfaces; then
       _ifaces="${RESULT}";
+      IFS=$' \t\n';
       for _iface in ${_ifaces}; do
+        IFS="${_oldIFS}";
         if retrieveIp "${_iface}"; then
             _result="${RESULT}";
             break;
         fi;
       done;
+      IFS="${_oldIFS}";
   fi
-  IFS="${_oldIFS}";
 
   if isEmpty "${_result}"; then
       _rescode="${FALSE}";

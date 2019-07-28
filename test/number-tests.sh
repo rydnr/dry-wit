@@ -102,4 +102,6 @@ function toOrdinal_test() {
   done
   IFS="${_oldIFS}";
 }
-#
+
+setScriptDescription "Runs all tests implemented for number.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

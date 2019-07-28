@@ -65,7 +65,16 @@ function extractValueInPair_test() {
   else
     Assert.fail "extractValueInPair ${pair} failed";
   fi
+
+  pair="name1=\"value with spaces\"";
+  if extractValueInPair "${pair}"; then
+      Assert.areEqual "value with spaces" "${RESULT}" "extractValueInPair ${pair} failed";
+  else
+      Assert.fail "extractValueInPair ${pair} failed";
+  fi
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
-#
+
+setScriptDescription "Runs all tests implemented for envvar.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

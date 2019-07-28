@@ -68,4 +68,6 @@ function isFunctionDefined_test() {
   isFunctionDefined "isFunctionDefined_test";
   Assert.isTrue $? "isFunctionDefined 'isFunctionDefined_test' failed";
 }
-#
+
+setScriptDescription "Runs all tests implemented for stdlib.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

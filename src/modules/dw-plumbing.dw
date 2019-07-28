@@ -380,7 +380,10 @@ function DRYWIT.retrieveSettingsFiles() {
       IFS="${_oldIFS}";
       retrieveAbsolutePath "${_d}/${_f}";
       if [ -e "${RESULT}" ] && [ "${_doneAlready[${RESULT}]}" != "${TRUE}" ]; then
-        _result="${_result} ${RESULT}";
+        if isNotEmpty "${_result}"; then
+          _result="${_result} ";
+        fi
+        _result="${_result}${RESULT}";
         _doneAlready["${RESULT}"]=${TRUE};
       fi
     done

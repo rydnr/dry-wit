@@ -218,17 +218,11 @@ function nth() {
   checkNotEmpty "nth" "${_nth}" 2;
 
   if isNumber ${_nth} && isGreaterOrEqualTo ${_nth} 0; then
-    IFS="${DWIFS}";
-    for _item in ${_array}; do
-      IFS="${_oldIFS}";
-      if areEqual ${_nth} ${_index}; then
-        _result="${_item}";
-        _rescode=${TRUE};
-        break;
-      fi
-      _index=$((${_index}+1));
-    done
-    IFS="${_oldIFS}";
+    declare -a _aux="($(echo "${_array}"))";
+    if isLessThan ${_nth} ${#_aux[*]}; then
+      _result=${_aux[${_nth}]};
+      _rescode=${TRUE};
+    fi
   fi
 
   if isTrue ${_rescode}; then

@@ -798,8 +798,11 @@ function replaceVariablesInFile() {
 
   checkReq envsubst;
 
-  IFS="${DWIFS}";
-  for _pair in ${_variables}; do
+  keyValueSplit "${_variables}";
+  _splittedVariables="${RESULT}";
+
+  IFS=$'\n';
+  for _pair in ${_splittedVariables}; do
       IFS="${_oldIFS}";
       if extractKeyInPair "${_pair}"; then
          _key="${RESULT}";
@@ -831,7 +834,6 @@ function replaceVariablesInFile() {
   done
   IFS="${_oldIFS}";
 
-  echo "${_env} envsubst '${_envsubstDecl}'"
   echo "${_env} envsubst '${_envsubstDecl}' < ${_file}" | sh > "${_output}";
   _rescode=$?;
 
