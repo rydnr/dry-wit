@@ -760,6 +760,72 @@ function ENVVAR.removeDollarSquareBrackets() {
     return ${rescode};
 }
 
+# fun: extractKeyInPair
+# api: public
+# txt: Given a key=value, it extracts the key.
+# opt: tuple: The pair.
+# txt: Returns 0/TRUE if the key could be extracted; 1/FALSE otherwise.
+# use: if extractKeyInPair "a=b"; then echo "Key: ${RESULT}"; fi
+function extractKeyInPair() {
+    local _pair="${1}";
+    local -i _rescode=${FALSE};
+    local _result;
+    local _pieces;
+
+    checkNotEmpty pair "${_pair}" 1;
+
+    ENVVAR.extractItemInPair "${_pair}" 0;
+}
+
+# fun: extractValueInPair
+# api: public
+# txt: Given a key=value, it extracts the value.
+# opt: tuple: The pair.
+# txt: Returns 0/TRUE if the value could be extracted; 1/FALSE otherwise.
+# use: if extractValueInPair "a=b"; then echo "Value: ${RESULT}"; fi
+function extractValueInPair() {
+    local _pair="${1}";
+    local -i _rescode=${FALSE};
+    local _result;
+    local _pieces;
+
+    checkNotEmpty pair "${_pair}" 1;
+
+    ENVVAR.extractItemInPair "${_pair}" 1;
+}
+
+# fun: ENVVAR.extractItemInPair
+# api: private
+# txt: Given a key=value, it extracts the element matching the index.
+# opt: tuple: The pair.
+# opt: index: The index (either 0 or 1).
+# txt: Returns 0/TRUE if the element could be extracted; 1/FALSE otherwise.
+# use: if ENVVAR.extractItemInPair "a=b" 1; then echo "Element at 1: ${RESULT}"; fi
+function ENVVAR.extractItemInPair() {
+    local _pair="${1}";
+    local _index="${2}";
+    local -i _rescode=${FALSE};
+    local _result;
+    local _pieces;
+
+    checkNotEmpty pair "${_pair}" 1;
+    checkNotEmpty index "${_index}" 2;
+
+    if isNumber "${_index}" && split "${_pair}" "="; then
+        _pieces="${RESULT}";
+        if nth "${_pieces}" ${_index}; then
+            _result="${RESULT}";
+            _rescode=${TRUE};
+        fi
+    fi
+
+    if isTrue ${_rescode}; then
+        export RESULT="${_result}";
+    fi
+
+    return ${_rescode};
+}
+
 # fun: ENVVAR.resetState
 # api: private
 # txt: Resets the state of the module.

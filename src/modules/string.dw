@@ -259,4 +259,39 @@ function replaceAll() {
 
   return ${_rescode};
 }
-#
+
+# fun: split
+# api: public
+# txt: Splits given text using a separator.
+# opt: text: The text.
+# opt: separator: The separator.
+# txt: Returns 0/TRUE if the text could be splitted; 1/FALSE otherwise.
+# use: if split "${csvVariable}" ","; then "Splitted: ${RESULT}"; fi
+function split() {
+  local _text="${1}";
+  local _separator="${2}";
+  local _result="";
+  local -i _rescode=${FALSE};
+  local _oldIFS="${IFS}";
+  local _aux;
+
+  checkNotEmpty text "${_text}" 1;
+  checkNotEmpty separator "${_separator}" 2;
+
+  while IFS="${_separator}" read -ra _aux; do
+    if isEmpty "${_result}"; then
+      _result="${_aux[@]}";
+    else
+      _result="${_result} ${_aux[@]}";
+    fi
+    _rescode=${TRUE};
+  done <<< "${_text}"
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
+

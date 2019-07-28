@@ -2,6 +2,8 @@
 # api: public
 # txt: Functions related to arrays and associative arrays.
 
+DW.import number;
+
 # fun: arrayContains array element
 # api: public
 # txt: Checks if an element is already contained in an array.
@@ -168,7 +170,7 @@ function isArrayEmpty() {
 # fun: retrieveAssociativeArrayKeys array
 # api: public
 # txt: Extracts the keys of given associative array.
-# opt: array: The array name.
+# opt: arrayName: The array name.
 # txt: The variable RESULT contains the list of the keys, wrapped in double quotes.
 # use: myMapping=([foo]=bar [with spaces]="with spaces");
 #      retrieveAssociativeArrayKeys myMapping;
@@ -177,6 +179,7 @@ function retrieveAssociativeArrayKeys() {
   local _arrayName="${1}";
   local _key;
   local _result;
+  local _oldIFS="${IFS}";
 
   checkNotEmpty "arrayName" "${_arrayName}" 1;
 
@@ -194,4 +197,44 @@ function retrieveAssociativeArrayKeys() {
 
   export RESULT="${_result}";
 }
-#
+
+# fun: nth
+# api: public
+# txt: Retrieves the nth element of given array.
+# opt: array: The array.
+# opt: nth: The index.
+# txt: Returns 0/TRUE if the element could be retrieved; 1/FALSE otherwise.
+# use: nth "${myArray}" 0; echo "First element: ${RESULT}";
+function nth() {
+  local _array="${1}";
+  local _nth="${2}";
+  local _result;
+  local _item;
+  local -i _index=0;
+  local _oldIFS="${IFS}";
+  local -i _rescode=${FALSE};
+
+  checkNotEmpty "array" "${_array}" 1;
+  checkNotEmpty "nth" "${_nth}" 2;
+
+  if isNumber ${_nth} && isGreaterOrEqualTo ${_nth} 0; then
+    IFS="${DWIFS}";
+    for _item in ${_array}; do
+      IFS="${_oldIFS}";
+      if areEqual ${_nth} ${_index}; then
+        _result="${_item}";
+        _rescode=${TRUE};
+        break;
+      fi
+      _index=$((${_index}+1));
+    done
+    IFS="${_oldIFS}";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

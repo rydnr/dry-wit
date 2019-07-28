@@ -78,9 +78,28 @@ function replaceAll_test() {
   replaceAll "a b c" " " ",";
   local _result="${RESULT}";
   Assert.areEqual "a,b,c" "${_result}" "replaceAll 'a b c' failed";
+}
 
 function areEqual_test() {
   areEqual "a" "a";
   Assert.isTrue $? "areEqual \"a\" \"a\" failed";
 }
-#
+
+function split_test() {
+  local _text="a;b;c";
+  local _separator=";";
+  if split "${_text}" "${_separator}"; then
+    Assert.areEqual "a b c" "${RESULT}" "split \"${_text}\" \"${_separator}\" failed";
+  else
+    Assert.fail "split \"${_text}\" \"${_separator}\" failed";
+  fi
+
+  _text="a-b-c";
+  _separator="-";
+  if split "${_text}" "${_separator}"; then
+      Assert.areEqual "a b c" "${RESULT}" "split \"${_text}\" \"${_separator}\" failed";
+  else
+      Assert.fail "split \"${_text}\" \"${_separator}\" failed";
+  fi
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

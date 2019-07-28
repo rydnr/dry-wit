@@ -39,7 +39,7 @@ function forEachAssociativeArrayEntryDo_calls_the_callback_for_each_entry_test()
 }
 
 function retrieveAssociatedArrayKeys_supports_spaces_in_keys_test() {
-  retrieveAssociateArrayKeys associativeArrayWithSpacesInKeys;
+  retrieveAssociativeArrayKeys associativeArrayWithSpacesInKeys;
   local _keys="${RESULT}";
   Assert.isNotEmpty "${_keys}" "retrieveAssociateArrayKeys returned an empty string";
   Assert.areEqual "${_keys}" '"with spaces"' "retrieveAssociateArrayKeys returned ${_keys} and should be \"with spaces\"";
@@ -55,6 +55,16 @@ function isArrayEmpty_test() {
   local -a test_array=();
   Assert.functionExists "isArrayEmpty" "isArrayEmpty doesn't exist";
   Assert.isEmpty "${test_array[*]}" "test_array is not empty";
+}
+
+function nth_test() {
+  local _array="a b c";
+  local _position=0;
+  if nth "${_array}" "${_position}"; then
+    Assert.areEqual "a" "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
+  else
+    Assert.fail "nth \"${_array}\" \"${_position}\" failed";
+  fi
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo]=bar [foo2]=bar2 );
