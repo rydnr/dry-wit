@@ -98,7 +98,12 @@ function removePrefix() {
   _result="$(echo "${_text}" | sed -e "s/^${_prefix}//")";
   _rescode=$?;
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    # double-check
+    if areNotEqual "${_text}" "${_result}"; then
+      export RESULT="${_result}";
+    else
+      _rescode=${FALSE};
+    fi
   fi
 
   return ${_rescode};
@@ -293,5 +298,61 @@ function split() {
 
   return ${_rescode};
 }
+
+# fun: startsAndEndsWith
+# api: public
+# txt: Checks whether given text is surrounded by a specific delimiter.
+# opt: text: The text.
+# opt: delimiter: The delimiter.
+# txt: Returns 0/TRUE if the text starts and ends with given delimiter; 1/FALSE otherwise.
+# use: if startsAndEndsWith "${line}" '|'; then echo "Org table format"; fi
+function startsAndEndsWith() {
+  local _text="${1}";
+  local _delimiter="${2}";
+  local -i _rescode=${FALSE};
+
+  checkNotEmpty text "${_text}" 1;
+  checkNotEmpty delimiter "${_delimiter}" 2;
+
+  if startsWith "${_text}" "${_delimiter}" && endsWith "${_text}" "${_delimiter}"; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: removeSurrounding
+# api: public
+# txt: Removes the delimiter at the start and at the end of given text.
+# opt: text: The text.
+# opt: delimiter: The delimiter.
+# txt: Returns 0/TRUE if the delimiter was actually surrounding the text; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE; the variable RESULT contains the text without the delimiters.
+# use: if removeSurrounding "${var}" '"'; then echo "Trimmed var: ${RESULT}"; fi
+function removeSurrounding() {
+  local _text="${1}";
+  local _delimiter="${2}";
+  local _result;
+  local -i _rescode=${FALSE};
+
+  checkNotEmpty text "${_text}" 1;
+  checkNotEmpty delimiter "${_delimiter}" 2;
+
+  if startsAndEndsWith "${_text}" "${_delimiter}"; then
+    if removePrefix "${_text}" "${_delimiter}"; then
+      if removeSuffix "${RESULT}" "${_delimiter}"; then
+        _result="${RESULT}";
+        _rescode=${TRUE};
+      fi
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
 

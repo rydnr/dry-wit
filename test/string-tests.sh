@@ -102,4 +102,22 @@ function split_test() {
       Assert.fail "split \"${_text}\" \"${_separator}\" failed";
   fi
 }
+
+function startsAndEndsWith_test() {
+  local _text='"abc"';
+  startsAndEndsWith "${_text}" '"';
+  Assert.isTrue $? "startAndEndsWith \"${_text}\" '\"' failed";
+}
+
+function removeSurrounding_test() {
+  local _text='-abc-';
+  local _delimiter="-";
+  if removeSurrounding "${_text}" "${_delimiter}"; then
+    Assert.areEqual 'abc' "${RESULT}" "removeSurrounding \"${_text}\" \"${_delimiter}\" failed";
+  else
+    Assert.fail "removeSurrounding \"${_text}\" \"${_delimiter}\" failed";
+  fi
+  removeSurrounding "${_text}" "'";
+  Assert.isFalse $? "removeSurrounding \"${_text}\" \"'\" succeed and it shouldn't";
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
