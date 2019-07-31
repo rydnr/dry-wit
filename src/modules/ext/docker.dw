@@ -239,4 +239,41 @@ function retrieveDockerContainerStatus() {
 
     return ${_rescode};
 }
-#
+
+# fun: retrieve_ports_from_dockerfile
+# api: public
+# txt: Retrieves the exposed ports in given Dockerfile.
+# opt: dockerfile: The dockerfile
+# txt: Returns 0/TRUE if the ports could be retrieved; 1/FALSE otherwise.
+# txt: If the ports are found, the variable RESULT contains a space-separated list of ports exposed in the Dockerfile.
+# use: if retrieve_exposed_ports /Dockerfiles/Dockerfile; then echo "Exposed ports in the Dockerfile: ${RESULT}"; fi
+function retrievePortsFromDockerfile() {
+  local _dockerfile="${1}";
+  local -a _result=();
+  local -i _rescode=${FALSE};
+  local _aux;
+  local _single;
+  local _oldIFS="${IFS}";
+
+  checkNotEmpty dockerfile "${_dockerfile}" 1;
+
+  IFS=$'\n';
+  for _aux in $(grep EXPOSE "${_dockerfile}" | cut -d' ' -f 2- | sed -e 's/^ \+//g'); do
+    IFS=$' ';
+    for p in ${_aux}; do
+      IFS="${_oldIFS}";
+      _rescode=${TRUE};
+      if ! arrayContainsElement "${p}" "${_result[@]}"; then
+        _result[${#_result[@]}]="${p}";
+      fi
+    done
+    IFS="${_oldIFS}";
+  done
+  IFS="${_oldIFS}";
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result[@]};
+  fi
+}
+
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
