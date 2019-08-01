@@ -143,6 +143,7 @@ function isFunctionPresent() {
       for _inc in "./$(basename ${_script} .sh).inc.sh" \
                     "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
         IFS="${_oldIFS}";
+        DW.import file;
         if fileExists "${_inc}"; then
           isFunctionPresent "${_function}" "${_inc}";
           _rescode=$?;

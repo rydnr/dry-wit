@@ -142,7 +142,7 @@ function isErrorUndefined() {
 function printErrorMessage() {
   local _label="${1}";
   shift;
-  local -i rescode=${TRUE};
+  local -i _rescode=${TRUE};
   local _message;
   local _error;
   local -i _interruption=${TRUE};
@@ -156,8 +156,8 @@ function printErrorMessage() {
   IFS="${DWIFS}";
   for _i in ${BUILTIN_ERRORS[@]}; do
     IFS="${_oldIFS}";
-    rescode=$((rescode+1));
-    debugEcho "error_message (${rescode}): ${_i}";
+    _rescode=$((_rescode+1));
+    debugEcho "error_message (${_rescode}): ${_i}";
     if areEqual "${_i}" "${_label}"; then
       _message="${_i}";
       break;
@@ -173,7 +173,7 @@ function printErrorMessage() {
     IFS="${DWIFS}";
     for _i in ${ERROR_MESSAGES[@]}; do
       IFS="${_oldIFS}";
-      rescode=$((rescode+1));
+      _rescode=$((_rescode+1));
       debugEcho "error_message (${rescode}): ${_i}";
       if areEqual "${_i}" "${_label}"; then
           _message="${_i}";
@@ -185,7 +185,7 @@ function printErrorMessage() {
 
   if isEmpty "${_message}"; then
     _error="Error ${_label}, but no error message defined. Fix this script";
-    rescode=-1;
+    _rescode=-1;
   else
     _error="$(echo ${_message} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
   fi
@@ -203,10 +203,11 @@ EOF
   fi
 
   if isDebugEnabled; then
+    DW.import usage;
     printUsage "${SCRIPT_NAME}";
   fi
   ERROR.printError "${_error}";
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: printExitValues

@@ -177,7 +177,7 @@ function DEBUG.getDebugLogFile() {
 # use: DEBUG.defaultState;
 function DEBUG.defaultState() {
   setDebugLogFile "${TEMP:-/tmp}/$(basename ${SCRIPT_NAME})-debug.$(date '+%Y%m%d%H%M%S').log";
-  setDebugEchoEnabled TRUE;
+  setDebugEchoEnabled FALSE;
 }
 
 # fun: DEBUG.resetState
@@ -196,33 +196,36 @@ function DEBUG.resetState() {
 # txt: Returns whatever the command or function does return.
 # use: debugDuration ls -l /
 function debugDuration() {
-  local -i _start=$(date +%s.%N)
-  local -i _end;
+  local _start;
+  local _end;
   local -i _rescode;
-  local -i _dt;
+  local _dt;
   local -i _dd;
-  local -i _dt2;
+  local _dt2;
   local -i _dh;
-  local -i _dt3;
+  local _dt3;
   local -i _dm;
-  local -i _ds;
+  local _ds;
 
-  checkNotEmpty commandOrFunction "$@" 1;
+  if isDebugEchoEnabled; then
+    checkNotEmpty commandOrFunction "$@" 1;
+    _start=$(date +%s.%N);
+    $@;
+    _rescode=$?;
+    _end=$(date +%s.%N);
+    _dt=$(echo "${_end} - ${_start}" | bc);
+    _dd=$(echo "${_dt}/86400" | bc);
+    _dt2=$(echo "${_dt}-86400*${_dd}" | bc);
+    _dh=$(echo "${_dt2}/3600" | bc);
+    _dt3=$(echo "${_dt2}-3600*${_dh}" | bc);
+    _dm=$(echo "${_dt3}/60" | bc);
+    _ds=$(echo "${_dt3}-60*${_dm}" | bc);
 
-  $@;
-  _rescode=$?;
-
-  _end=$(date +%s.%N)
-  _dt=$(echo "${_end} - ${_start}" | bc)
-  _dd=$(echo "${_dt}/86400" | bc)
-  _dt2=$(echo "${_dt}-86400*${_dd}" | bc)
-  _dh=$(echo "${_dt2}/3600" | bc)
-  _dt3=$(echo "${_dt2}-3600*${_dh}" | bc)
-  _dm=$(echo "${_dt3}/60" | bc)
-  _ds=$(echo "${_dt3}-60*${_dm}" | bc)
-
-  debugEcho "$(printf "$@ took %d:%02d:%02d:%02.4f and returned %d\n" ${_dd} ${_dh} ${_dm} ${_ds} ${_rescode}");
-  debugEcho "$@ took 
+    debugEcho "$(printf "$@ took %d:%02d:%02d:%02.4f and returned %d\n" ${_dd} ${_dh} ${_dm} ${_ds} ${_rescode})";
+  else
+    $@;
+    _rescode=$?;
+  fi
 
   return ${_rescode};
 }
