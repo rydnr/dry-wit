@@ -53,7 +53,7 @@ function debugAssociativeArrayEntry() {
 
 # fun: debugEcho message
 # api: public
-# txt: Echoes a line to stdout. Useful for locating them easily when debugging.
+# txt: Echoes a line to the debug log file. Useful for locating them easily when debugging.
 # opt: message: The message to print.
 # txt: Returns 0/TRUE always.
 # use: debugEcho "message";
@@ -187,6 +187,44 @@ function DEBUG.defaultState() {
 # use: DEBUG.resetState;
 function DEBUG.resetState() {
   setDebugLogFile "";
+}
+
+# fun: debugDuration
+# api: public
+# txt: Runs a function or a command and prints the elapsed time in the debug log.
+# opt: command*: The command or function.
+# txt: Returns whatever the command or function does return.
+# use: debugDuration ls -l /
+function debugDuration() {
+  local -i _start=$(date +%s.%N)
+  local -i _end;
+  local -i _rescode;
+  local -i _dt;
+  local -i _dd;
+  local -i _dt2;
+  local -i _dh;
+  local -i _dt3;
+  local -i _dm;
+  local -i _ds;
+
+  checkNotEmpty commandOrFunction "$@" 1;
+
+  $@;
+  _rescode=$?;
+
+  _end=$(date +%s.%N)
+  _dt=$(echo "${_end} - ${_start}" | bc)
+  _dd=$(echo "${_dt}/86400" | bc)
+  _dt2=$(echo "${_dt}-86400*${_dd}" | bc)
+  _dh=$(echo "${_dt2}/3600" | bc)
+  _dt3=$(echo "${_dt2}-3600*${_dh}" | bc)
+  _dm=$(echo "${_dt3}/60" | bc)
+  _ds=$(echo "${_dt3}-60*${_dm}" | bc)
+
+  debugEcho "$(printf "$@ took %d:%02d:%02d:%02.4f and returned %d\n" ${_dd} ${_dh} ${_dm} ${_ds} ${_rescode}");
+  debugEcho "$@ took 
+
+  return ${_rescode};
 }
 
 # env: __DW_DEBUG_LOG_FILE: The log file where the debug stuff gets logged.
