@@ -851,16 +851,11 @@ function replaceVariablesInFile() {
 function updateFilePermissions() {
   local _file="${1}";
   local _permissions="${2}";
-  local _output;
-  local -i _rescode;
 
   checkNotEmpty file "${_file}" 1;
   checkNotEmpty permissions "${_permissions}" 2;
 
-  _output="$(chmod ${_permissions} ${_keyFile})";
-  _rescode=$?;
-
-  return ${_rescode};
+  chmod ${_permissions} ${_keyFile} 2>&1 > /dev/null;
 }
 
 # fun: changeOwnerOfFolderRecursively
@@ -882,5 +877,4 @@ function changeOwnerOfFolderRecursively() {
 
   chown -R ${_user}:${_group} ${_dir} 2>&1 > /dev/null;
 }
-
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
