@@ -71,7 +71,7 @@ function generateCSR() {
           -passout pass:"${_password}" \
           -key "${_key}" \
           -out "${_result}" \
-          -subj "${_subject}" 2>&1)";
+          -subj "${_subject}" 2>&1 > /dev/null;
   _rescode=$?;
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
@@ -115,7 +115,7 @@ function generateCertificate() {
           -req \
           -signkey "${_key}" \
           -days ${_expirationDays} \
-          -passin pass:"${_password}" 2>&1)";
+          -passin pass:"${_password}" 2>&1 > /dev/null;
   _rescode=$?;
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
