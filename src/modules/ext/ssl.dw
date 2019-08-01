@@ -1,0 +1,141 @@
+#!/bin/bash dry-wit
+# Copyright 2015-today Automated Computing Machinery S.L.
+# Distributed under the terms of the GNU General Public License v3
+# mod: create_ssl_certificate_openssl
+# api: public
+# txt: Creates a SSL certificate with OpenSSL. See http://www.eclipse.org/jetty/documentation/current/configuring-ssl.html
+
+checkReq openssl;
+
+# fun: generateKeyPair
+# api: public
+# txt: Generates a key pair.
+# opt: outputDir: The output folder.
+# opt: alias: The alias.
+# opt: password: The key password.
+# opt: encryption: The encryption algorithm.
+# txt: Returns 0/TRUE if the key pair was generated successfully; 1/FALSE otherwise.
+# txt: If the key pair is generated, the variable RESULT contains the file with the private key.
+# use: if generateKeyPair "/tmp" myDomain secret des3; then echo "Private key: ${RESULT}"; fi
+function generateKeyPair() {
+  local _outputDir="${1}";
+  local _alias="${2}";
+  local _password="${3}";
+  local _encryption="${4}";
+  local _result="${_outputDir}/${_alias}.key";
+  local -i _rescode;
+
+  checkNotEmpty outputDir "${_outputDir}" 1;
+  checkNotEmpty alias "${_alias}" 2;
+  checkNotEmpty password "${_password}" 3;
+  checkNotEmpty encryption "${_encryption}" 4;
+
+  openssl genrsa -${_encryption} -passout pass:"${_password}" -out "${_result}" 2>&1 > /dev/null;
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: generateCSR
+# api: public
+# txt: Generates a certificate signing request.
+# opt: outputDir: The output folder.
+# opt: alias: The certificate alias.
+# opt: key: The key.
+# opt: password: The key password.
+# opt: subject: The certificate subject.
+# txt: Returns 0/TRUE if the request was generated; 1/FALSE otherwise.
+# txt: If the request is generated, the variable RESULT contains the path of the CSR file.
+# use: if generateCSR /tmp mydomain /tmp/myKey secret MyDomain; then echo "CSR: ${RESULT}"; fi
+function generateCSR() {
+  local _outputDir="${1}";
+  local _alias="${2}";
+  local _key="${3}";
+  local _password="${4}";
+  local _subject="${5}";
+  local _result="${_outputDir}/${_alias}.csr";
+  local -i _rescode;
+
+  checkNotEmpty outputDir "${_outputDir}" 1;
+  checkNotEmpty key "${_key}" 2;
+  checkNotEmpty password "${_password}" 3;
+  checkNotEmpty subject ""${_subject}" 4;
+
+  openssl req \
+          -new \
+          -passin pass:"${_password}" \
+          -passout pass:"${_password}" \
+          -key "${_key}" \
+          -out "${_result}" \
+          -subj "${_subject}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: generateCertificate
+# api: public
+# txt: Generates a certificate for a given key.
+# opt: outputDir: The output folder.
+# opt: alias: The certificate alias.
+# opt: csr: The certificate signing request.
+# opt: key: The key.
+# opt: password: The key password.
+# opt: expirationDays: The expiration, in days.
+# txt: Returns 0/TRUE if the certificate was generated; 1/FALSE otherwise.
+# txt: If the certificate is generated, the variable RESULT contains its path.
+# use: if generateCertificate /tmp mydomain /tmp/myKey /tmp/myKey.csr secret 3650; then echo "Certificate: ${RESULT}"; fi
+function generateCertificate() {
+  local _outputDir="${1}";
+  local _certificateAlias="${2}";
+  local _csr="${3}";
+  local _key="${4}";
+  local _keyPassword="{5}";
+  local _expirationDays="${6}";
+  local _result="${_outputDir}/${SSL_CERTIFICATE_ALIAS}.crt";
+  local -i _rescode;
+
+  checkNotEmpty outputDir "${_outputDir}" 1;
+  checkNotEmpty alias "${_alias}" 2;
+  checkNotEmpty csr "${_csr}" 3;
+  checkNotEmpty key "${_key}" 4;
+  checkNotEmpty password "${_password}" 5;
+  checkNotEmpty expirationDays "${_expirationDays}" 6;
+
+  openssl x509 \
+          -in "${_csr}" \
+          -out "${_result}" \
+          -req \
+          -signkey "${_key}" \
+          -days ${_expirationDays} \
+          -passin pass:"${_password}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: updateSslKeyPermissions
+# api: public
+# txt: Changes the permissions of given SSL key.
+# opt: keyFile: The key file to update.
+# txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
+# use: if updateSslKeyPer
+function updateSslKeyPermissions() {
+  local _keyFile="${1}";
+  local _output;
+
+  checkNotEmpty "keyFile" "${_keyFile}" 1;
+
+  updateFilePermissions "${_keyFile}" "0700";
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
