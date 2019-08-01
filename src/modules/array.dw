@@ -224,8 +224,8 @@ function nth() {
   checkNumber "nth" "${_nth}" 2;
 
   if isGreaterOrEqualTo ${_nth} 0; then
-    declare -a _aux="($(echo "${_array}"))";
-    if isLessThan ${_nth} ${#_aux[*]}; then
+    declare -a _aux="($(echo "${_array}"))" 2> /dev/null;
+    if isTrue $? && isLessThan ${_nth} ${#_aux[*]}; then
       _result=${_aux[${_nth}]};
       _rescode=${TRUE};
     fi
