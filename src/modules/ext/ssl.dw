@@ -30,7 +30,7 @@ function generateKeyPair() {
   checkNotEmpty password "${_password}" 3;
   checkNotEmpty encryption "${_encryption}" 4;
 
-  openssl genrsa -${_encryption} -passout pass:"${_password}" -out "${_result}" 2>&1 > /dev/null;
+  openssl genrsa -${_encryption} -passout pass:"${_password}" -out "${_result}" > /dev/null 2>&1;
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -71,7 +71,7 @@ function generateCSR() {
           -passout pass:"${_password}" \
           -key "${_key}" \
           -out "${_result}" \
-          -subj "${_subject}" 2>&1 > /dev/null;
+          -subj "${_subject}" /dev/null 2>&1;
   _rescode=$?;
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
@@ -97,13 +97,13 @@ function generateCertificate() {
   local _certificateAlias="${2}";
   local _csr="${3}";
   local _key="${4}";
-  local _keyPassword="{5}";
+  local _password="{5}";
   local _expirationDays="${6}";
-  local _result="${_outputDir}/${SSL_CERTIFICATE_ALIAS}.crt";
+  local _result="${_outputDir}/${_certificateAlias}.crt";
   local -i _rescode;
 
   checkNotEmpty outputDir "${_outputDir}" 1;
-  checkNotEmpty alias "${_alias}" 2;
+  checkNotEmpty alias "${_certificateAlias}" 2;
   checkNotEmpty csr "${_csr}" 3;
   checkNotEmpty key "${_key}" 4;
   checkNotEmpty password "${_password}" 5;
