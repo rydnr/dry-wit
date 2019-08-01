@@ -353,6 +353,16 @@ function downloadModule() {
     BOOTSTRAP.failsafeLogDebugResult SUCCESS "done";
     export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw";
   else
+    rm -f "${DRYWIT_MODULE_PATH}/${_module}.dw";
+    curl -s "${DRYWIT_MODULE_URL}/ext/${_module}.dw" > "${DRYWIT_MODULE_PATH}/ext/${_module}.dw";
+    _rescode=$?;
+  fi
+
+  if [[ ${_rescode} -eq ${TRUE} ]]; then
+    BOOTSTRAP.failsafeLogDebugResult SUCCESS "done";
+    export RESULT="${DRYWIT_MODULE_PATH}/ext/${_module}.dw";
+  else
+    rm -f "${DRYWIT_MODULE_PATH}/ext/${_module}.dw";
     BOOTSTRAP.failsafeLogDebugResult FAILURE "failed";
   fi
 
@@ -420,6 +430,9 @@ function findModule() {
   if [[ -e "${DRYWIT_MODULE_PATH}/${_module}.dw" ]]; then
     _rescode=${TRUE};
     export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw";
+  elif [[ -e "${DRYWIT_MODULE_PATH}/ext/${_module}.dw" ]]; then
+     _rescode=${TRUE};
+      export RESULT="${DRYWIT_MODULE_PATH}/ext/${_module}.dw";
   fi
 
   return ${_rescode};
