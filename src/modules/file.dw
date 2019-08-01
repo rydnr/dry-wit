@@ -841,4 +841,46 @@ function replaceVariablesInFile() {
 
   return ${_rescode};
 }
+
+# fun: updateFilePermissions
+# api: public
+# txt: Changes the permissions of given file.
+# opt: keyFile: The file to update.
+# txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
+# use: if updateFilePermissions /tmp/my-file 0700; then echo "Permissions changed"; fi
+function updateFilePermissions() {
+  local _file="${1}";
+  local _permissions="${2}";
+  local _output;
+  local -i _rescode;
+
+  checkNotEmpty file "${_file}" 1;
+  checkNotEmpty permissions "${_permissions}" 2;
+
+  _output="$(chmod ${_permissions} ${_keyFile})";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: changeOwnerOfFolderRecursively
+# api: public
+# txt: Changes the ownership of given folder and its contents.
+# opt: dir: The folder to update.
+# opt: user: The user.
+# opt: group: The group.
+# txt: Returns 0/TRUE if the owner information was updated; 1/FALSE otherwise.
+# use: if changeOwnerOfFolderRecursively /tmp root wheel
+function changeOwnerOfFolderRecursively() {
+  local _dir="${1}";
+  local _user="${2}";
+  local _group="${3}";
+
+  checkNotEmpty dir "${_dir}" 1;
+  checkNotEmpty user "${_user}" 2;
+  checkNotEmpty group "${_group}" 3;
+
+  chown -R ${_user}:${_group} ${_dir} 2>&1 > /dev/null;
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
