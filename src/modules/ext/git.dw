@@ -41,4 +41,89 @@ function retrieveGitRepositoryUrl() {
 
   return ${_rescode};
 }
-#
+
+# fun: retrieveGitHeadRevision
+# api: public
+# txt: Retrieves the latest revision of the git repository.
+# opt: repositoryFolder: The repository folder;
+# txt: Returns 0/TRUE if the revision could be retrieved; 1/FALSE otherwise.
+# use: if retrieveGitHeadRevision; then echo "Revision: ${RESULT}"; fi
+function retrieveGitHeadRevision() {
+  local _folder="${1}";
+  local _rescode=${FALSE};
+  local _result;
+
+  checkNotEmpty repositoryFolder "${_folder}" 1;
+
+  pushd "${_folder}" > /dev/null 2>&1;
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    _result="$(git rev-parse HEAD)";
+    _rescode=$?;
+    popd > /dev/null 2>&1;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveGitRemoteHead
+# api: public
+# txt: Retrieves the hash of the HEAD of a certain remote branch in given local repository.
+# opt: repo: The repository folder.
+# opt: branch: The remote branch.
+# txt: Returns 0/TRUE if the folder could be processed; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash.
+# use: if retrieveRemoteHead "/tmp/my-Rep" "master"; then echo "Remote HEAD: ${RESULT}"; fi
+function retrieveGitRemoteHead() {
+  local _repo="${1}";
+  local _branch="${2}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty repo "${_repo}"  1;
+  pushd "${_repo}" > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    _result=$(git ls-remote 2> /dev/null | grep "${_branch}" | awk '{print $1;}');
+    _rescode=$?;
+    popd > /dev/null 2>&1
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveGitRemoteHeadFromUrl
+# api: public
+# txt: Retrieves the hash of the HEAD for a certain branch in given remote URL.
+# opt: url: The remote URL.
+# opt: branch: The remote branch.
+# txt: Returns 0/TRUE if the URL could be processed; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash.
+# use: if retrieveGitRemoteHeadFromURL "http://github.com/Ryder/set-square" "master"; then echo "Remote master: ${RESULT}"; fi
+function retrieveRemoteHeadFromURL() {
+  local _url="${1}";
+  local _branch="${2}";
+  local _result;
+  local -i _rescode;
+
+  checkNotEmpty url "${_url}" 1;
+
+  _result="$(git ls-remote "${_url}" 2> /dev/null | grep "${_branch}" | head -n 1 | cut -f 1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode} && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
