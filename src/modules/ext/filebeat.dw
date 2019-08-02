@@ -1,0 +1,34 @@
+# mod: filebeat
+# api: public
+# txt: filebeat functions.
+
+checkReq perl;
+
+# fun: configureFilebeatToAddLogFileToForward
+# api: public
+# txt: Adds a new log file to the filebeat.yml file.
+# opt: logFile: The log file to add.
+# opt: filebeatYml: The filebeat.yml file.
+# txt: Returns 0/TRUE if the log file is added to the filebeat.yml configuration; 1/FALSE otherwise.
+# use: if configureFilebeatToAddLogFileToForward "/var/log/syslog" "/etc/filebeat/filebeat.yml"; then
+#        echo "/var/log/syslog added to filebeat.yml";
+#      fi
+function configureFilebeatToAddLogFileToForward() {
+  local _logFile="${1}";
+  local _filebeatYml="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "logFile" "${_logFile}" 1;
+  checkNotEmpty "filebeatYml" "${_filebeatYml}" 2;
+
+  if grep -e '^#        - /var/log/\*.log$' > /dev/null; then
+      perl -i -pe "BEGIN{undef $/;} s|^#        - /var/log/\*.log$|        - ${_logFile}\n#        - /var/log/\*.log|sgm" "${_filebeatYml}";
+      _rescode=$?;
+  else
+    perl -i -pe "BEGIN{undef $/;} s|^        - /var/log/\*.log$|        - ${_logFile}\n#        /var/log/\*.log|sgm" "${_filebeatYml}";
+    _rescode=$?;
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
