@@ -2,27 +2,6 @@
 # api: public
 # txt: Nexus 3 functions.
 
-# fun: appendHttpsConnectorPortToNexusCfg
-# api: public
-# txt: Appends the HTTPS connector port to given file.
-# opt: nexusCfg: The file to update.
-# opt: port: The HTTPS port.
-# txt: Returns 0/TRUE if the file was updated; 1/FALSE otherwise.
-# use: if appendHttpsConnectorPortToNexusCfg "/opt/sonatype/nexus/etc/org.sonatype.nexus.cfg" 8443; then ...; fi
-function appendHttpsConnectorPortToNexusCfg() {
-  local _file="${1}";
-  local _port="${2}";
-  local -i _rescode;
-
-  checkNotEmpty nexusCfg "${_file}" 1;
-  checkNotEmpty port "${_port}" 2;
-
-  echo "application-port-ssl=${_port}" >> "${_file}" 2> /dev/null;
-  _rescode=$?;
-
-  return ${_rescode};
-}
-
 # fun: appendLogConfigDirToNexusSystemProperties
 # api: public
 # txt: Appends the log-config-dir setting to given file.
@@ -81,6 +60,27 @@ function enableJettyHttpsConfigInNexusProperties() {
   checkNotEmpty output "${_output}" 2;
 
   grep 'nexus-args' "${_file}" 2> /dev/null | sed "s|nexus-args=\(.*\)|nexus-args=\1,\${jetty.etc}/jetty-https.xml|g" >> "${_output}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: appendHttpsConnectorPortToNexusCfg
+# api: public
+# txt: Appends the HTTPS connector port to given file.
+# opt: nexusCfg: The file to update.
+# opt: port: The HTTPS port.
+# txt: Returns 0/TRUE if the file was updated; 1/FALSE otherwise.
+# use: if appendHttpsConnectorPortToNexusCfg "/opt/sonatype/nexus/etc/org.sonatype.nexus.cfg" 8443; then ...; fi
+function appendHttpsConnectorPortToNexusCfg() {
+  local _file="${1}";
+  local _port="${2}";
+  local -i _rescode;
+
+  checkNotEmpty nexusCfg "${_file}" 1;
+  checkNotEmpty port "${_port}" 2;
+
+  echo "application-port-ssl=${_port}" >> "${_file}" 2> /dev/null;
   _rescode=$?;
 
   return ${_rescode};
