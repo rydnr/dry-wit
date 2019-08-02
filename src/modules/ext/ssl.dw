@@ -133,9 +133,32 @@ function generateCertificate() {
 function updateSslKeyPermissions() {
   local _keyFile="${1}";
   local _output;
+  local -i _rescode;
 
   checkNotEmpty "keyFile" "${_keyFile}" 1;
 
   updateFilePermissions "${_keyFile}" "0700";
+}
+
+# fun: updateSslKeyOwnership
+# api: public
+# txt: Changes the ownership of given SSL key.
+# opt: keyFile: The key file to update.
+# opt: user: The user.
+# opt: group: The group.
+# txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
+# use: if updateSslKeyOwnership /tmp/my-file root root; then echo "/tmp/my-file updated"; fi
+function updateSslKeyOwnership() {
+  local _keyFile="${1}";
+  local _user="${1}";
+  local _group="${2}";
+  local _output;
+  local -i _rescode;
+
+  checkNotEmpty keyFile "${_keyFile}" 1;
+  checkNotEmpty user "${_user}" 2;
+  checkNotEmpty group "${_group}" 3;
+
+  changeOwnerOfFile "${_keyFile}" "${_user}" "${_group}";
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
