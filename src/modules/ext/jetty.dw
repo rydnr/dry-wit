@@ -102,7 +102,6 @@ function updateKeyManagerPasswordInJettyConf() {
   checkNotEmpty "keyPassword" "${_keyPassword}" 1;
   checkNotEmpty "configFile" "${_configFile}" 2;
 
-  logInfo -n "Updating KeyManagerPassword in ${_configFile}";
   sed -i "s|<Set name=\"KeyManagerPassword\">.*</Set>|<Set name=\"KeyManagerPassword\">${_keyPassword}</Set>|g" "${_configFile}";
   _rescode=$?;
 
