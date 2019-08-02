@@ -1,0 +1,112 @@
+# mod: jetty
+# api: public
+# txt: Some Jetty-related functions.
+
+# fun: updateKeyStorePathInJettyConf
+# api: public
+# txt: Updates the keystore path in given Jetty config file.
+# opt: keystorePath: The keystore path.
+# opt: configFile: The Jetty config file.
+# txt: Returns 0/TRUE if the configuration file was updated successfully; 1/FALSE otherwise.
+# use: if  updateKeyStorePathInJettyConf "/etc/ssl/keystore.jks" "/etc/jetty/jetty-https.xml"; then ...; fi
+function updateKeyStorePathInJettyConf() {
+  local _keyStorePath="${1}";
+  local _configFile="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "keyStorePath" "${_keyStorePath}" 1;
+  checkNotEmpty "configFile" "${_configFile}" 2;
+
+  sed -i "s|<Set name=\"KeyStorePath\">.*</Set>|<Set name=\"KeyStorePath\">${_keyStorePath}</Set>|g" "${_configFile}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+
+# fun: updateKeyStorePasswordInJettyConf
+# api: public
+# txt: Updates the keystore password in given Jetty config file.
+# opt: keyStorePassword: The keystore password.
+# opt: configFile: The Jetty config file.
+# txt: Returns 0/TRUE if the config file is updated successfully; 1/FALSE otherwise.
+# use: if updateKeyStorePasswordInJettyConf "secret" "/etc/jetty/jetty-https.xml"; then ...; fi
+function updateKeyStorePasswordInJettyConf() {
+  local _keyStorePassword="${1}";
+  local _configFile="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "keyStorePassword" "${_keyStorePassword}" 1;
+  checkNotEmpty "configFile" "${_configFile}" 2;
+
+  sed -i "s|<Set name=\"KeyStorePassword\">.*</Set>|<Set name=\"KeyStorePassword\">${_keyStorePassword}</Set>|g" "${_configFile}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: updateTrustStorePathInJettyConf
+# api: public
+# txt: Updates the trust store path in given Jetty config file.
+# opt: trustStorePath: The trust store path.
+# opt: configFile: The Jetty config file.
+# txt: Returns 0/TRUE if the configuration file was updated successfully; 1/FALSE otherwise.
+# use: if  updateTrustStorePathInJettyConf "/etc/ssl/keystore.jks" "/etc/jetty/jetty-https.xml"; then ...; fi
+function updateTrustStorePathInJettyConf() {
+  local _trustStorePath="${1}";
+  local _configFile="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "trustStorePath" "${_trustStorePath}" 1;
+  checkNotEmpty "configFile" "${_configFile}" 2;
+
+  sed -i "s|<Set name=\"TrustStorePath\">.*</Set>|<Set name=\"TrustStorePath\">${_trustStorePath}</Set>|g" "${_configFile}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: updateTrustStorePasswordInJettyConf
+# api: public
+# txt: Updates the trust store password in given Jetty config file.
+# opt: trustStorePassword: The trust store password.
+# opt: configFile: The Jetty config file.
+# txt: Returns 0/TRUE if the config file is updated successfully; 1/FALSE otherwise.
+# use: if updateTrustStorePasswordInJettyConf "secret" "/etc/jetty/jetty-https.xml"; then ...; fi
+function updateTrustStorePasswordInJettyConf() {
+  local _trustStorePassword="${1}";
+  local _configFile="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "trustStorePassword" "${_trustStorePassword}" 1;
+  checkNotEmpty "configFile" "${_configFile}" 2;
+
+  sed -i "s|<Set name=\"TrustStorePassword\">.*</Set>|<Set name=\"TrustStorePassword\">${_trustStorePassword}</Set>|g" "${_configFile}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: updateKeyManagerPasswordInJettyConf
+# api: public
+# txt: Updates the key password in given Jetty config file.
+# opt: keyManagerPassword: The key manader password.
+# opt: configFile: The Jetty config file.
+# txt: Returns 0/TRUE if the password was updated; 1/FALSE otherwise.
+# use: if updateKeyManagePasswordInJettyConf "secret" "/opt/sonatype/nexus/etc/jetty-https.xml"; then ...; fi
+function updateKeyManagerPasswordInJettyConf() {
+  local _keyPassword="${1}";
+  local _configFile="${2}";
+  local -i _rescode;
+
+  checkNotEmpty "keyPassword" "${_keyPassword}" 1;
+  checkNotEmpty "configFile" "${_configFile}" 2;
+
+  logInfo -n "Updating KeyManagerPassword in ${_configFile}";
+  sed -i "s|<Set name=\"KeyManagerPassword\">.*</Set>|<Set name=\"KeyManagerPassword\">${_keyPassword}</Set>|g" "${_configFile}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
