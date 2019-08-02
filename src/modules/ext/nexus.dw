@@ -1,0 +1,88 @@
+# mod: nexus
+# api: public
+# txt: Nexus 3 functions.
+
+# fun: appendHttpsConnectorPortToNexusCfg
+# api: public
+# txt: Appends the HTTPS connector port to given file.
+# opt: nexusCfg: The file to update.
+# opt: port: The HTTPS port.
+# txt: Returns 0/TRUE if the file was updated; 1/FALSE otherwise.
+# use: if appendHttpsConnectorPortToNexusCfg "/opt/sonatype/nexus/etc/org.sonatype.nexus.cfg" 8443; then ...; fi
+function appendHttpsConnectorPortToNexusCfg() {
+  local _file="${1}";
+  local _port="${2}";
+  local -i _rescode;
+
+  checkNotEmpty nexusCfg "${_file}" 1;
+  checkNotEmpty port "${_port}" 2;
+
+  echo "application-port-ssl=${_port}" >> "${_file}" 2> /dev/null;
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: appendLogConfigDirToNexusSystemProperties
+# api: public
+# txt: Appends the log-config-dir setting to given file.
+# opt: file: The file to update.
+# opt: folder: The log config folder.
+# txt: Returns 0/TRUE if the file was updated successfully; 1/FALSE otherwise.
+# use: if appendLogConfigDirToNexusSystemProperties "/opt/sonatype/nexus/etc/system.properties" "/backup/nexus-conf/"
+function appendLogConfigDirToNexusSystemProperties() {
+  local _file="${1}";
+  local _dir="${2}";
+  local -i _rescode;
+
+  checkNotEmpty file "${_file}" 1;
+  checkNotEmpty folder "${_dir}" 2;
+
+  echo "nexus.log-config-dir=${_dir}" >> "${_file}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: appendWorkDirInNexusSystemProperties
+# api: public
+# txt: Appends the work-dir setting to given file.
+# opt: file: The file to update.
+# opt: workDir: The work folder.
+# txt: Returns 0/TRUE if the configuration file was updated successfully; 1/FALSE otherwise.
+# use: if appendWorkDirInNexusSystemProperties "/opt/sonatype/nexus/etc/system.properties" "/sonatype-work"; then ...; fi
+function appendWorkDirInNexusSystemProperties() {
+  local _file="${1}";
+  local _dir="${2}";
+  local -i _rescode;
+
+  checkNotEmpty file "${_file}" 1;
+  checkNotEmpty workDir "${_dir}" 2;
+
+  echo "nexus.work-dir=${_dir}" >> "${_file}" 2> /dev/null;
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: enableJettyHttpsConfigInNexusProperties
+# api: public
+# txt: Enables the Jetty HTTPS configuration in Nexus.
+# opt: file: The nexus-default.properties file location.
+# opt: output: The nexus.properties file location.
+# txt: Returns 0/TRUE if the HTTPS configuration was enabled; 1/FALSE otherwise.
+# use: if enableJettyHttpsConfigInNexusProperties "/opt/sonatype/nexus/etc/nexus-default.properties" "/opt-sonatype/nexus/etc/nexus.properties"; then ...; fi
+function enableJettyHttpsConfigInNexusProperties() {
+  local _file="${1}";
+  local _output="${2}";
+  local -i _rescode;
+
+  checkNotEmpty file "${_file}" 1;
+  checkNotEmpty output "${_output}" 2;
+
+  grep 'nexus-args' "${_file}" 2> /dev/null | sed "s|nexus-args=\(.*\)|nexus-args=\1,\${jetty.etc}/jetty-https.xml|g" >> "${_output}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
