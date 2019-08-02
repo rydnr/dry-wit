@@ -25,7 +25,7 @@ function connectDockerContainerToNetwork() {
       logDebugResult SUCCESS "true";
 
       logDebug -n "Connecting ${_container} to ${_network} network";
-      echo "docker network connect ${_network} ${_container}" >> ${TRACE_FILE};
+      debugEcho "docker network connect ${_network} ${_container}";
       if dockerCommand network connect ${_network} ${_container}; then
         _output="${RESULT}";
         logDebugResult SUCCESS "done";
@@ -263,7 +263,7 @@ function retrievePortsFromDockerfile() {
     for p in ${_aux}; do
       IFS="${_oldIFS}";
       _rescode=${TRUE};
-      if ! arrayContainsElement "${p}" "${_result[@]}"; then
+      if ! arrayContains "${p}" "${_result[@]}"; then
         _result[${#_result[@]}]="${p}";
       fi
     done
@@ -274,6 +274,8 @@ function retrievePortsFromDockerfile() {
   if isTrue ${_rescode}; then
     export RESULT=${_result[@]};
   fi
+
+  return ${_rescode};
 }
 
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
