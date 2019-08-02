@@ -843,7 +843,8 @@ function replaceVariablesInFile() {
 # fun: updateFilePermissions
 # api: public
 # txt: Changes the permissions of given file.
-# opt: keyFile: The file to update.
+# opt: file: The file to update.
+# opt: permissions: The permissions.
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
 # use: if updateFilePermissions /tmp/my-file 0700; then echo "Permissions changed"; fi
 function updateFilePermissions() {
@@ -853,7 +854,31 @@ function updateFilePermissions() {
   checkNotEmpty file "${_file}" 1;
   checkNotEmpty permissions "${_permissions}" 2;
 
-  chmod ${_permissions} ${_keyFile} 2>&1 > /dev/null;
+  chmod ${_permissions} ${_file} > /dev/null 2>&1;
+}
+
+# fun: changeOwnerOfFile
+# api: public
+# txt: Changes the ownership of given file.
+# opt: file: The file to update.
+# opt: user: The owner.
+# opt: group: The group. Optional.
+# txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
+# use: if changeOwnerOfFile /tmp/my-file 0700; then echo "Ownership changed"; fi
+function changeOwnerOfFile() {
+    local _file="${1}";
+    local _user="${2}";
+    local _group="${3}";
+    local _ownership="${_user}";
+
+    checkNotEmpty file "${_file}" 1;
+    checkNotEmpty user "${_user}" 2;
+
+    if isNotEmpty "${_group}"; then
+      _ownership="${_ownership}:${_group}";
+    fi
+
+    chown ${_ownership} ${_file} > /dev/null 2>&1;
 }
 
 # fun: changeOwnerOfFolderRecursively
@@ -861,18 +886,22 @@ function updateFilePermissions() {
 # txt: Changes the ownership of given folder and its contents.
 # opt: dir: The folder to update.
 # opt: user: The user.
-# opt: group: The group.
+# opt: group: The group. Optional.
 # txt: Returns 0/TRUE if the owner information was updated; 1/FALSE otherwise.
-# use: if changeOwnerOfFolderRecursively /tmp root wheel
+# use: if changeOwnerOfFolderRecursively /tmp root wheel; then echo "Ownership changed"; fi
 function changeOwnerOfFolderRecursively() {
   local _dir="${1}";
   local _user="${2}";
   local _group="${3}";
+  local _ownership="${_user}";
 
   checkNotEmpty dir "${_dir}" 1;
   checkNotEmpty user "${_user}" 2;
-  checkNotEmpty group "${_group}" 3;
 
-  chown -R ${_user}:${_group} ${_dir} 2>&1 > /dev/null;
+  if isNotEmpty "${_group}"; then
+    _ownership="${_ownership}:${_group}";
+  fi
+
+  chown -R ${_ownership} ${_dir} > /dev/null 2>&1;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
