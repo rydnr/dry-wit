@@ -124,6 +124,48 @@ function generateCertificate() {
   return ${_rescode};
 }
 
+# fun: generatePEM
+# api: public
+# txt: Generates a PEM key for a given key.
+# opt: outputDir: The output folder.
+# opt: alias: The certificate alias.
+# opt: csr: The certificate signing request.
+# opt: key: The key.
+# opt: password: The key password.
+# opt: expirationDays: The expiration, in days.
+# txt: Returns 0/TRUE if the PEM key was generated; 1/FALSE otherwise.
+# use: if generatePEM /tmp mydomain /tmp/myKey /tmp/myKey.pem /tmp/myKey-cert.pem secret 3650; then echo "PEM generated"; fi
+function generatePEM() {
+  local _keyOutputFile="${1}";
+  local _certOutputFile="${2}";
+  local _certificateAlias="${3}";
+  local _password="${4}";
+  local _expirationDays="${5}";
+  local -i _rescode;
+
+  checkNotEmpty keyOutputFile "${_keyOutputFile}" 1;
+  checkNotEmpty certOutputFile "${_certOutputFile}" 2;
+  checkNotEmpty alias "${_certificateAlias}" 3;
+  checkNotEmpty password "${_password}" 4;
+  checkNotEmpty expirationDays "${_expirationDays}" 5;
+
+  openssl req \
+          -newkey rsa:2048 \
+          -new \
+          -nodes \
+          -x509 \
+          -days ${_expirationDays} \
+          -keyout "${_keyOutputFile}" \
+          -out "${_certOutputFile}" \
+          -passin pass:"${_password}" > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}.pem";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: updateSslKeyPermissions
 # api: public
 # txt: Changes the permissions of given SSL key.
