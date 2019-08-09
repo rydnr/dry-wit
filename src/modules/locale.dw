@@ -119,7 +119,7 @@ function change_default_locale() {
   checkNotEmpty "locale" "${_locale}" 1;
   checkNotEmpty "encoding" "${_encoding}" 2;
 
-  logInfo -n "Checking if the locale/encoding pair is valid";
+  logInfo -n "Checking if the ${_locale}/${_encoding} pair is valid";
   if is_locale_supported "${_locale}" "${_encoding}"; then
       logInfoResult SUCCESS "valid";
       logInfo -n "Modifying ${DEFAULT_LOCALE_FILE}";
