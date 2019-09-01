@@ -58,26 +58,8 @@ function extractPathSegmentFromUrl() {
   checkNotEmpty "url" "${_url}" 1;
   checkNotEmpty "index" "${_index}" 2;
 
-  if split "${_url}" "/"; then
-    local _segments="${RESULT}"
-    local -i _i=0;
-    local _segment;
-    local _oldIFS="${IFS}";
-    IFS="${DWIFS}";
-    for _segment in ${RESULT}; do
-      IFS="${_oldIFS}";
-      if areEqual ${_i} $((_index + 2)); then
-        _result="${_segment}";
-        _rescode=${TRUE};
-        break;
-      fi
-      ((_i++));
-    done
-    IFS="${_oldIFS}";
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+  if splitAndExtract "${_url}" "/" $((_index + 2)); then
+    _rescode=${TRUE};
   fi
 
   return ${_rescode};
