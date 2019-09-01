@@ -40,3 +40,44 @@ function urlEncode() {
 #  ?    %    #    [    ]
 # %3F  %25  %23  %5B  %5D
 }
+
+# fun: extractPathSegmentFromUrl
+# api: public
+# txt: Extracts a path segment from given url.
+# opt: url: The url.
+# opt: index: The 0-based index of the segment to extract.
+# txt: Returns 0/TRUE if the segment was extracted; 1/FALSE otherwise.
+# use: if extractPathSegmentFromUrl "http://acme.com/context/post" 0; then use:   echo "First segment: ${RESULT}"; fi
+function extractPathSegmentFromUrl() {
+  local _url="${1}";
+  local _index="${2}";
+  local -i _rescode=${FALSE};
+  local _result;
+
+  checkNotEmpty "url" "${_url}" 1;
+  checkNotEmpty "index" "${_index}" 2;
+
+  if split "${_url}" "/"; then
+    local _segments="${RESULT}"
+    local -i _i=0;
+    local _segment;
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    for _segment in ${RESULT}; do
+      IFS="${_oldIFS}";
+      if areEqual ${_i} $((_index + 2)); then
+        _result="${_segment}";
+        _rescode=${TRUE};
+        break;
+      fi
+      ((_i++));
+    done
+    IFS="${_oldIFS}";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
