@@ -403,5 +403,49 @@ function printValue(text,   value, len, a) {
 
   return ${_rescode};
 }
-# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
 
+# fun: splitAndExtract
+# api: public
+# txt: Extracts an item after splitting given input using a separator.
+# opt: input: The input.
+# opt: separator: The separator.
+# opt: index: The 0-based index of the item to extract.
+# txt: Returns 0/TRUE if the item was extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the requested item.
+# use: if splitAndExtract "2019-09-01" "-" 0; then echo "Year: ${RESULT}"; fi
+function splitAndExtract() {
+  local _input="${1}";
+  checkNotEmpty "input" "${_input}" 1;
+  local _separator="${2}";
+  checkNotEmpty "separator" "${_separator}" 2;
+  local _index="${3}";
+  checkNotEmpty "index" "${_index}" 3;
+
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if split "${_input}" "${_separator}"; then
+    local _items="${RESULT}";
+    local -i _i=0;
+    local _item;
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    for _item in ${RESULT}; do
+      IFS="${_oldIFS}";
+      if areEqual "${_i}" "${_index}"; then
+        _result="${_item}";
+        _rescode=${TRUE};
+        break;
+      fi
+      ((_i++));
+    done
+    IFS="${_oldIFS}";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
