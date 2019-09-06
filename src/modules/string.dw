@@ -448,4 +448,110 @@ function splitAndExtract() {
 
   return ${_rescode};
 }
+
+# fun: sha512
+# api: public
+# txt: Calculates the SHA-512 hash of given value.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
+# use: if sha512 "myText"; then echo "SHA-512: ${RESULT}"; fi
+function sha512() {
+  local _value="${1}";
+  checkNotEmpty value "${_value}" 1;
+  hash sha512 "${_value}";
+}
+
+# fun: sha384
+# api: public
+# txt: Calculates the SHA-384 hash of given value.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
+# use: if sha384 "myText"; then echo "SHA-384: ${RESULT}"; fi
+function sha384() {
+  local _value="${1}";
+  checkNotEmpty value "${_value}" 1;
+  hash sha384 "${_value}";
+}
+
+# fun: sha256
+# api: public
+# txt: Calculates the SHA-256 hash of given value.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
+# use: if sha256 "myText"; then echo "SHA-256: ${RESULT}"; fi
+function sha256() {
+  local _value="${1}";
+  checkNotEmpty value "${_value}" 1;
+  hash sha256 "${_value}";
+}
+
+# fun: sha224
+# api: public
+# txt: Calculates the SHA-224 hash of given value.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
+# use: if sha224 "myText"; then echo "SHA-224: ${RESULT}"; fi
+function sha224() {
+  local _value="${1}";
+  checkNotEmpty value "${_value}" 1;
+  hash sha224 "${_value}";
+}
+
+# fun: sha1
+# api: public
+# txt: Calculates the SHA-1 hash of given value.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
+# use: if sha1 "myText"; then echo "SHA-1: ${RESULT}"; fi
+function sha1() {
+  local _value="${1}";
+  checkNotEmpty value "${_value}" 1;
+  hash sha1 "${_value}";
+}
+
+# fun: sha
+# api: public
+# txt: Calculates the SHA hash of given value.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
+# use: if sha "myText"; then echo "SHA: ${RESULT}"; fi
+function sha() {
+  local _value="${1}";
+  checkNotEmpty value "${_value}" 1;
+  hash sha "${_value}";
+}
+
+# fun: hash
+# api: public
+# txt: Calculates a hash of given value.
+# opt: hash: The hash.
+# opt: value: The value.
+# txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
+# use: if hash sha512 "myText"; then echo "SHA-512: ${RESULT}"; fi
+function hash() {
+  local _hash="${1}";
+  checkNotEmpty hash "${_hash}" 1;
+  local _value="${2}";
+  checkNotEmpty value "${_value}" 2;
+  local -i _rescode;
+  local _result="$(echo -n "${_value}" | ${_hash}sum 2> /dev/null | cut -f1 -d" ")";
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

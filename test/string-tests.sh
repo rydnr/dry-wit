@@ -153,5 +153,59 @@ key2=value2
 key3="value3 with spaces"' "${RESULT}"  "keyValueSplit \"${_text}\" failed";
 }
 
+function sha512_test() {
+  local _text="blablabla";
+  sha512 "${_text}";
+  local -i _result=$?;
+  local _aux="${RESULT}";
+  Assert.isTrue ${_result} "sha512 \"${_text}\" failed";
+  Assert.areEqual '7a7cfc99db9802272d1987e287926ac52642417bf2d68455e180412c226430d0321610e8740a46783b2b42802918d62d206d3b1b21dc600b6944ddecf5d9c256' "${_aux}" "sha512 \"${_text}\" failed";
+}
+
+function sha384_test() {
+  local _text="blablabla";
+  sha384 "${_text}";
+  local -i _result=$?;
+  local _aux="${RESULT}";
+  Assert.isTrue ${_result} "sha384 \"${_text}\" failed";
+  Assert.areEqual 'e481492518ccc3aa9101d78a1692f1f21507ee40527b1f753c4a83fa244039f2569778bc19696a71fec0d8e8dcdb0e9e' "${_aux}" "sha384 \"${_text}\" failed";
+}
+
+function sha256_test() {
+  local _text="blablabla";
+  sha256 "${_text}";
+  local -i _result=$?;
+  local _aux="${RESULT}";
+  Assert.isTrue ${_result} "sha256 \"${_text}\" failed";
+  Assert.areEqual '492f3f38d6b5d3ca859514e250e25ba65935bcdd9f4f40c124b773fe536fee7d' "${_aux}" "sha256 \"${_text}\" failed";
+}
+
+function sha224_test() {
+  local _text="blablabla";
+  sha224 "${_text}";
+  local -i _result=$?;
+  local _aux="${RESULT}";
+  Assert.isTrue ${_result} "sha224 \"${_text}\" failed";
+  Assert.areEqual 'ab5f4e88665613700445f96ecf1eecb5f99125b72bda5851d5e80e78' "${_aux}" "sha224 \"${_text}\" failed";
+}
+
+function sha1_test() {
+  local _text="blablabla";
+  sha1 "${_text}";
+  local -i _result=$?;
+  local _aux="${RESULT}";
+  Assert.isTrue ${_result} "sha1 \"${_text}\" failed";
+  Assert.areEqual '23c6834b1d353eabf976e524ed489c812ff86a7d' "${_aux}" "sha1 \"${_text}\" failed";
+}
+
+function sha_test() {
+  local _text="blablabla";
+  sha "${_text}";
+  local -i _result=$?;
+  local _aux="${RESULT}";
+  Assert.isTrue ${_result} "sha \"${_text}\" failed";
+  Assert.areEqual '23c6834b1d353eabf976e524ed489c812ff86a7d' "${_aux}" "sha \"${_text}\" failed";
+}
+
 setScriptDescription "Runs all tests implemented for string.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
