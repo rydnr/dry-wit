@@ -126,8 +126,12 @@ function removeSuffix() {
   checkNotEmpty "text" "${_text}" 1;
   checkNotEmpty "suffix" "${_suffix}" 2;
 
-  _result="$(echo "${_text}" | sed -e "s/${_suffix}$//")";
-  _rescode=$?;
+  if contains "${_suffix}" "~"; then
+    _rescode=${FALSE};
+  else
+    _result="$(echo "${_text}" | sed -e "s~${_suffix}$~~")";
+    _rescode=$?;
+  fi
   if isTrue ${_rescode}; then
     # double-check
     if areNotEqual "${_text}" "${_result}"; then
