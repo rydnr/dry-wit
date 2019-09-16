@@ -172,7 +172,7 @@ function removeCommandLineFlag() {
   return ${_rescode};
 }
 
-# fun: setScriptCopyright copyrightDescription
+# fun: setScriptCopyright
 # api: public
 # txt: Sets the script copyright message.
 # opt: copyrightDescription: The copyright message.
@@ -188,7 +188,7 @@ function setScriptCopyright() {
   return ${TRUE};
 }
 
-# fun: setScriptDescription description
+# fun: setScriptDescription
 # api: public
 # txt: Defines the script description.
 # opt: description: The description.
@@ -202,7 +202,7 @@ function setScriptDescription() {
     __DW_CLI_SCRIPT_DESCRIPTION="${_description}";
 }
 
-# fun: setScriptLicenseSummary licenseDescription
+# fun: setScriptLicenseSummary
 # api: public
 # txt: Sets the script license summary.
 # opt: licenseDescription: The license message.
@@ -275,7 +275,7 @@ function checkInput() {
     CLI.checkEnvironmentVariables;
 }
 
-# fun: parseInput arguments
+# fun: parseInput
 # api: private
 # txt: Parses the command-line arguments.
 # opt: arguments: The command-line arguments.
@@ -313,7 +313,7 @@ function parseInput() {
 # fun: dw_parse_debug_cli_flag
 # api: private
 # txt: Callback function when the user includes the debug (-v|--debug) flag.
-# txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
+# txt: It's based on a naming convention: dw_parse_debug_cli_flag
 function dw_parse_debug_cli_flag() {
     setDebugEnabled;
 }
@@ -321,7 +321,7 @@ function dw_parse_debug_cli_flag() {
 # fun: dw_parse_trace_cli_flag
 # api: private
 # txt: Callback function when the user includes the trace (-vv|--trace) flag.
-# txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
+# txt: It's based on a naming convention: dw_parse_trace_cli_flag
 function dw_parse_trace_cli_flag() {
     setTraceEnabled;
 }
@@ -329,7 +329,7 @@ function dw_parse_trace_cli_flag() {
 # fun: dw_parse_quiet_cli_flag
 # api: private
 # txt: Callback function when the user includes the quiet (-q|--quiet) flag.
-# txt: It's based on a naming convention: dw_parse_[flag]_cli_flag
+# txt: It's based on a naming convention: dw_parse_quiet_cli_flag
 function dw_parse_quiet_cli_flag() {
     export QUIET=${TRUE};
 }
@@ -337,7 +337,7 @@ function dw_parse_quiet_cli_flag() {
 # fun: dw_parse_help_cli_flag
 # api: private
 # txt: Callback function when the user includes the help (-h|--help) flag.
-# txt: It's based on a naming convention: dw_check_[flag]_cli_flag
+# txt: It's based on a naming convention: dw_parse_help_cli_flag
 function dw_parse_help_cli_flag() {
     printHelp;
 }
