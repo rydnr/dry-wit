@@ -48,6 +48,12 @@ function removeSuffix_test() {
   _result="${RESULT}";
   Assert.isTrue ${_done} "removeSuffix failed";
   Assert.areEqual "${_result}" "my" "removeSuffix 'my-test.sh' '-test.sh' returned '${_result}' instead of 'my'";
+
+  removeSuffix 'my text"' '"';
+  _done=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_done} "removeSuffix failed";
+  Assert.areEqual "${_result}" "my text" "removeSuffix 'my text"' '"' returned '${_result}' instead of 'my text'";
 }
 
 function toUpper_test() {
