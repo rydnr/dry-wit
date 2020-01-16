@@ -52,7 +52,8 @@ function addCommandLineFlag() {
   _flagKey="${RESULT}";
 
   if   isEmpty "${__DW_CLI_FLAG_KEYS[*]}" \
-    || arrayDoesNotContain "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"; then
+    || arrayDoesNotContain "${_flagKey}" "${__DW_CLI_FLAG_KEYS[@]}"; then
+
     __DW_CLI_FLAG_KEYS[${#__DW_CLI_FLAG_KEYS[@]}]="${_flagKey}";
     __DW_CLI_FLAG_SHORT_NAMES[${_longName}]="${_shortName}";
     __DW_CLI_FLAG_LONG_NAMES[${_shortName}]="${_longName}";
@@ -151,7 +152,7 @@ function removeCommandLineFlag() {
 
     if   isNotEmpty "${_flagKey}" \
       && isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}" \
-      && arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"; then
+      && arrayContains "${_flagKey}" "${__DW_CLI_FLAG_KEYS[@]}"; then
       __DW_CLI_FLAG_KEYS=( "${__DW_CLI_FLAG_KEYS[@]/${_flagKey}}" );
       CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
       _longName="${RESULT}";
@@ -698,8 +699,8 @@ function CLI.isCommandLineFlagAlreadyChecked() {
   CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
   _shortName="-${RESULT}";
 
-  if    arrayContains "${_flagsAlreadyChecked}" "${_longName}" \
-     || arrayContains "${_flagsAlreadyChecked}" "${_shortName}"; then
+  if    arrayContains "${_longName}" "${_flagsAlreadyChecked}" \
+     || arrayContains "${_shortName}" "${_flagsAlreadyChecked}"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -816,7 +817,7 @@ function CLI.isFlagDefined() {
 
   checkNotEmpty "flagKey" "${_flagKey}" 1;
 
-  arrayContains "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"
+  arrayContains "${_flagKey}" "${__DW_CLI_FLAG_KEYS[@]}";
   _rescode=$?;
 
   return ${_rescode};

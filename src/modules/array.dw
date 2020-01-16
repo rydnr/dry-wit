@@ -7,14 +7,15 @@ DW.import number;
 # fun: arrayContains array element
 # api: public
 # txt: Checks if an element is already contained in an array.
-# opt: array: The array (passed as "${array[@]}").
 # opt: element: The element to check.
+# opt: array: The array (passed as "${array[@]}").
 # txt: Returns 0/TRUE if the element is present in the array; 1/FALSE otherwise.
 # use: a=("one" "two" "three" "other number")
-#      if arrayContains "${a[@]}" "other number"; then ...; fi
+#      if arrayContains "other number" "${a[@]}"; then ...; fi
 function arrayContains() {
-  local _array="${1}";
-  local _item="${2}";
+  local _item="${1}";
+  shift;
+  local _array="${@}";
   local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
@@ -31,6 +32,7 @@ function arrayContains() {
   IFS="${DWIFS}";
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
+
     if areEqual "${_aux}" "${_item}"; then
       _rescode=${TRUE};
       break;
@@ -44,14 +46,15 @@ function arrayContains() {
 # fun: arrayDoesNotContain array element
 # api: public
 # txt: Checks if an element is not already contained in an array.
-# opt: array: The array (passed as "${array[@]}").
 # opt: element: The element to check.
+# opt: array: The array (passed as "${array[@]}").
 # txt: Returns 0/TRUE if the element is not present in the array; 1/FALSE Otherwise.
 # use: a=("one" "two" "three" "other number")
-#      if arrayDoesNotContain "${a[@]}" "four"; then ...; fi
+#      if arrayDoesNotContain "four" "${a[@]}"; then ...; fi
 function arrayDoesNotContain() {
-  local _array="${1}";
-  local _item="${2}";
+  local _item="${1}";
+  shift;
+  local _array="${@}";
   local -i _rescode=${FALSE};
 
   checkNotEmpty "array" "${_array}" 1;

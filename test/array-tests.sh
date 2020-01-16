@@ -89,6 +89,24 @@ function nth_test() {
   fi
 }
 
+function arrayContains_test() {
+  local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help" "f|file");
+  Assert.functionExists "arrayContains" "arrayContains doesn't exist";
+  local -i _rescode;
+  arrayContains "f|file" "${test_array[@]}";
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "arrayContains failed";
+}
+
+function arrayDoesNotContain_test() {
+  local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help");
+  Assert.functionExists "arrayDoesNotContain" "arrayDoesNotContain doesn't exist";
+  local -i _rescode;
+  arrayDoesNotContain "f|file" "${test_array[@]}";
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "arrayDoesNotContain failed";
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo]=bar [foo2]=bar2 );
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING2=( [foo]=bar [foo2]=bar2 );
 declare -Ag associativeArrayWithSpacesInKeys=( [with spaces]="dummy value" );

@@ -26,6 +26,7 @@ function test_tearDown() {
 function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
   local _debugFile="${TEMP:-/tmp}/.$$.$(basename ${SCRIPT_NAME}).log";
   setDebugLogFile "${_debugFile}";
+  setDebugEchoEnabled TRUE;
   debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;
   Assert.isNotEmpty "${_debugFile}" "debugFile is not set";
   Assert.fileContains "${_debugFile}" "foo11 -> bar11" "debugAssociativeArray didn't write 'foo11 -> bar11' in the log file";
