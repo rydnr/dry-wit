@@ -243,8 +243,8 @@ function usage() {
 # api: private
 # txt: Checks the command-line arguments.
 # opt: arguments: The command-line arguments.
-# txt: Returns 0/TRUE if the command-line arguments were checked successfully; 1/FALSE otherwise.
-# use: if checkInput *@; then ... fi
+# txt: Returns 0/TRUE always, but it could raise an exception and exit.
+# use: checkInput *@;
 function checkInput() {
     local _flags=$(CLI.extractFlags $@);
     local _flag;
@@ -274,6 +274,10 @@ function checkInput() {
     CLI.checkCommandLineParameters $@;
 
     CLI.checkEnvironmentVariables;
+
+    if isFunctionPresent "dw_checkInput"; then
+      dw_checkInput;
+    fi
 }
 
 # fun: parseInput

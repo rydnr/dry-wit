@@ -12,6 +12,7 @@ function test_reset() {
   commandLineParameterParsingCallbackCalled=${FALSE};
   optionalEnvVarCheckingCallbackCalled=${FALSE};
   optionalEnvVarParsingCallbackCalled=${FALSE};
+  checkInputCallbackCalled=${FALSE};
   CLI.resetState;
   CLI.defaultState;
   ENVVAR.resetState;
@@ -54,6 +55,10 @@ function dw_parse_my_optional_envvar_cli_envvar() {
 
 function dw_parse_repository_cli_parameter() {
   export REPOSITORY="${1}";
+}
+
+function dw_checkInput() {
+  checkInputCallbackCalled=${TRUE};
 }
 
 function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
@@ -282,6 +287,11 @@ function parseInput_does_not_swallow_parameters_test() {
   Assert.isNotEmpty "${REPOSITORY}" "REPOSITORY was empty";
 }
 
+function drywit_calls_dw_checkInput_test() {
+  checkInput;
+  Assert.isTrue ${checkInputCallbackCalled} "dw_checkInput is not called";
+}
+
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
 declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
@@ -289,6 +299,7 @@ declare -ig commandLineParameterCheckingCallbackCalled=${FALSE};
 declare -ig commandLineParameterParsingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarCheckingCallbackCalled=${FALSE};
 declare -ig optionalEnvVarParsingCallbackCalled=${FALSE};
+declare -ig checkInputCallbackCalled=${FALSE};
 
 setScriptDescription "Runs all tests implemented for cli.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
