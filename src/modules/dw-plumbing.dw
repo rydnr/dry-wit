@@ -111,7 +111,7 @@ function isFunctionMissing() {
   return ${_rescode};
 }
 
-# fun: isFunctionPresent funcName scriptFile?
+# fun: isFunctionPresent
 # api: public
 # txt: Checks if given function is present.
 # opt: funcName: The function name.
@@ -122,7 +122,7 @@ function isFunctionMissing() {
 #      fi
 function isFunctionPresent() {
   local _function="${1}";
-  local _script="${2}";
+  local _script="${2:-${SCRIPT_NAME}}";
   local _rescode;
   local _inc;
   local _oldIFS="${IFS}";
