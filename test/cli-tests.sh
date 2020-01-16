@@ -261,7 +261,7 @@ function checkInput_checks_mandatory_environment_variables_are_not_empty_test() 
 
 function parseInput_fails_if_there_is_no_callback_function_for_a_mandatory_parameter_test() {
   addCommandLineParameter "folder" "The file to read" MANDATORY SINGLE;
-  (parseInput "/tmp" > /dev/null)
+  (parseInput "/tmp" > /dev/null 2>&1)
   Assert.isFalse $? "parseInput failed to detect parameter witout parsing callback defined";
 }
 

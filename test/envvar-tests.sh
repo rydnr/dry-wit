@@ -9,6 +9,7 @@ DW.import debug;
 function test_reset() {
   DEBUG.resetState;
   DEBUG.defaultState;
+  setDebugEchoEnabled TRUE;
 }
 
 ## Called before each test.
@@ -24,10 +25,10 @@ function test_tearDown() {
 }
 
 function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
-  local _debugFile="${TEMP:-/tmp}/.$$.${SCRIPT_NAME}.log";
-  setDebugLogFile "${_debugFile}";
-  debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;
+  DEBUG.getDebugLogFile;
+  local _debugFile="${RESULT}";
   Assert.isNotEmpty "${_debugFile}" "debugFile is not set";
+  debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;
   Assert.fileContains "${_debugFile}" "foo11 -> bar11" "debugAssociativeArray didn't write 'foo11 -> bar11' in the log file";
   Assert.fileContains "${_debugFile}" "foo214 -> bar214" "debugAssociativeArray didn't write 'foo214 -> bar214' in the log file";
   Assert.fileContains "${_debugFile}" "key-without-spaces -> value with spaces" "debugAssociativeArray didn't write 'key-without-spaces -> value with spaces' in the log file";

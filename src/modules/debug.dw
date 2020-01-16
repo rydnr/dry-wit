@@ -63,7 +63,7 @@ function debugEcho() {
     if isDebugEchoEnabled; then
         DEBUG.getDebugLogFile;
         _logFile="${RESULT}";
-        echo $* >> "${_logFile}";
+        echo -- "$*" >> "${_logFile}";
     fi
 }
 
@@ -100,7 +100,7 @@ function isDebugEchoEnabled() {
     return ${_rescode};
 }
 
-# fun: setDebugEchoEnabled bool
+# fun: setDebugEchoEnabled
 # api: public
 # txt: Specifies whether "debugEcho" is enabled.
 # opt: bool: That condition.
@@ -118,7 +118,7 @@ function setDebugEchoEnabled() {
     fi
 }
 
-# fun: setDebugLogFile fileName
+# fun: setDebugLogFile
 # api: public
 # txt: Specifies the log file for debugging purposes.
 # opt: fileName: The log file.

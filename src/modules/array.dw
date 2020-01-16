@@ -152,6 +152,7 @@ function forEachAssociativeArrayEntryDo() {
     IFS="${DWIFS}";
     for _key in "${!_directArray[@]}"; do
         IFS="${_oldIFS}";
+
         ${_callback} "${_key}" "${_directArray[${_key}]}";
     done
     IFS="${_oldIFS}";
