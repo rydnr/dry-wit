@@ -20,14 +20,9 @@ function arrayContains() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  # array can be empty, and the first parameter is actually the item.
-  if isEmpty "${_item}"; then
-    _array="";
-    _item="${1}";
-  else
-    checkNotEmpty "array" "${_array}" 1;
-  fi
-  checkNotEmpty "item" "${_item}" 2;
+  checkNotEmpty "item" "${_item}" 1;
+
+  # array can be empty.
 
   IFS="${DWIFS}";
   for _aux in ${_array}; do

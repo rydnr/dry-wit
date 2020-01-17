@@ -98,6 +98,15 @@ function arrayContains_test() {
   Assert.isTrue ${_rescode} "arrayContains failed";
 }
 
+function arrayContains_works_for_empty_arrays_test() {
+  local -a test_array=();
+  Assert.functionExists "arrayContains" "arrayContains doesn't exist";
+  local -i _rescode;
+  arrayContains "f|file" "${test_array[@]}";
+  _rescode=$?;
+  Assert.isFalse ${_rescode} "arrayContains failed";
+}
+
 function arrayDoesNotContain_test() {
   local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help");
   Assert.functionExists "arrayDoesNotContain" "arrayDoesNotContain doesn't exist";
