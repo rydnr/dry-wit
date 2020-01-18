@@ -31,6 +31,7 @@ declare -Ax TEST_ASSERTION_LINE_NUMBERS;
 declare -Ax TEST_ASSERTION_FAILURE_MESSAGES;
 # env: TEST_ASSERTION_FAILURE_CONTEXT: The context of the failing asserts.
 declare -Ax TEST_ASSERTION_FAILURE_CONTEXT;
+# env: TESTS_FOUND: The number of tests found.
 
 addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
 addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
@@ -65,6 +66,8 @@ function DRYWITTEST.retrieveTests() {
   if isEmpty "${TESTS[@]}"; then
     exitWithErrorCode NO_TESTS_FOUND;
   fi
+
+  echo "export TESTS_FOUND=${#TESTS[@]};" > ".${_script}.env";
 
   export RESULT="${TESTS[@]}";
 }
@@ -539,7 +542,7 @@ function DRYWITTEST.logTestSummary() {
     _failures="${TEST_FAILURES[${_test}]}";
     _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
     if isEmpty "${_assertionFailures}" || [ ${_assertionFailures} -eq 0 ]; then
-        logInfo -n "Test ${_test}: assertions passed";
+        logInfo -n "Test ${_test}: assertions passed!!!!";
         _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
         if isEmpty "${_assertionSuccesses}"; then
             logInfoResult FAILURE "0";
@@ -572,6 +575,8 @@ function DRYWITTEST.dwtest() {
   local _t;
   local _oldIFS="${IFS}";
   local _scriptName;
+  local -i _passed=0;
+  local -i _failed=0;
 
   logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
   DRYWITTEST.retrieveTests ${SCRIPT_NAME};
@@ -589,8 +594,10 @@ function DRYWITTEST.dwtest() {
     logInfo -n "Running ${_t}";
     if runTest "${_t}"; then
       logInfoResult SUCCESS "pass";
+      _passed=$((_passed+1));
     else
       logInfoResult FAILURE "failed";
+      _failed=$((_failed+1));
     fi
   done
   IFS="${_oldIFS}";
@@ -605,6 +612,9 @@ function DRYWITTEST.dwtest() {
     done
     IFS="${_oldIFS}";
   fi
+
+  echo "export PASSED_TESTS=${_passed};" >> .${SCRIPT_NAME}.env;
+  echo "export FAILED_TESTS=${_failed};" >> .${SCRIPT_NAME}.env;
 }
 
 # fun: __dwCallback
@@ -969,7 +979,8 @@ function DRYWITTEST.sourceSUT() {
   elif fileExists "$(dirname $0)/../../src/modules/ext/${_sutFilename}"; then
     _sutFilePath="$(dirname $0)/../../src/modules/ext/${_sutFilename}";
   else
-    echo "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
+    logInfo -n "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
+    logInfoResult WARN "failed";
     _rescode=${FALSE};
   fi
 
