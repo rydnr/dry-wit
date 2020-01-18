@@ -1828,6 +1828,30 @@ function CLI.commandLineParametersDetailedUsage() {
   return ${_rescode};
 }
 
+# fun: printHelp
+# api: public
+# txt: Prints the help message.
+# txt: Returns 0/TRUE always.
+# use: printHelp;
+function printHelp() {
+
+  if isFunctionPresent defineEnv "${SCRIPT_NAME}"; then
+    defineEnv;
+  fi
+  usage;
+  printEnvironment;
+  printExitValues;
+}
+
+# fun: printUsage
+# api: public
+# txt: Prints the usage message.
+# txt: Returns 0/TRUE always.
+# use: printUsage;
+function printUsage() {
+  printHelp >&2
+}
+
 # fun: CLI.defaultState
 # api: private
 # txt: Sets up the default state.
@@ -1894,3 +1918,4 @@ declare -g __DW_CLI_SCRIPT_LICENSE_SUMMARY;
 
 CLI.resetState;
 CLI.defaultState;
+#
