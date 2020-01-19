@@ -2,6 +2,54 @@
 # api: public
 # txt: String-related functions.
 
+# fun: firstCharacter
+# api: public
+# txt: Retrieves the first character of given text.
+# opt: text: The input text.
+# txt: Returns 0/TRUE if the text is not empty; 1/FALSE otherwise.
+# use: if firstCharacter "my-test"; then echo "first character: ${RESULT}"; fi
+function firstCharacter() {
+  local _input="${1}";
+  checkNotEmpty text "${_input}" 1;
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if isNotEmpty "${_input}"; then
+    _result="${_input:0:1}";
+    _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: lastCharacter
+# api: public
+# txt: Retrieves the last character of given text.
+# opt: text: The input text.
+# txt: Returns 0/TRUE if the text is not empty; 1/FALSE otherwise.
+# use: if lastCharacter "my-test"; then echo "last character: ${RESULT}"; fi
+function lastCharacter() {
+  local _input="${1}";
+  checkNotEmpty text "${_input}" 1;
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if isNotEmpty "${_input}"; then
+    _result="${_input: -1}";
+    _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: contains text substring
 # api: public
 # txt: Checks whether the first parameter contains the second value.
@@ -558,4 +606,5 @@ function hash() {
 
   return ${_rescode};
 }
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

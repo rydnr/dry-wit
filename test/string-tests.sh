@@ -213,5 +213,23 @@ function sha_test() {
   Assert.areEqual '23c6834b1d353eabf976e524ed489c812ff86a7d' "${_aux}" "sha \"${_text}\" failed";
 }
 
+function lastCharacter_test() {
+  local _text="a,u[}uouk]";
+  lastCharacter "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "lastCharacter '${_text}' failed";
+  Assert.areEqual ']' "${_result}" "lastCharacter '${_text}' failed";
+}
+
+function firstCharacter_test() {
+  local _text="a,u[}uouk]";
+  firstCharacter "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "firstCharacter '${_text}' failed";
+  Assert.areEqual 'a' "${_result}" "firstCharacter '${_text}' failed";
+}
+
 setScriptDescription "Runs all tests implemented for string.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
