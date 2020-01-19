@@ -175,39 +175,58 @@ function isLessOrEqualTo() {
 # use: if toOrdinal "${index}"; then echo "${RESULT} item"; fi
 function toOrdinal() {
   local _number="${1}";
-  local -i _rescode;
-  local _result="";
-  local -i _mod100;
-  local -i _mod10;
-
   checkNotEmpty number "${_number}" 1;
+  local -i _rescode=${FALSE};
+  local _result="";
+  local _lastCharacter;
 
-  if isNumber "${_number}"; then
+  if isNumber "${_number}" && [ "${_number}" != "0" ]; then
 
-    if mod ${_number} 100; then
-      _mod100=${RESULT};
+    if lastCharacter "${_number}"; then
+      _lastCharacter="${RESULT}";
+      _rescode=${TRUE};
 
-      if isGreaterOrEqualTo ${_mod100} 11 && isLessOrEqualTo ${_mod100} 12; then
-         _result="${_number}th";
-      else
-        case "${_number}" in
-          "1") _result="1st";
-               _rescode=${TRUE};
-               ;;
-          "2") _result="2nd";
-               _rescode=${TRUE};
-               ;;
-          "3") _result="3rd";
-               _rescode=${TRUE};
-               ;;
-          *) _rescode=${FALSE};
+      case "${_lastCharacter}" in
+        "1") _result="1st";
              ;;
-        esac
-      fi
+        "2") _result="2nd";
+             ;;
+        "3") _result="3rd";
+             ;;
+        *) _result="${_number}th";
+           ;;
+      esac
     fi
   fi
 
-  export RESULT="${_result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: lastDigit
+# api: public
+# txt: Retrieves the last digit of given number.
+# opt: number: The input number.
+# txt: Returns 0/TRUE if the input is a number; 1/FALSE otherwise.
+# use: if lastDigit "335"; then echo "Last digit: ${RESULT}"; fi
+function lastDigit() {
+  local _number="${1}";
+  checkNotEmpty number "${_number}" 1;
+  local -i _rescode=${FALSE};
+  local _result="";
+  local _lastCharacter;
+
+  if isNumber "${_number}" && lastCharacter "${_number}"; then
+    _rescode=${TRUE};
+    _result="${RESULT}";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }

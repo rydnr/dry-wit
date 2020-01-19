@@ -57,48 +57,66 @@ function isLessThan_test() {
 }
 
 function zeroToOrdinal_test() {
-  if toOrdinal "0"; then
-    Assert.fail "toOrdinal '0' returned ${RESULT}";
-  else
-    Assert.pass;
-  fi
+  toOrdinal "0";
+  local _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isFalse ${_rescode} "toOrdinal '0' returned ${RESULT}";
 }
 
 function oneToOrdinal_test() {
-  if toOrdinal "1"; then
-    Assert.areEqual "1st" "${RESULT}" "toOrdinal '1' failed";
-  else
-    Assert.fail "toOrdinal '1' failed";
-  fi
+  toOrdinal "1";
+  local _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "toOrdinal '1' failed";
+  Assert.areEqual "1st" "${RESULT}" "toOrdinal '1' failed";
 }
 
 function twoToOrdinal_test() {
-  if toOrdinal "2"; then
-    Assert.areEqual "2nd" "${RESULT}" "toOrdinal '2' failed";
-  else
-    Assert.fail "toOrdinal '2' failed";
-  fi
+  toOrdinal "2";
+  local _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "toOrdinal '2' failed";
+  Assert.areEqual "2nd" "${RESULT}" "toOrdinal '2' failed";
 }
 
 function threeToOrdinal_test() {
-  if toOrdinal "3"; then
-    Assert.areEqual "3rd" "${RESULT}" "toOrdinal '3' failed";
-  else
-    Assert.fail "toOrdinal '3' failed";
-  fi
+  toOrdinal "3";
+  local _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "toOrdinal '3' failed";
+  Assert.areEqual "3rd" "${RESULT}" "toOrdinal '3' failed";
 }
 
-function toOrdinal_test() {
+function fourToOrdinal_test() {
+  toOrdinal "4";
+  local _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "toOrdinal '4' failed";
+  Assert.areEqual "4th" "${RESULT}" "toOrdinal '4' failed";
+}
+
+function lastDigit_test() {
+  lastDigit "35";
+  local _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "lastDigit '35' failed";
+  Assert.areEqual "5" "${RESULT}" "lastDigit '35' failed";
+}
+
+function toOrdinal_test_() {
   local -i i;
+  local _rescode=$?;
+  local _result="${RESULT}";
   local _oldIFS="${IFS}";
 
-  for i in {4..50}; do
+  IFS="${DWIFS}";
+  for i in $(seq 5 50); do
     IFS="${_oldIFS}";
-    if toOrdinal "${i}"; then
-      Assert.areEqual "${i}th" "${RESULT}" "toOrdinal '${i}' failed";
-    else
-      Assert.fail "toOrdinal '${i}' failed";
-    fi
+    toOrdinal "${i}";
+    _rescode=$?;
+    _result="${RESULT}";
+    Assert.isTrue ${_rescode} "toOrdinal '${i}' failed";
+    Assert.areEqual "${i}th" "${RESULT}" "toOrdinal '${i}' failed";
   done
   IFS="${_oldIFS}";
 }
