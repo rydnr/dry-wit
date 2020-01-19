@@ -542,12 +542,13 @@ function DRYWITTEST.logTestSummary() {
     _failures="${TEST_FAILURES[${_test}]}";
     _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
     if isEmpty "${_assertionFailures}" || [ ${_assertionFailures} -eq 0 ]; then
-        logInfo -n "Test ${_test}: assertions passed!!!!";
         _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
         if isEmpty "${_assertionSuccesses}"; then
-            logInfoResult FAILURE "0";
+          logInfo -n "Test ${_test}: No assertions found";
+          logInfoResult FAILURE "0";
         else
-          logInfoResult SUCCESS "${_assertionSuccesses}";
+          logInfo -n "Test ${_test}: all assertions passed";
+          logInfoResult SUCCESS "${_assertionSuccesses}/${_assertionSuccesses}";
         fi
     else
       logInfo -n "Test ${_test}: assertions failed";
