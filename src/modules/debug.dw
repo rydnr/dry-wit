@@ -107,15 +107,19 @@ function isDebugEchoEnabled() {
 # txt: Returns 0/TRUE always.
 # use: setDebugEchoEnabled TRUE;
 function setDebugEchoEnabled() {
-    local _flag="${1}";
+  local _flag="${1}";
+  checkNotEmpty "flag" "${_flag}" 1;
 
-    checkNotEmpty "flag" "${_flag}" 1;
-
-    if isTrue "${_flag}"; then
-        export __DW_DEBUG_ECHO_ENABLED=${TRUE};
-    else
-        export __DW_DEBUG_ECHO_ENABLED=${FALSE};
+  if isTrue "${_flag}"; then
+    if isFalse ${__DW_DEBUG_ECHO_ENABLED}; then
+      export __DW_DEBUG_ECHO_ENABLED=${TRUE};
+      DEBUG.getDebugLogFile;
+      logInfo -n "Logging debugging information to ${RESULT}";
+      logInfoResult SUCCESS "done";
     fi
+  else
+    export __DW_DEBUG_ECHO_ENABLED=${FALSE};
+  fi
 }
 
 # fun: setDebugLogFile
@@ -134,7 +138,7 @@ function setDebugLogFile() {
     _rescode=$?;
   fi
 
-  if isTrue ${_rescode}; then
+  if isTrue ${_rescode} && [ "${_file}" != "${__DW_DEBUG_LOG_FILE}" ]; then
     export __DW_DEBUG_LOG_FILE="${_file}";
   fi
 

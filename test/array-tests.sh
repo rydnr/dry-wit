@@ -116,6 +116,69 @@ function arrayDoesNotContain_test() {
   Assert.isTrue ${_rescode} "arrayDoesNotContain failed";
 }
 
+function nth_does_not_exit_test() {
+  local -i _rescode;
+  local _result;
+  local _text;
+  local -i _nth;
+
+  _text='DWIFS "';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text='DWIFS "';
+  _nth=1;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.isEmpty "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text='MY_KEY ""';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "MY_KEY" "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text='MY_KEY ""';
+  _nth=1;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+   _result="${RESULT}";
+   Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+   Assert.isEmpty "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text="DWIFS ${DWIFS}";
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text="DWIFS ${DWIFS}";
+  _nth=1;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.isEmpty "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text='IFS " "';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "IFS" "${_result}" "nth '${_text}' ${_nth} failed";
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo]=bar [foo2]=bar2 );
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING2=( [foo]=bar [foo2]=bar2 );
 declare -Ag associativeArrayWithSpacesInKeys=( [with spaces]="dummy value" );

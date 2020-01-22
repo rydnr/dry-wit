@@ -219,15 +219,55 @@ function nth() {
   local -i _index=0;
   local _oldIFS="${IFS}";
   local -i _rescode=${FALSE};
+  local _aux;
+  local -i _arrayLogic=${FALSE};
 
   checkNotEmpty "array" "${_array}" 1;
   checkNumber "nth" "${_nth}" 2;
 
   if isGreaterOrEqualTo ${_nth} 0; then
-    declare -a _aux="($(echo "${_array}"))" 2> /dev/null;
-    if isTrue $? && isLessThan ${_nth} ${#_aux[*]}; then
-      _result=${_aux[${_nth}]};
-      _rescode=${TRUE};
+    local _tmp="${_array}";
+    if endsWith "${_tmp}" " "; then
+      if countMatchesOfCharsInString " " "${_tmp}"; then
+        if isGreaterThan "${RESULT}" 1; then
+          _tmp="${_tmp%% *}";
+          _arrayLogic=${TRUE};
+        elif isGreatherThan ${_nth} 0; then
+          _rescode=${FALSE};
+        else
+          _rescode=${TRUE};
+          _result="${_tmp}";
+        fi
+      fi
+    elif endsWith "${_tmp}" ' "'; then
+      if countMatchesOfCharsInString " " "${_tmp}"; then
+        if isGreaterThan "${RESULT}" 1; then
+          if countMatchesOfCharsInString '"' "${_tmp}"; then
+            _arrayLogic=${TRUE};
+            if isLessThan "${RESULT}" 2; then
+              _rescode=${TRUE};
+              _tmp="${_tmp% \"}";
+            fi
+          fi
+        elif isGreaterThan ${_nth} 0; then
+          _rescode=${TRUE};
+          _result="";
+        else
+          _rescode=${TRUE};
+          _result="${_tmp% \"}";
+        fi
+      fi
+    else
+      _arrayLogic=${TRUE};
+    fi
+
+    if isTrue ${_arrayLogic}; then
+      declare -a _aux="($(echo "${_tmp}" 2> /dev/null))";
+      _rescode=$?;
+      if isTrue ${_rescode} && isLessThan ${_nth} "${#_aux[@]}"; then
+        _result=${_aux[${_nth}]};
+        _rescode=${TRUE};
+      fi
     fi
   fi
 
