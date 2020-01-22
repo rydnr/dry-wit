@@ -231,5 +231,21 @@ function firstCharacter_test() {
   Assert.areEqual 'a' "${_result}" "firstCharacter '${_text}' failed";
 }
 
+function countMatchesOfCharsInString_test() {
+  local _text="a,u[}uouk]";
+  countMatchesOfCharsInString "a" "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "countMatchesOfCharsInString '${_text}' failed";
+  Assert.areEqual '1' "${_result}" "countMatchesOfCharsInString '${_text}' failed";
+
+  local _text="abcaba";
+  countMatchesOfCharsInString "ab" "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  Assert.isTrue ${_rescode} "countMatchesOfCharsInString '${_text}' failed";
+  Assert.areEqual '5' "${_result}" "countMatchesOfCharsInString '${_text}' failed";
+}
+
 setScriptDescription "Runs all tests implemented for string.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

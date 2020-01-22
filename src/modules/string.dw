@@ -607,4 +607,31 @@ function hash() {
   return ${_rescode};
 }
 
+# fun: countMatchesOfCharsInString
+# api: public
+# txt: Counts the number of occurrences of given characters in a string.
+# opt: chars: The characters.
+# opt: string: The string.
+# txt: Returns 0/${TRUE} if the input is valid; 1/${FALSE} otherwise.
+# txt: If the function returns 0/${TRUE}, the variable RESULT contains the number of occurrences.
+# use: if countMatchesOfCharsInString 'ab' 'abcaba'; then echo "Occurrences: ${RESULT} (should be 5)" ; fi
+function countMatchesOfCharsInString() {
+  local _chars="${1}";
+  checkNotEmpty chars "${_chars}" 1;
+  local _string="${2}";
+  checkNotEmpty string "${_string}" 2;
+  local -i _rescode;
+  local _result;
+
+  local _aux="${_string//[^${_chars}]}";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    _result="${#_aux}";
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
