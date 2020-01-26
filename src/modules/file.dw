@@ -505,6 +505,26 @@ function folderExists() {
     return ${rescode};
 }
 
+# fun: isExecutable folder
+# api: public
+# txt: Checks whether given file or folder are executable.
+# opt: fileOrFolder: The file or folder to check.
+# txt: Returns 0/TRUE if the folder can be visited; 1/FALSE otherwise.
+# use: if isExecutable "/tmp"; then cd /tmp; fi
+function isExecutable() {
+    local _fileOrFolder="${1}";
+    local -i rescode;
+
+    checkNotEmpty "fileOrFolder" "${_fileOrFolder}" 1;
+
+    if fileExists "${_fileOrFolder}" && [[ -x "${_fileOrFolder}" ]]; then
+        rescode=${TRUE};
+    else
+        rescode=${FALSE};
+    fi
+
+    return ${rescode};
+}
 
 # fun: folderExistsAndIsNotASymlink folder
 # api: public
