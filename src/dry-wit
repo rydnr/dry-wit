@@ -43,12 +43,14 @@ export TRUE=0;
 export FALSE=1;
 
 if [ "${SCRIPT_NAME}" == "" ]; then
-  if [ "$1" != "" ]; then
+  if [ "$1" == "" ]; then
+    declare -gx SCRIPT_NAME="$0";
+  else
     declare -gx SCRIPT_NAME="$(basename $1)";
     shift;
-  else
-    declare -gx SCRIPT_NAME="$0";
   fi
+else
+  declare -gx NESTED_SCRIPT_NAME="${1}";
 fi
 
 # env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.

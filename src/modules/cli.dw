@@ -292,6 +292,11 @@ function parseInput() {
     local -i _i;
     local -a _providedFlags=();
     local _flag;
+    local -i _shifts;
+
+    if [ "${1}" == "${NESTED_SCRIPT_NAME}" ]; then
+      shift;
+    fi
 
     # Flags
     IFS="${DWIFS}";
@@ -902,6 +907,7 @@ function CLI.parseFlag() {
   local _shortName;
   local _flagKey;
   local _callbackFunction;
+  local _argument;
   local -i _continue=${TRUE};
 
   checkNotEmpty "${_flag}" "flag" 1;
