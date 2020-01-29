@@ -28,33 +28,253 @@ if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
   return;
 fi
 
-# env: DRY_WIT_SCRIPT_PATH: The path of the script.
-declare -gx DRY_WIT_SCRIPT_PATH="${1}";
-# env: DRY_WIT_SCRIPT_FOLDER: The folder of the script.
-declare -gx DRY_WIT_SCRIPT_FOLDER="$(dirname "${DRY_WIT_SCRIPT_PATH}")";
+# fun: DW.nested
+# api: private
+# txt: Checks whether this script is running within another dry-wit script.
+# txt: Returns 0/TRUE if this script is nested within another dry-wit; 1/FALSE otherwise.
+# use: if DW.nested; then echo "Nesting detected"; fi
+function DW.nested() {
+  local -i _rescode=${TRUE};
 
-# env: DWIFS: The IFS used by dry-wit.
-declare -gx DWIFS=$' \t\n';
-
-# env: TRUE: A synomim for 0.
-export TRUE=0;
-
-# env: FALSE: A synomim for 1.
-export FALSE=1;
-
-if [ "${SCRIPT_NAME}" == "" ]; then
-  if [ "$1" == "" ]; then
-    declare -gx SCRIPT_NAME="$0";
-  else
-    declare -gx SCRIPT_NAME="$(basename $1)";
-    shift;
+  if [ -z ${SCRIPT_INDEX+x} ]; then
+    _rescode=${FALSE};
   fi
-else
-  declare -gx NESTED_SCRIPT_NAME="${1}";
-fi
+
+  return ${_rescode};
+}
+
+# fun: DW.declareGlobalInt
+# api: public
+# txt: Declares a global integer variable. Its name depends on the nesting level.
+# opt: module: The name of the module.
+# opt: varName: The name of the variable.
+# opt: value: The initial value. Optional.
+# txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
+# txt: The variable RESULT contains the new or the existing global variable name.
+# use: if DW.declareGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then echo "ONE_THOUSAND variable name: ${RESULT}"; fi
+function DW.declareGlobalInt() {
+  local _module="${1}";
+  checkNotEmpty module "${_module}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+  local _value="${3}";
+
+  DW.declareGlobalVariable "${_module}" "${_varName}" "int" "${_value}";
+}
+
+# fun: DW.getGlobalIntValue
+# api: public
+# txt: Retrieves the value of a global integer variable. Its name depends on the nesting level.
+# opt: module: The name of the module.
+# opt: varName: The name of the variable.
+# txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the variable value.
+# use: if DW.getGlobalIntValue "LOGGING" "ONE_THOUSAND"; then echo "ONE_THOUSAND=${RESULT}"; fi
+function DW.getGlobalIntValue() {
+  local _module="${1}";
+  checkNotEmpty module "${_module}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if DW.getGlobalStringValue "${_module}" "${_varName}" "${_value}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: DW.declareGlobalArray
+# api: public
+# txt: Declares a global array variable. Its name depends on the nesting level.
+# opt: module: The name of the module.
+# opt: varName: The name of the variable.
+# opt: values*: The initial values. Optional.
+# txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
+# txt: The variable RESULT contains the new or the existing global variable name.
+# use: if DW.declareGlobalArray "LOGGING" "MY_LIST" "a" "b" "c"; then echo "MY_LIST variable name: ${RESULT}"; fi
+function DW.declareGlobalArray() {
+  local _module="${1}";
+  checkNotEmpty module "${_module}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+  shift;
+  shift;
+  local _values="${@}";
+  DW.declareGlobalVariable "${_module}" "${_varName}" "array" ${_values};
+}
+
+# fun: DW.declareGlobalString
+# api: private
+# txt: Declares a global String variable. Its name depends on the nesting level.
+# opt: module: The name of the module.
+# opt: varName: The name of the variable.
+# opt: value: The initial value. Optional.
+# txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
+# txt: The variable RESULT contains the new or the existing global variable name.
+# use: if DW.declareGlobalString "LOGGING" "MY_STRING" "test"; then echo "MY_STRING variable name: ${RESULT}"; fi
+function DW.declareGlobalString() {
+  local _module="${1}";
+  checkNotEmpty module "${_module}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+  local _value="${3}";
+
+  DW.declareGlobalVariable "${_module}" "${_varName}" "string" "${_value}";
+}
+
+# fun: DW.getGlobalStringValue
+# api: public
+# txt: Retrieves the value of a global String variable. Its name depends on the nesting level.
+# opt: module: The name of the module.
+# opt: varName: The name of the variable.
+# txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the variable value.
+# use: if DW.getGlobalStringValue "LOGGING" "MY_STRING"; then echo "MY_STRING=${RESULT}"; fi
+function DW.getGlobalStringValue() {
+  local _module="${1}";
+  checkNotEmpty module "${_module}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if DW.getGlobalVariableName "${_module}" "${_varName}" "${_value}"; then
+    local -n _aux="${RESULT}";
+    _result="${_aux}";
+    _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: DW.declareGlobalVariable
+# api: public
+# txt: Declares a global variable. Its name depends on the nesting level.
+# opt: module: The name of the module.
+# opt: varName: The name of the variable.
+# opt: varType: Either "int", "array" or "string".
+# opt: initialValue: The initial value. Optional.
+# txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
+# txt: The variable RESULT contains the new or the existing global variable name.
+# use: if DW.declareGlobalVariable "LOGGING" "MY_LIST" "array"; then echo "MY_LIST variable name: ${RESULT}"; fi
+function DW.declareGlobalVariable() {
+  local _module="${1}";
+  checkNotEmpty module "${_module}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+  local _varType="${3}";
+  checkNotEmpty varType "${_varType}" 3;
+  local _initialValue="${4}";
+  shift;
+  shift;
+  shift;
+  local _initialValues="${@}";
+  local -i _rescode;
+  local _aux="_DW_${_module}_${_varName}";
+
+  if DW.nested; then
+    _aux="${_aux}_${SCRIPT_INDEX}";
+  fi
+
+  if [ -n "${!_aux}" ]; then
+    _rescode=${FALSE};
+    echo "Returning false ('${!_aux}')"
+  else
+    case "${_varType}" in
+      "int") if isEmpty "${_initialValue}"; then
+               declare -agx "${_aux}";
+             else
+               declare -agx "${_aux}"=${_initialValue};
+             fi
+             _rescode=$?;
+             ;;
+      "array") if isEmpty "${_initialValues}"; then
+                 eval "declare -agx ${_aux}=();";
+               else
+                 eval "declare -agx ${_aux}=( ${_initialValues} );";
+               fi
+               _rescode=$?;
+               ;;
+      "*") if isEmpty "${_initialValue}"; then
+             declare -gx "${_aux}";
+           else
+             declare -gx "${_aux}"="${_initialValue}";
+           fi
+           _rescode=$?;
+           ;;
+    esac
+  fi
+
+  return ${_rescode};
+}
+
+# fun: DW.getGlobalVariableName
+# api: public
+# txt: Retrieves the name of a global variable. Its name depends on the nesting level.
+# opt: module: The name of the module.
+# opt: varName: The (logical) name of the variable.
+# txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the existing global variable.
+# use: if DW.getGlobalVariableName "LOGGING" "MY_LIST"; then local -n _var="${RESULT}"; fi
+function DW.getGlobalVariableName() {
+  local _module="${1}";
+  checkNotEmpty module "${_module}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+  local -i _rescode;
+  local _result="_DW_${_module}_${_varName}";
+
+  if DW.nested; then
+    _result="${_aux}_${SCRIPT_INDEX}";
+  fi
+
+  if [ -n "${!_result}" ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+    echo "DW.getGlobalVariableName ${_module} ${_varName} -> ${RESULT}";
+  fi
+  return ${_rescode};
+}
+
+# fun: DW.getScriptName
+# api: public
+# txt: Retrieves the name of the script.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the script.
+# use: DW.getScriptName; echo "Script name: ${RESULT}";
+function DW.getScriptName() {
+  DW.getGlobalVariableName DRYWIT SCRIPT_NAME;
+  local -n 
+}
+
+# fun: DW.getScriptPath
+# api: public
+# txt: Retrieves the name of the script.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the script.
+# use: DW.getScriptName; echo "Script name: ${RESULT}";
+function DW.getScriptName() {
+  DW.getGlobalStringValue DRYWIT SCRIPT_NAME;
+}
 
 # env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
-declare -ag __DRYWIT_BOOTSTRAP_MODULES=(\
+declare -agx __DRYWIT_BOOTSTRAP_MODULES=(\
    "stdlib" \
    "string" \
    "color" \
@@ -101,6 +321,18 @@ function BOOTSTRAP.failsafeExitWithError() {
     echo "${_message}";
     exit 1;
   fi
+}
+
+# fun: BOOTSTRAP.failsafeCheckNotEmpty
+# api: private
+# txt: A fail-safe version of checkNotEmpty.
+# opt: name: The parameter name.
+# opt: value: The parameter value.
+# opt: index: The parameter index.
+# txt: Exits if the parameter value is empty.
+# use: BOOTSTRAP.failsafeCheckNotEmply module "${module}" 1
+function checkNotEmpty() {
+  BOOTSTRAP.failsafeCheckNotEmpty $@;
 }
 
 # fun: BOOTSTRAP.failsafeCheckNotEmpty
@@ -332,6 +564,21 @@ function BOOTSTRAP.failsafeArrayContains() {
   return ${_rescode};
 }
 
+# fun: BOOTSTRAP.toUpper
+# api: public
+# txt: Converts given string to upper case.
+# opt: text: The string to convert.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the string in upper case.
+# use: local _text="abc"; toUpper "${_text}"; local _upcased="${RESULT}";
+function BOOTSTRAP.toUpper() {
+  local _text="${1}";
+  BOOTSTRAP.failsafeCheckNotEmpty "text" "${_text}" 1;
+
+  local result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${result}";
+}
+
 # fun: downloadModule
 # api: public
 # txt: Downloads given module.
@@ -414,6 +661,15 @@ function DW.import() {
     BOOTSTRAP.failsafeLogTrace -n "Loading ${_modulePath}";
     source "${_modulePath}";
     BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
+
+    BOOTSTRAP.toUpper "${_module}";
+    local _upcasedModule="${RESULT}";
+    if BOOTSTRAP.failsafeIsFunctionDefined "${_upcasedModule}.resetState"; then
+      BOOTSTRAP.failsafeLogTrace -n "Resetting ${_module} state";
+      ${_upcasedModule}.resetState;
+      BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
+    fi
+
     __DRYWIT_IMPORTED_MODULES[${#__DRYWIT_IMPORTED_MODULES[@]}]="${_module}";
   fi
 }
@@ -439,14 +695,61 @@ function findModule() {
   return ${_rescode};
 }
 
+function DW.init() {
+  if [ -z ${SCRIPT_INDEX+x} ]; then
+    declare -igx SCRIPT_INDEX=0;
+    DW.declareGlobalArray DRYWIT SCRIPT_NAME;
+    DW.declareGlobalArray DRYWIT SCRIPT_PATH;
+    DW.declareGlobalArray DRYWIT SCRIPT_FOLDER;
+
+    # env: DWIFS: The IFS used by dry-wit.
+    declare -gx DWIFS=$' \t\n';
+
+    # env: TRUE: A synomim for 0.
+    declare -igx TRUE=0;
+
+    # env: FALSE: A synomim for 1.
+    declare -igx FALSE=1;
+
+  else
+    if DW.nested; then
+      SCRIPT_INDEX=$((SCRIPT_INDEX+1));
+    fi
+
+    DW.getGlobalVariableName DRYWIT SCRIPT_NAME;
+    local -n _scriptName=${RESULT};
+    DW.getGlobalVariableName DRYWIT SCRIPT_PATH;
+    local -n _scriptPath=${RESULT};
+    DW.getGlobalVariableName DRYWIT SCRIPT_FOLDER;
+    local -n _scriptFolder=${RESULT};
+
+    if [ "$1" == "" ]; then
+      _scriptName[${SCRIPT_INDEX}]="${0}";
+      _scriptPath[${SCRIPT_INDEX}]="${0}";
+      _scriptFolder[${SCRIPT_INDEX}]="$(dirname "${0}")";
+    else
+      _scriptName[${SCRIPT_INDEX}]="$(basename ${1})";
+      _scriptPath[${SCRIPT_INDEX}]="${1}";
+      _scriptFolder[${SCRIPT_INDEX}]="$(dirname "${1}")";
+      shift;
+    fi
+  fi
+}
+
+function DW.isTest() {
+  DW.getGlobalVariableName DRYWIT SCRIPT_NAME;
+  local -n _scriptName=${RESULT};
+
+  if    endsWith "${_scriptName}" "-tests.sh" \
+     || endsWith "${_scriptName}" "-test.sh"; then
+    source $(which dry-wit-test) "${_scriptName}" $@;
+  fi
+}
+
 BOOTSTRAP.bootstrap;
-
-if    endsWith "${SCRIPT_NAME}" "-tests.sh" \
-   || endsWith "${SCRIPT_NAME}" "-test.sh"; then
-  source $(which dry-wit-test) "${SCRIPT_NAME}" $@;
-fi
-
-DRYWIT.main "${SCRIPT_NAME}" $@;
+DW.init $@;
+DW.isTest $@;
+DRYWIT.main $@;
 
 cleanup;
 #

@@ -2,7 +2,7 @@
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
-# set -o xtrace
+set -o xtrace
 
 function test_reset() {
   forEachAssociativeArrayEntryDoCalled=${FALSE};
