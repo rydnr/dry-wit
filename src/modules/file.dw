@@ -70,11 +70,13 @@ function createTempFile() {
 function createTempFileNoCleanup() {
   local -i rescode;
   local result;
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
 
-  local _prefix="$(echo \"${SCRIPT_NAME}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
-  local _dirname="$(dirname \"${SCRIPT_NAME}\")";
-#  local _prefix="$(echo "${SCRIPT_NAME}" | awk -F"/" '{print $NF;}')";
-#  local _dirname="$(dirname "${SCRIPT_NAME}")";
+  local _prefix="$(echo \"${_scriptName}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
+  local _dirname="$(dirname \"${_scriptName}\")";
+#  local _prefix="$(echo "${_scriptName}" | awk -F"/" '{print $NF;}')";
+#  local _dirname="$(dirname "${_scriptName}")";
   if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
     _dirname="$PWD/${_dirname#\.}";
   else
@@ -112,8 +114,11 @@ function createTempFolder() {
   local -i rescode;
   local result;
 
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+
   if isEmpty "${_dirname}"; then
-    _dirname="$(dirname ${SCRIPT_NAME})";
+    _dirname="$(dirname ${_scriptName})";
     if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
       _dirname="${PWD}/${_dirname#\.}";
     else
@@ -122,7 +127,7 @@ function createTempFolder() {
   fi
 
   if isEmpty "${_prefix}"; then
-    _prefix="$(echo ${SCRIPT_NAME} | awk -F"/" '{print $NF;}')";
+    _prefix="$(echo ${_scriptName} | awk -F"/" '{print $NF;}')";
   fi
 
   FILE.mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";

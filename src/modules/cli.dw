@@ -1545,7 +1545,8 @@ function CLI.isCommandLineParameterMultiple() {
 # use: if CLI.commandLineFlagsUsage then ... fi
 function CLI.commandLineFlagsUsage() {
   local -i _rescode=${TRUE};
-  local _message="${SCRIPT_NAME}";
+  DW.getScriptName;
+  local _message="${RESULT}";
   local _flagKey;
   local _shortName;
   local _longName;
@@ -1841,7 +1842,9 @@ function CLI.commandLineParametersDetailedUsage() {
 # use: printHelp;
 function printHelp() {
 
-  if isFunctionPresent defineEnv "${SCRIPT_NAME}"; then
+  DW.getStriptName;
+  local _scriptName="${RESULT}";
+  if isFunctionPresent defineEnv "${_scriptName}"; then
     defineEnv;
   fi
   usage;

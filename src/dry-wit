@@ -83,7 +83,7 @@ function DW.getGlobalIntValue() {
     _rescode=${TRUE};
   fi
 
-  if isTrue ${_rescode}; then
+  if [ ${_rescode} -eq 0 ]; then
     export RESULT="${_result}";
   fi
 
@@ -145,13 +145,13 @@ function DW.getGlobalStringValue() {
   local -i _rescode=${FALSE};
   local _result;
 
-  if DW.getGlobalVariableName "${_module}" "${_varName}" "${_value}"; then
+  if DW.getGlobalVariableName "${_module}" "${_varName}"; then
     local -n _aux="${RESULT}";
     _result="${_aux}";
     _rescode=${TRUE};
   fi
 
-  if isTrue ${_rescode}; then
+  if [ ${_rescode} -eq 0 ]; then
     export RESULT="${_result}";
   fi
 
@@ -181,7 +181,14 @@ function DW.declareGlobalVariable() {
   shift;
   local _initialValues="${@}";
   local -i _rescode;
-  local _aux="_DW_${_module}_${_varName}";
+
+  BOOTSTRAP.toUpper "${_module}";
+  local _moduleUpcased="${RESULT}";
+
+  BOOTSTRAP.toUpper "${_varName}";
+  local _varNameUpcased="${RESULT}";
+
+  local _aux="_DW_${_moduleUpcased}_${_varNameUpcased}";
 
   if DW.nested; then
     _aux="${_aux}_${SCRIPT_INDEX}";
@@ -189,30 +196,29 @@ function DW.declareGlobalVariable() {
 
   if [ -n "${!_aux}" ]; then
     _rescode=${FALSE};
-    echo "Returning false ('${!_aux}')"
   else
     case "${_varType}" in
-      "int") if isEmpty "${_initialValue}"; then
+      "int") if BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
                declare -agx "${_aux}";
              else
                declare -agx "${_aux}"=${_initialValue};
              fi
              _rescode=$?;
              ;;
-      "array") if isEmpty "${_initialValues}"; then
+      "array") if BOOTSTRAP.failsafeIsEmpty "${_initialValues}"; then
                  eval "declare -agx ${_aux}=();";
                else
                  eval "declare -agx ${_aux}=( ${_initialValues} );";
                fi
                _rescode=$?;
                ;;
-      "*") if isEmpty "${_initialValue}"; then
-             declare -gx "${_aux}";
-           else
-             declare -gx "${_aux}"="${_initialValue}";
-           fi
-           _rescode=$?;
-           ;;
+      *) if BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
+           declare -gx "${_aux}";
+         else
+           declare -gx "${_aux}"="${_initialValue}";
+         fi
+         _rescode=$?;
+         ;;
     esac
   fi
 
@@ -233,10 +239,17 @@ function DW.getGlobalVariableName() {
   local _varName="${2}";
   checkNotEmpty varName "${_varName}" 2;
   local -i _rescode;
-  local _result="_DW_${_module}_${_varName}";
+
+  BOOTSTRAP.toUpper "${_module}";
+  local _moduleUpcased="${RESULT}";
+
+  BOOTSTRAP.toUpper "${_varName}";
+  local _varNameUpcased="${RESULT}";
+
+  local _result="_DW_${_moduleUpcased}_${_varNameUpcased}";
 
   if DW.nested; then
-    _result="${_aux}_${SCRIPT_INDEX}";
+    _result="${_result}_${SCRIPT_INDEX}";
   fi
 
   if [ -n "${!_result}" ]; then
@@ -245,10 +258,10 @@ function DW.getGlobalVariableName() {
     _rescode=${FALSE};
   fi
 
-  if isTrue ${_rescode}; then
+  if [ ${_rescode} -eq 0 ]; then
     export RESULT="${_result}";
-    echo "DW.getGlobalVariableName ${_module} ${_varName} -> ${RESULT}";
   fi
+
   return ${_rescode};
 }
 
@@ -259,18 +272,27 @@ function DW.getGlobalVariableName() {
 # txt: The variable RESULT contains the name of the script.
 # use: DW.getScriptName; echo "Script name: ${RESULT}";
 function DW.getScriptName() {
-  DW.getGlobalVariableName DRYWIT SCRIPT_NAME;
-  local -n 
+  DW.getGlobalStringValue DRYWIT SCRIPT_NAME;
 }
 
 # fun: DW.getScriptPath
 # api: public
-# txt: Retrieves the name of the script.
+# txt: Retrieves the path of the script.
 # txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the name of the script.
-# use: DW.getScriptName; echo "Script name: ${RESULT}";
-function DW.getScriptName() {
-  DW.getGlobalStringValue DRYWIT SCRIPT_NAME;
+# txt: The variable RESULT contains the path of the script.
+# use: DW.getScriptPath; echo "Script path: ${RESULT}";
+function DW.getScriptPath() {
+  DW.getGlobalStringValue DRYWIT SCRIPT_PATH;
+}
+
+# fun: DW.getScriptFolder
+# api: public
+# txt: Retrieves the folder of the script.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the folder of the script.
+# use: DW.getScriptFolder; echo "Script folder: ${RESULT}";
+function DW.getScriptFolder() {
+  DW.getGlobalStringValue DRYWIT SCRIPT_FOLDER;
 }
 
 # env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
@@ -294,7 +316,7 @@ declare -agx __DRYWIT_BOOTSTRAP_MODULES=(\
 );
 
 # env: __DRYWIT_IMPORTED_MODULES: The modules eventually imported in the bootstrap process.
-declare -agx __DRYWIT_IMPORTED_MODULES;
+declare -agx __DRYWIT_IMPORTED_MODULES=();
 
 # env: DRYWIT_MODULE_TAG: The dry-wit git tag used to download modules from github.
 export DRYWIT_MODULE_TAG="master";
@@ -323,14 +345,14 @@ function BOOTSTRAP.failsafeExitWithError() {
   fi
 }
 
-# fun: BOOTSTRAP.failsafeCheckNotEmpty
-# api: private
+# fun: checkNotEmpty
+# api: public
 # txt: A fail-safe version of checkNotEmpty.
 # opt: name: The parameter name.
 # opt: value: The parameter value.
 # opt: index: The parameter index.
 # txt: Exits if the parameter value is empty.
-# use: BOOTSTRAP.failsafeCheckNotEmply module "${module}" 1
+# use: checkNotEmpty module "${module}" 1
 function checkNotEmpty() {
   BOOTSTRAP.failsafeCheckNotEmpty $@;
 }
@@ -342,7 +364,7 @@ function checkNotEmpty() {
 # opt: value: The parameter value.
 # opt: index: The parameter index.
 # txt: Exits if the parameter value is empty.
-# use: BOOTSTRAP.failsafeCheckNotEmply module "${module}" 1
+# use: BOOTSTRAP.failsafeCheckNotEmpty module "${module}" 1
 function BOOTSTRAP.failsafeCheckNotEmpty() {
   local _name="${1}";
   if [ -z "${_name}" ]; then
@@ -358,6 +380,25 @@ function BOOTSTRAP.failsafeCheckNotEmpty() {
   if [ -z "${_index}" ]; then
     BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
+}
+
+# fun: BOOTSTRAP.failsafeIsEmpty
+# api: private
+# txt: A fail-safe version of isEmpty.
+# opt: name: The parameter name.
+# txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
+# use: BOOTSTRAP.failsafeIsEmpty "${value}";
+function BOOTSTRAP.failsafeIsEmpty() {
+  local _name="${1}";
+  local -i _rescode;
+
+  if [ -z "${_name}" ]; then
+    _rescode=${TRUE}
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 # fun: BOOTSTRAP.failsafeIsDebugEnabled
@@ -544,16 +585,17 @@ function BOOTSTRAP.failsafeIsFunctionDefined() {
 # txt: Returns 0/TRUE: If the element is present in the array; 1/FALSE otherwise.
 # use: a=("one" "two" "three" "other number"); if BOOTSTRAP.failsafeArrayContains "${a[@]}" "other number"; then ...; fi
 function BOOTSTRAP.failsafeArrayContains() {
-  local _array="${1}";
-  local _item="${2}";
+  local _item="${1}";
+  local _array="${2}";
   local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
+  BOOTSTRAP.failsafeCheckNotEmpty "item" "${_item}" 1;
+
   IFS="${DWIFS}";
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
-    BOOTSTRAP.failsafeCheckNotEmpty "item" "${_item}" 2;
     if [[ "${_aux}" == "${_item}" ]]; then
       _rescode=${TRUE};
       break;
@@ -657,7 +699,7 @@ function DW.import() {
     exit 1;
   fi
 
-  if ! BOOTSTRAP.failsafeArrayContains "${__DRYWIT_IMPORTED_MODULES[*]}" "${_module}"; then
+  if ! BOOTSTRAP.failsafeArrayContains "${_module}" "${__DRYWIT_IMPORTED_MODULES[@]}"; then
     BOOTSTRAP.failsafeLogTrace -n "Loading ${_modulePath}";
     source "${_modulePath}";
     BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
@@ -695,53 +737,81 @@ function findModule() {
   return ${_rescode};
 }
 
+# fun: BOOTSTRAP.endsWith
+# api: private
+# txt: Checks whether the first parameter ends with the second value.
+# opt: text: The text.
+# opt: substring: The substring to check.
+# txt: Returns 0/TRUE if the text ends with the substring; 1/FALSE otherwise.
+# use: if BOOTSTRAP.endsWith "${text}" "c"; then echo "${text} ends with c"; fi
+function BOOTSTRAP.endsWith() {
+  local _container="${1}";
+  local _substring="${2}";
+  local -i _rescode;
+
+  BOOTSTRAP.failsafeCheckNotEmpty "container" "${_container}" 1;
+  BOOTSTRAP.failsafeCheckNotEmpty "substring" "${_substring}" 2;
+
+  if [[ "${_container%${_substring}}" == "${_container}" ]]; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# env: TRUE: A synomim for 0.
+declare -igx TRUE=0;
+
+# env: FALSE: A synomim for 1.
+declare -igx FALSE=1;
+
+# env: DWIFS: The IFS used by dry-wit.
+declare -gx DWIFS=$' \t\n';
+
+# fun: DW.init
+# api: private
+# txt: Initializes dry-wit.
+# use: DW.init
 function DW.init() {
+
   if [ -z ${SCRIPT_INDEX+x} ]; then
     declare -igx SCRIPT_INDEX=0;
-    DW.declareGlobalArray DRYWIT SCRIPT_NAME;
-    DW.declareGlobalArray DRYWIT SCRIPT_PATH;
-    DW.declareGlobalArray DRYWIT SCRIPT_FOLDER;
-
-    # env: DWIFS: The IFS used by dry-wit.
-    declare -gx DWIFS=$' \t\n';
-
-    # env: TRUE: A synomim for 0.
-    declare -igx TRUE=0;
-
-    # env: FALSE: A synomim for 1.
-    declare -igx FALSE=1;
-
   else
     if DW.nested; then
       SCRIPT_INDEX=$((SCRIPT_INDEX+1));
     fi
-
-    DW.getGlobalVariableName DRYWIT SCRIPT_NAME;
-    local -n _scriptName=${RESULT};
-    DW.getGlobalVariableName DRYWIT SCRIPT_PATH;
-    local -n _scriptPath=${RESULT};
-    DW.getGlobalVariableName DRYWIT SCRIPT_FOLDER;
-    local -n _scriptFolder=${RESULT};
-
-    if [ "$1" == "" ]; then
-      _scriptName[${SCRIPT_INDEX}]="${0}";
-      _scriptPath[${SCRIPT_INDEX}]="${0}";
-      _scriptFolder[${SCRIPT_INDEX}]="$(dirname "${0}")";
-    else
-      _scriptName[${SCRIPT_INDEX}]="$(basename ${1})";
-      _scriptPath[${SCRIPT_INDEX}]="${1}";
-      _scriptFolder[${SCRIPT_INDEX}]="$(dirname "${1}")";
-      shift;
-    fi
   fi
+
+  local _scriptName;
+  local _scriptPath;
+  local _scriptFolder;
+  if [ "$1" == "" ]; then
+    _scriptName="${0}";
+    _scriptPath="${0}";
+    _scriptFolder="$(dirname "${0}")";
+  else
+    _scriptName="${1}";
+    _scriptPath="${1}";
+    _scriptFolder="$(dirname "${1}")";
+    shift;
+  fi
+  if [ "${_scriptFolder}" == "." ]; then
+    _scriptFolder="${PWD}";
+  fi
+  DW.declareGlobalString DRYWIT SCRIPT_NAME "${_scriptName}";
+  DW.declareGlobalString DRYWIT SCRIPT_PATH "${_scriptPath}";
+  DW.declareGlobalString DRYWIT SCRIPT_FOLDER "${_scriptFolder}";
 }
 
 function DW.isTest() {
-  DW.getGlobalVariableName DRYWIT SCRIPT_NAME;
-  local -n _scriptName=${RESULT};
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
 
-  if    endsWith "${_scriptName}" "-tests.sh" \
-     || endsWith "${_scriptName}" "-test.sh"; then
+  echo "SCRIPT_NAME: ${_scriptName}";
+  if    BOOTSTRAP.endsWith "${_scriptName}" "-tests.sh" \
+     || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
     source $(which dry-wit-test) "${_scriptName}" $@;
   fi
 }

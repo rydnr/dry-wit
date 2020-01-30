@@ -122,26 +122,37 @@ function isFunctionMissing() {
 #      fi
 function isFunctionPresent() {
   local _function="${1}";
-  local _script="${2:-${SCRIPT_NAME}}";
-  local _rescode;
+  checkNotEmpty "function" "${_function}" 1;
+
+  local _scriptName="${2}";
+  local -i _rescode;
   local _inc;
   local _oldIFS="${IFS}";
 
-  checkNotEmpty "function" "${_function}" 1;
+
+  if isEmpty "${_scriptName}"; then
+    DW.getScriptName;
+    _scriptName="${RESULT}";
+    echo "script name: ${_scriptName}"
+  fi
+
+  DW.getScriptFolder;
+  local _scriptFolder="${RESULT}";
+  echo "script folder: ${_scriptFolder}"
 
   type ${_function} 2> /dev/null | grep -q 'function'
   _rescode=$?;
   if isFalse ${_rescode}; then
-    if isNotEmpty "${_script}"; then
-      grep " ${_function}()" "${_script}" > /dev/null 2>&1;
+    if isNotEmpty "${_scriptName}"; then
+      grep " ${_function}()" "${_scriptName}" > /dev/null 2>&1;
       _rescode=$?;
     fi
   fi
   if isFalse ${_rescode}; then
     if isNotEmpty "${_script}"; then
       IFS="${DWIFS}";
-      for _inc in "./$(basename ${_script} .sh).inc.sh" \
-                    "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+      for _inc in "./$(basename ${_scriptName} .sh).inc.sh" \
+                    "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh"; do
         IFS="${_oldIFS}";
         if [ -e "${_inc}" ]; then
           isFunctionPresent "${_function}" "${_inc}";
@@ -303,55 +314,57 @@ function DRYWIT.defineDryWitRequirements() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.main;
 function DRYWIT.main() {
-  local _script="${1#./}";
-  shift;
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
 
+  DW.getScriptPath;
+  local _scriptPath="${RESULT}";
   local _absolutePath;
-  retrieveAbsolutePath "${DRY_WIT_SCRIPT_PATH}";
+  retrieveAbsolutePath "${_scriptPath}";
   _absolutePath="${RESULT}";
 
-  source "${DRY_WIT_SCRIPT_PATH}" $@;
+  source "${_scriptPath}" $@;
 
   DRYWIT.defineDryWitErrorMessages;
 
-  DRYWIT.setup "${_script}";
+  DRYWIT.setup "${_scriptName}";
 
-  if isFunctionPresent defineErrors "${_script}"; then
+  if isFunctionPresent defineErrors "${_scriptName}"; then
     defineErrors;
   fi
 
-  if isFunctionPresent defineEnvDefaults "${_script}"; then
+  if isFunctionPresent defineEnvDefaults "${_scriptName}"; then
     defineEnvDefaults;
   fi
 
-  if isFunctionPresent defineEnv "${_script}"; then
+  if isFunctionPresent defineEnv "${_scriptName}"; then
     defineEnv;
   fi
 
-  if isFunctionPresent defineKeywords "${_script}"; then
+  if isFunctionPresent defineKeywords "${_scriptName}"; then
     defineKeywords;
   fi
 
-  if isFunctionPresent parseInput "${_script}"; then
+  if isFunctionPresent parseInput "${_scriptName}"; then
       evalEnvVars;
       parseInput $@;
   fi
 
-  DRYWIT.checkScript "${_script}";
+  DRYWIT.checkScript "${_scriptName}";
 
   DRYWIT.defineDryWitRequirements;
 
-  if isFunctionPresent checkRequirements "${_script}"; then
+  if isFunctionPresent checkRequirements "${_scriptName}"; then
     logTrace -n "Checking declared requirements";
     checkRequirements;
-    logTraceResult SUCCESS "${_DW_DONE}";
+    logTraceResult SUCCESS "done";
   fi
 
-  if isFunctionPresent checkInput "${_script}"; then
+  if isFunctionPresent checkInput "${_scriptName}"; then
       evalEnvVars;
       checkInput $@;
 
-      if isFunctionPresent postCheckInput "${_script}"; then
+      if isFunctionPresent postCheckInput "${_scriptName}"; then
           postCheckInput $@;
       fi
   fi
@@ -375,9 +388,14 @@ function DRYWIT.retrieveSettingsFiles() {
 
   local -A _doneAlready=();
 
+  DW.getScriptPath;
+  local _scriptPath="${RESULT}";
+  DW.getScriptFolder;
+  local _scriptFolder="${RESULT}";
+
   IFS="${DWIFS}";
-  for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
-    for _d in "${DRY_WIT_SCRIPT_FOLDER}" "."; do
+  for _f in "$(basename ${_scriptPath} .sh).inc.sh" ".$(basename ${_scriptPath} .sh).inc.sh"; do
+    for _d in "${_scriptFolder}" "."; do
       IFS="${_oldIFS}";
       retrieveAbsolutePath "${_d}/${_f}";
       if [ -e "${RESULT}" ] && [ "${_doneAlready[${RESULT}]}" != "${TRUE}" ]; then

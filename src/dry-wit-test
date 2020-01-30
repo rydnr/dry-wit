@@ -579,8 +579,10 @@ function DRYWITTEST.dwtest() {
   local -i _passed=0;
   local -i _failed=0;
 
-  logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
-  DRYWITTEST.retrieveTests ${SCRIPT_NAME};
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  logInfo -n "Retrieving tests in ${_scriptName}";
+  DRYWITTEST.retrieveTests ${_scriptName};
   _tests="${RESULT}";
   if isEmpty "${_tests}"; then
     logInfoResult FAILURE "0";
@@ -614,8 +616,8 @@ function DRYWITTEST.dwtest() {
     IFS="${_oldIFS}";
   fi
 
-  echo "export PASSED_TESTS=${_passed};" >> .${SCRIPT_NAME}.env;
-  echo "export FAILED_TESTS=${_failed};" >> .${SCRIPT_NAME}.env;
+  echo "export PASSED_TESTS=${_passed};" >> .${_scriptName}.env;
+  echo "export FAILED_TESTS=${_failed};" >> .${_scriptName}.env;
 }
 
 # fun: __dwCallback
@@ -626,8 +628,10 @@ function DRYWITTEST.dwtest() {
 function __dwCallback() {
   _defineDryWitErrorMessages;
   DWTEST.defineErrors;
-  if isFunctionPresent defineErrors "${SCRIPT_NAME}"; then
-      defineErrors;
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  if isFunctionPresent defineErrors "${_scriptName}"; then
+    defineErrors;
   else
     export -a ERROR_MESSAGES=();
   fi
@@ -958,13 +962,15 @@ function DRYWITTEST.sourceSUT() {
   local -i _rescode=${TRUE};
   local _sutFilename;
   local _sutFilePath;
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
 
-  if removeSuffix "${SCRIPT_NAME}" "-tests.sh"; then
+  if removeSuffix "${_scriptName}" "-tests.sh"; then
     _sutFilename="${RESULT}.sh";
-  elif removeSuffix "${SCRIPT_NAME}" "-test.sh"; then
+  elif removeSuffix "${_scriptName}" "-test.sh"; then
     _sutFilename="${RESULT}.sh";
   else
-    _sutFilename="${SCRIPT_NAME}";
+    _sutFilename="${_scriptName}";
   fi
 
   if removeSuffix "${_sutFilename}" ".sh"; then

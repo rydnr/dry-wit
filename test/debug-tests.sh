@@ -24,7 +24,9 @@ function test_tearDown() {
 }
 
 function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
-  local _debugFile="${TEMP:-/tmp}/.$$.$(basename ${SCRIPT_NAME}).log";
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  local _debugFile="${TEMP:-/tmp}/.$$.$(basename ${_scriptName}).log";
   setDebugLogFile "${_debugFile}";
   setDebugEchoEnabled TRUE;
   debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;

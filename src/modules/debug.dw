@@ -180,7 +180,9 @@ function DEBUG.getDebugLogFile() {
 # txt: Returns 0/TRUE always.
 # use: DEBUG.defaultState;
 function DEBUG.defaultState() {
-  setDebugLogFile "${TEMP:-/tmp}/$(basename ${SCRIPT_NAME})-debug.$(date '+%Y%m%d%H%M%S').log";
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  setDebugLogFile "${TEMP:-/tmp}/$(basename ${_scriptName})-debug.$(date '+%Y%m%d%H%M%S').log";
   setDebugEchoEnabled FALSE;
 }
 
