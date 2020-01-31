@@ -133,12 +133,10 @@ function isFunctionPresent() {
   if isEmpty "${_scriptName}"; then
     DW.getScriptName;
     _scriptName="${RESULT}";
-    echo "script name: ${_scriptName}"
   fi
 
   DW.getScriptFolder;
   local _scriptFolder="${RESULT}";
-  echo "script folder: ${_scriptFolder}"
 
   type ${_function} 2> /dev/null | grep -q 'function'
   _rescode=$?;
