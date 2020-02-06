@@ -15,7 +15,7 @@ function definedTag() {
 
   case "${1}" in
     "${SUCCESS}" | "${FAILURE}") _rescode=${TRUE};
-       ;;
+                                 ;;
     *) _rescode=${FALSE};
        ;;
   esac
@@ -125,8 +125,8 @@ function isFailureKeyword() {
   IFS=$' \t\n';
   for _i in ${_failureKeywords[*]}; do
     if    areEqual "${_i}" "${1}" \
-       || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-                   "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
+        || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                    "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
       _rescode=${TRUE};
       break;
     fi;
@@ -138,8 +138,8 @@ function isFailureKeyword() {
 
     for _i in ${_builtinFailureKeywords[*]}; do
       if   areEqual "${_i}" "${1}" \
-        || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-                    "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
+          || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                      "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         _rescode=${TRUE};
         break;
       fi;
@@ -211,11 +211,11 @@ function isSuccessKeyword() {
 
   IFS=$' \t\n';
   if    isNotEmpty "${_successKeywords}" \
-     && isNotEmpty ${_successKeywords[*]}; then
+      && isNotEmpty ${_successKeywords[*]}; then
     for _i in ${_successKeywords[*]}; do
       if    areEqual "${_i}" "${_keyword}" \
-         || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-                     "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
+          || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                      "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         _rescode=${TRUE};
         break;
       fi;
@@ -225,8 +225,8 @@ function isSuccessKeyword() {
   if isFalse ${_rescode}; then
     for _i in ${BUILTIN_SUCCESS_KEYWORDS[*]}; do
       if    areEqual "${_i}" "${1}" \
-         || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-                     "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
+          || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                      "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         _rescode=${TRUE};
         break;
       fi;
@@ -414,27 +414,29 @@ function LOGGING.echoColorAwareLogPrefix() {
   local _level="${3}";
   checkNotEmpty "level" "${_level}" 3;
 
-  local -i _len;
+  local _aux;
   local _colors;
-  local -i _i;
+  local -i _i=0;
 
   LOGGING.retrieveLogPrefixTokens "${_category}" "${_level}";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_PREFIX_TOKENS";
+  DW.getGlobalVariableName "${_DW_MODULE}" LOG_PREFIX_TOKENS;
   local -n _logPrefixTokens="${RESULT}";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_PREFIX_COLORS";
+  DW.getGlobalVariableName "${_DW_MODULE}" LOG_PREFIX_COLORS;
   local -n _logPrefixColors="${RESULT}";
 
-  _len=$((${#_logPrefixTokens[@]} - 1));
   local _oldIFS="${IFS}";
-  IFS=$' \t\n';
-  for _i in $(seq 0 ${_len}); do
+  IFS=$'\t\n';
+  _i=0;
+  for _aux in ${_logPrefixTokens[@]}; do
+    IFS="${_oldIFS}";
     if isTrue ${_allowsColors}; then
-      echoInColor -n "${_logPrefixColors[${_i}]}" "${_logPrefixTokens[${_i}]}";
+      echoInColor -n "${_logPrefixColors[${_i}]}" "${_aux}";
     else
-      echo -n "${_DRY_WIT_LOG_PREFIX_TOKENS[${_i}]}";
+      echo -n "${_logPrefixTokens[${_i}]}";
     fi
+    _i=$((_i+1));
   done
   IFS="${_oldIFS}";
 
@@ -741,7 +743,7 @@ function LOGGING.logInProgress() {
   LOGGING.numberOfNestedInProgressTasks;
   _nestedTasks=$?;
   if [ ${_nestedTasks} -gt 0 ]; then
-      LOGGING.logInProgressNested "${_category}" "${_level}" "${_message}";
+    LOGGING.logInProgressNested "${_category}" "${_level}" "${_message}";
   else
     LOGGING.logInProgressNoNested "${_category}" "${_level}" "${_message}";
   fi
@@ -905,7 +907,7 @@ function LOGGING.logStuffResult() {
   LOGGING.numberOfNestedInProgressTasks;
   _nestedTasks=$?;
   if isZero ${_nestedTasks}; then
-      exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
+    exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
   fi
   LOGGING.logCompleted "${_level}" "${_outcome}" "$@";
 }
@@ -1186,7 +1188,7 @@ function LOGGING.retrieveKeywordColor() {
     SUCCESS | "${SUCCESS}") result="${_successColor}";
                             ;;
     FAILURE | "${FAILURE}" | "${FAILED}" | "FAILED" | "failed" | "FAIL" | "fail" | "${KO}") result="${_failureColor}";
-                                                                    ;;
+                                                                                            ;;
     IN_PROGRESS | "${IN_PROGRESS}") result="${_inProgressColor}";
                                     ;;
     *) result="${_defaultColor}";
@@ -1324,36 +1326,55 @@ function LOGGING.retrieveLogPrefix() {
   export RESULT="${result}";
 }
 
+# fun: LOGGING.retrieveLogPrefixToken
+# api: private
+# txt: Retrieves the log prefix token, depending on the given log level.
+# txt: level: The log level.
+# txt: Returns 0/TRUE if the token is defined; 1/FALSE otherwise.
+# txt: if the function returns 0/TRUE, The variable RESULT contains the log prefix token.
+# use: if LOGGING.retrieveLogPrefixToken TRACE; then echo "Log prefix token: ${RESULT}"; fi
+function LOGGING.retrieveLogPrefixToken() {
+  local _levelVar="${1}";
+  local -i _rescode;
+  checkNotEmpty level "${_levelVar}" 1;
+  DW.getGlobalString "${_DW_MODULE}" "${_levelVar}_LOG_PREFIX_TOKEN";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
 # fun: LOGGING.retrieveLogPrefixTokens
 # api: private
 # txt: Retrieves the tokens composing the log prefix.
 # opt: category: The log category.
 # opt: level: The log level (optional).
 # txt: Returns 0/TRUE always.
-# use: LOGGING.retrieveLogPrefixTokens "a:b:c" DEBUG; echo "${_DRY_WIT_LOG_PREFIX_TOKENS[*]}";
+# use: LOGGING.retrieveLogPrefixTokens "a:b:c" DEBUG; echo "${RESULT}";
 function LOGGING.retrieveLogPrefixTokens() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
 
-  local _levelVar="${2}";
-  # evalConstant "${_levelVar}_LOG_PREFIX_TOKEN" "${INFO_LOG_PREFIX_TOKEN}";
+  local _levelVar="${2:-INFO}";
+  LOGGING.retrieveLogPrefixToken "${_levelVar}";
   local _level="${RESULT}";
   local result=();
   local _aux="";
   local _timestamp;
   local -i _i;
-  local -i _len;
+  local -i _lastIndex;
   local -i _timestampPosition;
   local -i _category_position;
   local -i _levelPosition;
 
   DW.getGlobalVariableName "${_DW_MODULE}" LOG_PREFIX_TOKENS;
   local -n _logPrefixTokens=${RESULT};
-  _len=$((${#_logPrefixTokens[@]} - 1));
+  _lastIndex=$((${#_logPrefixTokens[@]} - 1));
 
   local _oldIFS="${IFS}";
-  IFS=$' \t\n';
-  for _i in $(seq 0 ${_len}); do
+#  IFS=$' \t\n';
+  IFS="${DWIFS}";
+  for _i in $(seq 0 ${_lastIndex}); do
+    IFS="${_oldIFS}";
     _logPrefixTokens[${_i}]="${_logPrefixTokens[${_i}]}";
   done
   IFS="${_oldIFS}";
@@ -1571,7 +1592,7 @@ function setDebugEnabled() {
 # txt: Returns 0/TRUE always.
 # use: setInfoEnabled;
 function setInfoEnabled() {
-  DW.setGlobalInt "${_DW_MODULE}" LOG_QUIET ${FALSE};
+  setQuietMode ${FALSE};
   DW.setGlobalInt "${_DW_MODULE}" LOG_INFO ${TRUE};
 }
 

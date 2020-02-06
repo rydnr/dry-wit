@@ -19,15 +19,15 @@ declare -gx OPTIONAL=${FALSE};
 # txt: Returns 0/TRUE always.
 # use: checkReq jq;
 function checkReq() {
-    local _dependency="${1}";
-    local _errorCode="${2:-}";
+  local _dependency="${1}";
+  local _errorCode="${2:-}";
 
-    if [ -z "${_errorCode}" ]; then
-        DRYWIT.addMissingDependencyError "${_dependency}";
-        DRYWIT.checkDependency "${_dependency}";
-    else
-        DRYWIT.checkDependency "${_dependency}" "${_errorCode}";
-    fi
+  if [ -z "${_errorCode}" ]; then
+    DRYWIT.addMissingDependencyError "${_dependency}";
+    DRYWIT.checkDependency "${_dependency}";
+  else
+    DRYWIT.checkDependency "${_dependency}" "${_errorCode}";
+  fi
 }
 
 # fun: cleanup
@@ -54,8 +54,8 @@ function cleanup() {
       IFS="${_oldIFS}";
       rm -rf ${_i} > /dev/null 2>&1;
       if isTrue $?; then
-          _deleted="${_deleted} ${_i}";
-          _deletedCount=$((_deletedCount + 1));
+        _deleted="${_deleted} ${_i}";
+        _deletedCount=$((_deletedCount + 1));
       else
         _notDeleted="${_notDeleted} ${_i}";
         _notDeletedCount=$((_notDeletedCount + 1));
@@ -149,6 +149,7 @@ function isFunctionPresent() {
   if isFalse ${_rescode}; then
     if isNotEmpty "${_script}"; then
       IFS="${DWIFS}";
+      echo "In isFunctionPresent/basename"
       for _inc in "./$(basename ${_scriptName} .sh).inc.sh" \
                     "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh"; do
         IFS="${_oldIFS}";
@@ -192,12 +193,12 @@ function DRYWIT.addBuiltInError() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.addMissingDependencyError "docker";
 function DRYWIT.addMissingDependencyError() {
-    local _dependency="${1}";
-    normalizeUppercase "${_dependency}_NOT_INSTALLED";
-    local _constant="${RESULT}";
+  local _dependency="${1}";
+  normalizeUppercase "${_dependency}_NOT_INSTALLED";
+  local _constant="${RESULT}";
 
-    debugEcho "addError ${_constant} \"${_dependency}\" is not installed\"";
-    addError "${_constant}" "${_dependency} is not installed";
+  debugEcho "addError ${_constant} \"${_dependency}\" is not installed\"";
+  addError "${_constant}" "${_dependency} is not installed";
 }
 
 # fun: DRYWIT.appendBuiltInError error
@@ -207,15 +208,15 @@ function DRYWIT.addMissingDependencyError() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.appendBuiltInError "error";
 function DRYWIT.appendBuiltInError() {
-    local _error="${1}";
+  local _error="${1}";
 
-    if declare -p BUILTIN_ERRORS > /dev/null 2>&1; then
-        upvars -a$((${#BUILTIN_ERRORS[@]}+1)) BUILTIN_ERRORS "${BUILTIN_ERRORS[@]}" "${_error}";
-        export BUILTIN_ERRORS;
-    else
-        export -a BUILTIN_ERRORS=();
-        upvars -a1 BUILTIN_ERRORS "${_error}";
-    fi
+  if declare -p BUILTIN_ERRORS > /dev/null 2>&1; then
+    upvars -a$((${#BUILTIN_ERRORS[@]}+1)) BUILTIN_ERRORS "${BUILTIN_ERRORS[@]}" "${_error}";
+    export BUILTIN_ERRORS;
+  else
+    export -a BUILTIN_ERRORS=();
+    upvars -a1 BUILTIN_ERRORS "${_error}";
+  fi
 }
 
 # fun: DRYWIT.checkDependency name errorCode
@@ -226,19 +227,19 @@ function DRYWIT.appendBuiltInError() {
 # txt: Returns 0/TRUE always; it exits if the dependency is not available.
 # use: DRYWIT.checkDependency jq JQ_IS_NOT_INSTALLED;
 function DRYWIT.checkDependency() {
-    local _req="${1}";
-    local _errorCode="${2}";
+  local _req="${1}";
+  local _errorCode="${2}";
 
-    if isEmpty "${_errorCode}"; then
-        normalizeUppercase "${_req}_NOT_INSTALLED";
-        _errorCode="${RESULT}";
-    fi
+  if isEmpty "${_errorCode}"; then
+    normalizeUppercase "${_req}_NOT_INSTALLED";
+    _errorCode="${RESULT}";
+  fi
 
-    which ${_req} > /dev/null 2>&1;
-    rescode=$?;
-    if isFalse ${rescode}; then
-        exitWithErrorCode ${_errorCode};
-    fi
+  which ${_req} > /dev/null 2>&1;
+  rescode=$?;
+  if isFalse ${rescode}; then
+    exitWithErrorCode ${_errorCode};
+  fi
 }
 
 # fun: DRYWIT.checkScript script
@@ -248,36 +249,36 @@ function DRYWIT.checkDependency() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.checkScript /tmp/myScript.sh;
 function DRYWIT.checkScript() {
-    local _script="${1}";
-    local _v;
-    local _f;
-    local _oldIFS="${IFS}";
+  local _script="${1}";
+  local _v;
+  local _f;
+  local _oldIFS="${IFS}";
 
-    checkNotEmpty "script" "${_script}" 1;
+  checkNotEmpty "script" "${_script}" 1;
 
-    setLogCategory "sanity-check";
-    logTrace -n "Checking mandatory constants";
+  setLogCategory "sanity-check";
+  logTrace -n "Checking mandatory constants";
 
-    IFS="${DWIFS}";
-    for _v in ${ERROR_MESSAGES[@]}; do
-        IFS="${_oldIFS}";
-        if [ -z "${_v}" ]; then
-            exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
-        fi
-    done
+  IFS="${DWIFS}";
+  for _v in ${ERROR_MESSAGES[@]}; do
     IFS="${_oldIFS}";
-    logTraceResult SUCCESS "done";
-    logTrace -n "Checking mandatory functions";
-    IFS="${DWIFS}";
-    for _f in main; do
-        IFS="${_oldIFS}";
-        isFunctionPresent ${_f} ${_script};
-        if isFalse $?; then
-            exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
-        fi
-    done
+    if [ -z "${_v}" ]; then
+      exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
+    fi
+  done
+  IFS="${_oldIFS}";
+  logTraceResult SUCCESS "done";
+  logTrace -n "Checking mandatory functions";
+  IFS="${DWIFS}";
+  for _f in main; do
     IFS="${_oldIFS}";
-    logTraceResult SUCCESS "${_DW_DONE}";
+    isFunctionPresent ${_f} ${_script};
+    if isFalse $?; then
+      exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
+    fi
+  done
+  IFS="${_oldIFS}";
+  logTraceResult SUCCESS "${_DW_DONE}";
 }
 
 # fun: DRYWIT.defineDryWitErrorMessages
@@ -314,7 +315,6 @@ function DRYWIT.defineDryWitRequirements() {
 function DRYWIT.main() {
   DW.getScriptName;
   local _scriptName="${RESULT}";
-
   DW.getScriptPath;
   local _scriptPath="${RESULT}";
   local _absolutePath;
@@ -344,8 +344,8 @@ function DRYWIT.main() {
   fi
 
   if isFunctionPresent parseInput "${_scriptName}"; then
-      evalEnvVars;
-      parseInput $@;
+    evalEnvVars;
+    parseInput $@;
   fi
 
   DRYWIT.checkScript "${_scriptName}";
@@ -359,17 +359,18 @@ function DRYWIT.main() {
   fi
 
   if isFunctionPresent checkInput "${_scriptName}"; then
-      evalEnvVars;
-      checkInput $@;
+    evalEnvVars;
+    checkInput $@;
 
-      if isFunctionPresent postCheckInput "${_scriptName}"; then
-          postCheckInput $@;
-      fi
+    if isFunctionPresent postCheckInput "${_scriptName}"; then
+      postCheckInput $@;
+    fi
   fi
 
   setLogCategory "";
   main;
   setLogCategory "";
+  echo "Finished DRYWIT.main"
 }
 
 # fun: DRYWIT.retrieveSettingsFiles
@@ -416,22 +417,22 @@ function DRYWIT.retrieveSettingsFiles() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.setup;
 function DRYWIT.setup() {
-    DRYWIT.trapSignals;
-    local _f;
-    local _files;
-    local _oldIFS="${IFS}";
+  DRYWIT.trapSignals;
+  local _f;
+  local _files;
+  local _oldIFS="${IFS}";
 
-    DRYWIT.retrieveSettingsFiles;
-    _files="${RESULT}"
+  DRYWIT.retrieveSettingsFiles;
+  _files="${RESULT}"
 
-    IFS="${DWIFS}";
-    for _f in ${_files}; do
-        IFS="${_oldIFS}";
-        sourceFileIfExists "${_f}";
-    done
+  IFS="${DWIFS}";
+  for _f in ${_files}; do
     IFS="${_oldIFS}";
+    sourceFileIfExists "${_f}";
+  done
+  IFS="${_oldIFS}";
 
-    evalEnvVars;
+  evalEnvVars;
 }
 
 # fun: DRYWIT.trapSignals

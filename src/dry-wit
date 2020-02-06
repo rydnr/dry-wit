@@ -19,30 +19,6 @@
 # api: private
 # txt: Bootstrap functions.
 
-#set -o errexit  # terminate on any unhandled error
-#set -o nounset  # terminate on any unset variable
-set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
-#set -o xtrace   # trace what gets executed
-
-if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
-  return;
-fi
-
-# fun: DW.nested
-# api: private
-# txt: Checks whether this script is running within another dry-wit script.
-# txt: Returns 0/TRUE if this script is nested within another dry-wit; 1/FALSE otherwise.
-# use: if DW.nested; then echo "Nesting detected"; fi
-function DW.nested() {
-  local -i _rescode=${TRUE};
-
-  if [ -z ${SCRIPT_INDEX+x} ]; then
-    _rescode=${FALSE};
-  fi
-
-  return ${_rescode};
-}
-
 # fun: DW.declareGlobalInt
 # api: public
 # txt: Declares a global integer variable. Its name depends on the nesting level.
@@ -81,7 +57,6 @@ function DW.setGlobalInt() {
     DW.buildGlobalVariableName "${_module}" "${_varName}";
     local -n _variable="${RESULT}";
     _variable=${_value};
-    echo "set ${_variable}=${!_variable}";
   fi
 }
 
@@ -101,7 +76,7 @@ function DW.getGlobalInt() {
   local -i _rescode=${FALSE};
   local _result;
 
-  if DW.getGlobalString "${_module}" "${_varName}" "${_value}"; then
+  if DW.getGlobalString "${_module}" "${_varName}"; then
     _result="${RESULT}";
     _rescode=${TRUE};
   fi
@@ -169,8 +144,7 @@ function DW.getGlobalString() {
   local _result;
 
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
-    local -n _aux="${RESULT}";
-    _result="${_aux}";
+    local -n _result="${RESULT}";
     _rescode=${TRUE};
   fi
 
@@ -200,7 +174,6 @@ function DW.setGlobalString() {
     DW.buildGlobalVariableName "${_module}" "${_varName}";
     local -n _variable="${RESULT}";
     _variable="${_value}";
-    echo "set ${_variable}=${!_variable}";
   fi
 }
 
@@ -233,7 +206,6 @@ function DW.declareGlobalVariable() {
   local _aux="${RESULT}";
 
   if [ ${_rescode} -eq ${TRUE} ]; then
-    echo "Declaring ${_aux}=${_initialValue}"
     case "${_varType}" in
       "int") if BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
                declare -agx "${_aux}";
@@ -275,8 +247,10 @@ function DW.getGlobalVariableName() {
   checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   checkNotEmpty varName "${_varName}" 2;
+  local -i _rescode;
 
   DW.buildGlobalVariableName "${_module}" "${_varName}";
+  _rescode=$?;
 
   return ${_rescode};
 }
@@ -302,11 +276,7 @@ function DW.buildGlobalVariableName() {
   BOOTSTRAP.toUpper "${_varName}";
   local _varNameUpcased="${RESULT}";
 
-  local _result="_DW_${_moduleUpcased}_${_varNameUpcased}";
-
-  if DW.nested; then
-    _result="${_result}_${SCRIPT_INDEX}";
-  fi
+  local _result="_DW_${_moduleUpcased}_${_varNameUpcased}_${DW_SCRIPT_INDEX}";
 
   export RESULT="${_result}";
 
@@ -320,7 +290,22 @@ function DW.buildGlobalVariableName() {
 # txt: The variable RESULT contains the name of the script.
 # use: DW.getScriptName; echo "Script name: ${RESULT}";
 function DW.getScriptName() {
-  DW.getGlobalString DRYWIT SCRIPT_NAME;
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if DW.getGlobalString DRYWIT SCRIPT_NAME; then
+    _result="${RESULT}";
+    if [[ -n "${_result}" ]]; then
+      _result="${SCRIPT_NAME}";
+    fi
+  fi
+
+  if [[ -n "${_result}" ]]; then
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
 }
 
 # fun: DW.getScriptPath
@@ -818,18 +803,48 @@ declare -igx FALSE=1;
 # env: DWIFS: The IFS used by dry-wit.
 declare -gx DWIFS=$' \t\n';
 
+# fun: DW.initialized
+# api: private
+# txt: Checks whether the initialization has already been done.
+# txt: Returns 0/TRUE if the initialization was done; 1/FALSE otherwise.
+# use: if DW.initialized; then echo "Initialized already"; fi
+function DW.initialized() {
+  local -i _rescode;
+
+  if [ -z ${DW_INITIALIZED+x} ]; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+
+}
+# fun: DW.nested
+# api: private
+# txt: Checks whether this script is running within another dry-wit script.
+# txt: Returns 0/TRUE if this script is nested within another dry-wit; 1/FALSE otherwise.
+# use: if DW.nested; then echo "Nesting detected"; fi
+function DW.nested() {
+  local -i _rescode;
+
+  if ! DW.initialized; then
+    _rescode=${FALSE};
+  elif [[ ${DW_SCRIPT_INDEX} -gt 0 ]]; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
 # fun: DW.init
 # api: private
 # txt: Initializes dry-wit.
 # use: DW.init
 function DW.init() {
 
-  if [ -z ${SCRIPT_INDEX+x} ]; then
-    declare -igx SCRIPT_INDEX=0;
-  else
-    if DW.nested; then
-      SCRIPT_INDEX=$((SCRIPT_INDEX+1));
-    fi
+  if DW.initialized; then
+    DW_SCRIPT_INDEX=$((DW_SCRIPT_INDEX+1));
   fi
 
   local _scriptName;
@@ -848,25 +863,47 @@ function DW.init() {
   if [ "${_scriptFolder}" == "." ]; then
     _scriptFolder="${PWD}";
   fi
+
   DW.declareGlobalString DRYWIT SCRIPT_NAME "${_scriptName}";
   DW.declareGlobalString DRYWIT SCRIPT_PATH "${_scriptPath}";
   DW.declareGlobalString DRYWIT SCRIPT_FOLDER "${_scriptFolder}";
+  declare -igx DW_INITIALIZED=0;
 }
 
 function DW.isTest() {
   DW.getScriptName;
   local _scriptName="${RESULT}";
 
-  if    BOOTSTRAP.endsWith "${_scriptName}" "-tests.sh" \
-     || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
-    source $(which dry-wit-test) "${_scriptName}" $@;
+  if [[ -n ${_scriptName} ]]; then
+    if    BOOTSTRAP.endsWith "${_scriptName}" "-tests.sh" \
+       || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
+      source $(which dry-wit-test) "${_scriptName}" $@;
+    fi
   fi
 }
 
-BOOTSTRAP.bootstrap;
-DW.init $@;
-DW.isTest $@;
+#set -o errexit  # terminate on any unhandled error
+#set -o nounset  # terminate on any unset variable
+set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
+#set -o xtrace   # trace what gets executed
+
+if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
+  return;
+fi
+
+if [ -z ${DW_SCRIPT_INDEX+x} ]; then
+  declare -igx DW_SCRIPT_INDEX=0;
+fi
+
+if ! DW.nested; then
+  BOOTSTRAP.bootstrap;
+  DW.init $@;
+fi
+
+DW.isTest;
 DRYWIT.main $@;
 
-cleanup;
+if ! DW.nested; then
+  cleanup;
+fi
 #
