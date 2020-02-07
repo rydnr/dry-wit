@@ -2,7 +2,18 @@
 # api: public
 # txt: Logging functions
 
-declare -gx _DW_MODULE="LOGGING";
+# set -o xtrace
+
+# fun: LOGGING.getModuleName
+# api: public
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: LOGGING.getModuleName; echo "Module: ${RESULT}";
+function LOGGING.getModuleName() {
+  export RESULT="DW_LOGGING";
+  return ${TRUE};
+}
 
 # fun: definedTag tag
 # api: public
@@ -77,8 +88,8 @@ function findOutKeyword() {
 # txt: The variable RESULT contains the log category.
 # use: getLogCategory; echo "Log category: ${RESULT}";
 function getLogCategory() {
-
-  DW.getGlobalString "${_DW_MODULE}" "LOG_CATEGORY";
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" LOG_CATEGORY;
 }
 
 # fun: getLogCategoryNamespace
@@ -89,7 +100,8 @@ function getLogCategory() {
 # use: getLogCategoryNamespace;
 #      echo "log category namespace: ${RESULT}"
 function getLogCategoryNamespace() {
-  DW.getGlobalString "${_DW_MODULE}" "${LOG_CATEGORY_NAMESPACE}";
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" LOG_CATEGORY_NAMESPACE;
 }
 
 # fun: isDebugEnabled
@@ -101,7 +113,8 @@ function isDebugEnabled() {
   local -i _rescode=${FALSE};
 
   if isInfoEnabled; then
-    DW.getGlobalInt "${_DW_MODULE}" LOG_DEBUG;
+    LOGGING.getModuleName;
+    DW.getGlobalInt "${RESULT}" LOG_DEBUG;
     _rescode=${RESULT};
   fi
 
@@ -119,11 +132,15 @@ function isFailureKeyword() {
   local -i _rescode=${FALSE};
   local _i;
   local _oldIFS="${IFS}";
-  DW.getGlobalVariableName "${_DW_MODULE}" "FAILURE_KEYWORDS";
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalVariableName "${_moduleName}" FAILURE_KEYWORDS;
   local -n _failureKeywords=${RESULT};
 
   IFS=$' \t\n';
   for _i in ${_failureKeywords[*]}; do
+    IFS="${_oldIFS}";
     if    areEqual "${_i}" "${1}" \
         || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
                     "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
@@ -131,12 +148,14 @@ function isFailureKeyword() {
       break;
     fi;
   done
+  IFS="${_oldIFS}";
 
   if isFalse ${_rescode}; then
-    DW.getGlobalVariableName "${_DW_MODULE}" "BUILTIN_FAILURE_KEYWORDS";
+    DW.getGlobalVariableName "${_moduleName}" BUILTIN_FAILURE_KEYWORDS;
     local -n _builtinFailureKeywords=${RESULT};
 
     for _i in ${_builtinFailureKeywords[*]}; do
+      IFS="${_oldIFS}";
       if   areEqual "${_i}" "${1}" \
           || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
                       "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
@@ -144,8 +163,8 @@ function isFailureKeyword() {
         break;
       fi;
     done
+    IFS="${_oldIFS}";
   fi
-  IFS="${_oldIFS}";
 
   return ${_rescode};
 }
@@ -161,7 +180,8 @@ function isInfoEnabled() {
   if isQuietMode; then
     _rescode=${FALSE};
   else
-    DW.getGlobalInt "${_DW_MODULE}" LOG_INFO;
+    LOGGING.getModuleName;
+    DW.getGlobalInt "${RESULT}" LOG_INFO;
     _rescode=${RESULT};
   fi
 
@@ -189,7 +209,8 @@ function isLowerThanInfoEnabled() {
 function isQuietMode() {
   local -i _rescode;
 
-  DW.getGlobalInt "${_DW_MODULE}" LOG_QUIET;
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_QUIET;
   _rescode=${RESULT};
 
   return ${_rescode};
@@ -206,13 +227,15 @@ function isSuccessKeyword() {
   local -i _rescode=${FALSE};
   local _i;
   local _oldIFS="${IFS}";
-  DW.getGlobalVariableName "${_DW_MODULE}" "SUCCESS_KEYWORDS";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" SUCCESS_KEYWORDS;
   local -n _successKeywords="${RESULT}";
 
   IFS=$' \t\n';
   if    isNotEmpty "${_successKeywords}" \
       && isNotEmpty ${_successKeywords[*]}; then
     for _i in ${_successKeywords[*]}; do
+      IFS="${_oldIFS}";
       if    areEqual "${_i}" "${_keyword}" \
           || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
                       "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
@@ -220,10 +243,12 @@ function isSuccessKeyword() {
         break;
       fi;
     done
+    IFS="${_oldIFS}";
   fi
 
   if isFalse ${_rescode}; then
     for _i in ${BUILTIN_SUCCESS_KEYWORDS[*]}; do
+      IFS="${_oldIFS}";
       if    areEqual "${_i}" "${1}" \
           || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
                       "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
@@ -231,8 +256,8 @@ function isSuccessKeyword() {
         break;
       fi;
     done
+    IFS="${_oldIFS}";
   fi
-  IFS="${_oldIFS}";
 
   return ${_rescode};
 }
@@ -246,7 +271,8 @@ function isTraceEnabled() {
   local -i _rescode=${FALSE};
 
   if isDebugEnabled; then
-    DW.getGlobalInt "${_DW_MODULE}" LOG_TRACE;
+    LOGGING.getModuleName;
+    DW.getGlobalInt "${RESULT}" LOG_TRACE;
     _rescode=${RESULT};
   fi
 
@@ -393,7 +419,8 @@ function LOGGING.alignRight() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.closeLogLine;
 function LOGGING.closeLogLine() {
-  DW.setGlobalInt "${_DW_MODULE}" LOG_LINE_OPEN ${FALSE};
+  LOGGING.getModuleName;
+  DW.setGlobalInt "${RESULT}" LOG_LINE_OPEN ${FALSE};
 }
 
 # fun: LOGGING.echoColorAwareLogPrefix category TRUE|FALSE level
@@ -406,24 +433,26 @@ function LOGGING.closeLogLine() {
 # use: LOGGING.echoColorAwareLogPrefix "cat" ${TRUE} DEBUG
 function LOGGING.echoColorAwareLogPrefix() {
   local _category="${1}";
-  checkNotEmpty "category" "${_category}" 1;
+  checkNotEmpty category "${_category}" 1;
 
   local -i _allowsColors=${2};
-  checkNotEmpty "allowsColors" "${_allowsColors}" 2;
+  checkNotEmpty allowsColors "${_allowsColors}" 2;
 
   local _level="${3}";
-  checkNotEmpty "level" "${_level}" 3;
+  checkNotEmpty level "${_level}" 3;
 
   local _aux;
   local _colors;
   local -i _i=0;
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
 
   LOGGING.retrieveLogPrefixTokens "${_category}" "${_level}";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" LOG_PREFIX_TOKENS;
+  DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_TOKENS;
   local -n _logPrefixTokens="${RESULT}";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" LOG_PREFIX_COLORS;
+  DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_COLORS;
   local -n _logPrefixColors="${RESULT}";
 
   local _oldIFS="${IFS}";
@@ -464,8 +493,8 @@ function LOGGING.echoLogOutcome() {
   shift;
 
   local _text="${@}";
-  local _len;
-  local _allowsColors;
+  local -i _len;
+  local -i _allowsColors;
   local _colors;
   local _inProgressMessage;
   local _logPrefix;
@@ -493,16 +522,19 @@ function LOGGING.echoLogOutcome() {
   _logPrefix="${RESULT}";
   LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_OUTCOME_TOKENS";
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" LOG_OUTCOME_TOKENS;
   local -n _logOutcomeTokens=${RESULT};
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_OUTCOME_COLORS";
+  DW.getGlobalVariableName "${_moduleName}" LOG_OUTCOME_COLORS;
   local -n _logOutcomeColors=${RESULT};
 
   _len=$((${#_logOutcomeTokens[@]} - 1));
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
+    IFS="${_oldIFS}";
     if isTrue ${_allowsColors}; then
       echoInColor -n "${_logOutcomeColors[${_i}]}" "${_logOutcomeTokens[${_i}]}";
     else
@@ -547,15 +579,18 @@ function LOGGING.echoLogOutcomeNested() {
   LOGGING.echoLogOutcome "${_level}" "${_keyword}" "${_text}";
   LOGGING.numberOfNestedInProgressTasks;
   _nestedTasks=$?;
-  local _oldIFS="${IFS}";
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_NESTED_INDENTATION";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_NESTED_INDENTATION;
   local -n _logNestedIndentation=${RESULT};
 
+  local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _i in $(seq 1 ${_nestedTasks}); do
+    IFS="${_oldIFS}";
     _indentation="${_indentation}${_logNestedIndentation}";
   done
   IFS="${_oldIFS}";
+
   LOGGING.pushLog "${_indentation}${_inProgressMessage}";
   LOGGING.pushLogCategory "${_category}";
 }
@@ -585,10 +620,10 @@ function LOGGING.echoLogPrefix() {
 # txt: Retrieves the last log message.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the last log message.
-# use: LOGGING.getLastLog;
-#      echo "Last log: ${RESULT}";
+# use: LOGGING.getLastLog; echo "Last log: ${RESULT}";
 function LOGGING.getLastLog() {
-  DW.getGlobalString "${_DW_MODULE}" "LAST_LOG";
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" LAST_LOG;
 }
 
 # fun: isLogLineOpen
@@ -597,7 +632,8 @@ function LOGGING.getLastLog() {
 # txt: Returns 0/TRUE if it's open; 1/FALSE otherwise.
 # use: if isLogLineOpen; then ...; fi
 function isLogLineOpen() {
-  DW.getGlobalInt "${_DW_MODULE}" "LOG_LINE_OPEN";
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_LINE_OPEN;
   return ${RESULT};
 }
 
@@ -622,6 +658,7 @@ function LOGGING.logCompleted() {
 
   local -i nestedTasks;
 
+  LOGGING.setLastLogLevel "${_level}";
   LOGGING.numberOfNestedInProgressTasks;
   _nestedTasks=$?;
   if [ ${_nestedTasks} -gt 1 ]; then
@@ -666,8 +703,10 @@ function LOGGING.logCompletedNested() {
   LOGGING.peekLog;
   _nestedTask="${RESULT}";
   LOGGING.echoLogPrefix "${_nestedTaskCategory}" "${_nestedTaskLevel}";
-  DW.getGlobalString "${_DW_MODULE}" "DEFAULT_LOG_RESUMING_TASK_COLOR";
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" DEFAULT_LOG_RESUMING_TASK_COLOR;
   local _defaultLogResumingTaskColor="${RESULT}";
+  LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_nestedTask}" "" "${_defaultLogResumingTaskColor}";
 }
 
@@ -740,6 +779,7 @@ function LOGGING.logInProgress() {
   LOGGING.retrieveLogNamespace;
   _category="${RESULT}";
 
+  LOGGING.setLastLogLevel "${_level}";
   LOGGING.numberOfNestedInProgressTasks;
   _nestedTasks=$?;
   if [ ${_nestedTasks} -gt 0 ]; then
@@ -759,21 +799,23 @@ function LOGGING.logInProgress() {
 # use: LOGGING.logInProgressNested "cat" DEBUG "Calculating ...";
 function LOGGING.logInProgressNested() {
   local _category="${1}";
-  checkNotEmpty "category" "${_category}" 1;
+  checkNotEmpty category "${_category}" 1;
   shift;
 
   local _level="${1}";
-  checkNotEmpty "level" "${_level}" 2;
+  checkNotEmpty level "${_level}" 2;
   shift;
 
   local _message="$@";
-  checkNotEmpty "message" "${_message}" 3;
+  checkNotEmpty message "${_message}" 3;
 
   local _logPrefix;
   LOGGING.pushLog "${_message}";
   LOGGING.pushLogCategory "${_category}";
   LOGGING.pushLogLevel "${_level}";
-  DW.getGlobalString "${_DW_MODULE}" "NESTED_TASK_IN_PROGRESS";
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" NESTED_TASK_IN_PROGRESS;
   local _nestedTaskInProgress="${RESULT}";
   LOGGING.logCompletedNestedNoPop "${_level}" IN_PROGRESS "${_nestedTaskInProgress}";
   echo;
@@ -783,8 +825,9 @@ function LOGGING.logInProgressNested() {
   LOGGING.echoLogPrefix "${_category}" "${_level}";
   LOGGING.peekLog;
   _actualMessage="${RESULT}";
-  DW.getGlobalString "${_DW_MODULE}" "DEFAULT_LOG_PREFIX_COLOR";
+  DW.getGlobalString "${_moduleName}" DEFAULT_LOG_PREFIX_COLOR;
   local _defaultLogPrefixColor="${RESULT}";
+  LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_actualMessage}" "" "${_defaultLogPrefixColor}";
 }
 
@@ -798,15 +841,15 @@ function LOGGING.logInProgressNested() {
 # use: LOGGING.logProgressNoNested "cat" INFO "Calculating ...";
 function LOGGING.logInProgressNoNested() {
   local _category="${1}";
-  checkNotEmpty "category" "${_category}" 1;
+  checkNotEmpty category "${_category}" 1;
   shift;
 
   local _level="${1}";
-  checkNotEmpty "level" "${_level}" 2;
+  checkNotEmpty level "${_level}" 2;
   shift;
 
   local _message="$@";
-  checkNotEmpty "message" "${_message}" 3;
+  checkNotEmpty message "${_message}" 3;
   local _logPrefix;
 
   _logPrefix="${RESULT}";
@@ -814,8 +857,10 @@ function LOGGING.logInProgressNoNested() {
   LOGGING.pushLog "${_message}";
   LOGGING.pushLogLevel "${_level}";
   LOGGING.echoLogPrefix "${_category}" "${_level}";
-  DW.getGlobalString "${_DW_MODULE}" "DEFAULT_LOG_PREFIX_COLOR";
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" DEFAULT_LOG_PREFIX_COLOR;
   local _defaultLogPrefixColor="${RESULT}";
+  LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}";
 }
 
@@ -853,7 +898,7 @@ function LOGGING.logStuff() {
   if [ "-n" == "${_minusN}" ]; then
     shift;
   fi
-  DW.setGlobalString "${_DW_MODULE}" LAST_LOG_LEVEL "${_level}";
+  LOGGING.setLastLogLevel "${_level}";
   LOGGING.logInProgress "${_level}" "$@";
   if [ "-n" != "${_minusN}" ]; then
     echo;
@@ -871,7 +916,8 @@ function LOGGING.logStuff() {
 function LOGGING.setLastLogLevel() {
   local _level="${1}";
   checkNotEmpty "level" "${_level}" 1;
-  DW.setGlobalString "${_DW_MODULE}" "LAST_LOG_LEVEL" "${_level}";
+  LOGGING.getModuleName;
+  DW.setGlobalString "${RESULT}" LAST_LOG_LEVEL "${_level}";
 }
 
 # fun: getLastLogLevel
@@ -880,7 +926,13 @@ function LOGGING.setLastLogLevel() {
 # txt: RESULT contains the log level.
 # use: getLastLogLevel; echo "Last log level: ${RESULT}";
 function getLastLogLevel() {
-  DW.getGlobalString "${_DW_MODULE}" "LAST_LOG_LEVEL";
+  local _result;
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" LAST_LOG_LEVEL;
+  _result="${RESULT}";
+  if isEmpty "${_result}"; then
+    LOGGING.peekLogLevel;
+  fi
 }
 
 # fun: LOGGING.logStuffResult
@@ -920,7 +972,8 @@ function LOGGING.logStuffResult() {
 function LOGGING.numberOfNestedInProgressTasks() {
   local -i _rescode;
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_STACK;
   local -n _logStack=${RESULT};
 
   _rescode=${#_logStack[@]};
@@ -934,7 +987,8 @@ function LOGGING.numberOfNestedInProgressTasks() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.openLogLine;
 function LOGGING.openLogLine() {
-  DW.setGlobalInt "${_DW_MODULE}" "LOG_LINE_OPEN" ${TRUE};
+  LOGGING.getModuleName;
+  DW.setGlobalInt "${RESULT}" LOG_LINE_OPEN ${TRUE};
 }
 
 # fun: LOGGING.peekLog
@@ -947,7 +1001,8 @@ function LOGGING.peekLog() {
   local -i _rescode;
   local _result="";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_STACK;
   local -n _logStack=${RESULT};
 
   local -i _len=${#_logStack[@]};
@@ -977,7 +1032,8 @@ function LOGGING.peekLogCategory() {
   local -i _rescode;
   local _result="";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_CATEGORY_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
   local -n _logCategoryStack=${RESULT};
 
   local -i _len=${#_logCategory[@]};
@@ -1008,7 +1064,8 @@ function LOGGING.peekLogLevel() {
   local -i _rescode;
   local _result="";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_LEVEL_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
   local -n _logLevelStack=${RESULT};
 
   local -i _len=${#_logLevelStack[@]};
@@ -1039,7 +1096,8 @@ function LOGGING.popLog() {
   local -i _rescode;
   local _result="";
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_STACK;
   local -n _logStack=${RESULT};
 
   local -i _len=${#_logStack[@]};
@@ -1070,7 +1128,8 @@ function LOGGING.popLog() {
 function LOGGING.popLogCategory() {
   local -i _rescode;
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_CATEGORY_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
   local -n _logCategoryStack=${RESULT};
 
   local -i _len=${#_logCategoryStack[@]};
@@ -1096,11 +1155,12 @@ function LOGGING.popLogCategory() {
 # use: if LOGGING.popLogLevel; then echo "Last log level: ${RESULT}"; fi
 function LOGGING.popLogLevel() {
   local -i _rescode;
-  local -i _len=${#_DRY_WIT_LOG_LEVEL_STACK[@]};
   local -i _newLen;
 
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_LEVEL_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
   local -n _logLevelStack=${RESULT};
+  local -i _len=${#_logLevelStack[@]};
 
   if [ ${_len} -gt 0 ]; then
     _newLen=$((${_len} - 1));
@@ -1121,7 +1181,8 @@ function LOGGING.popLogLevel() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.pushLog "Operation in progress";
 function LOGGING.pushLog() {
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_STACK;
   local -n _logStack=${RESULT};
   _logStack[${#_logStack[@]}]="$*";
 }
@@ -1133,7 +1194,8 @@ function LOGGING.pushLog() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.pushLogCategory "sending-data";
 function LOGGING.pushLogCategory() {
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_CATEGORY_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
   local -n _logCategoryStack=${RESULT};
   _logCategoryStack[${#_logCategoryStack[@]}]="$*";
 }
@@ -1145,7 +1207,8 @@ function LOGGING.pushLogCategory() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.pushLogLevel INFO
 function LOGGING.pushLogLevel() {
-  DW.getGlobalVariableName "${_DW_MODULE}" "LOG_LEVEL_STACK";
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
   local -n _logLevelStack=${RESULT};
   _logLevelStack[${#_logLevelStack[@]}]="$*";
 }
@@ -1157,7 +1220,8 @@ function LOGGING.pushLogLevel() {
 # txt: The variable RESULT contains the category position.
 # use: LOGGING.retrieveCategoryPositionInLogPrefix; echo "category -> ${RESULT}";
 function LOGGING.retrieveCategoryPositionInLogPrefix() {
-  DW.getGlobalInt "${_DW_MODULE}" LOG_PREFIX_CATEGORY_POSITION;
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_PREFIX_CATEGORY_POSITION;
 }
 
 # fun: LOGGING.retrieveKeywordColor
@@ -1171,17 +1235,19 @@ function LOGGING.retrieveCategoryPositionInLogPrefix() {
 function LOGGING.retrieveKeywordColor() {
   local _keyword="${1}";
   checkNotEmpty "keyword" "${_keyword}" 1;
-  DW.getGlobalString "${_DW_MODULE}" NO_COLOR;
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" NO_COLOR;
   local _noColor="${RESULT}";
   local _defaultColor="${2:-${_noColor}}";
 
   local result;
 
-  DW.getGlobalString "${_DW_MODULE}" SUCCESS_COLOR;
+  DW.getGlobalString "${_moduleName}" SUCCESS_COLOR;
   local _successColor="${RESULT}";
-  DW.getGlobalString "${_DW_MODULE}" FAILURE_COLOR;
+  DW.getGlobalString "${_moduleName}" FAILURE_COLOR;
   local _failureColor="${RESULT}";
-  DW.getGlobalString "${_DW_MODULE}" IN_PROGRESS_COLOR;
+  DW.getGlobalString "${_moduleName}" IN_PROGRESS_COLOR;
   local _inProgressColor="${RESULT}";
 
   case ${_keyword} in
@@ -1205,7 +1271,8 @@ function LOGGING.retrieveKeywordColor() {
 # txt: The variable RESULT contains the level position.
 # use: LOGGING.retrieveLevelPositionInLogPrefix; echo "level -> ${RESULT}";
 function LOGGING.retrieveLevelPositionInLogPrefix() {
-  DW.getGlobalInt "${_DW_MODULE}" LOG_PREFIX_LEVEL_POSITION;
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_PREFIX_LEVEL_POSITION;
 }
 
 # fun: LOGGING.retrieveLogNamespace
@@ -1215,9 +1282,11 @@ function LOGGING.retrieveLevelPositionInLogPrefix() {
 # txt: The variable RESULT contains the log namespace.
 # use: LOGGING.retrieveLogNamespace; echo "namespace: ${RESULT}";
 function LOGGING.retrieveLogNamespace() {
-  DW.getGlobalString "${_DW_MODULE}" LOG_CATEGORY_NAMESPACE;
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" LOG_CATEGORY_NAMESPACE;
   local _namespace="${RESULT}";
-  DW.getGlobalString "${_DW_MODULE}" LOG_CATEGORY;
+  DW.getGlobalString "${_moduleName}" LOG_CATEGORY;
   local _category="${RESULT}";
   DW.getScriptName;
   local _scriptName="${RESULT}";
@@ -1258,13 +1327,15 @@ function LOGGING.retrieveLogOutcomeColors() {
   local -i _len;
   local -i _outcomeTextPosition;
 
-  DW.getGlobalVariableName "${_DW_MODULE}" LOG_OUTCOME_COLORS;
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_COLORS;
   local -n _logOutcomeColors=${RESULT}
   _len=$((${#_logOutcomeColors[@]} - 1));
 
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
   for _i in $(seq 0 ${_len}); do
+    IFS="${_oldIFS}";
     _logOutcomeColors[${_i}]="${_logOutcomeColors[${_i}]}";
   done
   IFS="${_oldIFS}";
@@ -1292,7 +1363,8 @@ function LOGGING.retrieveLogOutcomeTokens() {
   local -i _len;
   local -i _outcomeTextPosition;
 
-  DW.getGlobalVariableName "${_DW_MODULE}" LOG_OUTCOME_TOKENS;
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_TOKENS;
   local -n _logOutcomeTokens=${RESULT};
   _len=$((${#_logOutcomeTokens[@]} - 1));
 
@@ -1322,8 +1394,8 @@ function LOGGING.retrieveLogPrefix() {
   local _level="${2}";
   checkNotEmpty "level" "${_level}" 2;
 
-  local result="$(LOGGING.echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
-  export RESULT="${result}";
+  local _result="$(LOGGING.echoColorAwareLogPrefix "${_category}" ${FALSE} "${_level}")";
+  export RESULT="${_result}";
 }
 
 # fun: LOGGING.retrieveLogPrefixToken
@@ -1337,7 +1409,8 @@ function LOGGING.retrieveLogPrefixToken() {
   local _levelVar="${1}";
   local -i _rescode;
   checkNotEmpty level "${_levelVar}" 1;
-  DW.getGlobalString "${_DW_MODULE}" "${_levelVar}_LOG_PREFIX_TOKEN";
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" "${_levelVar}_LOG_PREFIX_TOKEN";
   _rescode=$?;
 
   return ${_rescode};
@@ -1366,12 +1439,13 @@ function LOGGING.retrieveLogPrefixTokens() {
   local -i _category_position;
   local -i _levelPosition;
 
-  DW.getGlobalVariableName "${_DW_MODULE}" LOG_PREFIX_TOKENS;
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_PREFIX_TOKENS;
   local -n _logPrefixTokens=${RESULT};
   _lastIndex=$((${#_logPrefixTokens[@]} - 1));
 
   local _oldIFS="${IFS}";
-#  IFS=$' \t\n';
+  #  IFS=$' \t\n';
   IFS="${DWIFS}";
   for _i in $(seq 0 ${_lastIndex}); do
     IFS="${_oldIFS}";
@@ -1400,7 +1474,8 @@ function LOGGING.retrieveLogPrefixTokens() {
 # txt: The variable RESULT contains the timestamp.
 # use: LOGGING.retrieveLogTimestamp; echo "The log timestamp is ${RESULT}";
 function LOGGING.retrieveLogTimestamp() {
-  DW.getGlobalString "${_DW_MODULE}" LOG_TIMESTAMP;
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" LOG_TIMESTAMP;
   export RESULT="$(date "${RESULT}")";
 }
 
@@ -1411,7 +1486,8 @@ function LOGGING.retrieveLogTimestamp() {
 # txt: The variable RESULT contains the outcome text position.
 # use: LOGGING.retrieveOutcomeTextPositionInLogOutcome; echo "outcome text -> ${RESULT}";
 function LOGGING.retrieveOutcomeTextPositionInLogOutcome() {
-  DW.getGlobalInt "${_DW_MODULE}" LOG_OUTCOME_TEXT_POSITION;
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_OUTCOME_TEXT_POSITION;
 }
 
 # fun: LOGGING.retrieveTimestampPositionInLogPrefix
@@ -1421,7 +1497,8 @@ function LOGGING.retrieveOutcomeTextPositionInLogOutcome() {
 # txt: The variable RESULT contains the timestamp position.
 # use: LOGGING.retrieveTimestampPositionInLogPrefix; echo "timestamp -> ${RESULT}";
 function LOGGING.retrieveTimestampPositionInLogPrefix() {
-  DW.getGlobalInt "${_DW_MODULE}" LOG_PREFIX_TIMESTAMP_POSITION;
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_PREFIX_TIMESTAMP_POSITION;
 }
 
 # fun: LOGGING.setLastLog
@@ -1431,7 +1508,8 @@ function LOGGING.retrieveTimestampPositionInLogPrefix() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.setLastLog "Operation in progress";
 function LOGGING.setLastLog() {
-  DW.setGlobalString "${_DW_MODULE}" LAST_LOG "${@}";
+  LOGGING.getModuleName;
+  DW.setGlobalString "${RESULT}" LAST_LOG "${@}";
 }
 
 # fun: getLastLog
@@ -1441,7 +1519,8 @@ function LOGGING.setLastLog() {
 # txt: RESULT contains the last log.
 # use: getLastLog; echo "Last log: ${RESULT}";
 function LOGGING.setLastLog() {
-  DW.getGlobalString "${_DW_MODULE}" LAST_LOG;
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" LAST_LOG;
 }
 
 # fun: logInfo
@@ -1582,7 +1661,8 @@ function resolveVerbosity() {
 # txt: Returns 0/TRUE always.
 # use: setDebugEnabled
 function setDebugEnabled() {
-  DW.setGlobalInt "${_DW_MODULE}" LOG_DEBUG ${TRUE};
+  LOGGING.getModuleName;
+  DW.setGlobalInt "${RESULT}" LOG_DEBUG ${TRUE};
   setInfoEnabled;
 }
 
@@ -1593,7 +1673,8 @@ function setDebugEnabled() {
 # use: setInfoEnabled;
 function setInfoEnabled() {
   setQuietMode ${FALSE};
-  DW.setGlobalInt "${_DW_MODULE}" LOG_INFO ${TRUE};
+  LOGGING.getModuleName;
+  DW.setGlobalInt "${RESULT}" LOG_INFO ${TRUE};
 }
 
 # fun: setLogCategory
@@ -1605,7 +1686,8 @@ function setInfoEnabled() {
 function setLogCategory() {
   local _category="${1}";
 
-  DW.setGlobalString "${_DW_MODULE}" LOG_CATEGORY "${_category}";
+  LOGGING.getModuleName;
+  DW.setGlobalString "${RESULT}" LOG_CATEGORY "${_category}";
 }
 
 # fun: setLogCategoryNamespace
@@ -1618,7 +1700,8 @@ function setLogCategoryNamespace() {
   local _namespace="${1}";
   checkNotEmpty namespace "${_namespace}" 1;
 
-  DW.setGlobalString "${_DW_MODULE}" LOG_CATEGORY_NAMESPACE "${_namespace}";
+  LOGGING.getModuleName;
+  DW.setGlobalString "${RESULT}" LOG_CATEGORY_NAMESPACE "${_namespace}";
 }
 
 # fun: setQuietMode
@@ -1631,7 +1714,8 @@ function setQuietMode() {
   local _mode="${1}";
   checkNotEmpty "mode" "${_mode}" 1;
 
-  DW.setGlobalInt "${_DW_MODULE}" LOG_QUIET ${_mode};
+  LOGGING.getModuleName;
+  DW.setGlobalInt "${RESULT}" LOG_QUIET ${_mode};
 }
 
 # fun: setTraceEnabled
@@ -1640,7 +1724,8 @@ function setQuietMode() {
 # txt: Returns 0/TRUE always.
 # use: setTraceEnabled;
 function setTraceEnabled() {
-  DW.setGlobalInt "${_DW_MODULE}" LOG_TRACE ${TRUE};
+  LOGGING.getModuleName;
+  DW.setGlobalInt "${RESULT}" LOG_TRACE ${TRUE};
   setDebugEnabled;
 }
 
@@ -1676,76 +1761,71 @@ declare -agx BUILTIN_FAILURE_KEYWORDS=("${ERROR}" "${FAILURE}" "${FAILED}" "${KO
 # txt: Returns 0/TRUE always.
 # use: LOGGING.resetState
 function LOGGING.resetState() {
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_STACK;
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_CATEGORY_STACK;
-  DW.declareGlobalString "${_DW_MODULE}" LOG_CATEGORY_NAMESPACE;
-  DW.declareGlobalString "${_DW_MODULE}" LOG_LEVEL_STACK;
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_TRACE ${FALSE};
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_DEBUG ${FALSE};
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_INFO ${TRUE};
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_QUIET ${FALSE};
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_OUTCOME_TOKENS;
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_OUTCOME_COLORS;
-  DW.declareGlobalInt "${_DW_MODULE}" DEFAULT_TERM_WIDTH;
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_LINE_OPEN ${FALSE};
-  DW.declareGlobalString "${_DW_MODULE}" LAST_LOG;
-  DW.declareGlobalInt "${_DW_MODULE}" LAST_LOG_LEVEL;
-  DW.declareGlobalString "${_DW_MODULE}" NESTED_TASK_IN_PROGRESS "....";
-  DW.declareGlobalString "${_DW_MODULE}" LOG_TIMESTAMP "+%Y/%m/%d %H:%M:%S";
-  DW.declareGlobalString "${_DW_MODULE}" LOG_OUTCOME_SEPARATOR " ";
-  DW.declareGlobalString "${_DW_MODULE}" LOG_NESTED_INDENTATION "  ";
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalArray "${_moduleName}" LOG_STACK;
+  DW.declareGlobalArray "${_moduleName}" LOG_CATEGORY_STACK;
+  DW.declareGlobalString "${_moduleName}" LOG_CATEGORY_NAMESPACE;
+  DW.declareGlobalString "${_moduleName}" LOG_LEVEL_STACK;
+  DW.declareGlobalInt "${_moduleName}" LOG_TRACE ${FALSE};
+  DW.declareGlobalInt "${_moduleName}" LOG_DEBUG ${FALSE};
+  DW.declareGlobalInt "${_moduleName}" LOG_INFO ${TRUE};
+  DW.declareGlobalInt "${_moduleName}" LOG_QUIET ${FALSE};
+  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_TOKENS;
+  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_COLORS;
+  DW.declareGlobalInt "${_moduleName}" DEFAULT_TERM_WIDTH;
+  DW.declareGlobalInt "${_moduleName}" LOG_LINE_OPEN ${FALSE};
+  DW.declareGlobalString "${_moduleName}" LAST_LOG;
+  DW.declareGlobalInt "${_moduleName}" LAST_LOG_LEVEL;
+  DW.declareGlobalString "${_moduleName}" NESTED_TASK_IN_PROGRESS "....";
+  DW.declareGlobalString "${_moduleName}" LOG_TIMESTAMP "+%Y/%m/%d %H:%M:%S";
+  DW.declareGlobalString "${_moduleName}" LOG_OUTCOME_SEPARATOR " ";
+  DW.declareGlobalString "${_moduleName}" LOG_NESTED_INDENTATION "  ";
 
-  buildColor "NO_COLOR" "0";
-  buildColor "BLACK" "30" "0";
-  buildColor "RED" "31" "41";
-  buildColor "GREEN" "32" "42";
-  buildColor "YELLOW" "33" "43";
-  buildColor "BLUE" "34" "44";
-  buildColor "MAGENTA" "35" "45";
-  buildColor "CYAN" "36" "46";
-  buildColor "GRAY" "37" "47";
   # env: SUCCESS_COLOR: The color used to indicate the operation succeeded.
-  DW.declareGlobalString "${_DW_MODULE}" SUCCESS_COLOR GREEN;
+  DW.declareGlobalString "${_moduleName}" SUCCESS_COLOR GREEN;
   # env: FAILURE_COLOR: The color used to indicate the operation failed.
-  DW.declareGlobalString "${_DW_MODULE}" FAILURE_COLOR RED;
+  DW.declareGlobalString "${_moduleName}" FAILURE_COLOR RED;
   # env: IN_PROGRESS_COLOR: The color used to indicate the operation is in progress.
-  DW.declareGlobalString "${_DW_MODULE}" IN_PROGRESS_COLOR BLUE;
+  DW.declareGlobalString "${_moduleName}" IN_PROGRESS_COLOR BLUE;
   # env: UNDEFINED_COLOR: The color used to indicate unknown operation outcomes.
-  DW.declareGlobalString "${_DW_MODULE}" UNDEFINED_COLOR GRAY;
+  DW.declareGlobalString "${_moduleName}" UNDEFINED_COLOR GRAY;
   # env: DEFAULT_LOG_PREFIX_COLOR: The default color used for log prefixes.
-  DW.declareGlobalString "${_DW_MODULE}" DEFAULT_LOG_PREFIX_COLOR GRAY;
+  DW.declareGlobalString "${_moduleName}" DEFAULT_LOG_PREFIX_COLOR GRAY;
   # env: DEFAULT_LOG_OUTCOME_COLOR: The default color used for outcomes.
-  DW.declareGlobalString "${_DW_MODULE}" DEFAULT_LOG_OUTCOME_COLOR GRAY;
+  DW.declareGlobalString "${_moduleName}" DEFAULT_LOG_OUTCOME_COLOR GRAY;
   # env: DEFAULT_LOG_RESUMING_TASK_COLOR: The default color used when resuming tasks.
-  DW.declareGlobalString "${_DW_MODULE}" DEFAULT_LOG_RESUMING_TASK_COLOR GRAY;
+  DW.declareGlobalString "${_moduleName}" DEFAULT_LOG_RESUMING_TASK_COLOR GRAY;
 
   # env: LOG_PFEFIX_COLORS: The colors used in log prefixes.
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_PREFIX_COLORS BLUE CYAN YELLOW MAGENTA YELLOW RED BLUE;
+  DW.declareGlobalArray "${_moduleName}" LOG_PREFIX_COLORS BLUE CYAN YELLOW MAGENTA YELLOW RED BLUE;
 
   # env: LOG_PREFIX_TOKENS: The tokens used in log prefixes.
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_PREFIX_TOKENS "[" "timestamp" "<" "category" ">" "logLevel" "]";
+  DW.declareGlobalArray "${_moduleName}" LOG_PREFIX_TOKENS "[" "timestamp" "<" "category" ">" "logLevel" "]";
 
   # env: LOG_PREFIX_TIMESTAMP_POSITION: The position of the timestamp in LOG_PREFIX_TOKENS.
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_PREFIX_TIMESTAMP_POSITION 1;
+  DW.declareGlobalInt "${_moduleName}" LOG_PREFIX_TIMESTAMP_POSITION 1;
   # env: LOG_PREFIX_CATEGORY_POSITION: The position of the category in LOG_PREFIX_TOKENS.
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_PREFIX_CATEGORY_POSITION 3;
+  DW.declareGlobalInt "${_moduleName}" LOG_PREFIX_CATEGORY_POSITION 3;
   # env: LOG_PREFIX_LEVEL_POSITION: The position of the level in LOG_PREFIX_TOKENS.
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_PREFIX_LEVEL_POSITION 5;
+  DW.declareGlobalInt "${_moduleName}" LOG_PREFIX_LEVEL_POSITION 5;
 
   # env: INFO_LOG_PREFIX_TOKEN: The symbol used to represent INFO level.
-  DW.declareGlobalString "${_DW_MODULE}" INFO_LOG_PREFIX_TOKEN ".";
+  DW.declareGlobalString "${_moduleName}" INFO_LOG_PREFIX_TOKEN ".";
   # env: DEBUG_LOG_PREFIX_TOKEN: The symbol used to represent DEBUG level.
-  DW.declareGlobalString "${_DW_MODULE}" DEBUG_LOG_PREFIX_TOKEN "o";
+  DW.declareGlobalString "${_moduleName}" DEBUG_LOG_PREFIX_TOKEN "o";
   # env: TRACE_LOG_PREFIX_TOKEN: The symbol used to represent TRACE level.
-  DW.declareGlobalString "${_DW_MODULE}" TRACE_LOG_PREFIX_TOKEN "O";
+  DW.declareGlobalString "${_moduleName}" TRACE_LOG_PREFIX_TOKEN "O";
 
   # env: LOG_OUTCOME_COLORS: The colors used when printing the operation outcome.
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_OUTCOME_COLORS CYAN WHITE CYAN;
+  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_COLORS CYAN WHITE CYAN;
 
   # env: LOG_OUTCOME_TOKENS: The tokens used when printing the operation outcome.
-  DW.declareGlobalArray "${_DW_MODULE}" LOG_OUTCOME_TOKENS "[" "done" "]";
+  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_TOKENS "[" "done" "]";
 
   # env: LOG_OUTCOME_TEXT_POSITION: The position of the text in LOG_OUTCOME_TOKENS.
-  DW.declareGlobalInt "${_DW_MODULE}" LOG_OUTCOME_TEXT_POSITION 1;
+  DW.declareGlobalInt "${_moduleName}" LOG_OUTCOME_TEXT_POSITION 1;
 }
+
+LOGGING.resetState;
 #

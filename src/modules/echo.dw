@@ -2,9 +2,6 @@
 # api: public
 # txt: Functions related to displaying text to stdout.
 
-DW.import constant;
-DW.import envvar;
-
 # fun: allowsColors
 # api: public
 # txt: Checks whether the terminal allows colors or not.
@@ -58,9 +55,9 @@ function echoColorizedText() {
     _failureColor="${RESULT}";
     case ${_keyword} in
       ${SUCCESS}) _color="${_successColor}";
-         ;;
+                  ;;
       ${FAILURE}) _color="${_failureColor}";
-         ;;
+                  ;;
       *) if isSuccessKeyword "${_text}"; then
            _color="${_successColor}";
          elif isFailureKeyword "${_text}"; then
@@ -83,21 +80,23 @@ function echoColorizedText() {
 # txt: Returns 0/TRUE always.
 # use: echoColorizeTextWithColor WHITE "done";
 function echoColorizedTextWithColor() {
-  local _flagMinusN;
+  local -i _flagMinusN;
   if [ "${1}" == "-n" ]; then
     _flagMinusN=${TRUE};
     shift;
   else
     _flagMinusN=${FALSE};
   fi
-  evalConstant "${1}";
-  local _color="${RESULT}";
+  local _colorName="${1}";
+  checkNotEmpty colorName "${_colorName}" 1;
   local _text="${2}";
-  local result;
+  checkNotEmpty text "${_text}" 2;
 
-  local _allowsColors;
+  evalConstant "${_colorName}";
+  local _color="${RESULT}";
+
   allowsColors;
-  _allowsColors=$?;
+  local -i _allowsColors=$?;
 
   if isTrue ${_allowsColors}; then
     if isTrue ${_flagMinusN}; then
@@ -154,7 +153,7 @@ function echoInColor() {
     fi
   else
     if isTrue ${_inColor}; then
-        echo -e "${_colorAux}${_text}${NO_COLOR}";
+      echo -e "${_colorAux}${_text}${NO_COLOR}";
     else
       echo "${_text}";
     fi
@@ -170,16 +169,16 @@ function echoInColor() {
 # txt: The variable RESULT contains the color value.
 # use: getColor RED;
 function getColor() {
-    local _colorConstant="${1}";
-    local _defaultColor="${2:-${UNDEFINED_COLOR}}"
-    local result;
+  local _colorConstant="${1}";
+  local _defaultColor="${2:-${UNDEFINED_COLOR}}"
+  local result;
 
-    if allowsColors; then
-        evalConstant "${_colorConstant}" "${_defaultColor}";
-        result="${RESULT}";
-    fi
+  if allowsColors; then
+    evalConstant "${_colorConstant}" "${_defaultColor}";
+    result="${RESULT}";
+  fi
 
-    export RESULT="${result}";
+  export RESULT="${result}";
 }
 
 # fun: resetColor

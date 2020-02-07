@@ -71,19 +71,18 @@ function arrayDoesNotContain() {
 # txt: Returns 0/TRUE always.
 # use: clearAssociativeArray myArray;
 function clearAssociativeArray() {
-    local _arrayName="${1}";
-    local _key;
+  local _arrayName="${1}";
+  checkNotEmpty "arrayName" "${_arrayName}" 1;
+  local _key;
 
-    checkNotEmpty "arrayName" "${_arrayName}" 1;
+  declare -n _directArray="${_arrayName}";
 
-    declare -n _directArray="${_arrayName}";
-
-    IFS="${DWIFS}";
-    for _key in "${!_directArray[@]}"; do
-        IFS="${_oldIFS}";
-        unset _directArray[${_key}];
-    done
+  IFS="${DWIFS}";
+  for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
+    unset _directArray[${_key}];
+  done
+  IFS="${_oldIFS}";
 }
 
 # fun: flattenArray
@@ -134,23 +133,23 @@ function flattenArray() {
 #      ...
 #      forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
 function forEachAssociativeArrayEntryDo() {
-    local _arrayName="${1}";
-    local _callback="${2}";
-    local _key;
-    local _oldIFS="${IFS}";
+  local _arrayName="${1}";
+  local _callback="${2}";
+  local _key;
+  local _oldIFS="${IFS}";
 
-    checkNotEmpty "arrayName" "${_arrayName}" 1;
-    checkFunctionPresent "callback" "${_callback}" 2;
+  checkNotEmpty "arrayName" "${_arrayName}" 1;
+  checkFunctionPresent "callback" "${_callback}" 2;
 
-    declare -n _directArray="${_arrayName}";
+  declare -n _directArray="${_arrayName}";
 
-    IFS="${DWIFS}";
-    for _key in "${!_directArray[@]}"; do
-        IFS="${_oldIFS}";
-
-        ${_callback} "${_key}" "${_directArray[${_key}]}";
-    done
+  IFS="${DWIFS}";
+  for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
+
+    ${_callback} "${_key}" "${_directArray[${_key}]}";
+  done
+  IFS="${_oldIFS}";
 }
 
 # fun: isArrayEmpty
@@ -160,16 +159,16 @@ function forEachAssociativeArrayEntryDo() {
 # txt: Returns 0/TRUE if the array is empty; 1/FALSE otherwise.
 # use: if isArrayEmpty array; then ...; fi
 function isArrayEmpty() {
-    local _arrayName="${1}";
-    local -i _rescode;
+  local _arrayName="${1}";
+  local -i _rescode;
 
-    if isEmpty "${_arrayName}"; then
-        _rescode=${TRUE};
-    else
-        _rescode=${FALSE};
-    fi
+  if isEmpty "${_arrayName}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: retrieveAssociativeArrayKeys
