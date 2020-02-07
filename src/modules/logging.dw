@@ -142,8 +142,8 @@ function isFailureKeyword() {
   for _i in ${_failureKeywords[*]}; do
     IFS="${_oldIFS}";
     if    areEqual "${_i}" "${1}" \
-        || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-                    "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
+       || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                   "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
       _rescode=${TRUE};
       break;
     fi;
@@ -157,8 +157,8 @@ function isFailureKeyword() {
     for _i in ${_builtinFailureKeywords[*]}; do
       IFS="${_oldIFS}";
       if   areEqual "${_i}" "${1}" \
-          || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-                      "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
+        || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                    "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         _rescode=${TRUE};
         break;
       fi;
@@ -444,10 +444,11 @@ function LOGGING.echoColorAwareLogPrefix() {
   local _aux;
   local _colors;
   local -i _i=0;
+
   LOGGING.getModuleName;
   local _moduleName="${RESULT}";
 
-  LOGGING.retrieveLogPrefixTokens "${_category}" "${_level}";
+  LOGGING.processLogPrefixTokens "${_category}" "${_level}";
 
   DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_TOKENS;
   local -n _logPrefixTokens="${RESULT}";
@@ -1416,14 +1417,14 @@ function LOGGING.retrieveLogPrefixToken() {
   return ${_rescode};
 }
 
-# fun: LOGGING.retrieveLogPrefixTokens
+# fun: LOGGING.processLogPrefixTokens
 # api: private
-# txt: Retrieves the tokens composing the log prefix.
+# txt: Processes the tokens composing the log prefix.
 # opt: category: The log category.
 # opt: level: The log level (optional).
 # txt: Returns 0/TRUE always.
-# use: LOGGING.retrieveLogPrefixTokens "a:b:c" DEBUG; echo "${RESULT}";
-function LOGGING.retrieveLogPrefixTokens() {
+# use: LOGGING.processLogPrefixTokens "a:b:c" DEBUG;
+function LOGGING.processLogPrefixTokens() {
   local _category="${1}";
   checkNotEmpty "category" "${_category}" 1;
 
@@ -1475,7 +1476,7 @@ function LOGGING.retrieveLogPrefixTokens() {
 # use: LOGGING.retrieveLogTimestamp; echo "The log timestamp is ${RESULT}";
 function LOGGING.retrieveLogTimestamp() {
   LOGGING.getModuleName;
-  DW.getGlobalString "${RESULT}" LOG_TIMESTAMP;
+  DW.getGlobalString "${RESULT}" LOG_TIMESTAMP_FORMAT;
   export RESULT="$(date "${RESULT}")";
 }
 
@@ -1778,7 +1779,7 @@ function LOGGING.resetState() {
   DW.declareGlobalString "${_moduleName}" LAST_LOG;
   DW.declareGlobalInt "${_moduleName}" LAST_LOG_LEVEL;
   DW.declareGlobalString "${_moduleName}" NESTED_TASK_IN_PROGRESS "....";
-  DW.declareGlobalString "${_moduleName}" LOG_TIMESTAMP "+%Y/%m/%d %H:%M:%S";
+  DW.declareGlobalString "${_moduleName}" LOG_TIMESTAMP_FORMAT "+%Y/%m/%d %H:%M:%S";
   DW.declareGlobalString "${_moduleName}" LOG_OUTCOME_SEPARATOR " ";
   DW.declareGlobalString "${_moduleName}" LOG_NESTED_INDENTATION "  ";
 

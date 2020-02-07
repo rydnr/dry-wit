@@ -173,8 +173,7 @@ function DW.declareGlobalArray() {
   BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
   shift;
   shift;
-  local _values="${@}";
-  DW.declareGlobalVariable "${_module}" "${_varName}" "array" ${_values};
+  DW.declareGlobalVariable "${_module}" "${_varName}" "array" ${@};
 }
 
 # fun: DW.declareGlobalMap
@@ -192,8 +191,7 @@ function DW.declareGlobalMap() {
   BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
   shift;
   shift;
-  local _values="${@}";
-  DW.declareGlobalVariable "${_module}" "${_varName}" "map" ${_values};
+  DW.declareGlobalVariable "${_module}" "${_varName}" "map" ${@};
 }
 
 # fun: DW.declareGlobalVariable
@@ -217,7 +215,6 @@ function DW.declareGlobalVariable() {
   shift;
   shift;
   shift;
-  local _initialValues="${@}";
   local -i _rescode;
 
   DW.getGlobalVariableName "${_module}" "${_varName}";
@@ -233,12 +230,12 @@ function DW.declareGlobalVariable() {
              fi
              _rescode=$?;
              ;;
-      "array") if BOOTSTRAP.failsafeIsEmpty "${_initialValues}"; then
-                 eval "declare -agx ${_aux}";
-               else
-                 eval "declare -agx ${_aux}=( ${_initialValues} )";
-               fi
+      "array") eval "declare -agx ${_aux}";
                _rescode=$?;
+               if ! BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
+                 local -n _tmp=${_aux};
+                 _tmp=( $@ );
+               fi
                ;;
       "map") eval "declare -Agx ${_aux}";
              _rescode=$?;
