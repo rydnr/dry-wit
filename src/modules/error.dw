@@ -22,19 +22,19 @@ function ERROR.getModuleName() {
 # use: addError INVALID_NAME "The name is not valid";
 function addError() {
   local _label="${1}";
-  local _message="${2}";
-  local _normalizedLabel;
-
   checkNotEmpty "label" "${_label}" 1;
+  local _message="${2}";
   checkNotEmpty "message" "${_message}" 2;
 
   normalizeUppercase "${_label}";
-  _normalizedLabel="${RESULT}";
-  appendErrorMessage "${_normalizedLabel}";
-  ERROR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.setGlobalString "${_moduleName}" "${_normalizedLabel}" "${_message}";
-  #  debugEcho "${_normalizedLabel} -> ${_message}"
+  local _normalizedLabel="${RESULT}";
+
+  if isErrorUndefined "${_normalizedLabel}"; then
+    appendErrorMessage "${_normalizedLabel}";
+    ERROR.getModuleName;
+    local _moduleName="${RESULT}";
+    DW.setGlobalString "${_moduleName}" "${_normalizedLabel}" "${_message}";
+  fi
 }
 
 # fun: appendErrorMessage error
@@ -45,7 +45,6 @@ function addError() {
 # use: appendErrorMessage "item";
 function appendErrorMessage() {
   local _error="${1}";
-
   checkNotEmpty "error" "${_error}" 1;
 
   ERROR.getModuleName;
@@ -63,11 +62,10 @@ function appendErrorMessage() {
 # use: exitWithError UNKNOWN_OPTION "Unknown option";
 function exitWithError() {
   local _label="${1}";
+  checkNotEmpty "label" "${_label}" 1;
   shift;
   local _message="${@}";
   local -i _rescode;
-
-  checkNotEmpty "label" "${_label}" 1;
 
   if isErrorUndefined "${_label}"; then
     addError "${_label}" "${_message}";
@@ -83,15 +81,13 @@ function exitWithError() {
 # use: exitWithErrorCode UNKNOWN_OPTION;
 function exitWithErrorCode() {
   local _label="${1}";
-  shift;
-  local _level;
-  local -i _rescode;
-
   checkNotEmpty "label" "${_label}" 1;
+  shift;
+  local -i _rescode;
 
   if isLogLineOpen; then
     getLastLogLevel;
-    _level="${RESULT:-INFO}";
+    local _level="${RESULT:-INFO}";
     logResult "${_level}" FAILURE "aborted";
   fi
 
@@ -112,15 +108,15 @@ function exitWithErrorCode() {
 #      fi
 function isErrorDefined() {
   local _label="${1}";
-  local -i _rescode;
-
   checkNotEmpty "label" "${_label}" 1;
+
+  local -i _rescode;
 
   ERROR.getModuleName;
   local _moduleName="${RESULT}";
   DW.getGlobalVariableName "${_moduleName}" ERROR_MESSAGES;
   local -n _errorMessages=${RESULT};
-  if isNotEmpty "${_errorMessages[@]}" && arrayContains "${_errorMessages[@]}" "${_label}"; then
+  if isNotEmpty "${_errorMessages[@]}" && arrayContains "${_label}" "${_errorMessages[@]}"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -160,6 +156,7 @@ function isErrorUndefined() {
 # use: if printErrorMessage INVALID_OPTION; then ...; fi
 function printErrorMessage() {
   local _label="${1}";
+  checkNotEmpty "label" "${_label}" 1;
   shift;
   local -i _rescode=${TRUE};
   local _message;
@@ -170,8 +167,6 @@ function printErrorMessage() {
 
   #  set +o nounset  # allow unset variables
 
-  checkNotEmpty "label" "${_label}" 1;
-
   ERROR.getModuleName;
   local _moduleName="${RESULT}";
   DW.getGlobalVariableName "${_moduleName}" BUILTIN_ERRORS;
@@ -180,7 +175,6 @@ function printErrorMessage() {
   for _error in ${_builtinErrors[@]}; do
     IFS="${_oldIFS}";
     _rescode=$((_rescode+1));
-    #    debugEcho "error_message (${_rescode}): ${_error}";
     if areEqual "${_error}" "${_label}"; then
       _message="${_error}";
       break;
@@ -200,7 +194,6 @@ function printErrorMessage() {
     for _error in ${_errorMessages[@]}; do
       IFS="${_oldIFS}";
       _rescode=$((_rescode+1));
-      #      debugEcho "error_message (${rescode}): ${_error}";
       if areEqual "${_error}" "${_label}"; then
         _message="${_error}";
         break;
@@ -213,7 +206,8 @@ function printErrorMessage() {
     _error="Error ${_label}, but no error message defined. Fix this script";
     _rescode=-1;
   else
-    _error="$(echo ${_message} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)";
+    DW.getGlobalString "${_moduleName}" "${_label}";
+    _error="${RESULT}";
   fi
 
   if [ ${#@} -gt 0 ]; then
@@ -259,7 +253,8 @@ EOF
     if [ ${#_builtinErrors[@]} -gt 0 ]; then
       IFS=$"${DWIFS}";
       for ((i = 0; i < ${#_builtinErrors[@]}; i++)); do
-        echo "  $((i+1)): $(echo ${_builtinErrors[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
+        DW.getGlobalString "${_moduleName}" "${_builtinErrors[$j]}";
+        echo "  $((i+1)): ${RESULT}";
       done
     fi
   DW.getGlobalVariableName "${_moduleName}" ERROR_MESSAGES;
@@ -267,7 +262,8 @@ EOF
     if [ ${#_errorMessages[@]} -gt 0 ]; then
       IFS=$"${DWIFS}";
       for ((j = 0; j < ${#_errorMessages[@]}; j++)); do
-        echo "  $((j+i+1)): $(echo ${_errorMessages[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh).";
+        DW.getGlobalString "${_moduleName}" "${_errorMessages[$j]}";
+        echo "  $((j+i+1)): ${RESULT}";
       done
     fi
     IFS="${_oldIFS}";
