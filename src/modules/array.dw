@@ -14,15 +14,14 @@ DW.import number;
 #      if arrayContains "other number" "${a[@]}"; then ...; fi
 function arrayContains() {
   local _item="${1}";
+  checkNotEmpty "item" "${_item}" 1;
   shift;
   local _array="${@}";
+  # array can be empty.
+
   local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
-
-  checkNotEmpty "item" "${_item}" 1;
-
-  # array can be empty.
 
   IFS="${DWIFS}";
   for _aux in ${_array}; do
