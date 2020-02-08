@@ -8,29 +8,29 @@
 #set -o xtrace
 
 # env: TESTS: The tests
-declare -ax TESTS;
+declare -agx TESTS;
 
 # The associative arrays
 # env: TEST_ERRORS: The test errors.
-declare -Ax TEST_ERRORS;
+declare -Agx TEST_ERRORS;
 # env: TEST_ERROR_MESSAGES: The error messages.
-declare -Ax TEST_ERROR_MESSAGES;
+declare -Agx TEST_ERROR_MESSAGES;
 # env: TEST_FAILURES: The test failures.
-declare -Ax TEST_FAILURES;
+declare -Agx TEST_FAILURES;
 # env: TEST_SUCCESSES: The passing tests.
-declare -Ax TEST_SUCCESSES;
+declare -Agx TEST_SUCCESSES;
 # env: TEST_FAILURE_MESSAGES: The messages of the failing tests.
-declare -Ax TEST_FAILURE_MESSAGES;
+declare -Agx TEST_FAILURE_MESSAGES;
 # env: TEST_ASSERTION_FAILURES: The failing asserts.
-declare -Ax TEST_ASSERTION_FAILURES;
+declare -Agx TEST_ASSERTION_FAILURES;
 # env: TEST_ASSERTION_SUCCESSES: The passing asserts.
-declare -Ax TEST_ASSERTION_SUCCESSES;
+declare -Agx TEST_ASSERTION_SUCCESSES;
 # env: TEST_ASSERTION_LINE_NUMBERS: The line numbers of the asserts.
-declare -Ax TEST_ASSERTION_LINE_NUMBERS;
+declare -Agx TEST_ASSERTION_LINE_NUMBERS;
 # env: TEST_ASSERTION_FAILURE_MESSAGES: The messages of the failing asserts.
-declare -Ax TEST_ASSERTION_FAILURE_MESSAGES;
+declare -Agx TEST_ASSERTION_FAILURE_MESSAGES;
 # env: TEST_ASSERTION_FAILURE_CONTEXT: The context of the failing asserts.
-declare -Ax TEST_ASSERTION_FAILURE_CONTEXT;
+declare -Agx TEST_ASSERTION_FAILURE_CONTEXT;
 # env: TESTS_FOUND: The number of tests found.
 
 addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
@@ -89,7 +89,7 @@ function DRYWITTEST.addTestError() {
 
   _count=${TEST_ERRORS[${_test}]};
   if isEmpty "${_count}"; then
-      _count=0;
+    _count=0;
   fi
   _index=${_count};
   _count=$((_count+1));
@@ -113,10 +113,10 @@ function DRYWITTEST.removeTestError() {
 
   _count=${TEST_ERRORS[${_test}]};
   if ! isEmpty "${_count}"; then
-      _index=${_count};
-      _count=$((_count-1));
-      TEST_ERRORS["${_test}"]=${_count};
-      TEST_ERROR_MESSAGES["${_test}:${_index}"]="";
+    _index=${_count};
+    _count=$((_count-1));
+    TEST_ERRORS["${_test}"]=${_count};
+    TEST_ERROR_MESSAGES["${_test}:${_index}"]="";
   fi
 }
 
@@ -138,7 +138,7 @@ function DRYWITTEST.addTestFailure() {
 
   _count=${TEST_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
-      _count=0;
+    _count=0;
   fi
   _index=${_count};
   _count=$((_count+1));
@@ -188,7 +188,7 @@ function DRYWITTEST.addTestAssertionFailure() {
 
   _count=${TEST_ASSERTION_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
-      _count=0;
+    _count=0;
   fi
   _index=${_count};
   _count=$((_count+1));
@@ -197,7 +197,7 @@ function DRYWITTEST.addTestAssertionFailure() {
   TEST_ASSERTION_LINE_NUMBERS["${_test}:${_index}"]=${_lineNumber};
   TEST_ASSERTION_FAILURE_MESSAGES["${_test}:${_index}"]="${_message}";
   if isNotEmpty "${_extra}"; then
-      TEST_ASSERTION_FAILURE_CONTEXT["${_test}:${_index}"]="${_extra}";
+    TEST_ASSERTION_FAILURE_CONTEXT["${_test}:${_index}"]="${_extra}";
   fi
 }
 
@@ -343,7 +343,7 @@ function runTest() {
     test_setup;
   fi
 
-#  ${_test} > /dev/null 2>&1;
+  #  ${_test} > /dev/null 2>&1;
   ${_test}
   if isTrue $?; then
     if DRYWITTEST.noAssertionsDefined "${_test}"; then
@@ -542,14 +542,14 @@ function DRYWITTEST.logTestSummary() {
     _failures="${TEST_FAILURES[${_test}]}";
     _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
     if isEmpty "${_assertionFailures}" || [ ${_assertionFailures} -eq 0 ]; then
-        _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
-        if isEmpty "${_assertionSuccesses}"; then
-          logInfo -n "Test ${_test}: No assertions found";
-          logInfoResult FAILURE "0";
-        else
-          logInfo -n "Test ${_test}: all assertions passed";
-          logInfoResult SUCCESS "${_assertionSuccesses}/${_assertionSuccesses}";
-        fi
+      _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
+      if isEmpty "${_assertionSuccesses}"; then
+        logInfo -n "Test ${_test}: No assertions found";
+        logInfoResult FAILURE "0";
+      else
+        logInfo -n "Test ${_test}: all assertions passed";
+        logInfoResult SUCCESS "${_assertionSuccesses}/${_assertionSuccesses}";
+      fi
     else
       logInfo -n "Test ${_test}: assertions failed";
       logInfoResult FAILURE "${_assertionFailures}";
@@ -713,7 +713,7 @@ function Assert.errorThrown() {
 
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
-      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${1}";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${1}";
   else
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
     DRYWITTEST.removeTestError "${FUNCNAME[1]}";
@@ -733,12 +733,12 @@ function Assert.areEqual() {
   local _actual="${2}";
   local _message="${3}";
 
-#  checkNotEmpty "expected" "${_expected}" 1;
-#  checkNotEmpty "actual" "${_actual}" 2;
+  #  checkNotEmpty "expected" "${_expected}" 1;
+  #  checkNotEmpty "actual" "${_actual}" 2;
   checkNotEmpty "message" "${_message}" 3;
 
   if areEqual "${_expected}" "${_actual}"; then
-      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} != ${_actual})";
   fi
@@ -762,7 +762,7 @@ function Assert.areNotEqual() {
   checkNotEmpty "message" "${_message}" 3;
 
   if areNotEqual "${_expected}" "${_actual}"; then
-      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} == ${_actual})";
   fi
