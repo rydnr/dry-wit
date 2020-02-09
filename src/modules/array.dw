@@ -47,14 +47,14 @@ function arrayContains() {
 #      if arrayDoesNotContain "four" "${a[@]}"; then ...; fi
 function arrayDoesNotContain() {
   local _item="${1}";
+  checkNotEmpty "item" "${_item}" 1;
   shift;
   local _array="${@}";
+  checkNotEmpty "array" "${_array}" 1;
+
   local -i _rescode=${FALSE};
 
-  checkNotEmpty "array" "${_array}" 1;
-  checkNotEmpty "item" "${_item}" 2;
-
-  if arrayContains "${_array}" "${_item}"; then
+  if arrayContains "${_item}" "${_array}"; then
     _rescode=${FALSE};
   else
     _rescode=${TRUE};

@@ -61,6 +61,11 @@ function dw_checkInput() {
   checkInputCallbackCalled=${TRUE};
 }
 
+function verbose_flag_is_supported_by_default_test() {
+  local _result="$(checkInput -v)";
+  Assert.isEmpty "${_result}" "checkInput returned something";
+}
+
 function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   local _result="$(checkInput "/tmp/1.txt")";
