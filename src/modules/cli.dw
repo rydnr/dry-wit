@@ -11,6 +11,17 @@ declare -gx SINGLE=${FALSE};
 #env: MULTIPLE: A constant to represent a parameter accepts multiple values.
 declare -gx MULTIPLE=${TRUE};
 
+# fun: CLI.getModuleName
+# api: public
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: CLI.getModuleName; echo "Module: ${RESULT}";
+function CLI.getModuleName() {
+  export RESULT="DW_CLI";
+  return ${TRUE};
+}
+
 # fun: addCommandLineFlag longName shortName description MANDATORY/OPTIONAL EXPECTS_ARGUMENT/NO_ARGUMENT defaultValue?
 # api: public
 # txt: Adds a command-line flag.
@@ -51,24 +62,49 @@ function addCommandLineFlag() {
   CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
   _flagKey="${RESULT}";
 
-  if   isEmpty "${__DW_CLI_FLAG_KEYS[*]}" \
-    || arrayDoesNotContain "${_flagKey}" "${__DW_CLI_FLAG_KEYS[@]}"; then
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
 
-    __DW_CLI_FLAG_KEYS[${#__DW_CLI_FLAG_KEYS[@]}]="${_flagKey}";
-    __DW_CLI_FLAG_SHORT_NAMES[${_longName}]="${_shortName}";
-    __DW_CLI_FLAG_LONG_NAMES[${_shortName}]="${_longName}";
-    __DW_CLI_FLAG_DESCRIPTIONS[${_flagKey}]="${_description}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+  local -n _flagKeys=${RESULT};
+  if    isEmpty "${_flagKeys[@]}" \
+     || arrayDoesNotContain "${_flagKey}" "${_flagKeys[@]}"; then
+
+    _flagKeys[${#_flagKeys[@]}]="${_flagKey}";
+
+    DW.getGlobalVariableName "${_moduleName}" FLAG_SHORT_NAMES;
+    local -n _flagShortNames=${RESULT};
+
+    _flagShortNames[${_longName}]="${_shortName}";
+
+    DW.getGlobalVariableName "${_moduleName}" FLAG_LONG_NAMES;
+    local -n _flagLongName=${RESULT};
+    _flagLongNames[${_shortName}]="${_longName}";
+
+    DW.getGlobalVariableName "${_moduleName}" FLAG_DESCRIPTIONS;
+    local -n _flagDescriptions="${RESULT}";
+    _flagDescriptions[${_flagKey}]="${_description}";
+
     normalizeUppercase "${_longName}";
     _longNameInUpperCase="${RESULT}";
     if areEqual "${_mandatory}" "MANDATORY"; then
       addError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} is mandatory";
     fi
-    __DW_CLI_MANDATORY_FLAGS[${_flagKey}]=${_mandatory};
+
+    DW.getGlobalVariableName "${_moduleName}" MANDATORY_FLAGS;
+    local -n _mandatoryFlags="${RESULT}";
+    _mandatoryFlags[${_flagKey}]=${_mandatory};
     if areEqual "${_expectsArgument}" "EXPECTS_ARGUMENT"; then
       addError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} expects an argument";
     fi
-    __DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}]="${_expectsArgument}";
-    __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES[${_flagKey}]="${_defaultValue}";
+
+    DW.getGlobalVariableName "${_moduleName}" FLAG_EXPECTING_ARGUMENTS;
+    local -n _flagExpectingArguments="${RESULT}";
+    _flagExpectingArguments[${_flagKey}]="${_expectsArgument}";
+
+    DW.getGlobalVariableName "${_moduleName}" OPTIONAL_FLAG_DEFAULT_VALUES;
+    local -n _optionalFlagDefaultValues="${RESULT}";
+    _optionalFlagDefaultValues[${_flagKey}]="${_defaultValue}";
   fi
 
   return ${_rescode};
@@ -94,12 +130,28 @@ function addCommandLineParameter() {
   checkOneOf "mandatory/optional" "${_mandatoryOrOptional}" "MANDATORY OPTIONAL" 3;
   checkOneOf "single/multiple" "${_singleOrMultiple}" "SINGLE MULTIPLE" 4;
 
-  if    isEmpty "${__DW_CLI_PARAMETER_NAMES[*]}" \
-     || arrayDoesNotContain "${__DW_CLI_PARAMETER_NAMES[*]}" "${_name}"; then
-    __DW_CLI_PARAMETER_NAMES[${#__DW_CLI_PARAMETER_NAMES[@]}]="${_name}";
-    __DW_CLI_PARAMETER_DESCRIPTIONS["${_name}"]="${_description}";
-    __DW_CLI_MANDATORY_PARAMETERS["${_name}"]="${_mandatoryOrOptional}";
-    __DW_CLI_SINGLE_PARAMETERS["${_name}"]="${_singleOrMultiple}";
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalVariableName "${_moduleName}" PARAMETER_NAMES;
+  local -n _parameterNames="${RESULT}";
+
+  if    isEmpty "${_parameterNames[@]}" \
+     || arrayDoesNotContain "${_parameterNames[@]}" "${_name}"; then
+
+    _parameterNames[${#_parameterNames[@]}]="${_name}";
+
+    DW.getGlobalVariableName "${_moduleName}" PARAMETER_DESCRIPTIONS;
+    local -n _parameterDescriptions="${RESULT}";
+    _parameterDescriptions["${_name}"]="${_description}";
+
+    DW.getGlobalVariableName "${_moduleName}" MANDATORY_PARAMETERS;
+    local -n _mandatoryParameters="${RESULT}";
+    _mandatoryParameters["${_name}"]="${_mandatoryOrOptional}";
+
+    DW.getGlobalVariableName "${_moduleName}" SINGLE_PARAMETERS;
+    local -n _singleParameters="${RESULT}";
+    _singleParameters["${_name}"]="${_singleOrMultiple}";
   fi
 
   return ${TRUE};
@@ -112,22 +164,22 @@ function addCommandLineParameter() {
 # txt: Returns 0/TRUE if the flag is enabled, 1/FALSE otherwise.
 # use: if flagEnabled MY_FLAG; then ...
 function flagEnabled() {
-    local _flagVar="${1}";
-    local _flagVal;
-    local -i rescode;
+  local _flagVar="${1}";
+  local _flagVal;
+  local -i rescode;
 
-    checkNotEmpty "flagVar" "${_flagVar}" 1;
+  checkNotEmpty "flagVar" "${_flagVar}" 1;
 
-    evalVar "${_flagVar}";
-    _flagVal="${RESULT}";
-    if    areEqual "${_flagVal}" "${TRUE}" \
-            || areEqual "${_flagVal}" "TRUE"; then
-        rescode=${TRUE};
-    else
-        rescode=${FALSE};
-    fi
+  evalVar "${_flagVar}";
+  _flagVal="${RESULT}";
+  if    areEqual "${_flagVal}" "${TRUE}" \
+      || areEqual "${_flagVal}" "TRUE"; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
 
-    return ${rescode};
+  return ${rescode};
 }
 
 # fun: removeCommandLineFlag shortOrLongName
@@ -150,20 +202,44 @@ function removeCommandLineFlag() {
   if CLI.retrieveCommandLineFlagKey "${_flag}"; then
     _flagKey="${RESULT}";
 
-    if   isNotEmpty "${_flagKey}" \
-      && isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}" \
-      && arrayContains "${_flagKey}" "${__DW_CLI_FLAG_KEYS[@]}"; then
-      __DW_CLI_FLAG_KEYS=( "${__DW_CLI_FLAG_KEYS[@]/${_flagKey}}" );
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+  local -n _flagKeys="${RESULT}";
+
+  if    isNotEmpty "${_flagKey}" \
+     && isNotEmpty "${_flagKeys[@]}" \
+     && arrayContains "${_flagKey}" "${_flagKeys[@]}"; then
+      _flagKeys=( "${_flagKeys[@]/${_flagKey}}" );
       CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
       _longName="${RESULT}";
       CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
       _shortName="${RESULT}";
-      unset __DW_CLI_FLAG_SHORT_NAMES[${_longName}];
-      unset __DW_CLI_FLAG_LONG_NAMES[${_shortName}];
-      unset __DW_CLI_FLAG_DESCRIPTIONS[${_flagKey}];
-      unset __DW_CLI_MANDATORY_FLAGS[${_flagKey}];
-      unset __DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}];
-      unset __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES[${_flagKey}];
+
+      DW.getGlobalVariableName "${_moduleName}" FLAG_SHORT_NAMES;
+      local -n _flagShortNames="${RESULT}";
+      unset _flagShortNames[${_longName}];
+
+      DW.getGlobalVariableName "${_moduleName}" FLAG_LONG_NAMES;
+      local -n _flagLongNames="${RESULT}";
+      unset _flagLongNames[${_shortName}];
+
+      DW.getGlobalVariableName "${_moduleName}" FLAG_DESCRIPTIONS;
+      local -n _flagDescriptions="${RESULT}";
+      unset _flagDescriptions[${_flagKey}];
+
+      DW.getGlobalVariableName "${_moduleName}" MANDATORY_FLAGS;
+      local -n _mandatoryFlags="${RESULT}";
+      unset _mandatoryFlags[${_flagKey}];
+
+      DW.getGlobalVariableName "${_moduleName}" FLAG_EXPECTING_ARGUMENTS;
+      local -n _flagExpectingArguments="${RESULT}";
+      unset _flagExpectingArguments[${_flagKey}];
+
+      DW.getGlobalVariableName "${_moduleName}" OPTIONAL_FLAG_DEFAULT_VALUES;
+      local -n _optionalFlagDefaultValues="${RESULT}";
+      unset _optionalFlagDefaultValues[${_flagKey}];
     fi
 
   else
@@ -181,10 +257,12 @@ function removeCommandLineFlag() {
 # use: setScriptCopyright "2018-today Acme Inc.";
 function setScriptCopyright() {
   local _copyright="${1}";
+  checkNotEmpty copyright "${_copyright}" 1;
 
-  checkNotEmpty "copyright" "${_copyright}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
 
-  __DW_CLI_SCRIPT_COPYRIGHT="${_copyright}";
+  DW.setGlobalString "${_moduleName}" SCRIPT_COPYRIGHT "${_copyright}";
 
   return ${TRUE};
 }
@@ -196,11 +274,15 @@ function setScriptCopyright() {
 # txt: Returns 0/TRUE in any case.
 # use: setScriptDescription "This script calculates fibonacci sequence items"
 function setScriptDescription() {
-    local _description="${1}";
+  local _description="${1}";
+  checkNotEmpty "description" "${_description}" 1;
 
-    checkNotEmpty "description" "${_description}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
 
-    __DW_CLI_SCRIPT_DESCRIPTION="${_description}";
+  DW.setGlobalString "${_moduleName}" SCRIPT_DESCRIPTION "${_copyright}";
+
+  return ${TRUE};
 }
 
 # fun: setScriptLicenseSummary
@@ -211,10 +293,12 @@ function setScriptDescription() {
 # use: setScriptLicenseSummary "Distributed this under the GNU General Public License v3.";
 function setScriptLicenseSummary() {
   local _license="${1}";
-
   checkNotEmpty "license" "${_license}" 1;
 
-  __DW_CLI_SCRIPT_LICENSE_SUMMARY="${_license}";
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.setGlobalString "${_moduleName}" SCRIPT_LICENSE_SUMMARY "${_license}";
 
   return ${TRUE};
 }
@@ -246,38 +330,38 @@ function usage() {
 # txt: Returns 0/TRUE always, but it could raise an exception and exit.
 # use: checkInput *@;
 function checkInput() {
-    local _flags=$(CLI.extractFlags $@);
-    local _flag;
-    local -a _flagsChecked=();
-    local _oldIFS="${IFS}";
+  local _flags=$(CLI.extractFlags $@);
+  local _flag;
+  local -a _flagsChecked=();
+  local _oldIFS="${IFS}";
 
-    # Flags
-    IFS="${DWIFS}";
-    for _flag in ${_flags}; do
-        IFS="${_oldIFS}";
-        _flagCount=$((_flagCount+1));
-        shift;
-
-        CLI.checkFlag "${_flag}" $@;
-        _shifts=$?;
-        IFS="${DWIFS}";
-        for _i in $(seq 1 ${_shifts}); do
-          IFS="${_oldIFS}";
-          shift;
-        done
-        _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
-    done
+  # Flags
+  IFS="${DWIFS}";
+  for _flag in ${_flags}; do
     IFS="${_oldIFS}";
+    _flagCount=$((_flagCount+1));
+    shift;
 
-    CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[*]}";
+    CLI.checkFlag "${_flag}" $@;
+    _shifts=$?;
+    IFS="${DWIFS}";
+    for _i in $(seq 1 ${_shifts}); do
+      IFS="${_oldIFS}";
+      shift;
+    done
+    _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
+  done
+  IFS="${_oldIFS}";
 
-    CLI.checkCommandLineParameters $@;
+  CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[*]}";
 
-    CLI.checkEnvironmentVariables;
+  CLI.checkCommandLineParameters $@;
 
-    if isFunctionPresent "dw_checkInput"; then
-      dw_checkInput;
-    fi
+  CLI.checkEnvironmentVariables;
+
+  if isFunctionPresent "dw_checkInput"; then
+    dw_checkInput;
+  fi
 }
 
 # fun: parseInput
@@ -287,37 +371,33 @@ function checkInput() {
 # txt: Returns 0/TRUE if the command-line arguments were parsed successfully; 1/FALSE otherwise.
 # use: parseInput *@
 function parseInput() {
-    local _flags=$(CLI.extractFlags $@);
-    local _oldIFS="${IFS}";
-    local -i _i;
-    local -a _providedFlags=();
-    local _flag;
-    local -i _shifts;
+  local _flags=$(CLI.extractFlags $@);
+  local _oldIFS="${IFS}";
+  local -i _i;
+  local -a _providedFlags=();
+  local _flag;
+  local -i _shifts;
 
-    if [ "${1}" == "${NESTED_SCRIPT_NAME}" ]; then
-      shift;
-    fi
-
-    # Flags
-    IFS="${DWIFS}";
-    for _flag in ${_flags}; do
-        IFS="${_oldIFS}";
-        shift;
-        _providedFlags[${#_providedFlags[@]}]="${_flag}";
-
-        CLI.parseFlag "${_flag}" ${@};
-        _shifts=$?;
-        IFS="${DWIFS}";
-        for _i in $(seq 1 ${_shifts}); do
-            IFS="${_oldIFS}";
-            shift;
-        done
-    done
+  # Flags
+  IFS="${DWIFS}";
+  for _flag in ${_flags}; do
     IFS="${_oldIFS}";
+    shift;
+    _providedFlags[${#_providedFlags[@]}]="${_flag}";
 
-    CLI.parseNotProvidedFlags "${_providedFlags[*]}";
+    CLI.parseFlag "${_flag}" ${@};
+    _shifts=$?;
+    IFS="${DWIFS}";
+    for _i in $(seq 1 ${_shifts}); do
+      IFS="${_oldIFS}";
+      shift;
+    done
+  done
+  IFS="${_oldIFS}";
 
-    CLI.parseCommandLineParameters ${@};
+  CLI.parseNotProvidedFlags "${_providedFlags[*]}";
+
+  CLI.parseCommandLineParameters ${@};
 }
 
 # fun: dw_parse_debug_cli_flag
@@ -325,7 +405,7 @@ function parseInput() {
 # txt: Callback function when the user includes the debug (-v|--debug) flag.
 # txt: It's based on a naming convention: dw_parse_debug_cli_flag
 function dw_parse_debug_cli_flag() {
-    setDebugEnabled;
+  setDebugEnabled;
 }
 
 # fun: dw_parse_trace_cli_flag
@@ -333,7 +413,7 @@ function dw_parse_debug_cli_flag() {
 # txt: Callback function when the user includes the trace (-vv|--trace) flag.
 # txt: It's based on a naming convention: dw_parse_trace_cli_flag
 function dw_parse_trace_cli_flag() {
-    setTraceEnabled;
+  setTraceEnabled;
 }
 
 # fun: dw_parse_quiet_cli_flag
@@ -341,7 +421,7 @@ function dw_parse_trace_cli_flag() {
 # txt: Callback function when the user includes the quiet (-q|--quiet) flag.
 # txt: It's based on a naming convention: dw_parse_quiet_cli_flag
 function dw_parse_quiet_cli_flag() {
-    export QUIET=${TRUE};
+  export QUIET=${TRUE};
 }
 
 # fun: dw_parse_help_cli_flag
@@ -349,7 +429,7 @@ function dw_parse_quiet_cli_flag() {
 # txt: Callback function when the user includes the help (-h|--help) flag.
 # txt: It's based on a naming convention: dw_parse_help_cli_flag
 function dw_parse_help_cli_flag() {
-    printHelp;
+  printHelp;
 }
 
 # fun: CLI.extractFlags cliArguments
@@ -392,12 +472,17 @@ function CLI.extractFlagValue() {
 #      fi
 function CLI.retrieveCommandLineFlagShortNameForLongName() {
   local _longName="${1}";
+  checkNotEmpty longName "${_longName}" 1;
   local -i _rescode;
   local _result;
 
-  checkNotEmpty "longName" "${_longName}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
 
-  _result="${__DW_CLI_FLAG_SHORT_NAMES[${_longName}]}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_SHORT_NAMES;
+  local -n _flagShortNames="${RESULT}";
+
+  _result="${_flagShortNames[${_longName}]}";
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
@@ -418,9 +503,8 @@ function CLI.retrieveCommandLineFlagShortNameForLongName() {
 #      fi
 function CLI.isCommandLineFlagInLongFormat() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   local -i _rescode;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   if areEqual "${_flag}" "${_flag#--}"; then
     _rescode=${FALSE};
@@ -446,7 +530,13 @@ function CLI.retrieveCommandLineFlagLongNameForShortName() {
 
   checkNotEmpty "shortName" "${_shortName}" 1;
 
-  _result="${__DW_CLI_FLAG_LONG_NAMES[${_shortName}]}";
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalVariableName "${_moduleName}" FLAG_LONG_NAMES;
+  local -n _flagLongNames="${RESULT}";
+
+  _result="${_flagLongNames[${_shortName}]}";
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
@@ -467,9 +557,8 @@ function CLI.retrieveCommandLineFlagLongNameForShortName() {
 #      fi
 function CLI.isCommandLineFlagInShortFormat() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   local -i _rescode;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   if areEqual "${_flag}" "${_flag#-}" || CLI.isCommandLineFlagInLongFormat "${_flag}"; then
     _rescode=${FALSE};
@@ -489,14 +578,13 @@ function CLI.isCommandLineFlagInShortFormat() {
 #      echo "Must shift $?";
 function CLI.checkFlag() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   shift;
   local _flagKey;
   local _shortName;
   local _longName;
   local -i _continue=${TRUE};
   local -i _result=0;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   case ${_flag} in
     --)
@@ -521,7 +609,13 @@ function CLI.checkFlag() {
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
     _flagKey="${RESULT}";
 
-    if arrayDoesNotContain "${__DW_CLI_FLAG_KEYS[*]}" "${_flagKey}"; then
+    CLI.getModuleName;
+    local _moduleName="${RESULT}";
+
+    DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+    local -n _flagKeys="${RESULT}";
+
+    if arrayDoesNotContain "${_flagKeys[@]}" "${_flagKey}"; then
       exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
 
@@ -543,15 +637,15 @@ function CLI.checkFlag() {
 #      fi
 function CLI.retrieveCommandLineFlagLongName() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   local _result;
   local -i _rescode;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   if CLI.isCommandLineFlagInLongFormat "${_flag}"; then
     _result="${_flag#--}";
     _rescode=${TRUE};
-  elif CLI.isCommandLineFlagInShortFormat "${_flag}" && CLI.retrieveCommandLineFlagLongNameForShortName "${_flag#-}"; then
+  elif    CLI.isCommandLineFlagInShortFormat "${_flag}" \
+       && CLI.retrieveCommandLineFlagLongNameForShortName "${_flag#-}"; then
     _result="${RESULT}";
     _rescode=${TRUE};
   else
@@ -576,12 +670,12 @@ function CLI.retrieveCommandLineFlagLongName() {
 #      fi
 function CLI.retrieveCommandLineFlagShortName() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   local _result;
   local -i _rescode;
 
-  checkNotEmpty "flag" "${_flag}" 1;
-
-  if CLI.isCommandLineFlagInLongFormat "${_flag}" && CLI.retrieveCommandLineFlagShortNameForLongName "${_flag#--}"; then
+  if    CLI.isCommandLineFlagInLongFormat "${_flag}" \
+     && CLI.retrieveCommandLineFlagShortNameForLongName "${_flag#--}"; then
     _result="${RESULT}";
     _rescode=${TRUE};
   elif CLI.isCommandLineFlagInShortFormat "${_flag}"; then
@@ -606,7 +700,9 @@ function CLI.retrieveCommandLineFlagShortName() {
 # use: CLI.checkCommandLineFlag "${_flagKey}";
 function CLI.checkCommandLineFlag() {
   local _flagKey="${1}";
+  checkNotEmpty flagKey "${_flagKey}" 1;
   local _longName="${2}";
+  checkNotEmpty longName "${_longName}" 2;
   shift;
   shift;
   local _argument;
@@ -615,9 +711,6 @@ function CLI.checkCommandLineFlag() {
   local -i _functionDefined=${FALSE};
   local -i _mandatory;
   local -i _result=0;
-
-  checkNotEmpty "flagKey" "${_flagKey}" 1;
-  checkNotEmpty "longName" "${_longName}" 2;
 
   CLI.buildNameOfTheCallbackFunctionToCheckFlag "${_longName}";
   _checkCallback="${RESULT}";
@@ -665,9 +758,15 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
   local _longNameInUpperCase;
   local _oldIFS="${IFS}";
 
-  if isNotEmpty "${__DW_CLI_FLAG_KEYS[*]}"; then
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+  local -n _flagKeys="${RESULT}";
+
+  if isNotEmpty "${_flagKeys[@]}"; then
     IFS="${DWIFS}";
-    for _key in ${__DW_CLI_FLAG_KEYS[*]}; do
+    for _key in ${_flagKeys[@]}; do
       IFS="${_oldIFS}";
       CLI.retrieveCommandLineFlagLongNameFromKey "${_key}";
       _longName="${RESULT}";
@@ -697,11 +796,10 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
 #      fi
 function CLI.isCommandLineFlagAlreadyChecked() {
   local _flagsAlreadyChecked="${1}";
+  checkNotEmpty flagsAlreadyChecked "${_flagsAlreadyChecked}" 1;
   local _flagKey="${2}";
+  checkNotEmpty flagKey "${_flagKey}" 2;
   local -i _rescode;
-
-  checkNotEmpty "flagsAlreadyChecked" "${_flagsAlreadyChecked}" 1;
-  checkNotEmpty "flagKey" "${_flagKey}" 2;
 
   CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
   _longName="--${RESULT}";
@@ -734,8 +832,13 @@ function CLI.checkCommandLineParameters() {
   local _oldIFS="${IFS}";
 
   # Parameters
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" PARAMETER_NAMES;
+  local -n _parameterNames="${RESULT}";
+
   IFS="${DWIFS}";
-  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
+  for _parameterName in ${_parameterNames[*]}; do
     IFS="${_oldIFS}";
     _parameterValue="${1}";
     shift;
@@ -826,7 +929,13 @@ function CLI.isFlagDefined() {
 
   checkNotEmpty "flagKey" "${_flagKey}" 1;
 
-  arrayContains "${_flagKey}" "${__DW_CLI_FLAG_KEYS[@]}";
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+  local -n _flagKeys="${RESULT}";
+
+  arrayContains "${_flagKey}" "${_flagKeys[@]}";
   _rescode=$?;
 
   return ${_rescode};
@@ -836,13 +945,13 @@ function CLI.isFlagDefined() {
 # api: private
 # txt: Builds the name of the callback function used when checking a flag.
 # opt: longName: The long name of the flag.
+# txt: Returns 0/TRUE always.
 # txt: RESULT will contain the name of the callback function.
 # use: CLI.buildNameOfTheCallbackFunctionToCheckFlag "file";
 #      echo "callback function: ${RESULT}";
 function CLI.buildNameOfTheCallbackFunctionToCheckFlag() {
   local _longName="${1}";
-
-  checkNotEmpty "longName" "${_longName}" 1;
+  checkNotEmpty longName "${_longName}" 1;
 
   export RESULT="dw_check_${_longName}_cli_flag";
 }
@@ -851,13 +960,13 @@ function CLI.buildNameOfTheCallbackFunctionToCheckFlag() {
 # api: private
 # txt: Builds the name of the callback function used when parsing a flag.
 # opt: longName: The long name of the flag.
+# txt: Returns 0/TRUE always.
 # txt: RESULT will contain the name of the callback function.
 # use: CLI.buildNameOfTheCallbackFunctionToParseFlag "file";
 #      echo "callback function: ${RESULT}";
 function CLI.buildNameOfTheCallbackFunctionToParseFlag() {
   local _longName="${1}";
-
-  checkNotEmpty "longName" "${_longName}" 1;
+  checkNotEmpty longName "${_longName}" 1;
 
   export RESULT="dw_parse_${_longName}_cli_flag";
 }
@@ -871,10 +980,9 @@ function CLI.buildNameOfTheCallbackFunctionToParseFlag() {
 # use: if CLI.parseCallbackDefinedForFlag "file"; then echo "The callback function to parse 'file' flag exists: ${RESULT}"; fi
 function CLI.parseCallbackDefinedForFlag() {
   local _longName="${1}";
+  checkNotEmpty longName "${_longName}" 1;
   local _parseCallback;
   local -i _rescode;
-
-  checkNotEmpty "longName" "${_longName}" 1;
 
   CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
   _parseCallback="${RESULT}";
@@ -900,6 +1008,7 @@ function CLI.parseCallbackDefinedForFlag() {
 #      echo "Must shift $?";
 function CLI.parseFlag() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   shift;
   local -i _result=0;
   local _flagCount;
@@ -909,8 +1018,6 @@ function CLI.parseFlag() {
   local _callbackFunction;
   local _argument;
   local -i _continue=${TRUE};
-
-  checkNotEmpty "${_flag}" "flag" 1;
 
   _flagCount=$((_flagCount+1));
   case ${_flag} in
@@ -965,11 +1072,10 @@ function CLI.parseFlag() {
 #      fi
 function CLI.retrieveFlagKey() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   local -i _rescode;
   local _longName;
   local _shortName;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
     _longName="${RESULT}";
@@ -1007,8 +1113,13 @@ function CLI.parseNotProvidedFlags() {
   local -i _rescode;
   local _oldIFS="${IFS}";
 
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+  local -n _flagKeys="${RESULT}";
+
   IFS="${DWIFS}";
-  for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+  for _flagKey in ${_flagKeys[@]}; do
     _provided=${FALSE};
     CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
     _longName="${RESULT}";
@@ -1017,7 +1128,7 @@ function CLI.parseNotProvidedFlags() {
     for _providedFlag in ${_providedFlags}; do
       IFS="${_oldIFS}";
       if    areEqual "${_providedFlag}" "--${_longName}" \
-         || areEqual "${_providedFlag}" "-${_shortName}"; then
+          || areEqual "${_providedFlag}" "-${_shortName}"; then
         _provided=${TRUE};
         break;
       fi
@@ -1058,12 +1169,17 @@ function CLI.parseNotProvidedFlags() {
 #      fi
 function CLI.retrieveDefaultValueForOptionalFlag() {
   local _flagKey="${1}";
+  checkNotEmpty flagKey "${_flagKey}" 1;
   local _result;
   local -i _rescode;
 
-  checkNotEmpty "flagKey" "${_flagKey}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
 
-  _result="${__DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES[${_flagKey}]}";
+  DW.getGlobalVariableName "${_moduleName}" OPTIONAL_FLAG_DEFAULT_VALUES;
+  local -n _optionalFlagDefaultValues="${RESULT}";
+
+  _result="${_optionalFlagDefaultValues[${_flagKey}]}";
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
@@ -1078,13 +1194,13 @@ function CLI.retrieveDefaultValueForOptionalFlag() {
 # api: private
 # txt: Builds the name of the callback function used when parsing a parameter.
 # opt: longName: The long name of the parameter.
+# txt: Returns 0/TRUE always.
 # txt: RESULT will contain the name of the callback function.
 # use: CLI.buildNameOfTheCallbackFunctionToParseParameter "file";
 #      echo "callback function: ${RESULT}";
 function CLI.buildNameOfTheCallbackFunctionToParseParameter() {
   local _longName="${1}";
-
-  checkNotEmpty "longName" "${_longName}" 1;
+  checkNotEmpty longName "${_longName}" 1;
 
   export RESULT="dw_parse_${_longName}_cli_parameter";
 }
@@ -1098,10 +1214,9 @@ function CLI.buildNameOfTheCallbackFunctionToParseParameter() {
 # use: if CLI.parseCallbackDefinedForParameter "file"; then echo "The callback function to parse 'file' parameter exists: ${RESULT}"; fi
 function CLI.parseCallbackDefinedForParameter() {
   local _longName="${1}";
+  checkNotEmpty longName "${_longName}" 1;
   local _parseCallback;
   local -i _rescode;
-
-  checkNotEmpty "longName" "${_longName}" 1;
 
   CLI.buildNameOfTheCallbackFunctionToParseParameter "${_longName}";
   _parseCallback="${RESULT}";
@@ -1128,8 +1243,13 @@ function CLI.parseCommandLineParameters() {
   local _parseCallback;
   local _oldIFS="${IFS}";
 
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" PARAMETER_NAMES;
+  local -n _parameterNames="${RESULT}";
+
   IFS="${DWIFS}";
-  for _parameterName in ${__DW_CLI_PARAMETER_NAMES[*]}; do
+  for _parameterName in ${_parameterNames[@]}; do
     IFS="${_oldIFS}";
 
     if CLI.parseCallbackDefinedForParameter "${_parameterName}"; then
@@ -1163,11 +1283,10 @@ function CLI.parseCommandLineParameters() {
 #      fi
 function CLI.buildCommandLineFlagKey() {
   local _shortName="${1}";
+  checkNotEmpty shortName "${_shortName}" 1;
   local _longName="${2}";
+  checkNotEmpty longName "${_longName}" 2;
   local -i _rescode=${TRUE};
-
-  checkNotEmpty "shortName" "${_shortName}" 1;
-  checkNotEmpty "longName" "${_longName}" 2;
 
   export RESULT="${_shortName}|${_longName}";
 
@@ -1184,14 +1303,18 @@ function CLI.buildCommandLineFlagKey() {
 #      fi
 function CLI.retrieveCommandLineFlagKeyFromShortName() {
   local _shortName="${1}";
-  local -i _rescode=${TRUE};
-
   checkNotEmpty "shortName" "${_shortName}" 1;
+  local -i _rescode=${TRUE};
 
   if removePrefix "${_shortName}" "-*"; then
     _shortName="${RESULT}";
   fi
-  _longName="${__DW_CLI_FLAG_LONG_NAMES[${_shortName}]}";
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_LONG_NAMES;
+  local -n _flagLongNames="${RESULT}";
+
+  _longName="${_flagLongNames[${_shortName}]}";
 
   if isNotEmpty "${_longName}"; then
     if CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}"; then
@@ -1220,15 +1343,19 @@ function CLI.retrieveCommandLineFlagKeyFromShortName() {
 #      fi
 function CLI.retrieveCommandLineFlagKeyFromLongName() {
   local _longName="${1}";
+  checkNotEmpty longName "${_longName}" 1;
   local -i _rescode=${true};
-
-  checkNotEmpty "longName" "${_longName}" 1;
 
   if removePrefix "${_longName}" "-*"; then
     _longName="${RESULT}";
   fi
 
-  _shortName="${__DW_CLI_FLAG_SHORT_NAMES[${_longName}]}";
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_SHORT_NAMES;
+  local -n _flagShortNames="${RESULT}";
+
+  _shortName="${_flagShortNames[${_longName}]}";
   if isNotEmpty "${_shortName}"; then
     if CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}"; then
       _rescode=${TRUE};
@@ -1256,10 +1383,9 @@ function CLI.retrieveCommandLineFlagKeyFromLongName() {
 #      fi
 function CLI.retrieveCommandLineFlagShortNameFromKey() {
   local _key="${1}";
+  checkNotEmpty key "${_key}" 1;
   local _result;
   local -i _rescode;
-
-  checkNotEmpty "key" "${_key}" 1;
 
   _result="${_key%%|*}";
   if areEqual "${_result}" "${_key}"; then
@@ -1283,10 +1409,10 @@ function CLI.retrieveCommandLineFlagShortNameFromKey() {
 #      fi
 function CLI.retrieveCommandLineFlagLongNameFromKey() {
   local _key="${1}";
+  checkNotEmpty key "${_key}" 1;
+
   local _result;
   local -i _rescode;
-
-  checkNotEmpty "key" "${_key}" 1;
 
   _result="${_key##*|}";
   if areEqual "${_result}" "${_key}"; then
@@ -1310,12 +1436,16 @@ function CLI.retrieveCommandLineFlagLongNameFromKey() {
 #      fi
 function CLI.retrieveCommandLineFlagDescriptionFromKey() {
   local _key="${1}";
+  checkNotEmpty key "${_key}" 1;
   local _result;
   local -i _rescode;
 
-  checkNotEmpty "key" "${_key}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_DESCRIPTIONS;
+  local -n _flagDescriptions="${RESULT}";
 
-  _result="${__DW_CLI_FLAG_DESCRIPTIONS[${_key}]}";
+  _result="${_flagDescriptions[${_key}]}";
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
@@ -1336,9 +1466,8 @@ function CLI.retrieveCommandLineFlagDescriptionFromKey() {
 #      fi
 function CLI.retrieveCommandLineFlagKey() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   local -i _rescode;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   if CLI.retrieveCommandLineFlagKeyFromShortName "${_flag}"; then
     _rescode=${TRUE};
@@ -1364,10 +1493,9 @@ function CLI.retrieveCommandLineFlagKey() {
 #      fi
 function CLI.isCommandLineFlagDefined() {
   local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
   local -i _rescode;
   local _flagKey;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   if CLI.retrieveCommandLineFlagKey "${_flag}"; then
     _rescode=${TRUE};
@@ -1383,21 +1511,23 @@ function CLI.isCommandLineFlagDefined() {
 # txt: Checks whether given flag is mandatory or not.
 # opt: flagKey: The flag key.
 # txt: Returns 0/TRUE if the flag is mandatory; 1/FALSE otherwise.
-# use: if CLI.isCommandLineFlagMandatory ${flagKey}"; then
-#        echo "${flagKey} is mandatory";
-#       fi
+# use: if CLI.isCommandLineFlagMandatory ${flagKey}"; then echo "${flagKey} is mandatory"; fi
 function CLI.isCommandLineFlagMandatory() {
   local _flagKey="${1}";
+  checkNotEmpty flagKey "${_flagKey}" 1;
   local -i _rescode;
 
-  checkNotEmpty "flagKey" "${_flagKey}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" MANDATORY_FLAGS;
+  local -n _mandatoryFlags="${RESULT}";
 
-  _value="${__DW_CLI_MANDATORY_FLAGS[${_flagKey}]}";
+  _value="${_mandatoryFlags[${_flagKey}]}";
 
-  if   isEmpty "${_value}" \
-    || isTrue "${_value}" \
-    || areEqual "${_value}" "${MANDATORY}" \
-    || areEqual "${_value}" "MANDATORY"; then
+  if    isEmpty "${_value}" \
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "${MANDATORY}" \
+     || areEqual "${_value}" "MANDATORY"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -1416,11 +1546,15 @@ function CLI.isCommandLineFlagMandatory() {
 #      fi
 function CLI.doesCommandLineFlagExpectArgument() {
   local _flagKey="${1}";
+  checkNotEmpty flagKey "${_flagKey}" 1;
   local -i _rescode;
 
-  checkNotEmpty "flagKey" "${_flagKey}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_EXPECTING_ARGUMENTS;
+  local -n _flagExpectingArguments="${RESULT}";
 
-  _value="${__DW_CLI_FLAG_EXPECTING_ARGUMENTS[${_flagKey}]}";
+  _value="${_flagExpectingArguments[${_flagKey}]}";
 
   if     isEmpty "${_value}" \
       || isTrue "${_value}" \
@@ -1445,12 +1579,16 @@ function CLI.doesCommandLineFlagExpectArgument() {
 #      fi
 function CLI.retrieveCommandLineParameterDescriptionFromName() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local _result;
   local -i _rescode;
 
-  checkNotEmpty "name" "${_name}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" PARAMETER_DESCRIPTIONS;
+  local -n _parameterDescriptions="${RESULT}";
 
-  _result="${__DW_CLI_PARAMETER_DESCRIPTIONS[${_name}]}";
+  _result="${_parameterDescriptions[${_name}]}";
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
@@ -1471,11 +1609,15 @@ function CLI.retrieveCommandLineParameterDescriptionFromName() {
 #      fi
 function CLI.isCommandLineParameterMandatory() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local -i _rescode;
 
-  checkNotEmpty "name" "${_name}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" MANDATORY_PARAMETERS;
+  local -n _mandatoryParameters="${RESULT}";
 
-  _value="${__DW_CLI_MANDATORY_PARAMETERS[${_name}]}";
+  _value="${_mandatoryParameters[${_name}]}";
 
   if    isEmpty "${_value}" \
      || isTrue "${_value}" \
@@ -1498,11 +1640,14 @@ function CLI.isCommandLineParameterMandatory() {
 #      fi
 function CLI.isCommandLineParameterSingle() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local -i _rescode;
 
-  checkNotEmpty "name" "${_name}" 1;
-
-  _value="${__DW_CLI_SINGLE_PARAMETERS[${_name}]}";
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" SINGLE_PARAMETERS;
+  local -n _singleParameters="${RESULT}";
+  _value="${_singleParameters[${_name}]}";
 
   if    isEmpty "${_value}" \
      || isTrue "${_value}" \
@@ -1525,9 +1670,8 @@ function CLI.isCommandLineParameterSingle() {
 #      fi
 function CLI.isCommandLineParameterMultiple() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local -i _rescode;
-
-  checkNotEmpty "name" "${_name}" 1;
 
   if CLI.isCommandLineParameterSingle "${_name}"; then
     _rescode=${FALSE};
@@ -1554,7 +1698,12 @@ function CLI.commandLineFlagsUsage() {
   local _mandatory;
   IFS=$' \t\n';
 
-  for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+  local -n _flagKeys="${RESULT}";
+
+  for _flagKey in ${_flagKeys[@]}; do
     IFS="${_oldIFS}";
     CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
     _shortName="${RESULT}";
@@ -1588,11 +1737,15 @@ function CLI.commandLineFlagsUsage() {
 # use: if CLI.scriptDescriptionUsage then ... fi
 function CLI.scriptDescriptionUsage() {
   local -i _rescode;
-  if isEmpty "${__DW_CLI_SCRIPT_DESCRIPTION}"; then
+    CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" SCRIPT_DESCRIPTION;
+  local _scriptDescription="${RESULT}";
+  if isEmpty "${_scriptDescription}"; then
     _rescode=${FALSE};
   else
     _rescode=${TRUE};
-    echo -e "\n${__DW_CLI_SCRIPT_DESCRIPTION}\n";
+    echo -e "\n${_scriptDescription}\n";
   fi
 
   return ${_rescode};
@@ -1605,11 +1758,17 @@ function CLI.scriptDescriptionUsage() {
 # use: if CLI.scriptLicenseSummaryUsage then ... fi
 function CLI.scriptLicenseSummaryUsage() {
   local -i _rescode;
-  if isEmpty "${__DW_CLI_SCRIPT_LICENSE_SUMMARY}"; then
+
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalString "${_moduleName}" SCRIPT_LICENSE_SUMMARY;
+  local _scriptLicenseSummary="${RESULT}";
+  if isEmpty "${_scriptLicenseSummary}"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
-    echo "${__DW_CLI_SCRIPT_LICENSE_SUMMARY}";
+    echo "${_scriptLicenseSummary}";
   fi
 
   return ${_rescode};
@@ -1623,11 +1782,15 @@ function CLI.scriptLicenseSummaryUsage() {
 function CLI.scriptCopyrightUsage() {
   local -i _rescode;
 
-  if isEmpty "${__DW_CLI_SCRIPT_COPYRIGHT}"; then
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" SCRIPT_COPYRIGHT;
+
+  if isEmpty "${_scriptCopyright}"; then
     _rescode=${FALSE};
   else
     _rescode=${TRUE};
-    echo "${__DW_CLI_SCRIPT_COPYRIGHT}";
+    echo "${_scriptCopyright}";
   fi
 
   return ${_rescode};
@@ -1648,7 +1811,12 @@ function CLI.commandLineFlagsDetailedUsage() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
 
-  for _flagKey in ${__DW_CLI_FLAG_KEYS[@]}; do
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" FLAG_KEYS;
+  local -n _flagKeys="${RESULT}";
+
+  for _flagKey in ${_flagKeys[@]}; do
     IFS="${_oldIFS}";
     CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
     _shortName="${RESULT}";
@@ -1689,11 +1857,15 @@ function CLI.commandLineFlagsDetailedUsage() {
 #      fi
 function CLI.commandLineParameterIsSingle() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local -i _rescode;
 
-  checkNotEmpty "name" "${_name}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" SINGLE_PARAMETERS;
+  local -n _singleParameters="${RESULT}";
 
-  _value="${__DW_CLI_SINGLE_PARAMETERS[${_name}]}";
+  _value="${_singleParameters[${_name}]}";
 
   if    isEmpty "${_value}" \
      || isTrue "${_value}" \
@@ -1716,9 +1888,8 @@ function CLI.commandLineParameterIsSingle() {
 #      fi
 function CLI.commandLineParameterIsMultiple() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local -i _rescode;
-
-  checkNotEmpty "name" "${_name}" 1;
 
   if CLI.commandLineParameterIsSingle "${_name}"; then
     _rescode=${FALSE};
@@ -1739,15 +1910,19 @@ function CLI.commandLineParameterIsMultiple() {
 #      fi
 function CLI.commandLineParameterIsMandatory() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local -i _rescode;
 
-  checkNotEmpty "name" "${_name}" 1;
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" MANDATORY_PARAMETERS;
+  local -n _mandatoryParameters="${RESULT}";
 
-  _value="${__DW_CLI_MANDATORY_PARAMETERS[${_name}]}";
+  _value="${_mandatoryParameters[${_name}]}";
 
   if    isEmpty "${_value}" \
-      || isTrue "${_value}" \
-      || areEqual "${_value}" "MANDATORY"; then
+     || isTrue "${_value}" \
+     || areEqual "${_value}" "MANDATORY"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -1769,7 +1944,12 @@ function CLI.commandLineParametersUsage() {
   local _mandatory;
   IFS=$' \t\n';
 
-  for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" PARAMETER_NAMES;
+  local -n _parameterNames="${RESULT}";
+
+  for _name in ${_parameterNames[@]}; do
     IFS="${_oldIFS}";
     _message="${_message} ${_name}";
     if CLI.commandLineParameterIsMultiple "${_name}"; then
@@ -1805,7 +1985,12 @@ function CLI.commandLineParametersDetailedUsage() {
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
 
-  for _name in ${__DW_CLI_PARAMETER_NAMES[@]}; do
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" PARAMETER_NAMES;
+  local -n _parameterNames="${RESULT}";
+
+  for _name in ${_parameterNames[@]}; do
     IFS="${_oldIFS}";
     if isNotEmpty "${_message}"; then
       _message="\n";
@@ -1842,7 +2027,7 @@ function CLI.commandLineParametersDetailedUsage() {
 # use: printHelp;
 function printHelp() {
 
-  DW.getStriptName;
+  DW.getScriptName;
   local _scriptName="${RESULT}";
   if isFunctionPresent defineEnv "${_scriptName}"; then
     defineEnv;
@@ -1877,53 +2062,41 @@ function CLI.defaultState() {
 # fun: CLI.resetState
 # api: private
 # txt: Resets the module state.
-#      Returns 0/TRUE always.
+# txt: Returns 0/TRUE always.
 # use: CLI.resetState
 function CLI.resetState() {
-  __DW_CLI_FLAG_KEYS=();
-  clearAssociativeArray __DW_CLI_FLAG_LONG_NAMES;
-  clearAssociativeArray __DW_CLI_FLAG_SHORT_NAMES;
-  clearAssociativeArray __DW_CLI_MANDATORY_FLAGS;
-  clearAssociativeArray __DW_CLI_FLAG_EXPECTING_ARGUMENTS;
-  clearAssociativeArray __DW_CLI_FLAG_DESCRIPTIONS;
-  clearAssociativeArray __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES;
-  __DW_CLI_PARAMETER_NAMES=();
-  clearAssociativeArray __DW_CLI_PARAMETER_DESCRIPTIONS;
-  clearAssociativeArray __DW_CLI_MANDATORY_PARAMETERS;
-  clearAssociativeArray __DW_CLI_SINGLE_PARAMETERS;
-  __DW_CLI_SCRIPT_DESCRIPTION="";
-  __DW_CLI_SCRIPT_COPYRIGHT="";
-  __DW_CLI_SCRIPT_LICENSE_SUMMARY="";
-}
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
 
-# env: __DW_CLI_FLAG_KEYS: The CLI flags' keys.
-declare -ag __DW_CLI_FLAG_KEYS;
-# env: __DW_CLI_FLAG_LONG_NAMES: The CLI flags' long names.
-declare -Ag __DW_CLI_FLAG_LONG_NAMES;
-# env: __DW_CLI_FLAG_SHORT_NAMES: The CLI flags' short names.
-declare -Ag __DW_CLI_FLAG_SHORT_NAMES;
-# env: __DW_CLI_MANDATORY_FLAGS: The CLI flags' mandatory information.
-declare -Ag __DW_CLI_MANDATORY_FLAGS;
-# env: __DW_CLI_FLAG_EXPECTING_ARGUMENTS: Whether each CLI flag expects an argument or not.
-declare -Ag __DW_CLI_FLAG_EXPECTING_ARGUMENTS;
-# env: __DW_CLI_FLAG_DESCRIPTIONS: The description of each CLI flag.
-declare -Ag __DW_CLI_FLAG_DESCRIPTIONS;
-# env: __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES: The default value of each CLI flag.
-declare -Ag __DW_CLI_OPTIONAL_FLAG_DEFAULT_VALUES;
-# env: __DW_CLI_PARAMETER_NAMES: The names of the CLI parameters.
-declare -ag __DW_CLI_PARAMETER_NAMES;
-# env: __DW_CLI_PARAMETER_DESCRIPTIONS: The descriptions of the CLI parameters.
-declare -Ag __DW_CLI_PARAMETER_DESCRIPTIONS;
-# env: __DW_CLI_MANDATORY_PARAMETERS: Whether each CLI parameter is mandatory or not.
-declare -Ag __DW_CLI_MANDATORY_PARAMETERS;
-# env: __DW_CLI_SINGLE_PARAMETERS: Whether each CLI parameter is single or not.
-declare -Ag __DW_CLI_SINGLE_PARAMETERS;
-# env: __DW_CLI_SCRIPT_DESCRIPTION: The description of the script.
-declare -g __DW_CLI_SCRIPT_DESCRIPTION;
-# env: __DW_CLI_SCRIPT_COPYRIGHT: The copyright of the script.
-declare -g __DW_CLI_SCRIPT_COPYRIGHT;
-# env: __DW_CLI_SCRIPT_LICENSE_SUMMARY: The license of the script.
-declare -g __DW_CLI_SCRIPT_LICENSE_SUMMARY;
+  # env: FLAG_KEYS: The CLI flags' keys.
+  DW.declareGlobalArray "${_moduleName}" FLAG_KEYS;
+  # env: FLAG_LONG_NAMES: The CLI flags' long names.
+  DW.declareGlobalMap "${_moduleName}" FLAG_LONG_NAMES;
+  # env: FLAG_SHORT_NAMES: The CLI flags' short names.
+  DW.declareGlobalMap "${_moduleName}" FLAG_SHORT_NAMES;
+  # env: MANDATORY_FLAGS: The CLI flags' mandatory information.
+  DW.declareGlobalMap "${_moduleName}" MANDATORY_FLAGS;
+  # env: FLAG_EXPECTING_ARGUMENTS: Whether each CLI flag expects an argument or not.
+  DW.declareGlobalMap "${_moduleName}" FLAG_EXPECTING_ARGUMENTS;
+  # env: FLAG_DESCRIPTIONS: The description of each CLI flag.
+  DW.declareGlobalMap "${_moduleName}" FLAG_DESCRIPTIONS;
+  # env: OPTIONAL_FLAG_DEFAULT_VALUES: The default value of each CLI flag.
+  DW.declareGlobalMap "${_moduleName}" FLAG_DEFAULT_VALUES;
+  # env: PARAMETER_NAMES: The names of the CLI parameters.
+  DW.declareGlobalArray "${_moduleName}" PARAMETER_NAMES;
+  # env: PARAMETER_DESCRIPTIONS: The descriptions of the CLI parameters.
+  DW.declareGlobalMap "${_moduleName}" PARAMETER_DESCRIPTIONS;
+  # env: MANDATORY_PARAMETERS: Whether each CLI parameter is mandatory or not.
+  DW.declareGlobalMap "${_moduleName}" MANDATORY_PARAMETERS;
+  # env: SINGLE_PARAMETERS: Whether each CLI parameter is single or not.
+  DW.declareGlobalMap "${_moduleName}" SINGLE_PARAMETERS;
+  # env: SCRIPT_DESCRIPTION: The description of the script.
+  DW.declareGlobalString "${_moduleName}" SCRIPT_DESCRIPTION;
+  # env: SCRIPT_COPYRIGHT: The copyright of the script.
+  DW.declareGlobalString "${_moduleName}" SCRIPT_COPYRIGHT;
+  # env: SCRIPT_LICENSE_SUMMARY: The license of the script.
+  DW.declareGlobalString "${_moduleName}" SCRIPT_LICENSE_SUMMARY;
+}
 
 CLI.resetState;
 CLI.defaultState;
