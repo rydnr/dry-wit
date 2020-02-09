@@ -222,6 +222,7 @@ function DW.declareGlobalVariable() {
   local _aux="${RESULT}";
 
   if [ ${_rescode} -eq ${TRUE} ]; then
+    unset "${_aux}";
     case "${_varType}" in
       "int") if BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
                declare -agx "${_aux}";
