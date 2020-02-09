@@ -13,10 +13,15 @@ function DRYWIT.retrieveSettingsFiles_test() {
   DW.import dw-plumbing;
 
   IFS="${DWIFS}";
-  for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-            ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-            "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-            "${DRY_WIT_SCRIP_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+  DW.getScriptPath;
+  local _scriptPath="${RESULT}";
+  DW.getScriptFolder;
+  local _scriptFolder="${RESULT}";
+
+  for _f in "$(basename ${_scriptPath} .sh).inc.sh" \
+            ".$(basename ${_scriptPath} .sh).inc.sh" \
+            "${_scriptFolder}/$(basename ${_scriptPath} .sh).inc.sh" \
+            "${_scriptFolder}/.$(basename ${_scriptPath} .sh).inc.sh"; do
       IFS="${_oldIFS}";
       if touch "${_f}" 2> /dev/null; then
           _toDelete+=("${_f}");
@@ -27,10 +32,10 @@ function DRYWIT.retrieveSettingsFiles_test() {
   _settingsFiles="${RESULT}";
   if isNotEmpty "${_settingsFiles}"; then
     IFS="${DWIFS}";
-    for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-              ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-              "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-              "${DRY_WIT_SCRIP_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
+    for _f in "$(basename ${_scriptPath} .sh).inc.sh" \
+              ".$(basename ${_scriptPath} .sh).inc.sh" \
+              "${_scriptFolder}/$(basename ${_scriptPath} .sh).inc.sh" \
+              "${_scriptFolder}/.$(basename ${_scriptPath} .sh).inc.sh"; do
       IFS="${_oldIFS}";
       retrieveAbsolutePath "${_f}";
       Assert.contains "${_settingsFiles}" "${RESULT}" "Unexpected settings files";
