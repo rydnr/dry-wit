@@ -2,6 +2,17 @@
 # api: public
 # txt: Terminal-related functions
 
+# fun: TERM.getModuleName
+# api: public
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: TERM.getModuleName; echo "Module: ${RESULT}";
+function TERM.getModuleName() {
+  export RESULT="DW_TERM";
+  return ${TRUE};
+}
+
 # fun: getTermWidth
 # api: public
 # txt: Retrieves the width of the term.
@@ -9,23 +20,23 @@
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
 # use: if getTermWidth; then echo "term width -> ${RESULT}"; fi
 function getTermWidth() {
-  local result;
-  local -i rescode;
+  local _result;
+  local -i _rescode;
   local _term;
 
   TERM.retrieveTermWidthFromEnvVar;
-  rescode=$?;
-  if ! isTrue ${rescode}; then
+  _rescode=$?;
+  if ! isTrue ${_rescode}; then
     retrieveTERM;
     _term="${RESULT}";
     getTermWidthForTerm "${_term}";
-    rescode=$?;
-    if ! isTrue ${rescode}; then
-        export RESULT="";
+    _rescode=$?;
+    if ! isTrue ${_rescode}; then
+      export RESULT="";
     fi
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: getTermWidthForTerm term
@@ -36,41 +47,43 @@ function getTermWidth() {
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
 # use: if getTermWidthForTerm "${TERM}"; then ...; fi
 function getTermWidthForTerm() {
-  local -i rescode;
-  local result;
+  local -i _rescode;
+  local _result;
   local _term="${1}";
-
-  checkNotEmpty "term" "${_term}" 1;
+  checkNotEmpty term "${_term}" 1;
 
   $(tput cols &> /dev/null > /dev/null 2>&1);
-  rescode=$?;
+  _rescode=$?;
 
-  if isTrue ${rescode}; then
-    result=$(tput cols);
+  if isTrue ${_rescode}; then
+    _result=$(tput cols);
   fi
 
-  if    isEmpty ${result} \
-     || [ $((result)) -le 0 ]; then
+  if    isEmpty ${_result} \
+     || [ $((_result)) -le 0 ]; then
 
     if isNotEmpty "${_term}"; then
 
       $(tput -T ${_term} cols > /dev/null 2>&1);
 
-      if isTrue ${rescode}; then
-        result=$(tput -T ${_term} cols);
+      if isTrue ${_rescode}; then
+        _result=$(tput -T ${_term} cols);
       fi
     fi
   fi
-  if    isEmpty ${result} \
-     || [ $((result)) -le 0 ]; then
-    result=${_DRY_WIT_DEFAULT_TERM_WIDTH};
+
+  if    isEmpty ${_result} \
+    || [ $((_result)) -le 0 ]; then
+    TERM.getModuleName;
+    DW.getGlobalInt "${RESULT}" DEFAULT_TERM_WIDTH;
+    _result=${RESULT};
   fi
 
-  if isTrue ${rescode}; then
-      export RESULT=${result};
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: retrieveTERM
@@ -81,19 +94,19 @@ function getTermWidthForTerm() {
 # use: retrieveTERM;
 #      echo "TERM -> ${RESULT}";
 function retrieveTERM() {
-  local result="${TERM}";
+  local _result="${TERM}";
 
-  if isEmpty "${result}"; then
-    result="dumb";
+  if isEmpty "${_result}"; then
+    _result="dumb";
   fi
 
-  case ${result} in
-    dumb) result="$(uname | tr '[:upper:]' '[:lower:]')";
-         ;;
-      *) ;;
+  case ${_result} in
+    dumb) _result="$(uname | tr '[:upper:]' '[:lower:]')";
+          ;;
+    *) ;;
   esac
 
-  export RESULT="${result}";
+  export RESULT="${_result}";
 
   return ${TRUE};
 }
@@ -105,12 +118,26 @@ function retrieveTERM() {
 # txt: If the function returns 0/TRUE, the variable RESULT contains the column width.
 # use: if retrieveTermWidthFromEnvVar; then width=${RESULT}; fi
 function TERM.retrieveTermWidthFromEnvVar() {
-  local -i rescode=${FALSE};
+  local -i _rescode=${FALSE};
+
   if isNotEmpty "${DW_TERM_WIDTH}"; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
     export RESULT="${DW_TERM_WIDTH}";
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
+
+# fun: TERM.resetState
+# api: private
+# txt: Initializes the module state.
+# txt: Returns 0/TRUE always.
+# use: TERM.resetState
+function TERM.resetState() {
+  TERM.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalInt "${_moduleName}" DEFAULT_TERM_WIDTH 80;
+}
+
+TERM.resetState;
 #

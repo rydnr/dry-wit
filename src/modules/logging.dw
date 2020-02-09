@@ -381,10 +381,18 @@ function LOGGING.alignRight() {
   local _allowsColors;
   local _token;
 
-  LOGGING.retrieveLogOutcomeTokens "${_outcome}";
+  LOGGING.processLogOutcomeTokens "${_outcome}";
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" LOG_OUTCOME_TOKENS;
+  local -n _logOutcomeTokens=${RESULT};
+
+  DW.getGlobalString "${_moduleName}" LOG_OUTCOME_SEPARATOR;
+  local _logOutcomeSeparator="${RESULT}";
+
   local _oldIFS="${IFS}";
   IFS=$' \t\n';
-  for _token in "${_DRY_WIT_LOG_OUTCOME_TOKENS[@]}"; do
+  for _token in "${_logOutcomeTokens[@]}"; do
     _logMessage="${_logMessage}${_token}";
   done
   IFS="${_oldIFS}";
@@ -408,7 +416,7 @@ function LOGGING.alignRight() {
     done
     while [ $((${_end}-${_index}+1)) != 0 ]; do
       _index=$((${_index}+1));
-      echo -n "${LOG_OUTCOME_SEPARATOR}";
+      echo -n "${_logOutcomeSeparator}";
     done
   fi
 }
@@ -501,7 +509,7 @@ function LOGGING.echoLogOutcome() {
   local _logPrefix;
   local -i _i;
 
-  LOGGING.retrieveLogOutcomeTokens "${_text}";
+  LOGGING.processLogOutcomeTokens "${_text}";
 
   allowsColors;
   _allowsColors=$?;
@@ -1037,7 +1045,7 @@ function LOGGING.peekLogCategory() {
   DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
   local -n _logCategoryStack=${RESULT};
 
-  local -i _len=${#_logCategory[@]};
+  local -i _len=${#_logCategoryStack[@]};
   local -i _newLen;
 
   if [ ${_len} -gt 0 ]; then
@@ -1346,14 +1354,13 @@ function LOGGING.retrieveLogOutcomeColors() {
   _logOutcomeColors[${_outcomeTextPosition}]="${_keywordColor}";
 }
 
-# fun: LOGGING.retrieveLogOutcomeTokens
+# fun: LOGGING.processLogOutcomeTokens
 # api: private
-# txt: Retrieves the tokens composing the log outcome.
+# txt: Processes the tokens composing the log outcome.
 # opt: text: The outcome text.
 # txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the output file to source to be able to use _DRY_WIT_LOG_OUTCOME_TOKENS array.
-# use: LOGGING.retrieveLogOutcomeTokens "done"; source ${RESULT}; echo "${_DRY_WIT_LOG_OUTCOME_TOKENS[*]}";
-function LOGGING.retrieveLogOutcomeTokens() {
+# use: LOGGING.processLogOutcomeTokens "done";
+function LOGGING.processLogOutcomeTokens() {
   local _text="${1}";
   checkNotEmpty "text" "${_text}" 1;
 
@@ -1758,7 +1765,7 @@ declare -agx BUILTIN_FAILURE_KEYWORDS=("${ERROR}" "${FAILURE}" "${FAILED}" "${KO
 
 # fun: LOGGING.resetState
 # api: private
-# txt: Initializes the logging state, depending on the script nesting level.
+# txt: Initializes the module state.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.resetState
 function LOGGING.resetState() {
