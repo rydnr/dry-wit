@@ -2,10 +2,16 @@
 # api: public
 # txt: Functions dealing with files.
 
-# env: _CLEANUP_FILES: The temporary files to cleanup.
-declare -agx _CLEANUP_FILES;
-
-DW.import logging;
+# fun: FILE.getModuleName
+# api: public
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: FILE.getModuleName; echo "Module: ${RESULT}";
+function FILE.getModuleName() {
+  export RESULT="DW_FILE";
+  return ${TRUE};
+}
 
 # fun: addFileToCleanup file
 # api: public
@@ -15,24 +21,15 @@ DW.import logging;
 # use: addFileToCleanup "/tmp/my-log.txt";
 function addFileToCleanup() {
   local _file="${1}";
-  #  logTrace "Appending ${result} to _CLEANUP_FILES";
+  checkNotEmpty file "${_file}" 1;
 
-  if declare -p _CLEANUP_FILES > /dev/null 2>&1; then
-    upvars -a$((${#_CLEANUP_FILES[@]}+1)) _CLEANUP_FILES "${_CLEANUP_FILES[@]}" "${_file}";
-    export _CLEANUP_FILES;
-  else
-    export -a _CLEANUP_FILES=();
-    upvars -a1 _CLEANUP_FILES "${_file}";
-    export _CLEANUP_FILES;
-  fi
+  FILE.getModuleName;
+  local _moduleName="${RESULT}";
 
-  #  local _oldIFS="${IFS}";
-  #  IFS=$' \t\n';
-  #  _CLEANUP_FILES=(\
-    #    $(for i in ${_CLEANUP_FILES[*]}; do echo $i; done) \
-    #      "${_file}" \
-    #  );
-  #  IFS="${_oldIFS}";
+  DW.getGlobalVariableName "${_moduleName}" CLEANUP_FILES;
+  local -n _cleanupFiles=${RESULT};
+
+  _cleanupFiles[${#_cleanupFiles[@]}]="${_file}";
 }
 
 # fun: createTempFile
@@ -44,19 +41,19 @@ function addFileToCleanup() {
 #        echo "Temp file: ${RESULT}";
 #      fi
 function createTempFile() {
-  local -i rescode;
-  local result;
+  local -i _rescode;
+  local _result;
 
   if createTempFileNoCleanup; then
-    result="${RESULT}";
-    addFileToCleanup "${result}";
-    rescode=${TRUE};
-    export RESULT="${result}";
+    _result="${RESULT}";
+    addFileToCleanup "${_result}";
+    _rescode=${TRUE};
+    export RESULT="${_result}";
   else
-    rescode=${FALSE};
+    _rescode=${FALSE};
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: createTempFileNoCleanup
@@ -64,38 +61,34 @@ function createTempFile() {
 # txt: Creates a new temporary file, without managing its cleanup.
 # txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
-# use: if createTempFileNoCleanup; then
-#        echo "Temp file: ${RESULT}";
-#      fi
+# use: if createTempFileNoCleanup; then echo "Temp file: ${RESULT}"; fi
 function createTempFileNoCleanup() {
-  local -i rescode;
-  local result;
+  local -i _rescode;
+  local _result;
   DW.getScriptName;
   local _scriptName="${RESULT}";
 
   local _prefix="$(echo \"${_scriptName}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
-  local _dirname="$(dirname \"${_scriptName}\")";
-  #  local _prefix="$(echo "${_scriptName}" | awk -F"/" '{print $NF;}')";
-  #  local _dirname="$(dirname "${_scriptName}")";
+  local _dirname="$(dirname '${_scriptName}')";
   if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
     _dirname="$PWD/${_dirname#\.}";
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
   FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
-  rescode=$?;
+  _rescode=$?;
 
-  if isFalse ${rescode} ; then
+  if isFalse ${_rescode} ; then
     FILE.mktempFile "${PWD}" ".${_prefix}.XXXXXXXXXX";
-    rescode=$?;
+    _rescode=$?;
   fi
 
-  if isFalse ${rescode}; then
+  if isFalse ${_rescode}; then
     export RESULT="";
-    rm -f "${result}" > /dev/null 2>&1;
+    rm -f "${_result}" > /dev/null 2>&1;
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: createTempFolder parent? prefix?
@@ -161,26 +154,25 @@ function createTempFolder() {
 # use:  if FILE.mktempFile /tmp .removeme.XXXX; then ...; fi
 function FILE.mktempFile() {
   local _baseFolder="${1}";
-  local _format="${2}"
-  local -i rescode;
-  local result;
-
   checkNotEmpty "baseFolder" "${_baseFolder}" 1;
+  local _format="${2}"
   checkNotEmpty "format" "${_format}" 2;
+  local -i _rescode;
+  local _result;
 
   if isMacOSX; then
-    result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
-    rescode=$?;
+    _result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
+    _rescode=$?;
   else
-    result="$(mktemp -p ${_baseFolder} -t ${_format})"
-    rescode=$?;
+    _result="$(mktemp -p ${_baseFolder} -t ${_format})"
+    _rescode=$?;
   fi
 
-  if isTrue ${rescode}; then
-    export RESULT="${result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: FILE.mktempFolder baseFolder format
@@ -194,25 +186,25 @@ function FILE.mktempFile() {
 function FILE.mktempFolder() {
   local _baseFolder="${1}";
   local _format="${2}"
-  local -i rescode;
-  local result;
+  local -i _rescode;
+  local _result;
 
   checkNotEmpty "baseFolder" "${_baseFolder}" 1;
   checkNotEmpty "format" "${_format}" 2;
 
   if isMacOSX; then
-    result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
-    rescode=$?;
+    _result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
+    _rescode=$?;
   else
-    result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
-    rescode=$?;
+    _result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
+    _rescode=$?;
   fi
 
-  if isTrue ${rescode}; then
-    export RESULT="${result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: fileExists file
@@ -934,4 +926,18 @@ function changeOwnerOfFolderRecursively() {
 
   chown -R "${_ownership}" "${_dir}" > /dev/null 2>&1;
 }
+
+# fun: FILE.resetState
+# api: private
+# txt: Resets the state of the module.
+# txt: Returns 0/TRUE always.
+# use: FILE.resetState;
+function FILE.resetState() {
+  ENVVAR.getModuleName;
+  local _moduleName="${RESULT}";
+  # env: CLEANUP_FILES: The temporary files to cleanup.
+  DW.declareGlobalArray "${_moduleName}" CLEANUP_FILES;
+}
+
+FILE.resetState;
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
