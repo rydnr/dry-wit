@@ -4,7 +4,7 @@
 
 DW.import number;
 
-# fun: arrayContains
+# fun: arrayContains array element
 # api: public
 # txt: Checks if an element is already contained in an array.
 # opt: element: The element to check.
@@ -14,14 +14,15 @@ DW.import number;
 #      if arrayContains "other number" "${a[@]}"; then ...; fi
 function arrayContains() {
   local _item="${1}";
-  checkNotEmpty "item" "${_item}" 1;
   shift;
   local _array="${@}";
-  # array can be empty.
-
   local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
+
+  checkNotEmpty "item" "${_item}" 1;
+
+  # array can be empty.
 
   IFS="${DWIFS}";
   for _aux in ${_array}; do
@@ -37,7 +38,7 @@ function arrayContains() {
   return ${_rescode};
 }
 
-# fun: arrayDoesNotContain
+# fun: arrayDoesNotContain array element
 # api: public
 # txt: Checks if an element is not already contained in an array.
 # opt: element: The element to check.
@@ -47,14 +48,14 @@ function arrayContains() {
 #      if arrayDoesNotContain "four" "${a[@]}"; then ...; fi
 function arrayDoesNotContain() {
   local _item="${1}";
-  checkNotEmpty "item" "${_item}" 1;
   shift;
   local _array="${@}";
-  checkNotEmpty "array" "${_array}" 1;
-
   local -i _rescode=${FALSE};
 
-  if arrayContains "${_item}" "${_array}"; then
+  checkNotEmpty "array" "${_array}" 1;
+  checkNotEmpty "item" "${_item}" 2;
+
+  if arrayContains "${_array}" "${_item}"; then
     _rescode=${FALSE};
   else
     _rescode=${TRUE};
@@ -63,28 +64,29 @@ function arrayDoesNotContain() {
   return ${_rescode};
 }
 
-# fun: clearAssociativeArray
+# fun: clearAssociativeArray array
 # api: public
 # txt: Clears given associative array.
 # opt: array: The associative array.
 # txt: Returns 0/TRUE always.
 # use: clearAssociativeArray myArray;
 function clearAssociativeArray() {
-  local _arrayName="${1}";
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
-  local _key;
+    local _arrayName="${1}";
+    local _key;
 
-  declare -n _directArray="${_arrayName}";
+    checkNotEmpty "arrayName" "${_arrayName}" 1;
 
-  IFS="${DWIFS}";
-  for _key in "${!_directArray[@]}"; do
+    declare -n _directArray="${_arrayName}";
+
+    IFS="${DWIFS}";
+    for _key in "${!_directArray[@]}"; do
+        IFS="${_oldIFS}";
+        unset _directArray[${_key}];
+    done
     IFS="${_oldIFS}";
-    unset _directArray[${_key}];
-  done
-  IFS="${_oldIFS}";
 }
 
-# fun: flattenArray
+# fun: flattenArray array separator
 # api: public
 # txt: Flattens an array, using given separator.
 # opt: array: The name of the array variable.
@@ -120,7 +122,7 @@ function flattenArray() {
   export RESULT="${result}";
 }
 
-# fun: forEachAssociativeArrayEntryDo
+# fun: forEachAssociativeArrayEntryDo array callback
 # api: public
 # txt: Calls a given function for each entry found in given associative array.
 # opt: array: The name of the associative array variable.
@@ -132,45 +134,45 @@ function flattenArray() {
 #      ...
 #      forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
 function forEachAssociativeArrayEntryDo() {
-  local _arrayName="${1}";
-  local _callback="${2}";
-  local _key;
-  local _oldIFS="${IFS}";
+    local _arrayName="${1}";
+    local _callback="${2}";
+    local _key;
+    local _oldIFS="${IFS}";
 
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
-  checkFunctionPresent "callback" "${_callback}" 2;
+    checkNotEmpty "arrayName" "${_arrayName}" 1;
+    checkFunctionPresent "callback" "${_callback}" 2;
 
-  declare -n _directArray="${_arrayName}";
+    declare -n _directArray="${_arrayName}";
 
-  IFS="${DWIFS}";
-  for _key in "${!_directArray[@]}"; do
+    IFS="${DWIFS}";
+    for _key in "${!_directArray[@]}"; do
+        IFS="${_oldIFS}";
+
+        ${_callback} "${_key}" "${_directArray[${_key}]}";
+    done
     IFS="${_oldIFS}";
-
-    ${_callback} "${_key}" "${_directArray[${_key}]}";
-  done
-  IFS="${_oldIFS}";
 }
 
-# fun: isArrayEmpty
+# fun: isArrayEmpty array
 # api: public
 # txt: Checks whether given array is empty.
 # opt: array: The name of the array.
 # txt: Returns 0/TRUE if the array is empty; 1/FALSE otherwise.
 # use: if isArrayEmpty array; then ...; fi
 function isArrayEmpty() {
-  local _arrayName="${1}";
-  local -i _rescode;
+    local _arrayName="${1}";
+    local -i _rescode;
 
-  if isEmpty "${_arrayName}"; then
-    _rescode=${TRUE};
-  else
-    _rescode=${FALSE};
-  fi
+    if isEmpty "${_arrayName}"; then
+        _rescode=${TRUE};
+    else
+        _rescode=${FALSE};
+    fi
 
-  return ${_rescode};
+    return ${_rescode};
 }
 
-# fun: retrieveAssociativeArrayKeys
+# fun: retrieveAssociativeArrayKeys array
 # api: public
 # txt: Extracts the keys of given associative array.
 # opt: arrayName: The array name.

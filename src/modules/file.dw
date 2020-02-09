@@ -23,10 +23,7 @@ function addFileToCleanup() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
 
-  FILE.getModuleName;
-  local _moduleName="${RESULT}";
-
-  DW.getGlobalVariableName "${_moduleName}" CLEANUP_FILES;
+  getCleanupFilesVariableName;
   local -n _cleanupFiles=${RESULT};
 
   _cleanupFiles[${#_cleanupFiles[@]}]="${_file}";
@@ -927,17 +924,27 @@ function changeOwnerOfFolderRecursively() {
   chown -R "${_ownership}" "${_dir}" > /dev/null 2>&1;
 }
 
+# fun: getCleanupFilesVariableName
+# api: public
+# txt: Retrieves the variable name containing the files to clean up.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the variable name.
+# use: getCleanupFilesVariableName; local -n cleanupFiles=${RESULT};
+function getCleanupFilesVariableName() {
+  FILE.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" CLEANUP_FILES;
+}
+
 # fun: FILE.resetState
 # api: private
 # txt: Resets the state of the module.
 # txt: Returns 0/TRUE always.
 # use: FILE.resetState;
 function FILE.resetState() {
-  ENVVAR.getModuleName;
+  FILE.getModuleName;
   local _moduleName="${RESULT}";
   # env: CLEANUP_FILES: The temporary files to cleanup.
   DW.declareGlobalArray "${_moduleName}" CLEANUP_FILES;
 }
-
-FILE.resetState;
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

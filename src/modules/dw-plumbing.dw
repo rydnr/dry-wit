@@ -44,13 +44,16 @@ function cleanup() {
   local _oldIFS="${IFS}";
   local _i;
 
-  if [ "${#_CLEANUP_FILES}" != "0" ]; then
+  getCleanupFilesVariableName;
+  local -n _cleanupFiles=${RESULT};
+
+  if [ "${#_cleanupFiles}" != "0" ]; then
     setLogCategory "post-process";
 
     logTrace -n "Cleaning up temporary files";
 
     IFS="${DWIFS}";
-    for _i in ${_CLEANUP_FILES[*]}; do
+    for _i in ${_cleanupFiles[@]}; do
       IFS="${_oldIFS}";
       rm -rf ${_i} > /dev/null 2>&1;
       if isTrue $?; then
@@ -168,57 +171,6 @@ function isFunctionPresent() {
   return ${_rescode};
 }
 
-# fun: DRYWIT.addBuiltInError name message
-# api: private
-# txt: Annotates a new built-in error.
-# opt: name: The error name.
-# opt: message: The error message.
-# txt: Returns 0/TRUE always.
-# use: DRYWIT.addBuiltInError INVALID_OPTION "Option unrecognized";
-function DRYWIT.addBuiltInError() {
-  local _errorName="${1}";
-  local _message="${2}";
-  toUpper "${_errorName}";
-  local _upcasedErrorName="${RESULT}";
-
-  DRYWIT.appendBuiltInError "${_upcasedErrorName}";
-  upvar "${_upcasedErrorName}" "${_message}";
-  export "${_upcasedErrorName}"="${_message}";
-}
-
-# fun: DRYWIT.addMissingDependencyError dependency
-# api: private
-# txt: Annotates a new error describing a missing dependency.
-# opt: message: The the missing dependency.
-# txt: Returns 0/TRUE always.
-# use: DRYWIT.addMissingDependencyError "docker";
-function DRYWIT.addMissingDependencyError() {
-  local _dependency="${1}";
-  normalizeUppercase "${_dependency}_NOT_INSTALLED";
-  local _constant="${RESULT}";
-
-  debugEcho "addError ${_constant} \"${_dependency}\" is not installed\"";
-  addError "${_constant}" "${_dependency} is not installed";
-}
-
-# fun: DRYWIT.appendBuiltInError error
-# api: private
-# txt: Appends a new built-in error to BUILTIN_ERRORS.
-# opt: error: The error to add.
-# txt: Returns 0/TRUE always.
-# use: DRYWIT.appendBuiltInError "error";
-function DRYWIT.appendBuiltInError() {
-  local _error="${1}";
-
-  if declare -p BUILTIN_ERRORS > /dev/null 2>&1; then
-    upvars -a$((${#BUILTIN_ERRORS[@]}+1)) BUILTIN_ERRORS "${BUILTIN_ERRORS[@]}" "${_error}";
-    export BUILTIN_ERRORS;
-  else
-    export -a BUILTIN_ERRORS=();
-    upvars -a1 BUILTIN_ERRORS "${_error}";
-  fi
-}
-
 # fun: DRYWIT.checkDependency name errorCode
 # api: private
 # txt: Checks a required dependency is available.
@@ -281,21 +233,6 @@ function DRYWIT.checkScript() {
   logTraceResult SUCCESS "${_DW_DONE}";
 }
 
-# fun: DRYWIT.defineDryWitErrorMessages
-# api: private
-# txt: Declares dry-wit's error messages.
-# txt: Returns 0/TRUE always.
-# use: DRYWIT.defineDryWitErrorMessages;
-function DRYWIT.defineDryWitErrorMessages() {
-  DRYWIT.addBuiltInError "SCRIPT_INTERRUPTED" "User interruption";
-  DRYWIT.addBuiltInError "MISSING_MANDATORY_VARIABLES" "Script not complete, since it doesn't define all mandatory variables";
-  DRYWIT.addBuiltInError "MISSING_MANDATORY_FUNCTIONS" "Script not complete, since it doesn't define all mandatory functions";
-  DRYWIT.addBuiltInError "UNKNOWN_ERROR" "The script has finished due to an unexpected error";
-  DRYWIT.addBuiltInError "UNACCEPTABLE_API_CALL" "Unacceptable call to dry-wit API: ";
-  DRYWIT.addBuiltInError "POSTCONDITION_NOT_SATISFIED" "Postcondition not satisfied: ";
-  DRYWIT.addBuiltInError "UNACCEPTABLE_ENVIRONMENT_VARIABLE" "Unacceptable environment variable: ";
-}
-
 # fun: DRYWIT.defineDryWitRequirements
 # api: private
 # txt: Checks dry-wit's own requirements.
@@ -323,7 +260,7 @@ function DRYWIT.main() {
 
   source "${_scriptPath}" $@;
 
-  DRYWIT.defineDryWitErrorMessages;
+  ERROR.defineDryWitErrorMessages;
 
   DRYWIT.setup "${_scriptName}";
 
@@ -443,4 +380,4 @@ function DRYWIT.trapSignals() {
   trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP;
   #  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

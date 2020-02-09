@@ -136,8 +136,10 @@ function TERM.retrieveTermWidthFromEnvVar() {
 function TERM.resetState() {
   TERM.getModuleName;
   local _moduleName="${RESULT}";
-  DW.declareGlobalInt "${_moduleName}" DEFAULT_TERM_WIDTH 80;
-}
 
-TERM.resetState;
-#
+  DW.declareGlobalInt "${_moduleName}" DEFAULT_TERM_WIDTH 80;
+
+  # env: DW_TERM_WIDTH: An environment variable to override default term width.
+  defineEnvVar DW_TERM_WIDTH OPTIONAL "An environment variable to override default term width";
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -593,13 +593,13 @@ function CLI.checkFlag() {
     if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
       _longName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      exitWithError UNKNOWN_FLAG "Unknown flag 1 ${_flag}";
     fi
 
     if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
       _shortName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      exitWithError UNKNOWN_FLAG "Unknown flag 2 ${_flag}";
     fi
 
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
@@ -612,7 +612,7 @@ function CLI.checkFlag() {
     local -n _flagKeys="${RESULT}";
 
     if arrayDoesNotContain "${_flagKey}" "${_flagKeys[@]}"; then
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      exitWithError UNKNOWN_FLAG "Unknown flag 3 ${_flag}";
     fi
 
     CLI.checkCommandLineFlag "${_flagKey}" "${_longName}" $@;
@@ -1032,7 +1032,7 @@ function CLI.parseFlag() {
     if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
       _shortName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      exitWithError UNKNOWN_FLAG "Unknown flag 5 ${_flag}";
     fi
 
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
@@ -1783,7 +1783,7 @@ function CLI.scriptCopyrightUsage() {
   local _moduleName="${RESULT}";
   DW.getGlobalString "${_moduleName}" SCRIPT_COPYRIGHT;
   local _scriptCopyright="${RESULT}";
-  
+
   if isEmpty "${_scriptCopyright}"; then
     _rescode=${FALSE};
   else
@@ -2095,7 +2095,4 @@ function CLI.resetState() {
   # env: SCRIPT_LICENSE_SUMMARY: The license of the script.
   DW.declareGlobalString "${_moduleName}" SCRIPT_LICENSE_SUMMARY;
 }
-
-CLI.resetState;
-CLI.defaultState;
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

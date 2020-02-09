@@ -2,6 +2,17 @@
 # api: public
 # txt: Functions to help while debugging scripts.
 
+# fun: DEBUG.getModuleName
+# api: public
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: DEBUG.getModuleName; echo "Module: ${RESULT}";
+function DEBUG.getModuleName() {
+  export RESULT="DW_DEBUG";
+  return ${TRUE};
+}
+
 # fun: debugArray arrayName
 # api: public
 # txt: Prints the contents of given array.
@@ -10,9 +21,8 @@
 # use: A=( "1" "2" "3" );
 #      debugArray "${A}"
 function debugArray() {
-    DW.import array;
-    flattenArray "${1}" " + ";
-    debugEcho "${RESULT}";
+  flattenArray "${1}" " + ";
+  debugEcho "${RESULT}";
 }
 
 # fun: debugAssociativeArray arrayName
@@ -24,9 +34,7 @@ function debugArray() {
 #      debugArray "${A}"
 function debugAssociativeArray() {
   local _associativeArrayName="${1}";
-  DW.import array;
-
-  checkNotEmpty "associativeArrayName" "${_associativeArrayName}" 1;
+  checkNotEmpty associativeArrayName "${_associativeArrayName}" 1;
 
   debugEcho "BEGIN processing array ${_associativeArrayName}";
 
@@ -44,9 +52,8 @@ function debugAssociativeArray() {
 # use: forEachAssociativeArrayEntryDo MY_ASSOCIATIVE_ARRAY debugAssociativeArrayEntry; done
 function debugAssociativeArrayEntry() {
   local _key="${1}";
+  checkNotEmpty key "${_key}" 1;
   local _value="${2}";
-
-  checkNotEmpty "key" "${_key}" 1;
 
   debugEcho "${_key} -> ${_value}";
 }
@@ -58,13 +65,11 @@ function debugAssociativeArrayEntry() {
 # txt: Returns 0/TRUE always.
 # use: debugEcho "message";
 function debugEcho() {
-    local _logFile;
-
-    if isDebugEchoEnabled; then
-        DEBUG.getDebugLogFile;
-        _logFile="${RESULT}";
-        echo -- "$*" >> "${_logFile}";
-    fi
+  if isDebugEchoEnabled; then
+    DEBUG.getDebugLogFile;
+    local _logFile="${RESULT}";
+    echo -- "$*" >> "${_logFile}";
+  fi
 }
 
 # fun: debugVariable varName varValue+
@@ -75,12 +80,13 @@ function debugEcho() {
 # txt: Returns 0/TRUE always.
 # use: debugVariable "foo" "bar";
 function debugVariable() {
-    local _name="${1}";
-    shift;
-    local _value="${@}";
+  local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
+  shift;
+  local _value="${@}";
 
-    declare -t "${_name}"="${_value}";
-    #  trap "echo ${_name} is being used here." DEBUG
+  declare -t "${_name}"="${_value}";
+  #  trap "echo ${_name} is being used here." DEBUG
 }
 
 # fun: isDebugEchoEnabled
@@ -89,15 +95,14 @@ function debugVariable() {
 # txt: Returns  0/TRUE if it's enabled; 1/FALSE otherwise.
 # use: if isDebugEchoEnabled; then ...; fi
 function isDebugEchoEnabled() {
-    local -i _rescode;
+  local -i _rescode;
 
-    if isTrue ${__DW_DEBUG_ECHO_ENABLED}; then
-        _rescode=${TRUE};
-    else
-        _rescode=${FALSE};
-    fi
+  DEBUG.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalInt "${_moduleName}" ECHO_ENABLED;
+  _rescode=${RESULT};
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: setDebugEchoEnabled
@@ -108,17 +113,21 @@ function isDebugEchoEnabled() {
 # use: setDebugEchoEnabled TRUE;
 function setDebugEchoEnabled() {
   local _flag="${1}";
-  checkNotEmpty "flag" "${_flag}" 1;
+  checkNotEmpty flag "${_flag}" 1;
+
+  DEBUG.getModuleName;
+  local _moduleName="${RESULT}";
 
   if isTrue "${_flag}"; then
-    if isFalse ${__DW_DEBUG_ECHO_ENABLED}; then
-      export __DW_DEBUG_ECHO_ENABLED=${TRUE};
+    if ! isDebugEnabled; then
+      DW.setGlobalInt "${_moduleName}" ECHO_ENABLED ${TRUE};
+
       DEBUG.getDebugLogFile;
       logInfo -n "Logging debugging information to ${RESULT}";
       logInfoResult SUCCESS "done";
     fi
   else
-    export __DW_DEBUG_ECHO_ENABLED=${FALSE};
+    DW.setGlobalInt "${_moduleName}" ECHO_ENABLED ${FALSE};
   fi
 }
 
@@ -138,8 +147,18 @@ function setDebugLogFile() {
     _rescode=$?;
   fi
 
-  if isTrue ${_rescode} && [ "${_file}" != "${__DW_DEBUG_LOG_FILE}" ]; then
-    export __DW_DEBUG_LOG_FILE="${_file}";
+  if isTrue ${_rescode}; then
+    DEBUG.getDebugLogFile;
+    local _logFile="${RESULT}";
+
+    echo "old log file: ${_logFile}, new log file: ${_file}";
+    if [[ "${_file}" != "${_logFile}" ]]; then
+      DEBUG.getModuleName;
+      local _moduleName="${RESULT}";
+      DW.setGlobalString "${_moduleName}" LOG_FILE "${_file}";
+      DEBUG.getDebugLogFile;
+      echo "Stored log file: ${RESULT}";
+    fi
   fi
 
   return ${_rescode};
@@ -151,27 +170,27 @@ function setDebugLogFile() {
 # txt: Returns 0/TRUE always.
 # use: traceApiCall;
 function traceApiCall() {
-    local -i _i=0;
-    local _logFile;
+  local -i _i=0;
 
-    DEBUG.getDebugLogFile;
-    _logFile="${RESULT}";
+  DEBUG.getDebugLogFile;
+  local _logFile="${RESULT}";
 
-    echo "${FUNCNAME[0]}" >> ${_logFile};
-    while caller $i >> ${_logFile}; do
-        i=$((i+1))
-    done
+  echo "${FUNCNAME[0]}" >> ${_logFile};
+  while caller $i >> ${_logFile}; do
+    i=$((i+1))
+  done
 }
 
 # fun: DEBUG.getDebugLogFile
-# api: private
+# api: privaet
 # txt: Retrieves the log file for debugging purposes.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the path of the debug file.
-# use: DEBUG.getDebugLogFile;
-#      echo "log file -> ${RESULT}";
+# use: DEBUG.getDebugLogFile; echo "log file -> ${RESULT}";
 function DEBUG.getDebugLogFile() {
-  export RESULT="${__DW_DEBUG_LOG_FILE}";
+  DEBUG.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" LOG_FILE;
 }
 
 # fun: DEBUG.defaultState
@@ -181,6 +200,7 @@ function DEBUG.getDebugLogFile() {
 # use: DEBUG.defaultState;
 function DEBUG.defaultState() {
   local _scriptName;
+  echo "Default state"
   if DW.getScriptName; then
     _scriptName="${RESULT}";
   fi
@@ -189,15 +209,6 @@ function DEBUG.defaultState() {
   fi
   setDebugLogFile "${TEMP:-/tmp}/$(basename ${_scriptName})-debug.$(date '+%Y%m%d%H%M%S').log";
   setDebugEchoEnabled FALSE;
-}
-
-# fun: DEBUG.resetState
-# api: private
-# txt: Resets the module.
-# txt: Returns 0/TRUE always.
-# use: DEBUG.resetState;
-function DEBUG.resetState() {
-  setDebugLogFile "";
 }
 
 # fun: debugDuration
@@ -241,10 +252,26 @@ function debugDuration() {
   return ${_rescode};
 }
 
-# env: __DW_DEBUG_LOG_FILE: The log file where the debug stuff gets logged.
-declare -gx __DW_DEBUG_LOG_FILE;
-# env: __DW_DEBUG_ECHO_ENABLED: Whether debugEcho is enabled.
-declare -gx __DW_DEBUG_ECHO_ENABLED;
+# fun: DEBUG.resetState
+# api: private
+# txt: Resets the module state.
+# txt: Returns 0/TRUE always.
+# use: DEBUG.resetState
+function DEBUG.resetState() {
+  DEBUG.getModuleName;
+  local _moduleName="${RESULT}";
 
-DEBUG.defaultState;
-#
+  echo "resetting state"
+  # env: LOG_FILE: The log file where the debug stuff gets logged.
+  DW.declareGlobalString "${_moduleName}" LOG_FILE "";
+  # env: __DW_DEBUG_ECHO_ENABLED: Whether debugEcho is enabled.
+  DW.declareGlobalInt "${_moduleName}" ECHO_ENABLED ${FALSE};
+
+  local -i _i=0;
+
+  echo "${FUNCNAME[0]}";
+  while caller $i; do
+    i=$((i+1))
+  done
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

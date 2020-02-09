@@ -2,6 +2,17 @@
 # api: public
 # txt: Changes the system's default locale.
 
+# fun: LOCALE.getModuleName
+# api: public
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: LOCALE.getModuleName; echo "Module: ${RESULT}";
+function LOCALE.getModuleName() {
+  export RESULT="DW_LOCALE";
+  return ${TRUE};
+}
+
 # fun: is_locale_supported
 # api: public
 # txt: Checks if given locale identifier is supported.
@@ -17,15 +28,15 @@ function is_locale_supported() {
   checkNotEmpty "encoding" "${_encoding}" 2;
 
   if [ -f ${SUPPORTED_LOCALES_FOLDER}/${_locale%%_*} ]; then
-      if is_locale_file_available "${_locale}"; then
-          if is_locale_available_in_language_file "${_locale}" "${_encoding}"; then
-              _rescode=${TRUE};
-          else
-            _rescode=${FALSE};
-          fi
+    if is_locale_file_available "${_locale}"; then
+      if is_locale_available_in_language_file "${_locale}" "${_encoding}"; then
+        _rescode=${TRUE};
       else
         _rescode=${FALSE};
       fi
+    else
+      _rescode=${FALSE};
+    fi
   else
     _rescode=${FALSE};
   fi
@@ -46,7 +57,7 @@ function is_locale_file_available() {
   checkNotEmpty "locale" "${_locale}" 1;
 
   if [ -f ${AVAILABLE_LOCALES_FOLDER}/${_locale} ]; then
-      _rescode=${TRUE};
+    _rescode=${TRUE};
   else
     _rescode=${FALSE};
   fi
@@ -93,12 +104,12 @@ function is_locale_available_in_language_file() {
   checkNotEmpty "encoding" "${_encoding}" 2;
 
   if is_locale_file_available "${_locale}"; then
-      if locale_requires_encoding_suffix "${_locale}" "${_encoding}"; then
-          _rescode=${TRUE}; # Implicit since it greps the same file.
-      else
-        grep "${_locale} ${_encoding}" ${SUPPORTED_LOCALES_FILE} > /dev/null 2>&1;
-        _rescode=$?;
-      fi
+    if locale_requires_encoding_suffix "${_locale}" "${_encoding}"; then
+      _rescode=${TRUE}; # Implicit since it greps the same file.
+    else
+      grep "${_locale} ${_encoding}" ${SUPPORTED_LOCALES_FILE} > /dev/null 2>&1;
+      _rescode=$?;
+    fi
   else
     _rescode=${FALSE};
   fi
@@ -114,9 +125,9 @@ function is_locale_available_in_language_file() {
 # use: change_default_locale "en_US.UTF-8";
 function change_default_locale() {
   local _locale="${1}";
-  checkNotEmpty "locale" "${_locale}" 1;
+  checkNotEmpty locale "${_locale}" 1;
   local _encoding="${2}";
-  checkNotEmpty "encoding" "${_encoding}" 2;
+  checkNotEmpty encoding "${_encoding}" 2;
 
   logInfo -n "Checking if the ${_locale}/${_encoding} pair is valid";
   if is_locale_supported "${_locale}" "${_encoding}"; then
@@ -142,11 +153,21 @@ function change_default_locale() {
   fi
 }
 
-addError "LOCALE_ENCODING_PAIR_IS_NOT_SUPPORTED" "The provided locale-encoding pair is not supported";
+# fun: LOCALE.resetState
+# api: private
+# txt: Resets the state of the module.
+# txt: Returns 0/TRUE always.
+# use: LOCALE.resetState;
+function LOCALE.resetState() {
+  addError LOCALE_ENCODING_PAIR_IS_NOT_SUPPORTED "The provided locale-encoding pair is not supported";
 
-# env: DEFAULT_LOCALE_FILE: The /etc/default/locale file
-defineEnvVar DEFAULT_LOCALE_FILE MANDATORY "The /etc/default/locale file" "/etc/default/locale";
+  # env: DEFAULT_LOCALE_FILE: The /etc/default/locale file
+  defineEnvVar DEFAULT_LOCALE_FILE MANDATORY "The /etc/default/locale file" "/etc/default/locale";
 
-# env: BASH_LOCALE_FILE: The /etc/bash.locale file
-defineEnvVar BASH_LOCALE_FILE MANDATORY "The /etc/bash.locale file" "/etc/bash.locale";
+  # env: BASH_LOCALE_FILE: The /etc/bash.locale file
+  defineEnvVar BASH_LOCALE_FILE MANDATORY "The /etc/bash.locale file" "/etc/bash.locale";
+
+  # env: AVAILABLE_LOCALES_FOLDER: The /usr/share/locale file
+  defineEnvVar AVAILABLE_LOCALES_FOLDER MANDATORY "The /usr/share/locale folder" "/usr/share/locale";
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

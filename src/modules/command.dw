@@ -2,9 +2,6 @@
 # api: public
 # txt: Functions to run external commands.
 
-DW.import user;
-DW.import logging;
-
 # fun: runCommand command
 # api: public
 # txt: Runs a command supporting logging of command-line and output.
@@ -127,31 +124,31 @@ EOF
 # TODO: find out why this fails. result gets modified externally in the getLogCategory/setLogCategory/logDebug block
 # use: if runCommandLongOutput "nmap -Pn"; then ...; fi
 function runCommandLongOutput() {
-    local _command="$(echo $@ | sed 's_\n_ _g')";
-    local result;
-    local -i resultCode;
+  local _command="$(echo $@ | sed 's_\n_ _g')";
+  local result;
+  local -i resultCode;
 
-    createTempFile;
-    result="${RESULT}";
+  createTempFile;
+  result="${RESULT}";
 
-    getLogCategory;
-    local _previousLogCategory="${RESULT}";
-    setLogCategory "${_previousLogCategory}*";
+  getLogCategory;
+  local _previousLogCategory="${RESULT}";
+  setLogCategory "${_previousLogCategory}*";
 
-    logDebug "${_command}";
+  logDebug "${_command}";
 
-    if isDebugEnabled; then
-        $@ 2>&1 | tee "${result}";
-        resultCode=${PIPESTATUS[0]};
-    else
-        $@ > "${result}" 2>&1;
-        resultCode=$?;
-    fi
+  if isDebugEnabled; then
+    $@ 2>&1 | tee "${result}";
+    resultCode=${PIPESTATUS[0]};
+  else
+    $@ > "${result}" 2>&1;
+    resultCode=$?;
+  fi
 
-    export RESULT="${result}";
+  export RESULT="${result}";
 
-    setLogCategory "${_previousLogCategory}";
+  setLogCategory "${_previousLogCategory}";
 
-    return ${resultCode};
+  return ${resultCode};
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

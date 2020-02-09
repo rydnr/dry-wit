@@ -12,20 +12,20 @@
 # txt: The variable RESULT contains the day-based timestamp.
 # use: date2jd 2019 6 2
 function date2jd() {
-    local result=0;
+  local result=0;
 
-    local _year=$1;
-    local _month=$2;
-    local _day=$3;
+  local _year=$1;
+  local _month=$2;
+  local _day=$3;
 
-    local _standardJd=$(( _day - 32075
-                          + 1461 * (_year + 4800 - (14 - _month)/12)/4
-                          + 367 * (_month - 2 + (14 - _month)/12*12)/12
-                          - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
+  local _standardJd=$(( _day - 32075
+                        + 1461 * (_year + 4800 - (14 - _month)/12)/4
+                        + 367 * (_month - 2 + (14 - _month)/12*12)/12
+                        - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
 
-    result=$((_standardJd-2400001));
+  result=$((_standardJd-2400001));
 
-    export RESULT=${result};
+  export RESULT=${result};
 }
 
 # fun: date2jds year month day hour minute second
@@ -41,22 +41,22 @@ function date2jd() {
 # txt: The variable RESULT contains the number of seconds.
 # use: date2jjds 2019 6 2 18 13 56
 function date2jds() {
-    local result=0;
+  local result=0;
 
-    local _year=$1;
-    local _month=$2;
-    local _day=$3;
-    local _hour=$4;
-    local _minute=$5;
-    local _second=$6;
+  local _year=$1;
+  local _month=$2;
+  local _day=$3;
+  local _hour=$4;
+  local _minute=$5;
+  local _second=$6;
 
-    date2jd ${_year} ${_month} ${_day};
-    result=${RESULT};
-    result=$((result*24+_hour));
-    result=$((result*60+_minute));
-    result=$((result*60+_second));
+  date2jd ${_year} ${_month} ${_day};
+  result=${RESULT};
+  result=$((result*24+_hour));
+  result=$((result*60+_minute));
+  result=$((result*60+_second));
 
-    export RESULT=${result};
+  export RESULT=${result};
 }
 
 # fun: jd2date date
@@ -122,4 +122,4 @@ function jds2date() {
 
   export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}";
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
