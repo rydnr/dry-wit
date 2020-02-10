@@ -125,6 +125,36 @@ function arrayDoesNotContain_test() {
   Assert.isTrue ${_rescode} "arrayDoesNotContain failed";
 }
 
+function getIndexOfItemInArray_test() {
+  local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help");
+  Assert.functionExists "getIndexOfItemInArray" "getIndexOfItemInArray doesn't exist";
+  local -i _index;
+  local -i _rescode;
+
+  getIndexOfItemInArray "v|debug" "${test_array[@]}";
+  _rescode=$?;
+  _index=${RESULT};
+  Assert.isTrue ${_rescode} "getIndexOfItemInArray failed";
+  Assert.areEqual 0 ${_index} "getIndexOfItemInArray v|debug ${_testArray[@]} returned ${_index}";
+
+  getIndexOfItemInArray "vv|trace" "${test_array[@]}";
+  _rescode=$?;
+  _index=${RESULT};
+  Assert.isTrue ${_rescode} "getIndexOfItemInArray failed";
+  Assert.areEqual 1 ${_index} "getIndexOfItemInArray vv|trace ${_testArray[@]} returned ${_index}";
+
+  getIndexOfItemInArray "q|quiet" "${test_array[@]}";
+  _rescode=$?;
+  _index=${RESULT};
+  Assert.isTrue ${_rescode} "getIndexOfItemInArray failed";
+  Assert.areEqual 2 ${_index} "getIndexOfItemInArray q|quiet ${_testArray[@]} returned ${_index}";
+
+  getIndexOfItemInArray "h|help" "${test_array[@]}";
+  _rescode=$?;
+  _index=${RESULT};
+  Assert.isTrue ${_rescode} "getIndexOfItemInArray failed";
+  Assert.areEqual 3 ${_index} "getIndexOfItemInArray h|help ${_testArray[@]} returned ${_index}";
+}
 function nth_does_not_exit_test() {
   local -i _rescode;
   local _result;

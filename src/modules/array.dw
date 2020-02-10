@@ -46,17 +46,57 @@ function arrayContains() {
 #      if arrayDoesNotContain "four" "${a[@]}"; then ...; fi
 function arrayDoesNotContain() {
   local _item="${1}";
+  checkNotEmpty item "${_item}" 1;
   shift;
   local _array="${@}";
+  checkNotEmpty array "${_array}" 2;
+
   local -i _rescode=${FALSE};
 
-  checkNotEmpty "array" "${_array}" 1;
-  checkNotEmpty "item" "${_item}" 2;
-
-  if arrayContains "${_array}" "${_item}"; then
+  if arrayContains "${_item}" "${_array}"; then
     _rescode=${FALSE};
   else
     _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getIndexOfItemInArray
+# api: public
+# txt: Retrieves the index of given item in an array.
+# txt: item: The item.
+# txt: array: The array (passed as "${array[@]}")
+# txt: Returns 0/TRUE if the item was found in the array; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the index of the item.
+# use: if getIndexOfItemInArray "a" "a b c"; then echo "Index of 'a': ${RESULT}"; then
+function getIndexOfItemInArray() {
+  local _item="${1}";
+  checkNotEmpty item "${_item}" 1;
+  shift;
+  local _array="${@}";
+  checkNotEmpty array "${_array}" 2;
+
+  local -i _rescode=${FALSE};
+  local -i _result;
+
+  local -i _i=0;
+
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  for _arrayItem in ${_array[@]}; do
+    IFS="${_oldIFS}";
+    if areEqual "${_item}" "${_arrayItem}"; then
+      _result=${_i};
+      _rescode=${TRUE};
+      break;
+    fi
+    _i=$((_i+1));
+  done;
+  IFS="${_oldIFS}";
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
   fi
 
   return ${_rescode};
@@ -70,12 +110,12 @@ function arrayDoesNotContain() {
 # use: clearAssociativeArray myArray;
 function clearAssociativeArray() {
     local _arrayName="${1}";
+    checkNotEmpty arrayName "${_arrayName}" 1;
     local _key;
-
-    checkNotEmpty "arrayName" "${_arrayName}" 1;
 
     declare -n _directArray="${_arrayName}";
 
+    local _oldIFS="${IFS}";
     IFS="${DWIFS}";
     for _key in "${!_directArray[@]}"; do
         IFS="${_oldIFS}";
