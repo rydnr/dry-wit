@@ -140,44 +140,52 @@ function addCommandLineFlag() {
   CLI.getFlagKeysVariableName;
   local -n _flagKeys=${RESULT};
 
-  if    isEmpty "${_flagKeys[@]}" \
-     || arrayDoesNotContain "${_flagKey}" "${_flagKeys[@]}"; then
+  local -i _index;
 
-    _flagKeys[${#_flagKeys[@]}]="${_flagKey}";
-
-    CLI.getFlagShortNamesVariableName;
-    local -n _flagShortNames=${RESULT};
-    _flagShortNames[${_longName}]="${_shortName}";
-
-    CLI.getFlagLongNamesVariableName;
-    local -n _flagLongNames=${RESULT};
-    _flagLongNames[${_shortName}]="${_longName}";
-
-    CLI.getFlagDescriptionsVariableName;
-    local -n _flagDescriptions="${RESULT}";
-    _flagDescriptions[${_flagKey}]="${_description}";
-
-    normalizeUppercase "${_longName}";
-    local _longNameInUpperCase="${RESULT}";
-    if areEqual "${_mandatory}" "MANDATORY"; then
-      addError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} is mandatory";
-    fi
-
-    CLI.getMandatoryFlagsVariableName;
-    local -n _mandatoryFlags="${RESULT}";
-    _mandatoryFlags[${_flagKey}]=${_mandatory};
-    if areEqual "${_expectsArgument}" "EXPECTS_ARGUMENT"; then
-      addError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} expects an argument";
-    fi
-
-    CLI.getFlagExpectingArgumentsVariableName;
-    local -n _flagExpectingArguments="${RESULT}";
-    _flagExpectingArguments[${_flagKey}]="${_expectsArgument}";
-
-    CLI.getOptionalFlagDefaultValuesVariableName;
-    local -n _optionalFlagDefaultValues=${RESULT};
-    _optionalFlagDefaultValues[${_flagKey}]="${_defaultValue}";
+  if isEmpty "${_flagKeys[@]}"; then
+    _index=0;
+  elif arrayDoesNotContain "${_flagKey}" "${_flagKeys[@]}"; then
+    _index=${#_flagKeys[@]};
+  else
+    getIndexOfItemInArray "${_flagKey}" "${_flagKeys[@]}";
+    _index=${RESULT};
   fi
+
+  _flagKeys[${_index}]="${_flagKey}";
+
+  CLI.getFlagShortNamesVariableName;
+  local -n _flagShortNames=${RESULT};
+  _flagShortNames[${_longName}]="${_shortName}";
+
+  CLI.getFlagLongNamesVariableName;
+  local -n _flagLongNames=${RESULT};
+  _flagLongNames[${_shortName}]="${_longName}";
+
+  CLI.getFlagDescriptionsVariableName;
+  local -n _flagDescriptions="${RESULT}";
+  _flagDescriptions[${_flagKey}]="${_description}";
+
+  normalizeUppercase "${_longName}";
+  local _longNameInUpperCase="${RESULT}";
+  if areEqual "${_mandatory}" "MANDATORY"; then
+    addError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} is mandatory";
+  fi
+
+  CLI.getMandatoryFlagsVariableName;
+  local -n _mandatoryFlags="${RESULT}";
+  _mandatoryFlags[${_flagKey}]=${_mandatory};
+
+  if areEqual "${_expectsArgument}" "EXPECTS_ARGUMENT"; then
+    addError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} expects an argument";
+  fi
+
+  CLI.getFlagExpectingArgumentsVariableName;
+  local -n _flagExpectingArguments="${RESULT}";
+  _flagExpectingArguments[${_flagKey}]="${_expectsArgument}";
+
+  CLI.getOptionalFlagDefaultValuesVariableName;
+  local -n _optionalFlagDefaultValues=${RESULT};
+  _optionalFlagDefaultValues[${_flagKey}]="${_defaultValue}";
 
   return ${_rescode};
 }
@@ -485,7 +493,7 @@ function usage() {
 # txt: Checks the command-line arguments.
 # opt: arguments: The command-line arguments.
 # txt: Returns 0/TRUE always, but it could raise an exception and exit.
-# use: checkInput *@;
+# use: checkInput $@;
 function checkInput() {
   local _flags=$(CLI.extractFlags $@);
   local _flag;
@@ -747,13 +755,13 @@ function CLI.checkFlag() {
     if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
       _longName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag 1 ${_flag}";
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
 
     if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
       _shortName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag 2 ${_flag}";
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
 
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
@@ -763,7 +771,7 @@ function CLI.checkFlag() {
     local -n _flagKeys="${RESULT}";
 
     if arrayDoesNotContain "${_flagKey}" "${_flagKeys[@]}"; then
-      exitWithError UNKNOWN_FLAG "Unknown flag 3 ${_flag}";
+      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
 
     CLI.checkCommandLineFlag "${_flagKey}" "${_longName}" $@;
@@ -1285,7 +1293,7 @@ function CLI.parseNotProvidedFlags() {
         else
           normalizeUppercase "${_longName}";
           _upcasedLongName="${RESULT}";
-          declare -ax ${_upcasedLongName}="${_defaultValue}";
+          declare -gx ${_upcasedLongName}="${_defaultValue}";
         fi
       fi
     fi
@@ -1853,7 +1861,7 @@ function CLI.commandLineFlagsUsage() {
 function CLI.scriptDescriptionUsage() {
   local -i _rescode;
 
-  CLI.getScriptDescription;
+  getScriptDescription;
   local _scriptDescription="${RESULT}";
 
   if isEmpty "${_scriptDescription}"; then
@@ -1874,7 +1882,7 @@ function CLI.scriptDescriptionUsage() {
 function CLI.scriptLicenseSummaryUsage() {
   local -i _rescode;
 
-  CLI.getScriptLicenseSummary;
+  getScriptLicenseSummary;
   local _scriptLicenseSummary="${RESULT}";
 
   if isEmpty "${_scriptLicenseSummary}"; then
@@ -1895,7 +1903,7 @@ function CLI.scriptLicenseSummaryUsage() {
 function CLI.scriptCopyrightUsage() {
   local -i _rescode;
 
-  CLI.getScripCopyright;
+  getScriptCopyright;
   local _scriptCopyright="${RESULT}";
 
   if isEmpty "${_scriptCopyright}"; then
