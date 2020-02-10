@@ -10,8 +10,8 @@ declare -i TOTAL_FAILED_TESTS=0;
 for _f in $(find . -name '*-tests.sh'); do
   rm -f /tmp/${_f}* 2> /dev/null
   ./${_f};
-  if [[ -f "./.$(basename ${_f}).env" ]] then
-     source "./.$(basename ${_f}).env";
+  if [[ -f "./.$(basename ${_f}).env" ]]; then
+    source "./.$(basename ${_f}).env";
   fi
   TOTAL_TESTS=$((TOTAL_TESTS + TESTS_FOUND));
   TOTAL_PASSED_TESTS=$((TOTAL_PASSED_TESTS + PASSED_TESTS));
