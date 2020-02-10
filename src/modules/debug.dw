@@ -169,13 +169,23 @@ function setDebugLogFile() {
 # txt: Returns 0/TRUE always.
 # use: traceApiCall;
 function traceApiCall() {
-  local -i _i=0;
 
   DEBUG.getDebugLogFile;
   local _logFile="${RESULT}";
 
-  echo "${FUNCNAME[0]}" >> ${_logFile};
-  while caller $i >> ${_logFile}; do
+  printApiCall >> "${_logFile}";
+}
+
+# fun: printApiCall
+# api: public
+# txt: Prints the API call to the default log file using in development.
+# txt: Returns 0/TRUE always.
+# use: printApiCall;
+function printApiCall() {
+  local -i _i=0;
+
+  echo "${FUNCNAME[0]}"
+  while caller $i; do
     i=$((i+1))
   done
 }
