@@ -2,10 +2,6 @@
 # api: public
 # txt: Functions to provide ways for checking parameters.
 
-DW.import stdlib;
-DW.import error;
-DW.import dw-plumbing;
-
 # fun: checkFunctionPresent paramName function paramIndex
 # api: public
 # txt: Checks whether a function is present.
@@ -157,7 +153,7 @@ function CHECK.checkOneOf() {
   IFS="${_oldIFS}";
 
   if isFalse ${_valid}; then
-    exitWithErrorCode UNACCEPTABLE_API_CALL "'${_name}' (${_value}) is not valid when calling ${_caller}. Review ${_parentCaller}";
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) is not valid when calling ${_caller}. Review ${_parentCaller}";
   fi
 }
 

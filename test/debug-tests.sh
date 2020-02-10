@@ -4,8 +4,6 @@
 
 # set -o xtrace
 
-DW.import debug;
-
 function test_reset() {
   DEBUG.resetState;
   DEBUG.defaultState;

@@ -336,8 +336,10 @@ function DRYWITTEST.noAssertionsDefined() {
 # use: if run_test "my_test"; then echo "my_test passes"; fi
 function runTest() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _assertions;
-  local _rescode;
+  local -i _rescode;
 
   if isFunctionPresent "test_setup"; then
     test_setup;

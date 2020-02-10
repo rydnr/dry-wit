@@ -1,0 +1,373 @@
+# mod: error
+# api: public
+# txt: Functions related to declaring and using errors.
+
+# fun: ERROR.getModuleName
+# api: public
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: ERROR.getModuleName; echo "Module: ${RESULT}";
+function ERROR.getModuleName() {
+  export RESULT="DW_ERROR";
+  return ${TRUE};
+}
+
+# fun: addError label message
+# api: public
+# txt: Annotates a new error.
+# opt: label: The error label.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: addError INVALID_NAME "The name is not valid";
+function addError() {
+  local _label="${1}";
+  checkNotEmpty "label" "${_label}" 1;
+  local _message="${2}";
+  checkNotEmpty "message" "${_message}" 2;
+
+  normalizeUppercase "${_label}";
+  local _normalizedLabel="${RESULT}";
+
+  if isErrorUndefined "${_normalizedLabel}"; then
+    appendErrorMessage "${_normalizedLabel}";
+    ERROR.getModuleName;
+    local _moduleName="${RESULT}";
+    DW.setGlobalString "${_moduleName}" "${_normalizedLabel}" "${_message}";
+  fi
+}
+
+# fun: appendErrorMessage error
+# api: public
+# txt: Appends a new error to ERROR_MESSAGES.
+# opt: error: The error to add.
+# txt: Returns 0/TRUE always.
+# use: appendErrorMessage "item";
+function appendErrorMessage() {
+  local _error="${1}";
+  checkNotEmpty "error" "${_error}" 1;
+
+  ERROR.getErrorMessagesVariableName;
+  local -n _errorMessages=${RESULT};
+  _errorMessages[${#_errorMessages[@]}]="${_error}";
+}
+
+# fun: exitWithError label message
+# api: public
+# txt: Exits with an error.
+# opt: label: The error label.
+# opt: message: The error message.
+# use: exitWithError UNKNOWN_OPTION "Unknown option";
+function exitWithError() {
+  local _label="${1}";
+  checkNotEmpty "label" "${_label}" 1;
+  shift;
+  local _message="${@}";
+  local -i _rescode;
+
+  if isErrorUndefined "${_label}"; then
+    addError "${_label}" "${_message}";
+  fi
+
+  exitWithErrorCode "${_label}";
+}
+
+# fun: exitWithErrorCode label
+# api: public
+# txt: Exits with an error code associated with given error label.
+# opt: label: The error label.
+# use: exitWithErrorCode UNKNOWN_OPTION;
+function exitWithErrorCode() {
+  local _label="${1}";
+  checkNotEmpty "label" "${_label}" 1;
+  shift;
+  local -i _rescode;
+
+  if isLogLineOpen; then
+    getLastLogLevel;
+    local _level="${RESULT:-INFO}";
+    logResult "${_level}" FAILURE "aborted";
+  fi
+
+  printErrorMessage "${_label}" "$@";
+  _rescode=$?;
+  cleanup;
+
+  exit ${_rescode};
+}
+
+# fun: isErrorDefined label
+# api: public
+# txt: Checks whether an error is defined.
+# opt: label: The error label.
+# txt: 0/TRUE if the error is defined; 1/FALSE otherwise.
+# use: if isErrorDefined INVALID_NAME; then
+#        echo "INVALID_NAME already defined";
+#      fi
+function isErrorDefined() {
+  local _label="${1}";
+  checkNotEmpty "label" "${_label}" 1;
+
+  local -i _rescode;
+
+  ERROR.getErrorMessagesVariableName;
+  local -n _errorMessages=${RESULT};
+  if isNotEmpty "${_errorMessages[@]}" && arrayContains "${_label}" "${_errorMessages[@]}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isErrorUndefined label
+# api: public
+# txt: Checks whether an error is undefined.
+# opt: label: The error label.
+# txt: Returns 0/TRUE if the error is undefined; 1/FALSE otherwise.
+# use: if isErrorUndefined INVALID_NAME; then
+#        addError INVALID_NAME "The name is not valid";
+#      fi
+function isErrorUndefined() {
+  local _label="${1}";
+  local -i _rescode;
+
+  checkNotEmpty "label" "${_label}" 1;
+
+  if isErrorDefined "${_label}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: printErrorMessage label
+# api: public
+# txt: Prints the error message for given label.
+# opt: label: The error label.
+# txt: Returns 0/TRUE if the error is found and gets printed; 1/FALSE otherwise.
+# use: if printErrorMessage INVALID_OPTION; then ...; fi
+function printErrorMessage() {
+  local _label="${1}";
+  checkNotEmpty "label" "${_label}" 1;
+  shift;
+  local -i _rescode=${TRUE};
+  local _message;
+  local _error;
+  local -i _interruption=${TRUE};
+  local _error;
+  local _oldIFS="${IFS}";
+
+  #  set +o nounset  # allow unset variables
+
+  ERROR.getBuiltInErrorsVariableName;
+  local -n _builtinErrors=${RESULT};
+  IFS="${DWIFS}";
+  for _error in ${_builtinErrors[@]}; do
+    IFS="${_oldIFS}";
+    _rescode=$((_rescode+1));
+    if areEqual "${_error}" "${_label}"; then
+      _message="${_error}";
+      break;
+    fi;
+  done
+  IFS="${_oldIFS}";
+
+  # TODO set -o nounset  # disallow unset variables
+
+  ERROR.getErrorMessagesVariableName;
+  local -n _errorMessages=${RESULT};
+
+  if isEmpty "${_message}"; then
+    # IFS issue
+    #    rescode=${TRUE};
+    IFS="${DWIFS}";
+    for _error in ${_errorMessages[@]}; do
+      IFS="${_oldIFS}";
+      _rescode=$((_rescode+1));
+      if areEqual "${_error}" "${_label}"; then
+        _message="${_error}";
+        break;
+      fi;
+    done
+  fi
+  IFS="${_oldIFS}";
+
+  if isEmpty "${_message}"; then
+    _error="Error ${_label}, but no error message defined. Fix this script";
+    _rescode=-1;
+  else
+    ERROR.getModuleName;
+    local _moduleName="${RESULT}";
+    DW.getGlobalString "${_moduleName}" "${_label}";
+    _error="${RESULT}";
+  fi
+
+  if [ ${#@} -gt 0 ]; then
+    if [ ${#@} -gt 1 ]; then
+      _error="$(cat <<EOF
+${_error}
+$@
+EOF
+)";
+    else
+      _error="${_error} $@";
+    fi
+  fi
+
+  if isDebugEnabled; then
+    printUsage;
+  fi
+
+  ERROR.printError "${_error}";
+  return ${_rescode};
+}
+
+# fun: printExitValues
+# api: public
+# txt: Prints the exit values.
+# txt: Returns 0/TRUE always.
+# use: printExitValues;
+function printExitValues() {
+  local -i i=0;
+  local -i j=0;
+  local _oldIFS="${IFS}";
+
+  if isTraceEnabled; then
+    cat <<EOF
+Exit values:
+  0: No error.
+EOF
+    ERROR.getBuiltInErrorsVariableName;
+    local -n _builtinErrors=${RESULT};
+
+    if [ ${#_builtinErrors[@]} -gt 0 ]; then
+      IFS=$"${DWIFS}";
+      for ((i = 0; i < ${#_builtinErrors[@]}; i++)); do
+        DW.getGlobalString "${_moduleName}" "${_builtinErrors[$j]}";
+        echo "  $((i+1)): ${RESULT}";
+      done
+    fi
+    ERROR.getErrorMessagesVariableName;
+    local -n _errorMessages=${RESULT};
+    if [ ${#_errorMessages[@]} -gt 0 ]; then
+      IFS=$"${DWIFS}";
+      for ((j = 0; j < ${#_errorMessages[@]}; j++)); do
+        DW.getGlobalString "${_moduleName}" "${_errorMessages[$j]}";
+        echo "  $((j+i+1)): ${RESULT}";
+      done
+    fi
+    IFS="${_oldIFS}";
+  fi
+}
+
+# fun: ERROR.printError message
+# api: private
+# txt: Prints given error.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: ERROR.printError "My error message.";
+function ERROR.printError() {
+  echo "Error: $@.";
+}
+
+# fun: ERROR.getBuiltInErrorsVariableName
+# api: private
+# txt: Returns the name of variable containing the built-in errors.
+# txt: Returns 0/TRUE always.
+# use: ERROR.getBuiltInErrorsVariableName; local -n builtinErrors=${RESULT};
+function ERROR.getBuiltInErrorsVariableName() {
+  ERROR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" BUILTIN_ERRORS;
+}
+
+# fun: ERROR.getErrorMessagesVariableName
+# api: private
+# txt: Returns the name of variable containing the error messages.
+# txt: Returns 0/TRUE always.
+# use: ERROR.getErrorMessagesVariableName; local -n errorMessages=${RESULT};
+function ERROR.getErrorMessagesVariableName() {
+  ERROR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" ERROR_MESSAGES;
+}
+
+# fun: ERROR.appendBuiltInError error
+# api: private
+# txt: Appends a new error to the collection of built-in errors.
+# opt: error: The error to add.
+# txt: Returns 0/TRUE always.
+# use: ERROR.appendBuiltInError "error";
+function ERROR.appendBuiltInError() {
+  local _error="${1}";
+  checkNotEmpty error "${_error}" 1;
+
+  ERROR.getBuiltInErrorsVariableName;
+  local -n _builtinErrors=${RESULT};
+
+  if isEmpty "${_builtinErrors[@]}" || arrayDoesNotContain "${_error}" "${_builtinErrors[@]}"; then
+    _builtinErrors[${#_builtinErrors[@]}]="${_error}";
+  fi
+}
+
+# fun: ERROR.addBuiltInError name message
+# api: private
+# txt: Annotates a new built-in error.
+# opt: name: The error name.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: ERROR.addBuiltInError INVALID_OPTION "Option unrecognized";
+function ERROR.addBuiltInError() {
+  local _errorName="${1}";
+  checkNotEmpty name "${_errorName}" 1;
+  local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
+
+  toUpper "${_errorName}";
+  local _upcasedErrorName="${RESULT}";
+
+  ERROR.appendBuiltInError "${_upcasedErrorName}";
+  ERROR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalString "${_moduleName}" "${_upcasedErrorName}" "${_message}";
+}
+
+# fun: ERROR.defineBuiltInErrorMessages
+# api: private
+# txt: Declares built-in error messages.
+# txt: Returns 0/TRUE always.
+# use: ERROR.defineBuiltInErrorMessages;
+function ERROR.defineBuiltInErrorMessages() {
+  ERROR.addBuiltInError SCRIPT_INTERRUPTED "User interruption";
+  ERROR.addBuiltInError MISSING_MANDATORY_VARIABLES "Script not complete, since it doesn't define all mandatory variables";
+  ERROR.addBuiltInError MISSING_MANDATORY_FUNCTIONS "Script not complete, since it doesn't define all mandatory functions";
+  ERROR.addBuiltInError UNKNOWN_ERROR "The script has finished due to an unexpected error";
+  ERROR.addBuiltInError UNACCEPTABLE_API_CALL "Unacceptable call to dry-wit API: ";
+  ERROR.addBuiltInError POSTCONDITION_NOT_SATISFIED "Postcondition not satisfied: ";
+  ERROR.addBuiltInError UNACCEPTABLE_ENVIRONMENT_VARIABLE "Unacceptable environment variable: ";
+}
+
+# fun: ERROR.defaultState
+# api: private
+# txt: Restores the default state of the module.
+# txt: Returns 0/TRUE always.
+# use: ERROR.defaultState
+function ERROR.defaultState() {
+  ERROR.defineBuiltInErrorMessages;
+}
+
+# fun: ERROR.resetState
+# api: private
+# txt: Resets the state of the module.
+# use: ERROR.resetState;
+function ERROR.resetState() {
+  ERROR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalArray "${_moduleName}" BUILTIN_ERRORS;
+  DW.declareGlobalArray "${_moduleName}" ERROR_MESSAGES;
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

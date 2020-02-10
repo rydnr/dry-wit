@@ -41,9 +41,9 @@ function BOOTSTRAP.getModuleName() {
 # use: if DW.declareGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then echo "ONE_THOUSAND variable name: ${RESULT}"; fi
 function DW.declareGlobalInt() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
   DW.declareGlobalVariable "${_module}" "${_varName}" "int" "${_value}";
@@ -59,9 +59,9 @@ function DW.declareGlobalInt() {
 # use: if DW.setGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then echo "ONE_THOUSAND variable now is ${RESULT}"; fi
 function DW.setGlobalInt() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
   if ! DW.declareGlobalInt "${_module}" "${_varName}" "${_value}"; then
@@ -81,9 +81,9 @@ function DW.setGlobalInt() {
 # use: if DW.getGlobalInt "LOGGING" "ONE_THOUSAND"; then echo "ONE_THOUSAND=${RESULT}"; fi
 function DW.getGlobalInt() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local -i _rescode=${FALSE};
   local _result;
 
@@ -110,9 +110,9 @@ function DW.getGlobalInt() {
 # use: if DW.declareGlobalString "LOGGING" "MY_STRING" "test"; then echo "MY_STRING variable: ${RESULT}"; fi
 function DW.declareGlobalString() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
   DW.declareGlobalVariable "${_module}" "${_varName}" "string" "${_value}";
@@ -128,9 +128,9 @@ function DW.declareGlobalString() {
 # use: if DW.setGlobalString "LOGGING" "MY_STRING" "text"; then echo "MY_STRING variable now is ${RESULT}"; fi
 function DW.setGlobalString() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
   if ! DW.declareGlobalString "${_module}" "${_varName}" "${_value}"; then
@@ -150,9 +150,9 @@ function DW.setGlobalString() {
 # use: if DW.getGlobalString "LOGGING" "MY_STRING"; then echo "MY_STRING=${RESULT}"; fi
 function DW.getGlobalString() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local -i _rescode=${FALSE};
   local _result;
 
@@ -179,9 +179,9 @@ function DW.getGlobalString() {
 # use: if DW.declareGlobalArray "LOGGING" "MY_LIST" "a" "b" "c"; then echo "MY_LIST variable: ${RESULT}"; fi
 function DW.declareGlobalArray() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   shift;
   shift;
   DW.declareGlobalVariable "${_module}" "${_varName}" "array" ${@};
@@ -197,9 +197,9 @@ function DW.declareGlobalArray() {
 # use: if DW.declareGlobalMap "LOGGING" "MY_ASSOCIATIVE_ARRAY"; then local -n map=${RESULT}; fi
 function DW.declareGlobalMap() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   shift;
   shift;
   DW.declareGlobalVariable "${_module}" "${_varName}" "map" ${@};
@@ -217,11 +217,11 @@ function DW.declareGlobalMap() {
 # use: if DW.declareGlobalVariable "LOGGING" "MY_LIST" "array"; then echo "MY_LIST variable name: ${RESULT}"; fi
 function DW.declareGlobalVariable() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _varType="${3}";
-  BOOTSTRAP.failsafeCheckNotEmpty varType "${_varType}" 3;
+  BOOTSTRAP.checkNotEmpty varType "${_varType}" 3;
   local _initialValue="${4}";
   shift;
   shift;
@@ -235,7 +235,7 @@ function DW.declareGlobalVariable() {
   if [ ${_rescode} -eq ${TRUE} ]; then
     unset "${_aux}";
     case "${_varType}" in
-      "int") if BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
+      "int") if BOOTSTRAP.isEmpty "${_initialValue}"; then
                declare -agx "${_aux}";
              else
                declare -agx "${_aux}"=${_initialValue};
@@ -244,7 +244,7 @@ function DW.declareGlobalVariable() {
              ;;
       "array") eval "declare -agx ${_aux}";
                _rescode=$?;
-               if ! BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
+               if ! BOOTSTRAP.isEmpty "${_initialValue}"; then
                  local -n _tmp=${_aux};
                  _tmp=( $@ );
                fi
@@ -252,7 +252,7 @@ function DW.declareGlobalVariable() {
       "map") eval "declare -Agx ${_aux}";
              _rescode=$?;
              ;;
-      *) if BOOTSTRAP.failsafeIsEmpty "${_initialValue}"; then
+      *) if BOOTSTRAP.isEmpty "${_initialValue}"; then
            declare -gx "${_aux}";
          else
            declare -gx "${_aux}"="${_initialValue}";
@@ -275,9 +275,9 @@ function DW.declareGlobalVariable() {
 # use: if DW.getGlobalVariableName "LOGGING" "MY_LIST"; then local -n _var="${RESULT}"; fi
 function DW.getGlobalVariableName() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local -i _rescode;
 
   DW.buildGlobalVariableName "${_module}" "${_varName}";
@@ -296,9 +296,9 @@ function DW.getGlobalVariableName() {
 # use: DW.buildGlobalVariableName "LOGGING" "MY_LIST"; echo "variable name: ${RESULT}";
 function DW.buildGlobalVariableName() {
   local _module="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty module "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty varName "${_varName}" 2;
+  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local -i _rescode;
 
   BOOTSTRAP.toUpper "${_module}";
@@ -366,17 +366,17 @@ function DW.getScriptFolder() {
   DW.getGlobalString "${_moduleName}" SCRIPT_FOLDER;
 }
 
-# fun: BOOTSTRAP.failsafeExitWithError
+# fun: BOOTSTRAP.exitWithError
 # api: private
 # txt: A fail-safe version of exitWithError.
 # opt: label: The error label.
 # opt: message: The error message.
-# use: BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'name' cannot be empty";
-function BOOTSTRAP.failsafeExitWithError() {
+# use: BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'name' cannot be empty";
+function BOOTSTRAP.exitWithError() {
   local _label="${1}";
   local _message="${2}";
 
-  if BOOTSTRAP.failsafeIsFunctionDefined "exitWithError"; then
+  if BOOTSTRAP.isFunctionDefined "exitWithError"; then
     exitWithError "${_label}" "${_message}";
   else
     echo "${_message}";
@@ -393,41 +393,41 @@ function BOOTSTRAP.failsafeExitWithError() {
 # txt: Exits if the parameter value is empty.
 # use: checkNotEmpty module "${module}" 1
 #function checkNotEmpty() {
-#  BOOTSTRAP.failsafeCheckNotEmpty $@;
+#  BOOTSTRAP.checkNotEmpty $@;
 #}
 
-# fun: BOOTSTRAP.failsafeCheckNotEmpty
+# fun: BOOTSTRAP.checkNotEmpty
 # api: private
 # txt: A fail-safe version of checkNotEmpty.
 # opt: name: The parameter name.
 # opt: value: The parameter value.
 # opt: index: The parameter index.
 # txt: Exits if the parameter value is empty.
-# use: BOOTSTRAP.failsafeCheckNotEmpty module "${module}" 1
-function BOOTSTRAP.failsafeCheckNotEmpty() {
+# use: BOOTSTRAP.checkNotEmpty module "${module}" 1
+function BOOTSTRAP.checkNotEmpty() {
   local _name="${1}";
   if [ -z "${_name}" ]; then
-    BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
   local _value="${2}";
 
   if [ -z "${_value}" ]; then
-    BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+    BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
 
   local _index="${3}";
   if [ -z "${_index}" ]; then
-    BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+    BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 }
 
-# fun: BOOTSTRAP.failsafeIsEmpty
+# fun: BOOTSTRAP.isEmpty
 # api: private
 # txt: A fail-safe version of isEmpty.
 # opt: name: The parameter name.
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# use: BOOTSTRAP.failsafeIsEmpty "${value}";
-function BOOTSTRAP.failsafeIsEmpty() {
+# use: BOOTSTRAP.isEmpty "${value}";
+function BOOTSTRAP.isEmpty() {
   local _name="${1}";
   local -i _rescode;
 
@@ -440,16 +440,16 @@ function BOOTSTRAP.failsafeIsEmpty() {
   return ${_rescode};
 }
 
-# fun: BOOTSTRAP.failsafeIsDebugEnabled
+# fun: BOOTSTRAP.isDebugEnabled
 # api: private
 # txt: A fail-safe version of isDebugEnabled.
 # txt: Returns 0/TRUE if DEBUG logging is enabled; 1/FALSE otherwise.
-# use: if BOOTSTRAP.failsafeIsDebugEnabled; then ...; fi
-function BOOTSTRAP.failsafeIsDebugEnabled() {
+# use: if BOOTSTRAP.isDebugEnabled; then ...; fi
+function BOOTSTRAP.isDebugEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  if BOOTSTRAP.failsafeIsFunctionDefined "isDebugEnabled"; then
+  if BOOTSTRAP.isFunctionDefined "isDebugEnabled"; then
     isDebugEnabled;
     _rescode=$?;
   else
@@ -467,16 +467,16 @@ function BOOTSTRAP.failsafeIsDebugEnabled() {
   return ${_rescode};
 }
 
-# fun: BOOTSTRAP.failsafeIsTraceEnabled
+# fun: BOOTSTRAP.isTraceEnabled
 # api: private
 # txt: A fail-safe version of isTraceEnabled.
 # txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
-# use: if BOOTSTRAP.failsafeIsTraceEnabled; then ...; fi
-function BOOTSTRAP.failsafeIsTraceEnabled() {
+# use: if BOOTSTRAP.isTraceEnabled; then ...; fi
+function BOOTSTRAP.isTraceEnabled() {
     local -i _rescode=${FALSE};
     local _oldIFS="${IFS}";
 
-    if BOOTSTRAP.failsafeIsFunctionDefined "isTraceEnabled"; then
+    if BOOTSTRAP.isFunctionDefined "isTraceEnabled"; then
         isTraceEnabled;
         _rescode=$?;
     else
@@ -494,13 +494,13 @@ function BOOTSTRAP.failsafeIsTraceEnabled() {
     return ${_rescode};
 }
 
-# fun: BOOTSTRAP.failsafeLogDebug
+# fun: BOOTSTRAP.logDebug
 # api: private
 # txt: A fail-safe version of logDebug.
 # opt: -n: Whether to omit a newline. Optional.
 # opt: message: The message.
-# use: BOOTSTRAP.failsafeLogDebug "Processing file ${file}";
-function BOOTSTRAP.failsafeLogDebug() {
+# use: BOOTSTRAP.logDebug "Processing file ${file}";
+function BOOTSTRAP.logDebug() {
   local _message="${1}";
   local -i _newline=0;
   local -i _position=1;
@@ -511,13 +511,13 @@ function BOOTSTRAP.failsafeLogDebug() {
     _position=2;
   fi
 
-  BOOTSTRAP.failsafeCheckNotEmpty "message" "${_message}" ${_position};
+  BOOTSTRAP.checkNotEmpty "message" "${_message}" ${_position};
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTrace is loaded.
-  if BOOTSTRAP.failsafeIsFunctionDefined "logDebug"; then
+  if BOOTSTRAP.isFunctionDefined "logDebug"; then
     logDebug $@;
-  elif BOOTSTRAP.failsafeIsDebugEnabled; then
+  elif BOOTSTRAP.isDebugEnabled; then
     if [ ${_newline} -eq 0 ]; then
       command echo "[dry-wit:bootstrap] ${_message}";
     else
@@ -526,13 +526,13 @@ function BOOTSTRAP.failsafeLogDebug() {
   fi
 }
 
-# fun: BOOTSTRAP.failsafeLogTrace
+# fun: BOOTSTRAP.logTrace
 # api: private
 # txt: A fail-safe version of logTrace.
 # opt: -n: Whether to omit a newline. Optional.
 # opt: message: The message.
-# use: BOOTSTRAP.failsafeLogTrace "Processing file ${file}";
-function BOOTSTRAP.failsafeLogTrace() {
+# use: BOOTSTRAP.logTrace "Processing file ${file}";
+function BOOTSTRAP.logTrace() {
     local _message="${1}";
     local -i _newline=0;
     local -i _position=1;
@@ -543,13 +543,13 @@ function BOOTSTRAP.failsafeLogTrace() {
         _position=2;
     fi
 
-    BOOTSTRAP.failsafeCheckNotEmpty "message" "${_message}" ${_position};
+    BOOTSTRAP.checkNotEmpty "message" "${_message}" ${_position};
 
     ## Needed since this function is used in bootstrapping, and could be loaded before
     ## logTrace is loaded.
-    if BOOTSTRAP.failsafeIsFunctionDefined "logTrace"; then
+    if BOOTSTRAP.isFunctionDefined "logTrace"; then
         logTrace $@;
-    elif BOOTSTRAP.failsafeIsTraceEnabled; then
+    elif BOOTSTRAP.isTraceEnabled; then
         if [ ${_newline} -eq 0 ]; then
             command echo "[dry-wit:bootstrap] ${_message}";
         else
@@ -558,57 +558,57 @@ function BOOTSTRAP.failsafeLogTrace() {
     fi
 }
 
-# fun: BOOTSTRAP.failsafeLogDebugResult.
+# fun: BOOTSTRAP.logDebugResult.
 # api: private
 # txt: A fail-safe version of logDebugResult.
 # opt: outcome: The outcome.
 # opt: message: The message.
-# use: BOOTSTRAP.failsafeLogDebugResult SUCCESS "done"
-function BOOTSTRAP.failsafeLogDebugResult() {
+# use: BOOTSTRAP.logDebugResult SUCCESS "done"
+function BOOTSTRAP.logDebugResult() {
   local _outcome="${1}";
   local _outcomeMessage="${2}";
 
-  BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
-  BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
+  BOOTSTRAP.checkNotEmpty "outcome" "${_outcome}" 1;
+  BOOTSTRAP.checkNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTraceResult is loaded.
-  if BOOTSTRAP.failsafeIsFunctionDefined "logDebugResult"; then
+  if BOOTSTRAP.isFunctionDefined "logDebugResult"; then
     logDebugResult ${_outcome} "${_outcomeMessage}";
   fi
 }
 
-# fun: BOOTSTRAP.failsafeLogTraceResult.
+# fun: BOOTSTRAP.logTraceResult.
 # api: private
 # txt: A fail-safe version of logTraceResult.
 # opt: outcome: The outcome.
 # opt: message: The message.
-# use: BOOTSTRAP.failsafeLogTraceResult SUCCESS "done"
-function BOOTSTRAP.failsafeLogTraceResult() {
+# use: BOOTSTRAP.logTraceResult SUCCESS "done"
+function BOOTSTRAP.logTraceResult() {
     local _outcome="${1}";
     local _outcomeMessage="${2}";
 
-    BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1;
-    BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
+    BOOTSTRAP.checkNotEmpty "outcome" "${_outcome}" 1;
+    BOOTSTRAP.checkNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
 
     ## Needed since this function is used in bootstrapping, and could be loaded before
     ## logTraceResult is loaded.
-    if BOOTSTRAP.failsafeIsFunctionDefined "logTraceResult"; then
+    if BOOTSTRAP.isFunctionDefined "logTraceResult"; then
         logTraceResult ${_outcome} "${_outcomeMessage}";
     fi
 }
 
-# fun: BOOTSTRAP.failsafeIsFunctionDefined
+# fun: BOOTSTRAP.isFunctionDefined
 # api: private
 # txt: A fail-safe version of isFunctionDefined.
 # opt: name: The function name.
 # txt: Returns 0/TRUE if the function is defined; 1/FALSE otherwise.
-# use: if BOOTSTRAP.failsafeIsFunctionDefined "readFile"; then echo "readFile defined"; fi
-function BOOTSTRAP.failsafeIsFunctionDefined() {
+# use: if BOOTSTRAP.isFunctionDefined "readFile"; then echo "readFile defined"; fi
+function BOOTSTRAP.isFunctionDefined() {
   local _function="${1}";
   local -i _rescode;
 
-  BOOTSTRAP.failsafeCheckNotEmpty "function" "${_function}" 1;
+  BOOTSTRAP.checkNotEmpty "function" "${_function}" 1;
 
   type "${_function}" 2> /dev/null | grep -q 'function';
   _rescode=$?;
@@ -616,21 +616,21 @@ function BOOTSTRAP.failsafeIsFunctionDefined() {
   return ${_rescode};
 }
 
-# fun: BOOTSTRAP.failsafeArrayContains
+# fun: BOOTSTRAP.arrayContains
 # api: private
 # txt: A fail-safe version of arrayContains.
 # opt: array: The array (passed as "${array[@]}".
 # opt: element: The element to check.
 # txt: Returns 0/TRUE: If the element is present in the array; 1/FALSE otherwise.
-# use: a=("one" "two" "three" "other number"); if BOOTSTRAP.failsafeArrayContains "${a[@]}" "other number"; then ...; fi
-function BOOTSTRAP.failsafeArrayContains() {
+# use: a=("one" "two" "three" "other number"); if BOOTSTRAP.arrayContains "${a[@]}" "other number"; then ...; fi
+function BOOTSTRAP.arrayContains() {
   local _item="${1}";
   local _array="${2}";
   local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  BOOTSTRAP.failsafeCheckNotEmpty "item" "${_item}" 1;
+  BOOTSTRAP.checkNotEmpty "item" "${_item}" 1;
 
   IFS="${DWIFS}";
   for _aux in ${_array}; do
@@ -654,7 +654,7 @@ function BOOTSTRAP.failsafeArrayContains() {
 # use: local _text="abc"; toUpper "${_text}"; local _upcased="${RESULT}";
 function BOOTSTRAP.toUpper() {
   local _text="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty "text" "${_text}" 1;
+  BOOTSTRAP.checkNotEmpty "text" "${_text}" 1;
 
   local result=$(echo "${_text}" | awk '{print toupper($0);}');
   export RESULT="${result}";
@@ -669,7 +669,7 @@ function BOOTSTRAP.toUpper() {
 # use: local _text="abc&oeu"; normalize "${_text}"; local _normalized="${RESULT}";
 function BOOTSTRAP.normalize() {
   local _text="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty "text" "${_text}" 1;
+  BOOTSTRAP.checkNotEmpty "text" "${_text}" 1;
 
   local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g');
   BOOTSTRAP.toUpper "${_result}";
@@ -686,7 +686,7 @@ function downloadModule() {
   local -i _rescode;
   local _result="";
 
-  BOOTSTRAP.failsafeCheckNotEmpty "module" "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty "module" "${_module}" 1;
 
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
@@ -696,11 +696,11 @@ function downloadModule() {
   DW.getGlobalString "${_moduleName}" MODULE_URL;
   local _moduleUrl="${RESULT}";
 
-  BOOTSTRAP.failsafeLogDebug -n "Downloading ${_moduleUrl}/${_module}.dw to ${_moduleUrl}/${_module}.dw";
+  BOOTSTRAP.logDebug -n "Downloading ${_moduleUrl}/${_module}.dw to ${_moduleUrl}/${_module}.dw";
   curl -s "${_moduleUrl}/${_module}.dw" > "${_modulePath}/${_module}.dw";
   _rescode=$?;
   if [[ ${_rescode} -eq ${TRUE} ]]; then
-    BOOTSTRAP.failsafeLogDebugResult SUCCESS "done";
+    BOOTSTRAP.logDebugResult SUCCESS "done";
     export RESULT="${_modulePath}/${_module}.dw";
   else
     rm -f "${_modulePath}/${_module}.dw";
@@ -709,11 +709,11 @@ function downloadModule() {
   fi
 
   if [[ ${_rescode} -eq ${TRUE} ]]; then
-    BOOTSTRAP.failsafeLogDebugResult SUCCESS "done";
+    BOOTSTRAP.logDebugResult SUCCESS "done";
     export RESULT="${_modulePath}/ext/${_module}.dw";
   else
     rm -f "${_modulePath}/ext/${_module}.dw";
-    BOOTSTRAP.failsafeLogDebugResult FAILURE "failed";
+    BOOTSTRAP.logDebugResult FAILURE "failed";
   fi
 
   return ${_rescode};
@@ -737,7 +737,6 @@ function BOOTSTRAP.bootstrap() {
 
   for _module in ${_bootstrapModules[@]}; do
     IFS="${_oldIFS}";
-    echo "Importing ${_module}"
     DW.import "${_module}";
   done
   IFS="${_oldIFS}";
@@ -754,7 +753,7 @@ function DW.import() {
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## checkNotEmpty is loaded.
-  BOOTSTRAP.failsafeCheckNotEmpty "module" "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty "module" "${_module}" 1;
 
   local _modulePath;
 
@@ -767,30 +766,39 @@ function DW.import() {
     exit 1;
   fi
 
-  if ! BOOTSTRAP.failsafeArrayContains "${_module}" "${__DRYWIT_IMPORTED_MODULES[@]}"; then
-    BOOTSTRAP.failsafeLogTrace -n "Loading ${_modulePath}";
+  BOOTSTRAP.getImportedModulesVariableName;
+  local -n _importedModules=${RESULT};
+
+  if    BOOTSTRAP.isEmpty "${_importedModules[@]}" \
+     || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[@]}"; then
+    BOOTSTRAP.logTrace -n "Loading ${_modulePath}";
     source "${_modulePath}";
-    BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
+    BOOTSTRAP.logTraceResult SUCCESS "done";
 
     BOOTSTRAP.normalize "${_module}";
     local _normalizedModule="${RESULT}";
-    if BOOTSTRAP.failsafeIsFunctionDefined "${_normalizedModule}.resetState"; then
-      BOOTSTRAP.failsafeLogTrace -n "Resetting ${_module} state";
+    if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.resetState"; then
       ${_normalizedModule}.resetState;
-      BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
+      BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
-    if BOOTSTRAP.failsafeIsFunctionDefined "${_normalizedModule}.defaultState"; then
-      BOOTSTRAP.failsafeLogTrace -n "Initializing ${_module} state";
+    if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.defaultState"; then
       ${_normalizedModule}.defaultState;
-      BOOTSTRAP.failsafeLogTraceResult SUCCESS "done";
+      BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
 
-    BOOTSTRAP.getModuleName;
-    local _moduleName="${RESULT}";
-    DW.getGlobalVariableName "${_moduleName}" IMPORTED_MODULES;
-    local -n _importedModules="${RESULT}";
     _importedModules[${#_importedModules[@]}]="${_module}";
   fi
+}
+
+# fun: BOOTSTRAP.getImportedModulesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the imported modules.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.getImportedModulesVariableName; local -n importedModules=${RESULT};
+function BOOTSTRAP.getImportedModulesVariableName() {
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" IMPORTED_MODULES;
 }
 
 # fun: findModule
@@ -828,9 +836,9 @@ function findModule() {
 # use: if BOOTSTRAP.endsWith "${text}" "c"; then echo "${text} ends with c"; fi
 function BOOTSTRAP.endsWith() {
   local _container="${1}";
-  BOOTSTRAP.failsafeCheckNotEmpty container "${_container}" 1;
+  BOOTSTRAP.checkNotEmpty container "${_container}" 1;
   local _substring="${2}";
-  BOOTSTRAP.failsafeCheckNotEmpty substring "${_substring}" 2;
+  BOOTSTRAP.checkNotEmpty substring "${_substring}" 2;
 
   local -i _rescode;
 
@@ -1052,4 +1060,4 @@ DRYWIT.main $@;
 if ! DW.nested; then
   cleanup;
 fi
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

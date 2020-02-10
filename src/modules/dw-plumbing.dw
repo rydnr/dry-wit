@@ -30,6 +30,24 @@ function checkReq() {
   fi
 }
 
+# fun: DRYWIT.addMissingDependencyError dependency
+# api: private
+# txt: Annotates a new error describing a missing dependency.
+# opt: message: The the missing dependency.
+# txt: Returns 0/TRUE always.
+# use: DRYWIT.addMissingDependencyError "docker";
+function DRYWIT.addMissingDependencyError() {
+  local _dependency="${1}";
+  checkNotEmpty dependency "${_dependency}" 1;
+
+  normalizeUppercase "${_dependency}_NOT_INSTALLED";
+
+  local _constant="${RESULT}";
+
+#  debugEcho "addError ${_constant} \"${_dependency}\" is not installed\"";
+  addError "${_constant}" "${_dependency} is not installed";
+}
+
 # fun: cleanup
 # api: public
 # txt: Cleans up temporary resources.
@@ -259,8 +277,6 @@ function DRYWIT.main() {
   _absolutePath="${RESULT}";
 
   source "${_scriptPath}" $@;
-
-  ERROR.defineDryWitErrorMessages;
 
   DRYWIT.setup "${_scriptName}";
 

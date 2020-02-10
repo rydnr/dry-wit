@@ -151,13 +151,12 @@ function setDebugLogFile() {
     DEBUG.getDebugLogFile;
     local _logFile="${RESULT}";
 
-    echo "old log file: ${_logFile}, new log file: ${_file}";
+#    echo "old log file: ${_logFile}, new log file: ${_file}";
     if [[ "${_file}" != "${_logFile}" ]]; then
       DEBUG.getModuleName;
       local _moduleName="${RESULT}";
       DW.setGlobalString "${_moduleName}" LOG_FILE "${_file}";
       DEBUG.getDebugLogFile;
-      echo "Stored log file: ${RESULT}";
     fi
   fi
 
@@ -200,7 +199,6 @@ function DEBUG.getDebugLogFile() {
 # use: DEBUG.defaultState;
 function DEBUG.defaultState() {
   local _scriptName;
-  echo "Default state"
   if DW.getScriptName; then
     _scriptName="${RESULT}";
   fi
@@ -261,7 +259,6 @@ function DEBUG.resetState() {
   DEBUG.getModuleName;
   local _moduleName="${RESULT}";
 
-  echo "resetting state"
   # env: LOG_FILE: The log file where the debug stuff gets logged.
   DW.declareGlobalString "${_moduleName}" LOG_FILE "";
   # env: __DW_DEBUG_ECHO_ENABLED: Whether debugEcho is enabled.
@@ -269,9 +266,9 @@ function DEBUG.resetState() {
 
   local -i _i=0;
 
-  echo "${FUNCNAME[0]}";
-  while caller $i; do
-    i=$((i+1))
-  done
+#  echo "${FUNCNAME[0]}";
+#  while caller $i; do
+#    i=$((i+1))
+#  done
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
