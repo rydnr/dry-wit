@@ -21,11 +21,11 @@ function LOCALE.getModuleName() {
 # use: if is_locale_supported "en_US" "UTF-8"; then echo "en_US with UTF-8 is supported"; fi
 function is_locale_supported() {
   local _locale="${1}";
+  checkNotEmpty locale "${_locale}" 1;
   local _encoding="${2}";
-  local -i _rescode;
+  checkNotEmpty encoding "${_encoding}" 2;
 
-  checkNotEmpty "locale" "${_locale}" 1;
-  checkNotEmpty "encoding" "${_encoding}" 2;
+  local -i _rescode;
 
   if [ -f ${SUPPORTED_LOCALES_FOLDER}/${_locale%%_*} ]; then
     if is_locale_file_available "${_locale}"; then
@@ -167,7 +167,13 @@ function LOCALE.resetState() {
   # env: BASH_LOCALE_FILE: The /etc/bash.locale file
   defineEnvVar BASH_LOCALE_FILE MANDATORY "The /etc/bash.locale file" "/etc/bash.locale";
 
-  # env: AVAILABLE_LOCALES_FOLDER: The /usr/share/locale file
-  defineEnvVar AVAILABLE_LOCALES_FOLDER MANDATORY "The /usr/share/locale folder" "/usr/share/locale";
+  # env: SUPPORTED_LOCALES_FOLDER: The folder with the supported locales
+  defineEnvVar SUPPORTED_LOCALES_FOLDER MANDATORY "The folder with the supported locales" "/var/lib/locales/supported.d";
+
+  # env: SUPPORTED_LOCALES_FILE: The file with the supported locales
+  defineEnvVar SUPPORTED_LOCALES_FILE MANDATORY "The folder with the supported locales" "/usr/share/i18n/SUPPORTED";
+
+  # env: AVAILABLE_LOCALES_FOLDER: The folder with the available locales
+  defineEnvVar AVAILABLE_LOCALES_FOLDER MANDATORY "The folder with the available locales" "/usr/share/i18n/locales";
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

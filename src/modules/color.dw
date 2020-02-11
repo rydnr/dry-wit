@@ -13,26 +13,29 @@
 # use: buildColor "GREEN" "32" "42";
 function buildColor() {
   local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
   local _fgValue="${2}";
+  checkNotEmpty foreground "${_fgValue}" 2;
   local _bgValue="${3}";
+  checkNotEmpty background "${_bgValue}" 3;
   local result="";
 
   upvar "${_color}" "\033[0;${_fgValue}m";
-  export "${_color}";
+  declare -gx "${_color}";
   upvar "${_color}_FG" "\033[0;${_fgValue}m";
-  export "${_color}_FG";
+  declare -gx "${_color}_FG";
   upvar "${_color}_BG" "\033[${_bgValue}m";
-  export "${_color}_BG";
+  declare -gx "${_color}_BG";
   upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
-  export "LIGHT_${_color}_FG";
+  declare -gx "LIGHT_${_color}_FG";
   upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
-  export "UNDERSCORE_${_color}_FG";
+  declare -gx "UNDERSCORE_${_color}_FG";
   upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
-  export "BLINK_${_color}_FG";
+  declare -gx "BLINK_${_color}_FG";
   upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
-  export "INVERSE_${_color}_FG";
+  declare -gx "INVERSE_${_color}_FG";
   upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
-  export "CONCEALED_${_color}_FG";
+  declare -gx "CONCEALED_${_color}_FG";
 }
 
 #for c in "BLACK" "BLACK_B" "RED" "RED_B" "RED_S" "GREEN" "GREEN_B" "YELLOW" "YELLOW_B" "BLUE" "BLUE_B" "MAGENTA" "MAGENTA_B" "CYAN" "CYAN_B" "GREY" "WHITE" "WHITE_B" "NO_COLOR"; do
@@ -41,3 +44,20 @@ function buildColor() {
 #  ${c}_TPUT=();
 #done
 
+# fun: COLOR.resetState
+# api: private
+# txt: Initializes the color state, depending on the script nesting level.
+# txt: Returns 0/TRUE always.
+# use: COLOR.resetState
+function COLOR.resetState() {
+  buildColor NO_COLOR "0" "0";
+  buildColor BLACK "30" "0";
+  buildColor RED "31" "41";
+  buildColor GREEN "32" "42";
+  buildColor YELLOW "33" "43";
+  buildColor BLUE "34" "44";
+  buildColor MAGENTA "35" "45";
+  buildColor CYAN "36" "46";
+  buildColor GRAY "37" "47";
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
