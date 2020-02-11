@@ -498,6 +498,7 @@ function checkInput() {
   local _flags=$(CLI.extractFlags $@);
   local _flag;
   local -a _flagsChecked=();
+  local -i _flagCount=0;
   local _oldIFS="${IFS}";
 
   # Flags
@@ -542,12 +543,15 @@ function parseInput() {
   local -a _providedFlags=();
   local _flag;
   local -i _shifts;
+  local -i _aux1=0;
+  local -i _aux2=0;
 
   # Flags
   IFS="${DWIFS}";
   for _flag in ${_flags}; do
     IFS="${_oldIFS}";
     shift;
+    _aux1=$((_aux1+1));
     _providedFlags[${#_providedFlags[@]}]="${_flag}";
 
     CLI.parseFlag "${_flag}" ${@};
@@ -556,6 +560,7 @@ function parseInput() {
     for _i in $(seq 1 ${_shifts}); do
       IFS="${_oldIFS}";
       shift;
+      _aux2=$((_aux2+1));
     done
   done
   IFS="${_oldIFS}";
@@ -1158,7 +1163,6 @@ function CLI.parseFlag() {
   checkNotEmpty flag "${_flag}" 1;
   shift;
   local -i _result=0;
-  local _flagCount;
   local _longName;
   local _shortName;
   local _flagKey;
@@ -1166,7 +1170,6 @@ function CLI.parseFlag() {
   local _argument;
   local -i _continue=${TRUE};
 
-  _flagCount=$((_flagCount+1));
   case ${_flag} in
     --)
       _continue=${FALSE};

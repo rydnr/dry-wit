@@ -57,49 +57,53 @@ function dw_parse_repository_cli_parameter() {
   export REPOSITORY="${1}";
 }
 
+function dw_parse_repositories_cli_parameter() {
+  export REPOSITORIES="${@}";
+}
+
 function dw_checkInput() {
   checkInputCallbackCalled=${TRUE};
 }
 
-function verbose_flag_is_supported_by_default_test() {
+function verbose_flag_is_supported_by_default_tst() {
   local _result="$(checkInput -v)";
   Assert.isEmpty "${_result}" "checkInput returned something";
 }
 
-function checkInput_is_silent_when_providing_a_single_parameter_already_declared_test() {
+function checkInput_is_silent_when_providing_a_single_parameter_already_declared_tst() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   local _result="$(checkInput "/tmp/1.txt")";
   Assert.isEmpty "${_result}" "checkInput returned something";
 }
 
-function addCommandLineParameter_checking_callback_is_called_in_checkInput_test() {
+function addCommandLineParameter_checking_callback_is_called_in_checkInput_tst() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   checkInput "/tmp/1.txt";
   Assert.isTrue ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was not called in checkInput";
   Assert.isFalse ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was called in checkInput";
 }
 
-function setScriptCopyright_is_included_in_the_usage_test() {
+function setScriptCopyright_is_included_in_the_usage_tst() {
   local _copyright="2018-today Acme Inc."
   setScriptCopyright "${_copyright}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_copyright}" "Copyright is not included in the usage message";
 }
 
-function setScriptLicenseSummary_is_included_in_the_usage_test() {
+function setScriptLicenseSummary_is_included_in_the_usage_tst() {
   local _license="Distributed this under the GNU General Public License v3.";
   setScriptLicenseSummary "${_license}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_license}" "License is not included in the usage message";
 }
 
-function usage_includes_command_line_flags_test() {
+function usage_includes_command_line_flags_tst() {
   addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
   local _usage="$(usage)";
   Assert.contains "${_usage}" "-f|--file arg" "'usage' does not include -f|--file information";
 }
 
-function retrieveCommandLineShortNameFlagKey_and_buildCommandLineFlagKey_are_consistent_test() {
+function retrieveCommandLineShortNameFlagKey_and_buildCommandLineFlagKey_are_consistent_tst() {
   local _key;
   CLI.buildCommandLineFlagKey "f" "file";
   _key="${RESULT}";
@@ -107,7 +111,7 @@ function retrieveCommandLineShortNameFlagKey_and_buildCommandLineFlagKey_are_con
   Assert.areEqual "f" "${RESULT}" "f and ${RESULT} are not equal";
 }
 
-function retrieveCommandLineFlagLongNameFromKey_and_buildCommandLineFlagKey_are_consistent_test() {
+function retrieveCommandLineFlagLongNameFromKey_and_buildCommandLineFlagKey_are_consistent_tst() {
   local _key;
   CLI.buildCommandLineFlagKey "f" "file";
   _key="${RESULT}";
@@ -115,7 +119,7 @@ function retrieveCommandLineFlagLongNameFromKey_and_buildCommandLineFlagKey_are_
   Assert.areEqual "file" "${RESULT}" "file and ${RESULT} are not equal";
 }
 
-function retrieveCommandLineFlagDescriptionFromKey_and_buildCommandLineFlagKey_are_consistent_test() {
+function retrieveCommandLineFlagDescriptionFromKey_and_buildCommandLineFlagKey_are_consistent_tst() {
   local _key;
   local _description="The file to read";
   addCommandLineFlag "file" "f" "${_description}" MANDATORY EXPECTS_ARGUMENT;
@@ -125,21 +129,21 @@ function retrieveCommandLineFlagDescriptionFromKey_and_buildCommandLineFlagKey_a
   Assert.areEqual "${_description}" "${RESULT}" "${_description} and ${RESULT} are not equal";
 }
 
-function commandLineFlag_descriptions_are_included_in_the_usage_test() {
+function commandLineFlag_descriptions_are_included_in_the_usage_tst() {
   local _flagDescription="file: The file to read";
   addCommandLineFlag "file" "f" "${_flagDescription}" MANDATORY EXPECTS_ARGUMENT;
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_flagDescription}" "'usage' does not include ${_flagDescription}";
 }
 
-function setScriptDescription_is_included_in_the_usage_test() {
+function setScriptDescription_is_included_in_the_usage_tst() {
   local _description="This script does this and that";
   setScriptDescription "${_description}";
   local _usage="$(usage)";
   Assert.contains "${_usage}" "${_description}" "The script description is not included in the usage message";
 }
 
-function commandLineParameters_are_included_in_the_usage_test() {
+function commandLineParameters_are_included_in_the_usage_tst() {
   local _name="project";
   local _description="The project";
   addCommandLineParameter "${_name}" "${_description}" MANDATORY SINGLE;
@@ -147,14 +151,14 @@ function commandLineParameters_are_included_in_the_usage_test() {
   Assert.contains "${_usage}" "${_description}" "The script description is not included in the usage message";
 }
 
-function usage_does_not_print_too_many_empty_lines_test() {
+function usage_does_not_print_too_many_empty_lines_tst() {
   local _usage="$(usage)";
   usage | grep -e '^\n\n\n' > /dev/null
   local -i _tooManyEmptyLines=$?;
   Assert.isFalse ${_tooManyEmptyLines} "usage() can include too many empty lines depending on the script metadata";
 }
 
-function checkInput_checks_mandatory_flags_test() {
+function checkInput_checks_mandatory_flags_tst() {
   addCommandLineFlag "file" "f" "The file to read" MANDATORY NO_ARGUMENT;
   (checkInput > /dev/null)
   local -i _rescode=$?;
@@ -164,7 +168,7 @@ function checkInput_checks_mandatory_flags_test() {
   Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
 }
 
-function checkInput_checks_flags_with_arguments_test() {
+function checkInput_checks_flags_with_arguments_tst() {
   addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
   (checkInput -f > /dev/null)
   local -i _rescode=$?;
@@ -174,7 +178,7 @@ function checkInput_checks_flags_with_arguments_test() {
   Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
 }
 
-function checkInput_checks_mandatory_parameters_test() {
+function checkInput_checks_mandatory_parameters_tst() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   (checkInput > /dev/null)
   local -i _rescode=$?;
@@ -184,13 +188,13 @@ function checkInput_checks_mandatory_parameters_test() {
   Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
 }
 
-function checkInput_does_not_complain_with_no_flags_and_one_parameter_test() {
+function checkInput_does_not_complain_with_no_flags_and_one_parameter_tst() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   local _result="$(checkInput "/tmp/1.txt")";
   Assert.isEmpty "${_result}" "checkInput returned something";
 }
 
-function cli_module_adds_debug_flag_automatically_test() {
+function cli_module_adds_debug_flag_automatically_tst() {
   local -i _debugDefined;
   CLI.isCommandLineFlagDefined "-v";
   _debugDefined=$?;
@@ -200,7 +204,7 @@ function cli_module_adds_debug_flag_automatically_test() {
   Assert.isTrue ${_debugDefined} "CLI module does not define --debug flag automatically";
 }
 
-function cli_module_adds_trace_flag_automatically_test() {
+function cli_module_adds_trace_flag_automatically_tst() {
   local -i _traceDefined;
   CLI.isCommandLineFlagDefined "-vv";
   _traceDefined=$?;
@@ -210,7 +214,7 @@ function cli_module_adds_trace_flag_automatically_test() {
   Assert.isTrue ${_traceDefined} "CLI module does not define --trace flag automatically";
 }
 
-function cli_module_adds_quiet_flag_automatically_test() {
+function cli_module_adds_quiet_flag_automatically_tst() {
   local -i _quietDefined;
   CLI.isCommandLineFlagDefined "-q";
   _quietDefined=$?;
@@ -220,7 +224,7 @@ function cli_module_adds_quiet_flag_automatically_test() {
   Assert.isTrue ${_quietDefined} "CLI module does not define --quiet flag automatically";
 }
 
-function cli_module_adds_help_flag_automatically_test() {
+function cli_module_adds_help_flag_automatically_tst() {
   local -i _helpDefined;
   CLI.isCommandLineFlagDefined "-h";
   _helpDefined=$?;
@@ -230,7 +234,7 @@ function cli_module_adds_help_flag_automatically_test() {
   Assert.isTrue ${_helpDefined} "CLI module does not define --help flag automatically";
 }
 
-function cli_module_allows_deleting_automatic_flags_test() {
+function cli_module_allows_deleting_automatic_flags_tst() {
   local -i _helpDefined;
   removeCommandLineFlag "-h";
   CLI.isCommandLineFlagDefined "-h";
@@ -241,41 +245,41 @@ function cli_module_allows_deleting_automatic_flags_test() {
   Assert.isFalse ${_helpDefined} "CLI module does not allow removing the --help flag";
 }
 
-function addCommandLineParameter_parsing_callback_is_called_in_parseInput_test() {
+function addCommandLineParameter_parsing_callback_is_called_in_parseInput_tst() {
   addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
   parseInput "/tmp/1.txt";
   Assert.isFalse ${commandLineParameterCheckingCallbackCalled} "dw_check_file_cli_parameter was called in checkInput";
   Assert.isTrue ${commandLineParameterParsingCallbackCalled} "dw_parse_file_cli_parameter was not called in checkInput";
 }
 
-function addCommandLineFlag_parsing_callback_is_called_in_parseInput_test() {
+function addCommandLineFlag_parsing_callback_is_called_in_parseInput_tst() {
   addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
   parseInput "-f" "/tmp/1.txt";
   Assert.isTrue ${commandLineFlagParsingCallbackCalled} "dw_check_file_cli_flag was not called in parseInput";
   Assert.isFalse ${commandLineFlagCheckingCallbackCalled} "dw_parse_file_cli_flag was called in parseInput";
 }
 
-function checkInput_calls_a_check_callback_for_defined_environment_variables_test() {
+function checkInput_calls_a_check_callback_for_defined_environment_variables_tst() {
   defineEnvVar MY_OPTIONAL_ENVVAR OPTIONAL "An environment variable used for testing" "default-value";
   checkInput;
   Assert.isTrue ${optionalEnvVarCheckingCallbackCalled} "dw_check_my_optional_envvar_cli_envvar was not called in parseInput";
   Assert.isFalse ${optionalEnvVarParsingCallbackCalled} "dw_parse_my_optional_envvar_cli_envvar was called in parseInput";
 }
 
-function checkInput_checks_mandatory_environment_variables_are_not_empty_test() {
+function checkInput_checks_mandatory_environment_variables_are_not_empty_tst() {
   defineEnvVar MY_MANDATORY_ENVVAR MANDATORY "An environment variable used for testing" "default-value";
   export MY_MANDATORY_ENVVAR="";
   local _result="$(MY_MANDATORY_ENVVAR="" checkInput)";
   Assert.isNotEmpty "${_result}" "checkInput didn't check for MY_MANDATORY_ENVVAR";
 }
 
-function parseInput_fails_if_there_is_no_callback_function_for_a_mandatory_parameter_test() {
+function parseInput_fails_if_there_is_no_callback_function_for_a_mandatory_parameter_tst() {
   addCommandLineParameter "folder" "The file to read" MANDATORY SINGLE;
   (parseInput "/tmp" > /dev/null 2>&1)
   Assert.isFalse $? "parseInput failed to detect parameter witout parsing callback defined";
 }
 
-function parseInput_uses_the_default_value_of_an_optional_command_line_flag_test() {
+function parseInput_uses_the_default_value_of_an_optional_command_line_flag_tst() {
   addCommandLineFlag "tag" "t" "The tag" OPTIONAL EXPECTS_ARGUMENT "latest";
   addCommandLineFlag "overwrite-latest" "ol" "Whether to override latest" OPTIONAL NO_ARGUMENT "false";
   parseInput "-v";
@@ -285,16 +289,34 @@ function parseInput_uses_the_default_value_of_an_optional_command_line_flag_test
   Assert.areEqual "${OVERWRITE_LATEST}" "false" "OVERWRITE_LATEST should be 'false' when not defined";
 }
 
-function parseInput_does_not_swallow_parameters_test() {
+function parseInput_does_not_swallow_parameters_tst() {
   setDebugEchoEnabled TRUE;
   addCommandLineParameter "repository" "The repository" MANDATORY SINGLE;
   parseInput "-v" "base";
   Assert.isNotEmpty "${REPOSITORY}" "REPOSITORY was empty";
 }
 
-function drywit_calls_dw_checkInput_test() {
+function drywit_calls_dw_checkInput_tst() {
   checkInput;
   Assert.isTrue ${checkInputCallbackCalled} "dw_checkInput is not called";
+}
+
+function parseInput_calls_parameter_callback_with_just_the_parameter_test() {
+  addCommandLineFlag "noCache" "nc" "Whether to use the cached images or not" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "force" "f" "Whether to build the image even if it's already built" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "overwriteLatest" "o" "Whether to overwrite the \"latest\" tag with the new one (default: false)" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "registryTag" "rt" "Whether to tag also for pushing the image to the remote registry (implicit if -rp is enabled)" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "registryPush" "rp" "Optionally, whether to push the image to a remote registry" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "reduceImage" "ri" "Whether to reduce the size of the resulting image" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "cleanupImages" "ci" "Whether to try to cleanup images" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "cleanupContainers" "cc" "Whether to try to cleanup containers" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "X:evalDefaults" "X:e" "Whether to eval all default values, which potentially slows down the script unnecessarily" OPTIONAL NO_ARGUMENT;
+  addCommandLineParameter "repositories" "The repositories to build" MANDATORY MULTIPLE;
+  checkInput ${0} -v -f -o base;
+  Assert.isTrue $? 'checkInput -v -f -o base failed';
+  parseInput ${0} -v -f -o base;
+  Assert.isNotEmpty "${REPOSITORIES}" "REPOSITORIES was empty";
+  Assert.areEqual "base" "${REPOSITORIES}" 'Repositories are not parsed correctly'
 }
 
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
