@@ -244,11 +244,14 @@ EOF
     ERROR.getBuiltInErrorsVariableName;
     local -n _builtinErrors=${RESULT};
 
+    ERROR.getModuleName;
+    local _moduleName="${RESULT}";
+
     if [ ${#_builtinErrors[@]} -gt 0 ]; then
       IFS=$"${DWIFS}";
       for ((i = 0; i < ${#_builtinErrors[@]}; i++)); do
-        DW.getGlobalString "${_moduleName}" "${_builtinErrors[$j]}";
-        echo "  $((i+1)): ${RESULT}";
+        DW.getGlobalString "${_moduleName}" "${_builtinErrors[$i]}";
+        echo "  $((i+1)): ${RESULT}.";
       done
     fi
     ERROR.getErrorMessagesVariableName;
@@ -257,7 +260,7 @@ EOF
       IFS=$"${DWIFS}";
       for ((j = 0; j < ${#_errorMessages[@]}; j++)); do
         DW.getGlobalString "${_moduleName}" "${_errorMessages[$j]}";
-        echo "  $((j+i+1)): ${RESULT}";
+        echo "  $((j+i+1)): ${RESULT}.";
       done
     fi
     IFS="${_oldIFS}";
