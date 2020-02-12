@@ -220,24 +220,26 @@ function DRYWIT.checkDependency() {
 # use: DRYWIT.checkScript /tmp/myScript.sh;
 function DRYWIT.checkScript() {
   local _script="${1}";
+  checkNotEmpty script "${_script}" 1;
   local _v;
   local _f;
   local _oldIFS="${IFS}";
 
-  checkNotEmpty "script" "${_script}" 1;
-
   setLogCategory "sanity-check";
   logTrace -n "Checking mandatory constants";
 
+  ERROR.getErrorMessagesVariableName;
+  local -n _errorMessages=${RESULT};
+
   IFS="${DWIFS}";
-  for _v in ${ERROR_MESSAGES[@]}; do
+  for _v in ${_errorMessages[@]}; do
     IFS="${_oldIFS}";
     if [ -z "${_v}" ]; then
       exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
     fi
   done
   IFS="${_oldIFS}";
-  logTraceResult SUCCESS "done";
+  logTraceResult SUCCESS "${DONE}";
   logTrace -n "Checking mandatory functions";
   IFS="${DWIFS}";
   for _f in main; do
@@ -248,7 +250,7 @@ function DRYWIT.checkScript() {
     fi
   done
   IFS="${_oldIFS}";
-  logTraceResult SUCCESS "${_DW_DONE}";
+  logTraceResult SUCCESS "${DONE}";
 }
 
 # fun: DRYWIT.defineDryWitRequirements
@@ -276,8 +278,9 @@ function DRYWIT.main() {
   retrieveAbsolutePath "${_scriptPath}";
   _absolutePath="${RESULT}";
 
+  # first argument is the script name.
   shift;
-  
+
   source "${_scriptPath}" $@;
 
   DRYWIT.setup "${_scriptName}";
@@ -300,7 +303,6 @@ function DRYWIT.main() {
 
   if isFunctionPresent parseInput "${_scriptName}"; then
     evalEnvVars;
-    shift;
     parseInput $@;
   fi
 
@@ -311,7 +313,7 @@ function DRYWIT.main() {
   if isFunctionPresent checkRequirements "${_scriptName}"; then
     logTrace -n "Checking declared requirements";
     checkRequirements;
-    logTraceResult SUCCESS "done";
+    logTraceResult SUCCESS "${DONE}";
   fi
 
   if isFunctionPresent checkInput "${_scriptName}"; then
