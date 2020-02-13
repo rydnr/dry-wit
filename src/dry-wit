@@ -26,7 +26,7 @@
 # txt: The variable RESULT contains the name of the module.
 # use: BOOTSTRAP.getModuleName; echo "Module: ${RESULT}";
 function BOOTSTRAP.getModuleName() {
-  export RESULT="DW_BOOTSTRAP";
+  export RESULT="BOOTSTRAP";
   return ${TRUE};
 }
 
@@ -157,6 +157,7 @@ function DW.getGlobalString() {
   local _result;
 
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
+    local _aux="${RESULT}";
     local -n _result="${RESULT}";
     _rescode=${TRUE};
   fi
@@ -260,6 +261,8 @@ function DW.declareGlobalVariable() {
          _rescode=$?;
          ;;
     esac
+  else
+    echo "DW.getGlobalVariableName ${_module} ${_varName} returned 1. Please fill-in a bug report."
   fi
 
   return ${_rescode};
@@ -688,12 +691,11 @@ function downloadModule() {
 
   BOOTSTRAP.checkNotEmpty "module" "${_module}" 1;
 
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" MODULE_PATH;
+  BOOTSTRAP.getModulePath;
   local _modulePath="${RESULT}";
   mkdir -p "${_modulePath}";
-  DW.getGlobalString "${_moduleName}" MODULE_URL;
+
+  BOOTSTRAP.getModuleUrl;
   local _moduleUrl="${RESULT}";
 
   BOOTSTRAP.logDebug -n "Downloading ${_moduleUrl}/${_module}.dw to ${_moduleUrl}/${_module}.dw";
@@ -719,6 +721,18 @@ function downloadModule() {
   return ${_rescode};
 }
 
+# fun: BOOTSTRAP.getBootstrapModulesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the bootstrap modules.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable with the bootstrap modules.
+# use: BOOTSTRAP.getBootstrapModulesVariableName; local -n bootstrapModules=${RESULT};
+function BOOTSTRAP.getBootstrapModulesVariableName() {
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
+}
+
 # fun: BOOTSTRAP.bootstrap
 # txt: Bootstraps dry-wit.
 # txt: Returns always 0/TRUE.
@@ -729,12 +743,10 @@ function BOOTSTRAP.bootstrap() {
   local _oldIFS="${IFS}";
   IFS="${_oldIFS}";
 
-  IFS=${DWIFS};
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
+  BOOTSTRAP.getBootstrapModulesVariableName;
   local -n _bootstrapModules=${RESULT};
 
+  IFS=${DWIFS};
   for _module in ${_bootstrapModules[@]}; do
     IFS="${_oldIFS}";
     DW.import "${_module}";
@@ -750,9 +762,6 @@ function BOOTSTRAP.bootstrap() {
 # use: DW.import logging;
 function DW.import() {
   local _module="${1}";
-
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## checkNotEmpty is loaded.
   BOOTSTRAP.checkNotEmpty "module" "${_module}" 1;
 
   local _modulePath;
@@ -787,6 +796,8 @@ function DW.import() {
     fi
 
     _importedModules[${#_importedModules[@]}]="${_module}";
+  else
+    BOOTSTRAP.logTrace "Skipping ${_module} since it's already imported";
   fi
 }
 
@@ -878,7 +889,7 @@ function DW.nested() {
 
   if ! DW.initialized; then
     _rescode=${FALSE};
-  elif [[ ${DW_SCRIPT_INDEX} -gt 0 ]]; then
+  else
     _rescode=${TRUE};
   fi
 
@@ -1033,6 +1044,8 @@ function BOOTSTRAP.resetState() {
 
   # env: MODULE_PATH: Where to download dry-wit modules.
   DW.declareGlobalString "${_moduleName}" MODULE_PATH "${HOME:-/root}/.dry-wit/src/modules"
+
+  BOOTSTRAP.getModulePath;
 }
 
 #set -o errexit  # terminate on any unhandled error
@@ -1048,12 +1061,10 @@ if [ -z ${DW_SCRIPT_INDEX+x} ]; then
   declare -igx DW_SCRIPT_INDEX=0;
 fi
 
-BOOTSTRAP.resetState;
+DW.init $@;
 
-if ! DW.nested; then
-  BOOTSTRAP.bootstrap;
-  DW.init $@;
-fi
+BOOTSTRAP.resetState;
+BOOTSTRAP.bootstrap;
 
 DW.isTest;
 DRYWIT.main $@;
