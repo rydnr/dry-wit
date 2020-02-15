@@ -35,6 +35,7 @@ function firstCharacter() {
 function lastCharacter() {
   local _input="${1}";
   checkNotEmpty text "${_input}" 1;
+
   local -i _rescode=${FALSE};
   local _result;
 
@@ -59,11 +60,11 @@ function lastCharacter() {
 # use: if contains "${text}" "b"; then echo "${text} contains b"; fi
 function contains() {
   local _container="${1}";
+  checkNotEmpty text "${_container}" 1;
   local _substring="${2}";
-  local -i _rescode;
+  checkNotEmpty substring "${_substring}" 2;
 
-  checkNotEmpty "container" "${_container}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
+  local -i _rescode;
 
   if [[ "${_container}" =~ "${_substring}" ]]; then
     _rescode=${TRUE};
@@ -83,11 +84,11 @@ function contains() {
 # use: if endsWith "${text}" "c"; then echo "${text} ends with c"; fi
 function endsWith() {
   local _container="${1}";
+  checkNotEmpty container "${_container}" 1;
   local _substring="${2}";
-  local -i _rescode;
+  checkNotEmpty substring "${_substring}" 2;
 
-  checkNotEmpty "container" "${_container}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
+  local -i _rescode;
 
   if areEqual "${_container%${_substring}}" "${_container}"; then
     _rescode=${FALSE};
@@ -136,14 +137,14 @@ function normalizeUppercase() {
 # use: if removePrefix "${_text}" "--*"; then echo "${_text} -> ${RESULT}"; fi
 function removePrefix() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local _prefix="${2}";
+  checkNotEmpty prefix "${_prefix}" 2;
+
   local -i _rescode;
   local _result;
 
-  checkNotEmpty "text" "${_text}" 1;
-  checkNotEmpty "prefix" "${_prefix}" 2;
-
-  _result="$(echo "${_text}" | sed -e "s/^${_prefix}//")";
+  _result="$(sed -e "s/^${_prefix}//" <<< ${_text})";
   _rescode=$?;
   if isTrue ${_rescode}; then
     # double-check
@@ -167,12 +168,12 @@ function removePrefix() {
 # use: if removeSuffix "${_text}" "-*"; then echo "${_text} -> ${RESULT}"; fi
 function removeSuffix() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local _suffix="${2}";
+  checkNotEmpty suffix "${_suffix}" 2;
+
   local -i _rescode;
   local _result;
-
-  checkNotEmpty "text" "${_text}" 1;
-  checkNotEmpty "suffix" "${_suffix}" 2;
 
   if contains "${_suffix}" "~"; then
     _rescode=${FALSE};
@@ -238,20 +239,20 @@ function replaceNRightmostTokens() {
 # txt: Returns 0/TRUE if the text starts with the substring; 1/FALSE otherwise.
 # use: if startsWith "${text}" "a"; then echo "${text} starts with a"; fi
 function startsWith() {
-    local _container="${1}";
-    local _substring="${2}";
-    local -i _rescode;
+  local _container="${1}";
+  checkNotEmpty "container" "${_container}" 1;
+  local _substring="${2}";
+  checkNotEmpty "substring" "${_substring}" 2;
 
-    checkNotEmpty "container" "${_container}" 1;
-    checkNotEmpty "substring" "${_substring}" 2;
+  local -i _rescode;
 
-    if areEqual "${_container#${_substring}}" "${_container}"; then
-        _rescode=${FALSE};
-    else
-        _rescode=${TRUE};
-    fi
+  if areEqual "${_container#${_substring}}" "${_container}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: toLower text
@@ -264,10 +265,10 @@ function startsWith() {
 #      toLower "${_text}";
 #      local _lowerCase="${RESULT}";
 function toLower() {
-    local _text="${1}";
-    checkNotEmpty "text" "${_text}" 1;
-    local result=$(echo "${_text}" | awk '{print tolower($0);}');
-    export RESULT="${result}";
+  local _text="${1}";
+  checkNotEmpty "text" "${_text}" 1;
+  local result=$(echo "${_text}" | awk '{print tolower($0);}');
+  export RESULT="${result}";
 }
 
 # fun: toUpper text
@@ -280,10 +281,12 @@ function toLower() {
 #      toUpper "${_text}";
 #      local _upcased="${RESULT}";
 function toUpper() {
-    local _text="${1}";
-    checkNotEmpty "text" "${_text}" 1;
-    local result=$(echo "${_text}" | awk '{print toupper($0);}');
-    export RESULT="${result}";
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local result=$(echo "${_text}" | awk '{print toupper($0);}');
+
+  export RESULT="${result}";
 }
 
 # fun: replaceAll
@@ -439,14 +442,14 @@ function printValue(text,   value, len, a) {
 }
 { printf("%s=", $1); for (i=2; i<NF; i++) {printValue($i); printKey($i);}; printf("%s\n", $NF); }')";
 
-#  len=split(text, value, " ");
-#  if (len > 1) {
-#         printf("%s=", value[0]);
-#         for (i=1; i<len-2; i++) {
-#                 printf("%s ", value[i]);
-#             };
-#             print;
-#     }
+  #  len=split(text, value, " ");
+  #  if (len > 1) {
+  #         printf("%s=", value[0]);
+  #         for (i=1; i<len-2; i++) {
+  #                 printf("%s ", value[i]);
+  #             };
+  #             print;
+  #     }
 
   export RESULT="${_result}";
   if isTrue ${_rescode}; then
@@ -634,4 +637,147 @@ function countMatchesOfCharsInString() {
   return ${_rescode};
 }
 
+# fun: camelCaseToPascalCase
+# api: public
+# txt: Converts given text in camel case to Pascal case.
+# opt: text: The text to convert.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the text in Pascal case.
+# use: camelCaseToPascalCase "baseFolder"; echo "baseFolder -> ${RESULT}";
+function camelCaseToPascalCase() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+
+  camelCaseToSnakeCase "${_text}";
+  snakeCaseToPascalCase "${RESULT}";
+
+  return ${_rescode};
+}
+
+# fun: camelCaseToSnakeCase
+# api: public
+# txt: Converts given text in camel case to snake case.
+# opt: text: The text to convert.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the text in snake case.
+# use: camelCaseToSnakeCase "baseFolder"; echo "baseFolder -> ${RESULT}";
+function camelCaseToSnakeCase() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+  local _result="$(sed -r 's/([a-z0-9])([A-Z])/\1_\L\2/g' <<< "${_text}")";
+  uncapitalize "${_result}";
+
+  return ${_rescode};
+}
+
+# fun: snakeCaseToCamelCase
+# api: public
+# txt: Converts given text in snake case to camel case.
+# opt: text: The text to convert.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the text in camel case.
+# use: snakeCaseToCamelCase "output_file"; echo "output_filer -> ${RESULT}";
+function snakeCaseToCamelCase() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+  snakeCaseToPascalCase "${_text}";
+  uncapitalize "${RESULT}";
+
+  return ${_rescode};
+}
+
+# fun: snakeCaseToPascalCase
+# api: public
+# txt: Converts given text in snake case to Pascal case.
+# opt: text: The text to convert.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the text in Pascal case.
+# use: snakeCaseToPascalCase "output_file"; echo "output_filer -> ${RESULT}";
+function snakeCaseToPascalCase() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+  local _result="$(sed -r 's/(^|_)([a-z])/\U\2/g' <<< "${_text}")";
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
+
+# fun: uncapitalize
+# api: public
+# txt: Uncapitalizes given text.
+# opt: text: The text to uncapitalize.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the uncapitalized text.
+# use: uncapitalize "MyText"; echo "uncapitalized: ${RESULT}";
+function uncapitalize() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+  tailText "${_text}";
+  local _tail="${RESULT}";
+
+  firstCharacter "${_text}";
+  local _firstCharacter="${RESULT}";
+
+  toLower "${_firstCharacter}";
+  local _result="${RESULT}${_tail}";
+
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
+
+# fun: capitalize
+# api: public
+# txt: Capitalizes given text.
+# opt: text: The text to capitalize.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the capitalized text.
+# use: capitalize "MyText"; echo "capitalized: ${RESULT}";
+function capitalize() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+  tailText "${_text}";
+  local _tail="${RESULT}";
+
+  firstCharacter "${_text}";
+  local _firstCharacter="${RESULT}";
+
+  toUpper "${_firstCharacter}";
+  local _result="${RESULT}${_tail}";
+
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
+
+# fun: tailText
+# api: public
+# txt: Removes the first character.
+# opt: text: The text.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the original text after removing the first character.
+# use: tailText "aText"; echo "${RESULT}";
+function tailText() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+  local _result="$(cut -c2- <<< ${_text})";
+
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

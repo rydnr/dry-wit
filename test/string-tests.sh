@@ -29,31 +29,70 @@ function endsWith_test() {
 }
 
 function removePrefix_test() {
-  removePrefix "--abc" "-*";
+  local _input="--abc";
+  local _prefix='--';
+  local _expected='abc';
+  removePrefix "${_input}" "${_prefix}";
   local -i _done=$?;
   local _result="${RESULT}";
   Assert.isTrue ${_done} "removePrefix failed";
-  Assert.areEqual "${_result}" "abc" "removePrefix '--abc' '-*' returned '${_result}' instead of 'abc'";
+  Assert.areEqual "${_result}" "${_expected}" "removePrefix '${_input}' '${_prefix}' returned '${_result}' instead of '${_expected}'";
+
+  _input="-e";
+  _prefix='-';
+  _expected='e';
+  removePrefix "${_input}" "${_prefix}";
+  _done=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_done} "removePrefix failed";
+  Assert.areEqual "${_result}" "${_expected}" "removePrefix '${_input}' '${_prefix}' returned '${_result}' instead of '${_expected}'";
+
+  _input="-X:e";
+  _prefix='-X:';
+  _expected='e';
+  removePrefix "${_input}" "${_prefix}";
+  _done=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_done} "removePrefix failed";
+  Assert.areEqual "${_result}" "${_expected}" "removePrefix '${_input}' '${_prefix}' returned '${_result}' instead of '${_expected}'";
 }
 
 function removeSuffix_test() {
-  removeSuffix "abc--" "-*";
+  local _input='abc--';
+  local _suffix='--';
+  local _expected="abc";
+  removeSuffix "${_input}" "${_suffix}";
   local -i _done=$?;
   local _result="${RESULT}";
   Assert.isTrue ${_done} "removeSuffix failed";
-  Assert.areEqual "${_result}" "abc" "removeSuffix 'abc--' '-*' returned '${_result}' instead of 'abc'";
+  Assert.areEqual "${_result}" "${_expected}" "removeSuffix '${_input}' '${_suffix}' returned '${_result}' instead of '${_expected}'";
 
-  removeSuffix "my-test.sh" "-test.sh";
+  _input="my-test.sh";
+  _suffix="-test.sh";
+  _expected="my";
+  removeSuffix "${_input}" "${_suffix}";
   _done=$?;
   _result="${RESULT}";
   Assert.isTrue ${_done} "removeSuffix failed";
-  Assert.areEqual "${_result}" "my" "removeSuffix 'my-test.sh' '-test.sh' returned '${_result}' instead of 'my'";
+  Assert.areEqual "${_result}" "${_expected}" "removeSuffix '${_input}' '${_suffix}' returned '${_result}' instead of '${_expected}'";
 
+  _input="my text";
+  _suffix='"';
+  _expected="my text";
   removeSuffix 'my text"' '"';
   _done=$?;
   _result="${RESULT}";
   Assert.isTrue ${_done} "removeSuffix failed";
-  Assert.areEqual "${_result}" "my text" "removeSuffix 'my text"' '"' returned '${_result}' instead of 'my text'";
+  Assert.areEqual "${_result}" "${_expected}" "removeSuffix '${_input}' '${_suffix}' returned '${_result}' instead of '${_expected}'";
+
+  _input='abc-e';
+  _suffix='-e';
+  _expected="abc";
+  removeSuffix "${_input}" "${_suffix}";
+  _done=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_done} "removeSuffix failed";
+  Assert.areEqual "${_result}" "${_expected}" "removeSuffix '${_input}' '${_suffix}' returned '${_result}' instead of '${_expected}'";
 }
 
 function toUpper_test() {
@@ -245,6 +284,124 @@ function countMatchesOfCharsInString_test() {
   local _result="${RESULT}";
   Assert.isTrue ${_rescode} "countMatchesOfCharsInString '${_text}' failed";
   Assert.areEqual '5' "${_result}" "countMatchesOfCharsInString '${_text}' failed";
+}
+
+function camelCaseToSnakeCase_test() {
+  local _text="baseFolder";
+  camelCaseToSnakeCase "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="base_folder";
+  Assert.isTrue ${_rescode} "camelCaseToSnakeCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "camelCaseToSnakeCase '${_text}' failed";
+
+  _text="outputFile";
+  camelCaseToSnakeCase "${_text}";
+  _rescode=$?;
+  _result="${RESULT}";
+  _expected="output_file";
+  Assert.isTrue ${_rescode} "camelCaseToSnakeCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "camelCaseToSnakeCase '${_text}' failed";
+}
+
+function camelCaseToPascalCase_test() {
+  local _text="baseFolder";
+  camelCaseToPascalCase "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="BaseFolder";
+  Assert.isTrue ${_rescode} "camelCaseToPascalCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "camelCaseToPascalCase '${_text}' failed";
+
+  _text="outputFile";
+  camelCaseToPascalCase "${_text}";
+  _rescode=$?;
+  _result="${RESULT}";
+  _expected="OutputFile";
+  Assert.isTrue ${_rescode} "camelCaseToPascalCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "camelCaseToPascalCase '${_text}' failed";
+}
+
+function snakeCaseToCamelCase_test() {
+  local _text="base_folder";
+  snakeCaseToCamelCase "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="baseFolder";
+  Assert.isTrue ${_rescode} "snakeCaseToCamelCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "snakeCaseToCamelCase '${_text}' failed";
+
+  _text="output_file";
+  snakeCaseToCamelCase "${_text}";
+  _rescode=$?;
+  _result="${RESULT}";
+  _expected="outputFile";
+  Assert.isTrue ${_rescode} "snakeCaseToCamelCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "snakeCaseToCamelCase '${_text}' failed";
+}
+
+function snakeCaseToPascalCase_test() {
+  local _text="base_folder";
+  snakeCaseToPascalCase "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="BaseFolder";
+  Assert.isTrue ${_rescode} "snakeCaseToPascalCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "snakeCaseToPascalCase '${_text}' failed";
+
+  _text="output_file";
+  snakeCaseToPascalCase "${_text}";
+  _rescode=$?;
+  _result="${RESULT}";
+  _expected="OutputFile";
+  Assert.isTrue ${_rescode} "snakeCaseToPascalCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "snakeCaseToPascalCase '${_text}' failed";
+}
+
+function uncapitalize_test() {
+  local _text="MyText";
+  uncapitalize "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="myText";
+  Assert.isTrue ${_rescode} "uncapitalize '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "uncapitalize '${_text}' failed";
+
+  _text="OtherSample";
+  uncapitalize "${_text}";
+  _rescode=$?;
+  _result="${RESULT}";
+  _expected="otherSample";
+  Assert.isTrue ${_rescode} "uncapitalize '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "uncapitalize '${_text}' failed";
+}
+
+function capitalize_test() {
+  local _text="myText";
+  capitalize "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="MyText";
+  Assert.isTrue ${_rescode} "capitalize '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "capitalize '${_text}' failed";
+
+  _text="otherSample";
+  capitalize "${_text}";
+  _rescode=$?;
+  _result="${RESULT}";
+  _expected="OtherSample";
+  Assert.isTrue ${_rescode} "capitalize '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "capitalize '${_text}' failed";
+}
+
+function tailText_test() {
+  local _text="abcde";
+  tailText "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="bcde";
+  Assert.isTrue ${_rescode} "tailText '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "tailText '${_text}' failed";
 }
 
 setScriptDescription "Runs all tests implemented for string.dw";
