@@ -505,28 +505,35 @@ function checkInput() {
   IFS="${DWIFS}";
   for _flag in ${_flags}; do
     IFS="${_oldIFS}";
-    _flagCount=$((_flagCount+1));
-    shift;
 
-    CLI.checkFlag "${_flag}" $@;
-    _shifts=$?;
-    IFS="${DWIFS}";
-    for _i in $(seq 1 ${_shifts}); do
-      IFS="${_oldIFS}";
+    if isHelpFlagProvided; then
+      break;
+    else
+      _flagCount=$((_flagCount+1));
       shift;
-    done
-    _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
+
+      CLI.checkFlag "${_flag}" $@;
+      _shifts=$?;
+      IFS="${DWIFS}";
+      for _i in $(seq 1 ${_shifts}); do
+        IFS="${_oldIFS}";
+        shift;
+      done
+      _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
+    fi
   done
   IFS="${_oldIFS}";
 
-  CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[@]}";
+  if ! isHelpFlagProvided; then
+    CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[@]}";
 
-  CLI.checkCommandLineParameters $@;
+    CLI.checkCommandLineParameters $@;
 
-  CLI.checkEnvironmentVariables;
+    CLI.checkEnvironmentVariables;
 
-  if isFunctionPresent "dw_checkInput"; then
-    dw_checkInput;
+    if isFunctionPresent "dw_checkInput"; then
+      dw_checkInput;
+    fi
   fi
 }
 
@@ -594,12 +601,36 @@ function dw_parse_quiet_cli_flag() {
   export QUIET=${TRUE};
 }
 
+# fun: setHelpFlagProvided
+# api: private
+# txt: Indicates the help flag has been specified.
+# txt: Returns 0/TRUE always.
+# use: setHelpFlagProvided;
+function setHelpFlagProvided() {
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.setGlobalInt "${_moduleName}" HELP_FLAG_PROVIDED ${TRUE};
+}
+
+# fun: isHelpFlagProvided
+# api: private
+# txt: Retrieves whether the help flag has been specified.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if isHelpFlagProvided; then echo "help requested"; fi
+function isHelpFlagProvided() {
+  CLI.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalInt "${_moduleName}" HELP_FLAG_PROVIDED;
+  local -i _rescode=${RESULT};
+  return ${_rescode};
+}
+
 # fun: dw_parse_help_cli_flag
 # api: private
 # txt: Callback function when the user includes the help (-h|--help) flag.
 # txt: It's based on a naming convention: dw_parse_help_cli_flag
 function dw_parse_help_cli_flag() {
-  printHelp;
+  setHelpFlagProvided;
 }
 
 # fun: CLI.extractFlags cliArguments
@@ -2203,6 +2234,10 @@ function CLI.resetState() {
   DW.declareGlobalMap "${_moduleName}" MANDATORY_PARAMETERS;
   # env: SINGLE_PARAMETERS: Whether each CLI parameter is single or not.
   DW.declareGlobalMap "${_moduleName}" SINGLE_PARAMETERS;
+
+  # env: HELP_FLAG_PROVIDED: Whether the help flag was provided.
+  DW.declareGlobalInt "${_moduleName}" HELP_FLAG_PROVIDED ${FALSE};
+
   # env: SCRIPT_DESCRIPTION: The description of the script.
   DW.declareGlobalString "${_moduleName}" SCRIPT_DESCRIPTION;
   # env: SCRIPT_COPYRIGHT: The copyright of the script.

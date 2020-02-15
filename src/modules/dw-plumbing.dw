@@ -325,9 +325,13 @@ function DRYWIT.main() {
     fi
   fi
 
-  setLogCategory "";
-  main;
-  setLogCategory "";
+  if isHelpFlagProvided; then
+    printHelp;
+  else
+    setLogCategory "";
+    main;
+    setLogCategory "";
+  fi
 }
 
 # fun: DRYWIT.retrieveSettingsFiles
