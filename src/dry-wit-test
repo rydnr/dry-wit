@@ -80,12 +80,11 @@ function DRYWITTEST.retrieveTests() {
 # use: DRYWITTEST.addTestError "my_test";
 function DRYWITTEST.addTestError() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
   local -i _count;
   local -i _index;
-
-  checkNotEmpty "test" "${_test}" 1;
-  checkNotEmpty "message" "${_message}" 2;
 
   _count=${TEST_ERRORS[${_test}]};
   if isEmpty "${_count}"; then
@@ -106,10 +105,9 @@ function DRYWITTEST.addTestError() {
 # use: DRYWITTEST.removeTestError "my_test";
 function DRYWITTEST.removeTestError() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _count;
   local -i _index;
-
-  checkNotEmpty "test" "${_test}" 1;
 
   _count=${TEST_ERRORS[${_test}]};
   if ! isEmpty "${_count}"; then
@@ -129,12 +127,11 @@ function DRYWITTEST.removeTestError() {
 # use: DRYWITTEST.addTestFailure "my_test" "Failed assertions";
 function DRYWITTEST.addTestFailure() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
   local -i _count;
   local -i _index;
-
-  checkNotEmpty "test" "${_test}" 1;
-  checkNotEmpty "message" "${_message}" 2;
 
   _count=${TEST_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
@@ -155,7 +152,8 @@ function DRYWITTEST.addTestFailure() {
 # use: DRYWITTEST.addTestSuccess "my_test";
 function DRYWITTEST.addTestSuccess() {
   local _test="${1}";
-  local _count;
+  checkNotEmpty test "${_test}" 1;
+  local -i _count;
 
   _count=${TEST_SUCCESSES["${_test}"]};
   if isEmpty "${_count}"; then
@@ -176,10 +174,9 @@ function DRYWITTEST.addTestSuccess() {
 # use: DRYWITTEST.addTestAssertionFailure "my_test" "Should not fail";
 function DRYWITTEST.addTestAssertionFailure() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local _message="${2}";
-
-  checkNotEmpty "test" "${_test}" 1;
-  checkNotEmpty "message" "${_message}" 2;
+  checkNotEmpty message "${_message}" 2;
 
   local _extra="${3}";
   local _lineNumber="${BASH_LINENO[1]}";
@@ -209,7 +206,8 @@ function DRYWITTEST.addTestAssertionFailure() {
 # use: DRYWITTEST.addTestAssertionSuccess "my_test";
 function DRYWITTEST.addTestAssertionSuccess() {
   local _test="${1}";
-  local _count;
+  checkNotEmpty test "${_test}" 1;
+  local -i _count;
 
   _count=${TEST_ASSERTION_SUCCESSES["${_test}"]};
   if isEmpty "${_count}"; then
@@ -228,7 +226,8 @@ function DRYWITTEST.addTestAssertionSuccess() {
 # use: retrievePassingTestAssertions "my_test"; echo "my_test: ${RESULT} assertions passed"
 function retrievePassingTestAssertions() {
   local _test="${1}";
-  local _result;
+  checkNotEmpty test "${_test}" 1;
+  local -i _result;
 
   _result=${TEST_ASSERTION_SUCCESSES["${_test}"]};
   if isEmpty "${_result}"; then
@@ -247,7 +246,8 @@ function retrievePassingTestAssertions() {
 # use: retrieveFailedTestAssertions "my_test";
 function retrieveFailedTestAssertions() {
   local _test="${1}";
-  local _result;
+  checkNotEmpty test "${_test}" 1;
+  local -i _result;
 
   _result=${TEST_ASSERTION_FAILURES["${_test}"]};
   if isEmpty "${_result}"; then
@@ -265,6 +265,7 @@ function retrieveFailedTestAssertions() {
 # use: if DRYWITTEST.allAssertionsPassed "my_test"; then echo "Hurray!"; fi
 function DRYWITTEST.allAssertionsPassed() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _failed;
   local -i _rescode;
 
@@ -288,6 +289,7 @@ function DRYWITTEST.allAssertionsPassed() {
 # use: if DRYWITTEST.noAssertionsPassed "my_test"; then echo "Too bad!"; fi
 function DRYWITTEST.noAssertionsPassed() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _passing;
   local -i _rescode;
 
@@ -311,6 +313,7 @@ function DRYWITTEST.noAssertionsPassed() {
 # use: if DRYWITTEST.noAssertionsDefined "my_test"; then echo "Error: no assertions defined in my_test"; fi
 function DRYWITTEST.noAssertionsDefined() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _failed;
   local _i _passing;
   local -i _rescode;
@@ -377,6 +380,8 @@ function runTest() {
 # use: DRYWITTEST.annotateTestSuccess "my_test";
 function DRYWITTEST.annotateTestSuccess() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   DRYWITTEST.addTestSuccess "${_test}";
 }
 
@@ -438,6 +443,8 @@ function DRYWITTEST.logSummary() {
 # use: DRYWITTEST.logErrorReasons "my_test";
 function DRYWITTEST.logErrorReasons() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _count=${TEST_ERRORS[${_test}]};
   local -i _i=0;
   local _error;
@@ -467,6 +474,8 @@ function DRYWITTEST.logErrorReasons() {
 # use: DRYWITTEST.logFailureReasons "my_test";
 function DRYWITTEST.logFailureReasons() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _count=${TEST_FAILURES[${_test}]};
   local -i _i=0;
   local _error;
@@ -496,6 +505,8 @@ function DRYWITTEST.logFailureReasons() {
 # use: DRYWITTEST.logFailedAssertions "my_test";
 function DRYWITTEST.logFailedAssertions() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _count=${TEST_ASSERTION_FAILURES[${_test}]};
   local -i _i=0;
   local _error;
@@ -510,6 +521,7 @@ function DRYWITTEST.logFailedAssertions() {
       IFS="${_oldIFS}";
       _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
       _error="${TEST_ASSERTION_FAILURE_MESSAGES[${_test}:${_i}]}";
+      echo "error: ${_error}";
       evalConstant "${_error}" "${_error}";
       _message="${RESULT}";
       _context="${TEST_ASSERTION_FAILURE_CONTEXT[${_test}:${_i}]}";
@@ -531,13 +543,13 @@ function DRYWITTEST.logFailedAssertions() {
 # use: DRYWITTEST.logTestSummary "my_test";
 function DRYWITTEST.logTestSummary() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _errors;
   local _failures;
   local _successes;
   local _assertionFailures;
   local _assertionSuccesses;
-
-  checkNotEmpty "test" "${_test}" 1;
 
   _errors="${TEST_ERRORS[${_test}]}";
   if isEmpty "${_errors}" || [ ${_errors} -eq 0 ]; then
@@ -650,10 +662,9 @@ function __dwCallback() {
 # use: Assert.isTrue [ 1 == 1 ] "check [ 1 == 1 ] failed";
 function Assert.isTrue() {
   local -i _condition=${1};
+  checkNotEmpty condition "${_condition}" 1;
   local _error="${2}";
-
-  checkNotEmpty "condition" "${_condition}" 1;
-  checkNotEmpty "error" "${_error}" 2;
+  checkNotEmpty error "${_error}" 2;
 
   if isTrue ${_condition}; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -671,10 +682,9 @@ function Assert.isTrue() {
 # use: Assert.isFalse [ 1 != 1 ], "check [ 1 != 1 ] failed";
 function Assert.isFalse() {
   local _condition=${1};
+  checkNotEmpty condition "${_condition}" 1;
   local _error="${2}";
-
-  checkNotEmpty "condition" "${_condition}" 1;
-  checkNotEmpty "error" "${_error}" 2;
+  checkNotEmpty error "${_error}" 2;
 
   if isFalse ${_condition}; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -691,8 +701,7 @@ function Assert.isFalse() {
 # use: [call functionX]; Assert.noErrorThrown "functionX has thrown an error";
 function Assert.noErrorThrown() {
   local _message="${1}";
-
-  checkNotEmpty "message" "${_message}" 1;
+  checkNotEmpty message "${_message}" 1;
 
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
@@ -710,8 +719,7 @@ function Assert.noErrorThrown() {
 # use: [call functionX]; Assert.errorThrown "functionX should have thrown an error";
 function Assert.errorThrown() {
   local _message="${1}";
-
-  checkNotEmpty "message" "${_message}" 1;
+  checkNotEmpty message "${_message}" 1;
 
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
@@ -732,12 +740,11 @@ function Assert.errorThrown() {
 # use: Assert.areEqual 1 1 "1 does not equal 1";
 function Assert.areEqual() {
   local _expected="${1}";
+  #  checkNotEmpty expected "${_expected}" 1;
   local _actual="${2}";
+  #  checkNotEmpty actual "${_actual}" 2;
   local _message="${3}";
-
-  #  checkNotEmpty "expected" "${_expected}" 1;
-  #  checkNotEmpty "actual" "${_actual}" 2;
-  checkNotEmpty "message" "${_message}" 3;
+  checkNotEmpty message "${_message}" 3;
 
   if areEqual "${_expected}" "${_actual}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -756,12 +763,11 @@ function Assert.areEqual() {
 # use: Assert.areNotEqual 1 2 "1 is equal to 2";
 function Assert.areNotEqual() {
   local _expected="${1}";
+  checkNotEmpty expected "${_expected}" 1;
   local _actual="${2}";
+  checkNotEmpty actual "${_actual}" 2;
   local _message="${3}";
-
-  checkNotEmpty "expected" "${_expected}" 1;
-  checkNotEmpty "actual" "${_actual}" 2;
-  checkNotEmpty "message" "${_message}" 3;
+  checkNotEmpty message "${_message}" 3;
 
   if areNotEqual "${_expected}" "${_actual}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -780,8 +786,7 @@ function Assert.areNotEqual() {
 function Assert.isEmpty() {
   local _value="${1}";
   local _message="${2}";
-
-  checkNotEmpty "message" "${_message}" 2;
+  checkNotEmpty message "${_message}" 2;
 
   if isEmpty "${_value}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -800,10 +805,9 @@ function Assert.isEmpty() {
 function Assert.isNotEmpty() {
   local _value="${1}";
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
 
   if isNotEmpty "${_value}"; then
-    checkNotEmpty "message" "${_message}" 2;
-
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
     DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is empty)";
@@ -820,10 +824,9 @@ function Assert.isNotEmpty() {
 function Assert.functionExists() {
   local _functionName="${1}";
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
 
   if isNotEmpty "${_functionName}"; then
-    checkNotEmpty "message" "${_message}" 2;
-
     if isFunctionPresent "${_functionName}"; then
       DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
     else
@@ -838,12 +841,11 @@ function Assert.functionExists() {
 # api: public
 # txt: Fails the test directly.
 # opt: error: The error message.
-# txt: Returs 0/TRUE always.
+# txt: Returns 0/TRUE always.
 # use: Assert.fail "my_test shouldn't have passed";
 function Assert.fail() {
   local _message="${1}";
-
-  checkNotEmpty "errorMessage" "${_message}" 1;
+  checkNotEmpty error "${_message}" 1;
 
   DRYWITTEST.addTestFailure "${FUNCNAME[1]}" "${_message}";
 }
@@ -867,12 +869,11 @@ function Assert.pass() {
 # use: Assert.contains "sample text" "sample" "'sample text' does not contain 'sample'";
 function Assert.contains() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local _substring="${2}";
+  checkNotEmpty substring "${_substring}" 2;
   local _errorMessage="${3}";
-
-  checkNotEmpty "text" "${_text}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
   if contains "${_text}" "${_substring}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -891,12 +892,11 @@ function Assert.contains() {
 # use: Assert.fileContains "/tmp/debug.log" "TESTING" "/tmp/debug.log doesn't contain TESTING";
 function Assert.fileContains() {
   local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
   local _text="${2}";
+  checkNotEmpty text "${_text}" 2;
   local _errorMessage="${3}";
-
-  checkNotEmpty "file" "${_file}" 1;
-  checkNotEmpty "text" "${_text}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
   if grep -q "${_text}" "${_file}" 2> /dev/null; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -908,46 +908,45 @@ function Assert.fileContains() {
 # fun: Assert.arrayContains
 # api: public
 # txt: Checks an array contains a text.
-# opt: array: The array.
 # opt: text: The text to test.
+# opt: array: The array.
 # opt: errorMessage: The error message.
 # txt: Returns 0/TRUE always.
-# use: Assert.arrayContains "${array[@]}" "TESTING" "array doesn't contain TESTING";
+# use: Assert.arrayContains  "TESTING" "${array[@]}" "array doesn't contain TESTING";
 function Assert.arrayContains() {
-  local _array="${1}";
-  local _text="${2}";
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+  local _array="${2}";
+  checkNotEmpty array "${_array}" 2;
   local _errorMessage="${3}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  checkNotEmpty "array" "${_array}" 1;
-  checkNotEmpty "text" "${_text}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
-
-  if arrayContains "${_array}" "${_text}"; then
+  echo "Checking arrayContains '${_text}' '${_array}'"
+  if arrayContains "${_text}" "${_array}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_array}' does not contain '${_text}')";
   fi
 }
 
 # fun: Assert.arrayDoesNotContain
 # api: public
 # txt: Checks an array doesn't contain a text.
-# opt: array: The array.
 # opt: text: The text to test.
+# opt: array: The array.
 # opt: errorMessage: The error message.
 # txt: Returns 0/TRUE always.
-# use: Assert.arrayDoesNotContain "${array[@]}" "TESTING" "array contains TESTING";
+# use: Assert.arrayDoesNotContain "TESTING" "${array[@]}" "array contains TESTING";
 function Assert.arrayDoesNotContain() {
-  local _array="${1}";
-  local _text="${2}";
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+  local _array="${2}";
+  checkNotEmpty array "${_array}" 2;
   local _errorMessage="${3}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  checkNotEmpty "array" "${_array}" 1;
-  checkNotEmpty "text" "${_text}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
-
-  if arrayContains "${_array}" "${_text}"; then
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_actual}')";
+  if arrayContains "${_text}" "${_array}"; then
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_array}' contains '${_text}')";
   else
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   fi
@@ -1009,4 +1008,4 @@ function main() {
   DRYWITTEST.sourceSUT;
   DRYWITTEST.dwtest;
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
