@@ -47,14 +47,13 @@ function ENVVAR.getModuleName() {
 #      fi
 function defineButDoNotOverrideEnvVar() {
   local _varName="${1}";
-  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty name "${_varName}" 1;
   local _varDescription="${2}";
-  checkNotEmpty "description" "${_varDescription}" 2;
+  checkNotEmpty description "${_varDescription}" 2;
   local _varDefault="${3}";
   local _varCommand="${4}";
   local _mandatoryOrOptional;
   local -i rescode;
-
 
   if isEnvVarDefined ${_varName}; then
     logTrace -n "Skipping already-defined ${_varName}";
@@ -86,8 +85,11 @@ function defineButDoNotOverrideEnvVar() {
 # use: defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
 function defineEnvVar() {
   local _varName="${1}";
+  checkNotEmpty "name" "${_varName}" 1;
   local _varMandatory="${2}";
+  checkMandatoryOrOptional "MANDATORY|OPTIONAL" "${_varMandatory}" 2;
   local _varDescription="${3}";
+  checkNotEmpty description "${_varDescription}" 3;
   local _varDefault="${4}";
   local _varCommand="${5:-}";
   local _upcasedVarName;
@@ -95,10 +97,6 @@ function defineEnvVar() {
   local _defaultValue;
   local _description;
   local _command;
-
-  checkNotEmpty "name" "${_varName}" 1;
-  checkMandatoryOrOptional "mandatory or optional" "${_varMandatory}" 2;
-  checkNotEmpty "description" "${_varDescription}" 3;
 
   toUpper "${_varName}";
   _upcasedVarName="${RESULT}";
@@ -131,7 +129,7 @@ function defineEnvVar() {
           fi
         fi
       else
-        ENVVAR.appendEnvVariable "${_upcasedVarName}";
+        ENVVAR.appendEnvironmentVariable "${_upcasedVarName}";
       fi
     fi
   fi
@@ -150,9 +148,7 @@ function evalEnvVars() {
   local _oldIFS="${IFS}";
   local _var;
 
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENV_VARIABLES;
+  ENVVAR.getEnvironmentVariablesVariableName;
   local -n _envVariables=${RESULT};
 
   IFS="${DWIFS}";
@@ -174,9 +170,8 @@ function evalEnvVars() {
 #      fi
 function evalVar() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local -i rescode;
-
-  checkNotEmpty "varName" "${_varName}" 1;
 
   local result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null)";
   rescode=$?;
@@ -197,10 +192,9 @@ function evalVar() {
 #      fi
 function isEnvVarDefined() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local e;
   local -i rescode=${FALSE};
-
-  checkNotEmpty "varName" "${_varName}" 1;
 
   #  echo "Callee: ${FUNCNAME[1]}"
   #  echo "var -> ${_varName}";
@@ -240,18 +234,16 @@ function isEnvVarDefined() {
 #      fi
 function isEnvVarMandatory() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
+
   local _varMandatory;
   local -i _rescode;
 
-  checkNotEmpty "name" "${_varName}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" MANDATORY_ENVIRONMENT_VARIABLES;
+  ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
   _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
 
-  if areEqual ${MANDATORY} ${_varMandatory} || areEqual "${_varMandatory}" "MANDATORY"; then
+  if areEqual "${MANDATORY}" "${_varMandatory}" || areEqual "${_varMandatory}" "MANDATORY"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -270,14 +262,11 @@ function isEnvVarMandatory() {
 #      fi
 function isEnvVarOptional() {
   local _varName="${1}";
+  checkNotEmpty name "${_varName}" 1;
   local _varMandatory;
   local -i _rescode;
 
-  checkNotEmpty "name" "${_varName}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" MANDATORY_ENVIRONMENT_VARIABLES;
+  ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
   _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
 
@@ -300,12 +289,11 @@ function isEnvVarOptional() {
 # use: overrideEnvVar MY_VAR "new-value";
 function overrideEnvVar() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local _varValue="${2}";
   local _varDescription="${3:-not provided}";
   local _mandatoryOrOptional;
   local _upcasedVarName;
-
-  checkNotEmpty "varName" "${_varName}" 1;
 
   if isEnvVarDefined ${_varName}; then
     toUpper "${_varName}";
@@ -334,9 +322,7 @@ function printEnvironment() {
   local _description;
   local _tempFile;
 
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENV_VARIABLES;
+  ENVVAR.getEnvironmentVariablesVariableName;
   local -n _envVariables=${RESULT};
 
   if isNotEmpty "${_envVariables}" && isTraceEnabled; then
@@ -386,9 +372,7 @@ EOF
 # use: retrieveCustomEnvironmentVariables;
 #      echo "Custom environment variables: ${RESULT}";
 function retrieveCustomEnvironmentVariables() {
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENV_VARIABLES;
+  ENVVAR.getEnvironmentVariablesVariableName;
   local -n _envVariables=${RESULT};
   export RESULT="${_envVariables[@]}";
 }
@@ -475,6 +459,17 @@ There is NO WARRANTY, to the extent permitted by law."
   done
 }
 
+# fun: ENVVAR.getEnvironmentVariablesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the environment variables.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable containing the environment variables.
+# use: ENVVAR.getEnvironmentVariablesVariableName; local -n _envVariables=${RESULT};
+function ENVVAR.getEnvironmentVariablesVariableName() {
+  ENVVAR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" ENVIRONMENT_VARIABLES;
+}
+
 # fun: ENVVAR.addEnvVar varName varValue
 # api: private
 # txt: Annotates given environment variable.
@@ -485,19 +480,25 @@ There is NO WARRANTY, to the extent permitted by law."
 function ENVVAR.addEnvVar() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
-
   local _varValue="${2:-}";
 
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENV_VARIABLES;
-
   if ! isEnvVarDefined "${_varName}"; then
-    local -n _envVariables=${RESULT};
-    _envVariables[${#_envVariables[@]}]="${_varName}";
+    ENVVAR.appendEnvironmentVariable "${_varName}";
   fi
-  DW.setGlobalString "${_moduleName}" "${_varName}" "${_varValue}";
+  ENVVAR.getModuleName;
+  DW.setGlobalString "${RESULT}" "${_varName}" "${_varValue}";
   declare -gx "${_varName}"="${_varValue}";
+}
+
+# fun: ENVVAR.getEnvironmentVariablesCommandsVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the commands associated to the environment variables.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable containing the commands associated to the environment variables.
+# use: ENVVAR.getEnvironmentVariablesCommandsVariableName; local -n _commands=${RESULT};
+function ENVVAR.getEnvironmentVariablesCommandsVariableName() {
+  ENVVAR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" ENVIRONMENT_VARIABLES_COMMANDS;
 }
 
 # fun: ENVVAR.addEnvVarCommand varName command
@@ -509,16 +510,24 @@ function ENVVAR.addEnvVar() {
 # use: ENVVAR.addEnvVarCommand "MY_VAR" "curl http://zeroconf.example.com/version | bash";
 function ENVVAR.addEnvVarCommand() {
   local _varName="${1}";
+  checkNotEmpty name "${_varName}" 1;
   local _varCommand="${2}";
+  checkNotEmpty command "${_varCommand}" 1;
 
-  checkNotEmpty "name" "${_varName}" 1;
-  checkNotEmpty "command" "${_varCommand}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENVIRONMENT_VARIABLES_COMMANDS;
+  ENVVAR.getEnvironmentVariablesCommandsVariableName;
   local -n _environmentVariablesCommands=${RESULT};
   _environmentVariablesCommands[${_varName}]="${_varCommand}";
+}
+
+# fun: ENVVAR.getEnvironmentVariablesDefaultsVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the default values of the environment variables.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable containing the default values of the environment variables.
+# use: ENVVAR.getEnvironmentVariablesDefaultsVariableName; local -n _defaultValues=${RESULT};
+function ENVVAR.getEnvironmentVariablesDefaultsVariableName() {
+  ENVVAR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" ENVIRONMENT_VARIABLES_DEFAULTS;
 }
 
 # fun: ENVVAR.addEnvVarDefault varName defaultValue
@@ -530,16 +539,24 @@ function ENVVAR.addEnvVarCommand() {
 # use: ENVVAR.addEnvVarDefault "MY_VAR" "MY_VAR's default value";
 function ENVVAR.addEnvVarDefault() {
   local _varName="${1}";
+  checkNotEmpty name "${_varName}" 1;
   local _varDefault="${2}";
+  checkNotEmpty default "${_varDefault}" 1;
 
-  checkNotEmpty "name" "${_varName}" 1;
-  checkNotEmpty "default" "${_varDefault}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENVIRONMENT_VARIABLES_DEFAULTS;
+  ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults=${RESULT};
   _environmentVariablesDefaults["${_varName}"]="${_varDefault}";
+}
+
+# fun: ENVVAR.getEnvironmentVariablesDescriptionsVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the descriptions of the environment variables.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable containing the descriptions of the environment variables.
+# use: ENVVAR.getEnvironmentVariablesDescriptinosVariableName; local -n _descriptions=${RESULT};
+function ENVVAR.getEnvironmentVariablesDescriptionsVariableName() {
+  ENVVAR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" ENVIRONMENT_VARIABLES_DESCRIPTIONS;
 }
 
 # fun: ENVVAR.addEnvVarDescription varName description
@@ -551,16 +568,24 @@ function ENVVAR.addEnvVarDefault() {
 # use: ENVVAR.addEnvVarDescription "MY_VAR" "MY_VAR description";
 function ENVVAR.addEnvVarDescription() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local _varDescription="${2}";
+  checkNotEmpty description "${_varDescription}" 2;
 
-  checkNotEmpty "name" "${_varName}" 1;
-  checkNotEmpty "description" "${_varDescription}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENVIRONMENT_VARIABLES_DESCRIPTIONS;
+  ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
   _environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
+}
+
+# fun: ENVVAR.getMandatoryEnvironmentVariablesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing whether each environment variable is mandatory.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable containing whether each environment variables is mandatory.
+# use: ENVVAR.getMandatoryEnvironmentVariablesVariableName; local -n _mandatoryInfo=${RESULT};
+function ENVVAR.getMandatoryEnvironmentVariablesVariableName() {
+  ENVVAR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" MANDATORY_ENVIRONMENT_VARIABLES;
 }
 
 # fun: ENVVAR.addEnvVarMandatory varName MANDATORY|OPTIONAL
@@ -572,16 +597,24 @@ function ENVVAR.addEnvVarDescription() {
 # use: ENVVAR.addEnvVarMandatory "MY_VAR" OPTIONAL;
 function ENVVAR.addEnvVarMandatory() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local _varMandatory="${2}";
+  checkNotEmpty "MANDATORY|OPTIONAL" "${_varMandatory}" 2;
 
-  checkNotEmpty "name" "${_varName}" 1;
-  checkNotEmpty "mandatory" "${_varMandatory}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" MANDATORY_ENVIRONMENT_VARIABLES;
+  ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
   _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
+}
+
+# fun: ENVVAR.getOverriddenEnvironmentVariablesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the overridden environment variables.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable containing the overridden environment variables.
+# use: ENVVAR.getOverriddenEnvironmentVariablesVariableName; local -n _overridenEnvVars=${RESULT};
+function ENVVAR.getOverriddenEnvironmentVariablesVariableName() {
+  ENVVAR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" OVERRIDDEN_ENVIRONMENT_VARIABLES;
 }
 
 # fun: ENVVAR.addOverridenEnvVar varName value
@@ -593,36 +626,30 @@ function ENVVAR.addEnvVarMandatory() {
 # use: ENVVAR.addOverriddenEnvvar "MY_VAR" "MY_VAR's new value";
 function ENVVAR.addOverriddenEnvVar() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local _varValue="${2:-}";
 
-  checkNotEmpty "varName" "${_varName}" 1;
-
   if isEnvVarDefined "${_varName}"; then
-    ENVVAR.getModuleName;
-    local _moduleName="${RESULT}";
-    DW.getGlobalVariableName "${_moduleName}" OVERRIDDEN_ENV_VARIABLES;
+    ENVVAR.getOverriddenEnvironmentVariablesVariableName;
     local -n _overriddenEnvVariables=${RESULT};
     _overriddenEnvVariables["${_varName}"]="${_varValue}";
     ENVVAR.addEnvVar "${_varName}" "${_varValue}";
   fi
 }
 
-# fun: ENVVAR.appendEnvVariable varName
+# fun: ENVVAR.appendEnvironmentVariable varName
 # api: private
-# txt: Appends a new variable to __DW_ENVVAR_ENV_VARIABLES.
+# txt: Appends a new variable to the list of defined environment variables.
 # opt: varName: The item to add.
 # txt: Returns 0/TRUE always.
-# use: ENVVAR.appendEnvVariable "item";
-function ENVVAR.appendEnvVariable() {
-  local _variable="${1}";
+# use: ENVVAR.appendEnvironmentVariable "item";
+function ENVVAR.appendEnvironmentVariable() {
+  local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
 
-  checkNotEmpty "variable" "${_variable}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENV_VARIABLES;
+  ENVVAR.getEnvironmentVariablesVariableName;
   local -n _envVariables=${RESULT};
-  _envVariables[${#_envVariables[@]}]="${_variable}";
+  _envVariables[${#_envVariables[@]}]="${_varName}";
 }
 
 # fun: evalEnvVar varName
@@ -635,10 +662,9 @@ function ENVVAR.appendEnvVariable() {
 #      fi
 function evalEnvVar() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local -i rescode;
   local _defaultValue="";
-
-  checkNotEmpty "varName" "${_varName}" 1;
 
   if ENVVAR.removeDollarSquareBrackets "${_varName}"; then
     evalEnvVar "${RESULT}";
@@ -698,14 +724,11 @@ function evalEnvVar() {
 #      fi
 function ENVVAR.evalOverriddenVar() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local result;
   local -i rescode;
 
-  checkNotEmpty "name" "${_varName}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" OVERRIDDEN_ENV_VARIABLES;
+  ENVVAR.getOverriddenEnvironmentVariablesVariableName;
   local -n _overriddenEnvVariables=${RESULT};
   result="${_overriddenEnvVariables[${_varName}]}";
   if isEmpty "${result}"; then
@@ -729,14 +752,11 @@ function ENVVAR.evalOverriddenVar() {
 #      fi
 function ENVVAR.evalVarCommand() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local result;
   local -i rescode;
 
-  checkNotEmpty "name" "${_varName}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENVIRONMENT_VARIABLES_COMMANDS;
+  ENVVAR.getEnviromentVariablesCommands;
   local -n _environmentVariablesCommands=${RESULT};
   result="${_environmentVariablesCommands[${_varName}]}";
   if isEmpty "${result}"; then
@@ -760,10 +780,9 @@ function ENVVAR.evalVarCommand() {
 #      fi
 function ENVVAR.evalVarDefault() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local result;
   local -i rescode;
-
-  checkNotEmpty "name" "${_varName}" 1;
 
   ENVVAR.getModuleName;
   local _moduleName="${RESULT}";
@@ -792,14 +811,11 @@ function ENVVAR.evalVarDefault() {
 #      fi
 function ENVVAR.evalVarDescription() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local result;
   local -i rescode;
 
-  checkNotEmpty "name" "${_varName}" 1;
-
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENVIRONMENT_VARIABLES_DESCRIPTIONS;
+  ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
   result="${_environmentVariablesDescriptions[${_varName}]}";
   if isEmpty "${result}"; then
@@ -823,6 +839,7 @@ function ENVVAR.evalVarDescription() {
 #      fi
 function ENVVAR.removeDollarSquareBrackets() {
   local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
   local -i rescode;
   local result;
 
@@ -847,13 +864,13 @@ function ENVVAR.removeDollarSquareBrackets() {
 # use: if extractKeyInPair "a=b"; then echo "Key: ${RESULT}"; fi
 function extractKeyInPair() {
   local _pair="${1}";
-  local -i _rescode=${FALSE};
-  local _result;
-  local _pieces;
-
   checkNotEmpty pair "${_pair}" 1;
+  local -i _rescode;
 
   ENVVAR.extractItemInPair "${_pair}" 0;
+  _rescode=$?;
+
+  return ${_rescode};
 }
 
 # fun: extractValueInPair
@@ -864,13 +881,13 @@ function extractKeyInPair() {
 # use: if extractValueInPair "a=b"; then echo "Value: ${RESULT}"; fi
 function extractValueInPair() {
   local _pair="${1}";
-  local -i _rescode=${FALSE};
-  local _result;
-  local _pieces;
-
   checkNotEmpty pair "${_pair}" 1;
+  local -i _rescode;
 
   ENVVAR.extractItemInPair "${_pair}" 1;
+  _rescode=$?;
+
+  return ${_rescode};
 }
 
 # fun: ENVVAR.extractItemInPair
@@ -882,13 +899,12 @@ function extractValueInPair() {
 # use: if ENVVAR.extractItemInPair "a=b" 1; then echo "Element at 1: ${RESULT}"; fi
 function ENVVAR.extractItemInPair() {
   local _pair="${1}";
+  checkNotEmpty pair "${_pair}" 1;
   local _index="${2}";
+  checkNotEmpty index "${_index}" 2;
   local -i _rescode=${FALSE};
   local _result;
   local _pieces;
-
-  checkNotEmpty pair "${_pair}" 1;
-  checkNotEmpty index "${_index}" 2;
 
   if isNumber "${_index}" && split "${_pair}" "="; then
     _pieces="${RESULT}";
@@ -913,11 +929,18 @@ function ENVVAR.extractItemInPair() {
 function ENVVAR.resetState() {
   ENVVAR.getModuleName;
   local _moduleName="${RESULT}";
-  DW.declareGlobalArray "${_moduleName}" ENV_VARIABLES;
-  DW.declareGlobalMap "${_moduleName}" OVERRIDDEN_ENV_VARIABLES;
+
+  # env: ENVIRONMENT_VARIABLES: The defined environment variables.
+  DW.declareGlobalArray "${_moduleName}" ENVIRONMENT_VARIABLES;
+  # env: OVERRIDDEN_ENVIRONMENT_VARIABLES: The overridden environment variables.
+  DW.declareGlobalMap "${_moduleName}" OVERRIDDEN_ENVIRONMENT_VARIABLES;
+  # env: MANDATORY_ENVIRONMENT_VARIABLES: The mandatory environment variables.
   DW.declareGlobalMap "${_moduleName}" MANDATORY_ENVIRONMENT_VARIABLES;
+  # env: ENVIRONMENT_VARIABLES_DEFAULTS: The default values of the environment variables.
   DW.declareGlobalMap "${_moduleName}" ENVIRONMENT_VARIABLES_DEFAULTS;
+  # env: ENVIRONMENT_VARIABLES_DESCRIPTIONS: The descriptions of the environment variables.
   DW.declareGlobalMap "${_moduleName}" ENVIRONMENT_VARIABLES_DESCRIPTIONS;
+  # env: ENVIRONMENT_VARIABLES_COMMANDS: The commands associated to the environment variables.
   DW.declareGlobalMap "${_moduleName}" ENVIRONMENT_VARIABLES_COMMANDS;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

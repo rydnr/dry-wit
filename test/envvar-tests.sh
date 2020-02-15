@@ -35,24 +35,23 @@ function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
   Assert.fileContains "${_debugFile}" "key with spaces -> value with spaces" "debugAssociativeArray didn't write 'key with spaces -> value with spaces' in the log file";
 }
 
-function defineEnvVar_adds_an_env_var_to_ENV_VARIABLES_test() {
+function defineEnvVar_adds_an_environment_variable_test() {
   defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENV_VARIABLES;
-  local -n _envVariables=${RESULT};
-  Assert.isNotEmpty "${_envVariables[@]}" "ENV_VARIABLES is empty";
-  Assert.arrayContains "${_envVariables}" "MY_VAR" "ENV_VARIABLES does not contain MY_VAR";
+  ENVVAR.getEnvironmentVariablesVariableName;
+  local _variableName=${RESULT};
+  local -n _envVariables=${_variableName};
+  Assert.isNotEmpty "${_envVariables[@]}" "Environment variables array is empty";
+  # The next line is critical!
+  local _array="${_envVariables[@]}";
+  Assert.arrayContains "MY_VAR" "${_array}" 'Environment variables array does not contain MY_VAR.';
 }
 
 function ENV_VARIABLES_does_not_include_empty_vars_test() {
   local -i i;
   defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
-  ENVVAR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ENV_VARIABLES;
+  ENVVAR.getEnvironmentVariablesVariableName;
   local -n _envVariables=${RESULT};
-  Assert.isNotEmpty "${_envVariables[@]}" "ENV_VARIABLES is empty";
+  Assert.isNotEmpty "${_envVariables[@]}" "Environment variables arary is empty";
   for ((i = 0; i < ${#_envVariables[@]}; i++)); do
     Assert.isNotEmpty "${_envVariables[$i]}" "Variable at position $i is empty";
   done

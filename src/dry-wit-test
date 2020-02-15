@@ -912,16 +912,17 @@ function Assert.fileContains() {
 # opt: array: The array.
 # opt: errorMessage: The error message.
 # txt: Returns 0/TRUE always.
-# use: Assert.arrayContains  "TESTING" "${array[@]}" "array doesn't contain TESTING";
+# use: local arrayContents="${array[@]}"; Assert.arrayContains "TESTING" "${arrayContents}" "array doesn't contain TESTING";
 function Assert.arrayContains() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
-  local _array="${2}";
+  shift;
+  local _array="${1}";
   checkNotEmpty array "${_array}" 2;
-  local _errorMessage="${3}";
+  shift;
+  local _errorMessage="${@}";
   checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  echo "Checking arrayContains '${_text}' '${_array}'"
   if arrayContains "${_text}" "${_array}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
@@ -936,13 +937,15 @@ function Assert.arrayContains() {
 # opt: array: The array.
 # opt: errorMessage: The error message.
 # txt: Returns 0/TRUE always.
-# use: Assert.arrayDoesNotContain "TESTING" "${array[@]}" "array contains TESTING";
+# use: local arrayContents="${array[@]}"; Assert.arrayDoesNotContain "TESTING" "${arrayContents}" "array contains TESTING";
 function Assert.arrayDoesNotContain() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
-  local _array="${2}";
+  shift;
+  local _array="${1}";
   checkNotEmpty array "${_array}" 2;
-  local _errorMessage="${3}";
+  shift;
+  local _errorMessage="${@}";
   checkNotEmpty errorMessage "${_errorMessage}" 3;
 
   if arrayContains "${_text}" "${_array}"; then
