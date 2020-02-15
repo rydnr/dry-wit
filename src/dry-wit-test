@@ -753,7 +753,7 @@ function Assert.areEqual() {
   if areEqual "${_expected}" "${_actual}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} != ${_actual})";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(expected '${_expected}', got '${_actual}')";
   fi
 }
 
@@ -776,7 +776,7 @@ function Assert.areNotEqual() {
   if areNotEqual "${_expected}" "${_actual}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} == ${_actual})";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_expected}' == '${_actual}')";
   fi
 }
 
@@ -795,7 +795,7 @@ function Assert.isEmpty() {
   if isEmpty "${_value}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is not empty)";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_value}' is not empty)";
   fi
 }
 
@@ -814,7 +814,7 @@ function Assert.isNotEmpty() {
   if isNotEmpty "${_value}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is empty)";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(value is empty)";
   fi
 }
 
@@ -834,10 +834,10 @@ function Assert.functionExists() {
     if isFunctionPresent "${_functionName}"; then
       DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
     else
-      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_functionName} is not defined)";
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_functionName}' is not defined)";
     fi
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_functionName} is not defined)";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_functionName}' is not defined)";
   fi
 }
 

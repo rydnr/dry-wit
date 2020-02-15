@@ -46,7 +46,7 @@ function defineEnvVar_adds_an_environment_variable_test() {
   Assert.arrayContains "MY_VAR" "${_array}" 'Environment variables array does not contain MY_VAR.';
 }
 
-function ENV_VARIABLES_does_not_include_empty_vars_test() {
+function empty_vars_are_not_included_as_environment_variables_test() {
   local -i i;
   defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
   ENVVAR.getEnvironmentVariablesVariableName;
@@ -57,35 +57,47 @@ function ENV_VARIABLES_does_not_include_empty_vars_test() {
   done
 }
 
-function extractKeyInPair_test() {
-  local pair="name1=value1"
-  if extractKeyInPair "${pair}"; then
-    Assert.areEqual "name1" "${RESULT}" "extractKeyInPair ${pair} failed";
+function extractKeyInPair_works_test() {
+  local _pair="name1=value1"
+  local _expected="name1";
+  if extractKeyInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractKeyInPair ${_pair} failed";
   else
-    Assert.fail "extractKeyInPair ${pair} failed";
+    Assert.fail "extractKeyInPair ${_pair} failed";
+  fi
+
+  _pair="name99=value1x"
+  _expected="name99";
+  if extractKeyInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractKeyInPair ${_pair} failed";
+  else
+    Assert.fail "extractKeyInPair ${_pair} failed";
   fi
 }
 
-function extractValueInPair_test() {
-  local pair="name1=value1"
-  if extractValueInPair "${pair}"; then
-    Assert.areEqual "value1" "${RESULT}" "extractValueInPair ${pair} failed";
+function extractValueInPair_works_test() {
+  local _pair="name1=value1"
+  local _expected="value1";
+  if extractValueInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
   else
-    Assert.fail "extractValueInPair ${pair} failed";
+    Assert.fail "extractValueInPair ${_pair} failed";
   fi
 
-  pair="name1=\"value with spaces\"";
-  if extractValueInPair "${pair}"; then
-      Assert.areEqual "value with spaces" "${RESULT}" "extractValueInPair ${pair} failed";
+  _pair="name1=\"value with spaces\"";
+  _expected="value with spaces";
+  if extractValueInPair "${_pair}"; then
+      Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
   else
-      Assert.fail "extractValueInPair ${pair} failed";
+      Assert.fail "extractValueInPair ${_pair} failed";
   fi
 
-  pair="name1= ";
-  if extractValueInPair "${pair}"; then
-    Assert.areEqual "" "${RESULT}" "extractValueInPair ${pair} failed";
+  _pair="name1= ";
+  _expected="";
+  if extractValueInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
   else
-    Assert.fail "extractValueInPair ${pair} failed";
+    Assert.fail "extractValueInPair ${_pair} failed";
   fi
 }
 

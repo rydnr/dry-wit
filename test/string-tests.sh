@@ -93,6 +93,15 @@ function removeSuffix_test() {
   _result="${RESULT}";
   Assert.isTrue ${_done} "removeSuffix failed";
   Assert.areEqual "${_result}" "${_expected}" "removeSuffix '${_input}' '${_suffix}' returned '${_result}' instead of '${_expected}'";
+
+  _input='this_very_test';
+  _suffix='_test';
+  _expected="this_very";
+  removeSuffix "${_input}" "${_suffix}";
+  _done=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_done} "removeSuffix failed";
+  Assert.areEqual "${_result}" "${_expected}" "removeSuffix '${_input}' '${_suffix}' returned '${_result}' instead of '${_expected}'";
 }
 
 function toUpper_test() {
