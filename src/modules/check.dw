@@ -39,13 +39,29 @@ function checkFunctionPresent() {
 # opt: paramValue: The parameter value.
 # opt: paramIndex: The parameter index.
 # txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: checkMandatoryOrOptional "option" "${option}" 1 # -> throws an error if the first (1) parameter ("option") is neither MANDATORY or OPTIONAL.
+# use: checkMandatoryOrOptional "${paramName}" "${mandatoryOrOptional}" 1 # -> throws an error if the first (1) parameter ("paramName") is neither MANDATORY or OPTIONAL.
 function checkMandatoryOrOptional() {
-    local _name="${1}";
-    local _value="${2}";
-    local _index="${3}";
+  local _name="${1}";
+  local _value="${2}";
+  local _index="${3}";
 
-    CHECK.checkOneOf 1 "${_name}" "${_value}" "MANDATORY OPTIONAL" "${_index}";
+  CHECK.checkOneOf 1 "${_name}" "${_value}" "MANDATORY OPTIONAL" "${_index}";
+}
+
+# fun: checkSingleOrMultiple paramName paramValue paramIndex
+# api: public
+# txt: Performs a precondition check on given parameter to ensure it's either SINGLE or MULTIPLE.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: checkSingleOrMultiple "${paramName}" "${singleOrMultiple}" 1 # -> throws an error if the first (1) parameter ("${paramName}") is neither SINGLE or MULTIPLE.
+function checkSingleOrMultiple() {
+  local _name="${1}";
+  local _value="${2}";
+  local _index="${3}";
+
+  CHECK.checkOneOf 1 "${_name}" "${_value}" "SINGLE MULTIPLE" "${_index}";
 }
 
 # fun: checkNotEmpty paramName paramValue paramIndex
