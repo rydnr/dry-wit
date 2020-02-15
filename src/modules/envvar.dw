@@ -484,9 +484,9 @@ There is NO WARRANTY, to the extent permitted by law."
 # use: ENVVAR.addEnvVar FOO "bar";
 function ENVVAR.addEnvVar() {
   local _varName="${1}";
-  local _varValue="${2:-}";
+  checkNotEmpty varName "${_varName}" 1;
 
-  checkNotEmpty "varName" "${_varName}" 1;
+  local _varValue="${2:-}";
 
   ENVVAR.getModuleName;
   local _moduleName="${RESULT}";
