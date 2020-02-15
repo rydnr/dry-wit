@@ -2,6 +2,125 @@
 # api: public
 # txt: Functions to create color constants.
 
+# fun: COLOR.getModuleName
+# api: private
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: COLOR.getModuleName; echo "Module: ${RESULT}";
+function COLOR.getModuleName() {
+  export RESULT="COLOR";
+  return ${TRUE};
+}
+
+# fun: getSuccessColor
+# api: public
+# txt: Retrieves the color used to represent success.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the color.
+# use: getSuccessColor; echo "success color: ${RESULT}";
+function getSuccessColor() {
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" SUCCESS_COLOR;
+}
+
+# fun: setSuccessColor
+# api: public
+# txt: Specifies the color to use to represent success.
+# opt: color: The color for success.
+# txt: Returns 0/TRUE always.
+# use: setSuccessColor GREEN;
+function setSuccessColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalString "${_moduleName}" SUCCESS_COLOR "${_color}";
+}
+
+# fun: getFailureColor
+# api: public
+# txt: Retrieves the color used to represent failure.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the color.
+# use: getFailureColor; echo "failure color: ${RESULT}";
+function getFailureColor() {
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" FAILURE_COLOR;
+}
+
+# fun: setFailureColor
+# api: public
+# txt: Specifies the color to use to represent failure.
+# opt: color: The color to use.
+# txt: Returns 0/TRUE always.
+# use: setFailureColor RED;
+function setFailureColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalString "${_moduleName}" FAILURE_COLOR "${_color}";
+}
+
+# fun: getInProgressColor
+# api: public
+# txt: Retrieves the color used to represent in-progress tasks.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the color.
+# use: getInProgressColor; echo "In-progress color: ${RESULT}";
+function getInProgressColor() {
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" IN_PROGRESS_COLOR;
+}
+
+# fun: setInProgressColor
+# api: public
+# txt: Specifies the color used to represent in-progress tasks.
+# opt: color: The color to use.
+# txt: Returns 0/TRUE always.
+# use: setInProgressColor YELLOW;
+function setInProgressColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalString "${_moduleName}" IN_PROGRESS_COLOR "${_color}";
+}
+
+# fun: getNoColor
+# api: public
+# txt: Retrieves the value to use when we don't want to use colored logging.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the value for no color.
+# use: getNoColor; echo "No color: ${RESULT}";
+function getNoColor() {
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" NO_COLOR;
+}
+
+# fun: setNoColor
+# api: public
+# txt: Specifies the value to use when we don't want to use colored logging.
+# opt: color: The name of the color for no-colored texts.
+# txt: Returns 0/TRUE always.
+# use: setNoColor GRAY;
+function setNoColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalString "${_moduleName}" NO_COLOR "${_color}";
+}
+
 # fun: buildColor name foreground background
 # api: public
 # txt: Builds a new color.
@@ -38,6 +157,71 @@ function buildColor() {
   declare -gx "CONCEALED_${_color}_FG";
 }
 
+# fun: allowsColors
+# api: public
+# txt: Checks whether the terminal allows colors or not.
+# txt: Returns 0/TRUE if the terminal supports colors; 1/FALSE otherwise.
+# use: if allowsColors; then ...; fi
+function allowsColors() {
+  local -i _rescode;
+
+  $(tput colors > /dev/null 2>&1);
+  if isTrue $?; then
+    _colors=$(tput colors);
+    if [ ${_colors} -ge 8 ]; then
+      env | grep -e '^_=' | grep env > /dev/null 2>&1;
+      if isTrue $?; then
+        _rescode=${TRUE};
+      else
+        _rescode=${FALSE};
+      fi
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=${FALSE};
+  fi;
+
+  return ${_rescode};
+}
+
+# fun: getColor name defaultColor?
+# api: public
+# txt: Retrieves the color for given name.
+# opt: name: The color name.
+# opt: defaultColor: The fallback color. Optional.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the color value.
+# use: getColor RED;
+function getColor() {
+  local _colorConstant="${1}";
+  checkNotEmpty name "${_colorConstant}" 1;
+  local _defaultColor="${2}";
+  if isEmpty "${_defaultColor}"; then
+    getNoColor;
+    _defaultColor="${RESULT}";
+  fi
+  local _result;
+
+  if allowsColors; then
+    evalConstant "${_colorConstant}" "${_defaultColor}";
+    _result="${RESULT}";
+  fi
+
+  export RESULT="${_result}";
+}
+
+# fun: resetColor
+# api: public
+# txt: Resets the color for future calls to "echo".
+# txt: Returns 0/TRUE always.
+# use: resetColor;
+function resetColor() {
+  getNoColor;
+  getColor "${RESULT}";
+  echo -en "${RESULT}";
+}
+
 #for c in "BLACK" "BLACK_B" "RED" "RED_B" "RED_S" "GREEN" "GREEN_B" "YELLOW" "YELLOW_B" "BLUE" "BLUE_B" "MAGENTA" "MAGENTA_B" "CYAN" "CYAN_B" "GREY" "WHITE" "WHITE_B" "NO_COLOR"; do
 #  upvars -a1 "${c}_TPUT" "";
 #  upvar "${c}" "";
@@ -50,6 +234,9 @@ function buildColor() {
 # txt: Returns 0/TRUE always.
 # use: COLOR.resetState
 function COLOR.resetState() {
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+
   buildColor NO_COLOR "0" "0";
   buildColor BLACK "30" "0";
   buildColor RED "31" "41";
@@ -59,5 +246,10 @@ function COLOR.resetState() {
   buildColor MAGENTA "35" "45";
   buildColor CYAN "36" "46";
   buildColor GRAY "37" "47";
+
+  setSuccessColor GREEN;
+  setFailureColor RED;
+  setInProgressColor BLUE;
+  setNoColor GRAY;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
