@@ -4,7 +4,7 @@
 
 # set -o xtrace
 
-function replaceVariablesInFile_test() {
+function replaceVariablesInFile_works_test() {
   local _sourceFile;
   local _processedFile;
   local _expected;

@@ -4,7 +4,7 @@
 
 # set -o xtrace
 
-function contains_test() {
+function contains_works_test() {
   contains "abc" "b";
   Assert.isTrue $? "contains 'abc' 'b' failed";
 
@@ -12,7 +12,7 @@ function contains_test() {
   Assert.isFalse $? "contains 'abc' 'f' failed";
 }
 
-function startsWith_test() {
+function startsWith_works_test() {
   startsWith "abc" "a";
   Assert.isTrue $? "startsWith 'abc' 'a' failed";
 
@@ -20,7 +20,7 @@ function startsWith_test() {
   Assert.isFalse $? "startsWith 'abc' 'b' failed";
 }
 
-function endsWith_test() {
+function endsWith_works_test() {
   endsWith "abc" "c";
   Assert.isTrue $? "endsWith 'abc' 'a' failed";
 
@@ -28,7 +28,7 @@ function endsWith_test() {
   Assert.isFalse $? "endsWith 'abc' 'b' failed";
 }
 
-function removePrefix_test() {
+function removePrefix_works_test() {
   local _input="--abc";
   local _prefix='--';
   local _expected='abc';
@@ -57,7 +57,7 @@ function removePrefix_test() {
   Assert.areEqual "${_result}" "${_expected}" "removePrefix '${_input}' '${_prefix}' returned '${_result}' instead of '${_expected}'";
 }
 
-function removeSuffix_test() {
+function removeSuffix_works_test() {
   local _input='abc--';
   local _suffix='--';
   local _expected="abc";
@@ -104,42 +104,42 @@ function removeSuffix_test() {
   Assert.areEqual "${_result}" "${_expected}" "removeSuffix '${_input}' '${_suffix}' returned '${_result}' instead of '${_expected}'";
 }
 
-function toUpper_test() {
+function toUpper_works_test() {
   toUpper "abc";
   local _result="${RESULT}";
   Assert.areEqual "ABC" "${_result}" "toUpper failed for 'abc'";
 }
 
-function toLower_test() {
+function toLower_works_test() {
   toLower "ABC";
   local _result="${RESULT}";
   Assert.areEqual "abc" "${_result}" "toLower failed for 'ABC'";
 }
 
-function normalize_test() {
+function normalize_works_test() {
   normalize "X:default-values";
   local _result="${RESULT}";
   Assert.areEqual "X_default_values" "${_result}" "normalize failed for 'X:default-values'";
 }
 
-function normalizeUppercase_test() {
+function normalizeUppercase_works_test() {
   normalizeUppercase "X:default-values";
   local _result="${RESULT}";
   Assert.areEqual "X_DEFAULT_VALUES" "${_result}" "normalize failed for 'X:default-values'";
 }
 
-function replaceAll_test() {
+function replaceAll_works_test() {
   replaceAll "a b c" " " ",";
   local _result="${RESULT}";
   Assert.areEqual "a,b,c" "${_result}" "replaceAll 'a b c' failed";
 }
 
-function areEqual_test() {
+function areEqual_works_test() {
   areEqual "a" "a";
   Assert.isTrue $? "areEqual \"a\" \"a\" failed";
 }
 
-function split_test() {
+function split_works_test() {
   local _text="a;b;c";
   local _separator=";";
   if split "${_text}" "${_separator}"; then
@@ -157,13 +157,13 @@ function split_test() {
   fi
 }
 
-function startsAndEndsWith_test() {
+function startsAndEndsWith_works_test() {
   local _text='"abc"';
   startsAndEndsWith "${_text}" '"';
   Assert.isTrue $? "startAndEndsWith \"${_text}\" '\"' failed";
 }
 
-function removeSurrounding_test() {
+function removeSurrounding_works_test() {
   local _text='-abc-';
   local _delimiter="-";
   if removeSurrounding "${_text}" "${_delimiter}"; then
@@ -175,7 +175,7 @@ function removeSurrounding_test() {
   Assert.isFalse $? "removeSurrounding \"${_text}\" \"'\" succeed and it shouldn't";
 }
 
-function keyValueSplit_test() {
+function keyValueSplit_works_test() {
   local _text='key1="value1"';
   keyValueSplit "${_text}";
   Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
@@ -207,7 +207,7 @@ key2=value2
 key3="value3 with spaces"' "${RESULT}"  "keyValueSplit \"${_text}\" failed";
 }
 
-function sha512_test() {
+function sha512_works_test() {
   local _text="blablabla";
   sha512 "${_text}";
   local -i _result=$?;
@@ -216,7 +216,7 @@ function sha512_test() {
   Assert.areEqual '7a7cfc99db9802272d1987e287926ac52642417bf2d68455e180412c226430d0321610e8740a46783b2b42802918d62d206d3b1b21dc600b6944ddecf5d9c256' "${_aux}" "sha512 \"${_text}\" failed";
 }
 
-function sha384_test() {
+function sha384_works_test() {
   local _text="blablabla";
   sha384 "${_text}";
   local -i _result=$?;
@@ -225,7 +225,7 @@ function sha384_test() {
   Assert.areEqual 'e481492518ccc3aa9101d78a1692f1f21507ee40527b1f753c4a83fa244039f2569778bc19696a71fec0d8e8dcdb0e9e' "${_aux}" "sha384 \"${_text}\" failed";
 }
 
-function sha256_test() {
+function sha256_works_test() {
   local _text="blablabla";
   sha256 "${_text}";
   local -i _result=$?;
@@ -234,7 +234,7 @@ function sha256_test() {
   Assert.areEqual '492f3f38d6b5d3ca859514e250e25ba65935bcdd9f4f40c124b773fe536fee7d' "${_aux}" "sha256 \"${_text}\" failed";
 }
 
-function sha224_test() {
+function sha224_works_test() {
   local _text="blablabla";
   sha224 "${_text}";
   local -i _result=$?;
@@ -243,7 +243,7 @@ function sha224_test() {
   Assert.areEqual 'ab5f4e88665613700445f96ecf1eecb5f99125b72bda5851d5e80e78' "${_aux}" "sha224 \"${_text}\" failed";
 }
 
-function sha1_test() {
+function sha1_works_test() {
   local _text="blablabla";
   sha1 "${_text}";
   local -i _result=$?;
@@ -252,7 +252,7 @@ function sha1_test() {
   Assert.areEqual '23c6834b1d353eabf976e524ed489c812ff86a7d' "${_aux}" "sha1 \"${_text}\" failed";
 }
 
-function sha_test() {
+function sha_works_test() {
   local _text="blablabla";
   sha "${_text}";
   local -i _result=$?;
@@ -261,7 +261,7 @@ function sha_test() {
   Assert.areEqual '23c6834b1d353eabf976e524ed489c812ff86a7d' "${_aux}" "sha \"${_text}\" failed";
 }
 
-function lastCharacter_test() {
+function lastCharacter_works_test() {
   local _text="a,u[}uouk]";
   lastCharacter "${_text}";
   local -i _rescode=$?;
@@ -270,7 +270,7 @@ function lastCharacter_test() {
   Assert.areEqual ']' "${_result}" "lastCharacter '${_text}' failed";
 }
 
-function firstCharacter_test() {
+function firstCharacter_works_test() {
   local _text="a,u[}uouk]";
   firstCharacter "${_text}";
   local -i _rescode=$?;
@@ -279,7 +279,7 @@ function firstCharacter_test() {
   Assert.areEqual 'a' "${_result}" "firstCharacter '${_text}' failed";
 }
 
-function countMatchesOfCharsInString_test() {
+function countMatchesOfCharsInString_works_test() {
   local _text="a,u[}uouk]";
   countMatchesOfCharsInString "a" "${_text}";
   local -i _rescode=$?;
@@ -295,7 +295,7 @@ function countMatchesOfCharsInString_test() {
   Assert.areEqual '5' "${_result}" "countMatchesOfCharsInString '${_text}' failed";
 }
 
-function camelCaseToSnakeCase_test() {
+function camelCaseToSnakeCase_works_test() {
   local _text="baseFolder";
   camelCaseToSnakeCase "${_text}";
   local -i _rescode=$?;
@@ -313,7 +313,7 @@ function camelCaseToSnakeCase_test() {
   Assert.areEqual "${_expected}" "${_result}" "camelCaseToSnakeCase '${_text}' failed";
 }
 
-function camelCaseToPascalCase_test() {
+function camelCaseToPascalCase_works_test() {
   local _text="baseFolder";
   camelCaseToPascalCase "${_text}";
   local -i _rescode=$?;
@@ -331,7 +331,7 @@ function camelCaseToPascalCase_test() {
   Assert.areEqual "${_expected}" "${_result}" "camelCaseToPascalCase '${_text}' failed";
 }
 
-function snakeCaseToCamelCase_test() {
+function snakeCaseToCamelCase_works_test() {
   local _text="base_folder";
   snakeCaseToCamelCase "${_text}";
   local -i _rescode=$?;
@@ -349,7 +349,7 @@ function snakeCaseToCamelCase_test() {
   Assert.areEqual "${_expected}" "${_result}" "snakeCaseToCamelCase '${_text}' failed";
 }
 
-function snakeCaseToPascalCase_test() {
+function snakeCaseToPascalCase_works_test() {
   local _text="base_folder";
   snakeCaseToPascalCase "${_text}";
   local -i _rescode=$?;
@@ -367,7 +367,7 @@ function snakeCaseToPascalCase_test() {
   Assert.areEqual "${_expected}" "${_result}" "snakeCaseToPascalCase '${_text}' failed";
 }
 
-function uncapitalize_test() {
+function uncapitalize_works_test() {
   local _text="MyText";
   uncapitalize "${_text}";
   local -i _rescode=$?;
@@ -385,7 +385,7 @@ function uncapitalize_test() {
   Assert.areEqual "${_expected}" "${_result}" "uncapitalize '${_text}' failed";
 }
 
-function capitalize_test() {
+function capitalize_works_test() {
   local _text="myText";
   capitalize "${_text}";
   local -i _rescode=$?;
@@ -403,7 +403,7 @@ function capitalize_test() {
   Assert.areEqual "${_expected}" "${_result}" "capitalize '${_text}' failed";
 }
 
-function tailText_test() {
+function tailText_works_test() {
   local _text="abcde";
   tailText "${_text}";
   local -i _rescode=$?;

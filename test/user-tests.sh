@@ -4,7 +4,7 @@
 
 # set -o xtrace
 
-function retrieveUidFromUser_test() {
+function retrieveUidFromUser_works_test() {
   DW.import user;
   local _expectedUid=$(grep root /etc/passwd | cut -d':' -f 3);
   retrieveUidFromUser "root";
@@ -13,7 +13,7 @@ function retrieveUidFromUser_test() {
   Assert.areEqual ${_expectedUid} ${_actualUid} "retrieveUidFromUser \"root\" returned an invalid uid (${_actualUid})";
 }
 
-function retrieveGroupFromGid_test() {
+function retrieveGroupFromGid_works_test() {
   DW.import user;
   local _gid=$(grep root /etc/group | cut -d':' -f 3);
   if retrieveGroupFromGid "${_gid}"; then

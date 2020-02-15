@@ -49,13 +49,13 @@ function clearAssociativeArray_test() {
   Assert.areEqual "${#__DW_ASSOCIATIVE_ARRAY_FOR_TESTING2[@]}" "0" "clearAssociativeArray did'nt clear the array";
 }
 
-function isArrayEmpty_test() {
+function isArrayEmpty_works_test() {
   local -a test_array=();
   Assert.functionExists "isArrayEmpty" "isArrayEmpty doesn't exist";
   Assert.isEmpty "${test_array[*]}" "test_array is not empty";
 }
 
-function nth_test() {
+function nth_works_test() {
   local _array="a b c";
   local _position=0;
   if nth "${_array}" "${_position}"; then
@@ -89,7 +89,7 @@ function nth_test() {
   fi
 }
 
-function arrayContains_test() {
+function arrayContains_works_ntest() {
   local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help" "f|file");
   Assert.functionExists "arrayContains" "arrayContains doesn't exist";
   local -i _rescode;
@@ -98,7 +98,7 @@ function arrayContains_test() {
   Assert.isTrue ${_rescode} "arrayContains failed";
 }
 
-function arrayDoesNotContain_test() {
+function arrayDoesNotContain_works_test() {
   local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help");
   Assert.functionExists "arrayContains" "arrayContains doesn't exist";
   local -i _rescode;
@@ -116,7 +116,7 @@ function arrayContains_works_for_empty_arrays_test() {
   Assert.isFalse ${_rescode} "arrayContains failed";
 }
 
-function arrayDoesNotContain_test() {
+function arrayDoesNotContain_works_test() {
   local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help");
   Assert.functionExists "arrayDoesNotContain" "arrayDoesNotContain doesn't exist";
   local -i _rescode;
@@ -125,7 +125,7 @@ function arrayDoesNotContain_test() {
   Assert.isTrue ${_rescode} "arrayDoesNotContain failed";
 }
 
-function getIndexOfItemInArray_test() {
+function getIndexOfItemInArray_works_test() {
   local -a test_array=("v|debug" "vv|trace" "q|quiet" "h|help");
   Assert.functionExists "getIndexOfItemInArray" "getIndexOfItemInArray doesn't exist";
   local -i _index;

@@ -6,7 +6,7 @@
 
 DW.import net;
 
-function retrieveOwnIp_test() {
+function retrieveOwnIp_works_test() {
   if retrieveOwnIp; then
       Assert.isNotEmpty "${RESULT}" "IP is empty";
   else

@@ -20,7 +20,7 @@ function test_tearDown() {
   test_reset;
 }
 
-function isErrorDefined_test() {
+function isErrorDefined_works_test() {
   local -i _defined;
   addError ERROR1 "error 1 message";
   isErrorDefined ERROR1;

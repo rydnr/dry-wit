@@ -4,7 +4,7 @@
 
 # set -o xtrace
 
-function isZero_test() {
+function isZero_works_test() {
   isZero 0;
   Assert.isTrue $? "isZero 0 failed";
 
@@ -21,7 +21,7 @@ function isZero_test() {
   Assert.isFalse $? "isZero 'a' failed";
 }
 
-function isEmpty_test() {
+function isEmpty_works_test() {
   isEmpty "";
   Assert.isTrue $? "isEmpty '' failed";
 
@@ -32,7 +32,7 @@ function isEmpty_test() {
   Assert.isFalse $? "isEmpty 0 failed";
 }
 
-function isTrue_test() {
+function isTrue_works_test() {
   isTrue 0;
   Assert.isTrue $? "isTrue 0 failed";
 
@@ -40,7 +40,7 @@ function isTrue_test() {
   Assert.isFalse $? "isTrue 1 failed";
 }
 
-function isFalse_test() {
+function isFalse_works_test() {
   isFalse 1;
   Assert.isTrue $? "isFalse 1 failed";
 
@@ -48,7 +48,7 @@ function isFalse_test() {
   Assert.isFalse $? "isFalse 0 failed";
 }
 
-function areEqual_test() {
+function areEqual_works_test() {
   areEqual "a" "a";
   Assert.isTrue $? "areEqual 'a' 'a' failed";
 
@@ -56,7 +56,7 @@ function areEqual_test() {
   Assert.isFalse $? "areEqual 'a' 'b' failed";
 }
 
-function areNotEqual_test() {
+function areNotEqual_works_test() {
   areNotEqual "a" "b";
   Assert.isTrue $? "areNotEqual 'a' 'b' failed";
 
@@ -64,9 +64,9 @@ function areNotEqual_test() {
   Assert.isFalse $? "areNotEqual 'a' 'a' failed";
 }
 
-function isFunctionDefined_test() {
-  isFunctionDefined "isFunctionDefined_test";
-  Assert.isTrue $? "isFunctionDefined 'isFunctionDefined_test' failed";
+function isFunctionDefined_works_test() {
+  isFunctionDefined "isFunctionDefined_works_test";
+  Assert.isTrue $? "isFunctionDefined 'isFunctionDefined_works_test' failed";
 }
 
 setScriptDescription "Runs all tests implemented for stdlib.dw";

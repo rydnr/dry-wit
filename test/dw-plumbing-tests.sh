@@ -4,7 +4,7 @@
 
 # set -o xtrace
 
-function DRYWIT.retrieveSettingsFiles_test() {
+function DRYWIT.retrieveSettingsFiles_works_test() {
   local _settingsFiles;
   local _f;
   local _oldIFS="${IFS}";

@@ -4,7 +4,7 @@
 
 # set -o xtrace
 
-function urlEncode_test() {
+function urlEncode_works_test() {
   DW.import url;
   local _expectedEncodedUrl="https%3A%2F%2Fwww.example.com";
   local _targetUrl='https://www.example.com';
@@ -14,7 +14,7 @@ function urlEncode_test() {
   Assert.areEqual "${_expectedEncodedUrl}" "${_actualEncodedUrl}" "urlEncode \"${_targetUrl}\" returned an invalid value (${_actualEncodedValue})";
 }
 
-function extractPathSegmentFromUrl_test() {
+function extractPathSegmentFromUrl_works_test() {
   DW.import url;
   local _expectedPathSegment="segment0";
   local _targetUrl='https://www.example.com/segment0/segment1/segment2/lastSegment?queryParamName0=queryParamValue0&queryParamName1=queryParamValue1;part';
