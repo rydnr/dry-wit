@@ -127,10 +127,10 @@ function addCommandLineFlag() {
 
   local -i _rescode=${TRUE};
 
-  if removePrefix "${_longName}" "-*"; then
+  if removePrefix "${_longName}" "-"; then
     _longName="${RESULT}";
   fi
-  if removePrefix "${_shortName}" "-*"; then
+  if removePrefix "${_shortName}" "-"; then
     _shortName="${RESULT}";
   fi
 
@@ -249,9 +249,11 @@ function addCommandLineParameter() {
   local _description="${2}";
   checkNotEmpty description "${_description}" 2;
   local _mandatoryOrOptional="${3}";
-  checkOneOf "mandatory/optional" "${_mandatoryOrOptional}" "MANDATORY OPTIONAL" 3;
+  checkNotEmpty mandatoryOrOptional "${_mandatoryOrOptional}" 3;
+  checkMandatoryOrOptional "${_name}" "${_mandatoryOrOptional}" 3;
   local _singleOrMultiple="${4}";
-  checkOneOf "single/multiple" "${_singleOrMultiple}" "SINGLE MULTIPLE" 4;
+  checkNotEmpty singleOrMultiple "${_singleOrMultiple}" 4;
+  checkSingleOrMultiple "${_name}" "${_singleOrMultiple}" 4;
 
   CLI.getParameterNamesVariableName;
   local -n _parameterNames="${RESULT}";
@@ -956,17 +958,20 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
     IFS="${DWIFS}";
     for _key in ${_flagKeys[@]}; do
       IFS="${_oldIFS}";
-      CLI.retrieveCommandLineFlagLongNameFromKey "${_key}";
-      _longName="${RESULT}";
-      toUpper "${_longName}";
-      _longNameInUpperCase="${RESULT}";
-      if isEmpty "${_flagsChecked}" || ! CLI.isCommandLineFlagAlreadyChecked "${_flagsChecked}" "${_key}"; then
-        if CLI.isCommandLineFlagMandatory "${_key}"; then
-          exitWithError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} flag is mandatory";
+      if CLI.retrieveCommandLineFlagLongNameFromKey "${_key}"; then
+        _longName="${RESULT}";
+        toUpper "${_longName}";
+        _longNameInUpperCase="${RESULT}";
+        if isEmpty "${_flagsChecked}" || ! CLI.isCommandLineFlagAlreadyChecked "${_flagsChecked}" "${_key}"; then
+          if CLI.isCommandLineFlagMandatory "${_key}"; then
+            exitWithError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} flag is mandatory";
+          fi
         fi
-      fi
-      if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
-        "dw_check_${_longName}_cli_flag";
+        if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
+          "dw_check_${_longName}_cli_flag";
+        fi
+      else
+        exitWithError DRYWIT_BUG "flagKey ${_key} not found";
       fi
     done
     IFS="${_oldIFS}";
@@ -1233,6 +1238,17 @@ function CLI.parseFlag() {
         else
           "${_callbackFunction}";
         fi
+      else
+        if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
+          _argument="${1}";
+          _result=$((_result+1));
+        else
+          _argument="${TRUE}";
+        fi
+        camelCaseToSnakeCase "${_longName}";
+        toUpper "${RESULT}";
+        _upcasedLongName="${RESULT}";
+        declare -gx ${_upcasedLongName}="${_argument}";
       fi
     else
       exitWithError INVALID_OPTION "Unexpected flag: ${_flag}";
@@ -1285,6 +1301,7 @@ function CLI.retrieveFlagKey() {
 #      fi
 function CLI.parseNotProvidedFlags() {
   local _providedFlags="${1}";
+
   local -a _notProvidedFlags=();
   local _flag;
   local _providedFlag;
@@ -1307,7 +1324,7 @@ function CLI.parseNotProvidedFlags() {
     for _providedFlag in ${_providedFlags}; do
       IFS="${_oldIFS}";
       if    areEqual "${_providedFlag}" "--${_longName}" \
-          || areEqual "${_providedFlag}" "-${_shortName}"; then
+         || areEqual "${_providedFlag}" "-${_shortName}"; then
         _provided=${TRUE};
         break;
       fi
@@ -1325,9 +1342,13 @@ function CLI.parseNotProvidedFlags() {
           _callbackFunction="${RESULT}";
           "${_callbackFunction}" "${_defaultValue}";
         else
-          normalizeUppercase "${_longName}";
+          camelCaseToSnakeCase "${_longName}";
+          toUpper "${RESULT}";
           _upcasedLongName="${RESULT}";
-          declare -gx ${_upcasedLongName}="${_defaultValue}";
+          local -n _existingVariable=${_upcasedLongName};
+          if isEmpty "${_existingVariable}"; then
+            declare -gx ${_upcasedLongName}="${_defaultValue}";
+          fi
         fi
       fi
     fi
@@ -1391,6 +1412,7 @@ function CLI.buildNameOfTheCallbackFunctionToParseParameter() {
 function CLI.parseCallbackDefinedForParameter() {
   local _longName="${1}";
   checkNotEmpty longName "${_longName}" 1;
+
   local _parseCallback;
   local -i _rescode;
 
@@ -1426,20 +1448,28 @@ function CLI.parseCommandLineParameters() {
   for _parameterName in ${_parameterNames[@]}; do
     IFS="${_oldIFS}";
 
-    if CLI.parseCallbackDefinedForParameter "${_parameterName}"; then
-      _parseCallback="${RESULT}";
-      if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
-        "${_parseCallback}" ${@};
-        break;
+    if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
+      _parameterValue="${@}";
+      if CLI.parseCallbackDefinedForParameter "${_parameterName}"; then
+        _parseCallback="${RESULT}";
+        "${_parseCallback}" ${_parameterValue};
       else
-        _parameterValue="${1}";
-        shift;
-        "${_parseCallback}" "${_parameterValue}";
+        camelCaseToSnakeCase "${_parameterName}";
+        toUpper "${RESULT}";
+        declare -gx "${RESULT}"="${_parameterValue}";
       fi
+      break;
     else
-      toUpper "${_parameterName}";
-      _parameterNameInUpperCase="${RESULT}";
-      exitWithError "MISSING_PARSE_FUNCTION_FOR_PARAMETER_${_parameterNameInUpperCase}" "${_parseCallback} function is not defined";
+      _parameterValue="${1}";
+      shift;
+      if CLI.parseCallbackDefinedForParameter "${_parameterName}"; then
+        _parseCallback="${RESULT}";
+        "${_parseCallback}" "${_parameterValue}";
+      else
+        camelCaseToSnakeCase "${_parameterName}";
+        toUpper "${RESULT}";
+        declare -gx "${RESULT}"="${_parameterValue}";
+      fi
     fi
   done
   IFS="${_oldIFS}";
