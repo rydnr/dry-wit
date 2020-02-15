@@ -551,6 +551,9 @@ function DRYWITTEST.logTestSummary() {
   local _assertionFailures;
   local _assertionSuccesses;
 
+  humanReadableTest "${_test}";
+  local _testDescription="${RESULT}";
+
   _errors="${TEST_ERRORS[${_test}]}";
   if isEmpty "${_errors}" || [ ${_errors} -eq 0 ]; then
     _failures="${TEST_FAILURES[${_test}]}";
@@ -558,24 +561,24 @@ function DRYWITTEST.logTestSummary() {
     if isEmpty "${_assertionFailures}" || [ ${_assertionFailures} -eq 0 ]; then
       _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
       if isEmpty "${_assertionSuccesses}"; then
-        logInfo -n "Test ${_test}: No assertions found";
+        logInfo -n "${_testDescription}: No assertions found";
         logInfoResult FAILURE "0";
       else
-        logInfo -n "Test ${_test}: all assertions passed";
+        logInfo -n "${_testDescription}: all assertions passed";
         logInfoResult SUCCESS "${_assertionSuccesses}/${_assertionSuccesses}";
       fi
     else
-      logInfo -n "Test ${_test}: assertions failed";
+      logInfo -n "${_testDescription}: assertions failed";
       logInfoResult FAILURE "${_assertionFailures}";
       DRYWITTEST.logFailedAssertions "${_test}";
-      logInfo -n "Test ${_test}: failures";
+      logInfo -n "${_testDescription}: failures";
       logInfoResult FAILURE "${_failures}";
       DRYWITTEST.logFailureReasons "${_test}";
     fi
   else
-    logInfo -n "Test ${_test}: errors";
+    logInfo -n "${_testDescription}: errors";
     logInfoResult FAILURE "${_errors}";
-    logError "${_test}";
+    logError "${_testDescription}";
   fi
 }
 
@@ -595,20 +598,21 @@ function DRYWITTEST.dwtest() {
 
   DW.getScriptName;
   local _scriptName="${RESULT}";
-  logInfo -n "Retrieving tests in ${_scriptName}";
+  logDebug -n "Retrieving tests in ${_scriptName#./}";
   DRYWITTEST.retrieveTests ${_scriptName};
   _tests="${RESULT}";
   if isEmpty "${_tests}"; then
-    logInfoResult FAILURE "0";
+    logDebugResult FAILURE "0";
     exitWithErrorCode NO_TESTS_FOUND;
   else
-    logInfoResult SUCCESS "$(echo "${_tests}" | wc -w)";
+    logDebugResult SUCCESS "$(echo "${_tests}" | wc -w)";
   fi
 
   IFS=${DWIFS};
   for _t in ${_tests}; do
     IFS="${_oldIFS}";
-    logInfo -n "Running ${_t}";
+    humanReadableTest "${_t}";
+    logInfo -n "${RESULT}";
     if runTest "${_t}"; then
       logInfoResult SUCCESS "pass";
       _passed=$((_passed+1));
@@ -1002,6 +1006,22 @@ function DRYWITTEST.sourceSUT() {
   return ${_rescode};
 }
 
+# fun: humanReadableTest
+# api: private
+# txt: Extracts a human-readable description from given test name.
+# opt: test: The test.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the test description.
+# use: humanReadableTest "function_a_works_as_expected_test"; echo "${RESULT}"; # 'function a works as expected'
+function humanReadableTest() {
+  local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
+  removeSuffix "${_test}" "_test";
+  replaceAll "${RESULT}" "_" " ";
+
+  return ${TRUE};
+}
 # fun: main
 # api: private
 # txt: Runs dry-wit-test.
