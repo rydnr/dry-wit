@@ -273,20 +273,20 @@ function checkInput_checks_mandatory_environment_variables_are_not_empty_test() 
   Assert.isNotEmpty "${_result}" "checkInput didn't check for MY_MANDATORY_ENVVAR";
 }
 
-function parseInput_fails_if_there_is_no_callback_function_for_a_mandatory_parameter_test() {
+function parseInput_does_not_fail_if_there_is_no_callback_function_for_a_mandatory_parameter_test() {
   addCommandLineParameter "folder" "The file to read" MANDATORY SINGLE;
   (parseInput "/tmp" > /dev/null 2>&1)
-  Assert.isFalse $? "parseInput failed to detect parameter witout parsing callback defined";
+  Assert.isTrue $? "parseInput worked even with no callback defined";
 }
 
 function parseInput_uses_the_default_value_of_an_optional_command_line_flag_test() {
   addCommandLineFlag "tag" "t" "The tag" OPTIONAL EXPECTS_ARGUMENT "latest";
-  addCommandLineFlag "overwrite-latest" "ol" "Whether to override latest" OPTIONAL NO_ARGUMENT "false";
+  addCommandLineFlag "overwrite-latest-tag" "olt" "Whether to override latest tag" OPTIONAL NO_ARGUMENT "false";
   parseInput "-v";
   Assert.isNotEmpty "${TAG}" "TAG is not defined";
-  Assert.areEqual "${TAG}" "latest" "TAG should be 'latest' when omitted";
-  Assert.isNotEmpty "${OVERWRITE_LATEST}" "OVERWRITE_LATEST is not defined";
-  Assert.areEqual "${OVERWRITE_LATEST}" "false" "OVERWRITE_LATEST should be 'false' when not defined";
+  Assert.areEqual "latest" "${TAG}" "TAG should be 'latest' when omitted";
+  Assert.isNotEmpty "${OVERWRITE_LATEST_TAG}" "OVERWRITE_LATEST_TAG is not defined";
+  Assert.areEqual "false" "${OVERWRITE_LATEST_TAG}" "OVERWRITE_LATEST_TAG should be 'false' when not defined.";
 }
 
 function parseInput_does_not_swallow_parameters_test() {

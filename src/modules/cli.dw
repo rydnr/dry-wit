@@ -1242,16 +1242,18 @@ function CLI.parseFlag() {
         if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
           _argument="${1}";
           _result=$((_result+1));
-        else
-          _argument="${TRUE}";
+        elif CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
+          _argument="${RESULT}";
         fi
-        camelCaseToSnakeCase "${_longName}";
-        toUpper "${RESULT}";
-        _upcasedLongName="${RESULT}";
-        declare -gx ${_upcasedLongName}="${_argument}";
+        if isNotEmpty "${_argument}"; then
+          camelCaseToSnakeCase "${_longName}";
+          normalizeUppercase "${RESULT}";
+          _upcasedLongName="${RESULT}";
+          declare -gx ${_upcasedLongName}="${_argument}";
+        fi
       fi
     else
-      exitWithError INVALID_OPTION "Unexpected flag: ${_flag}";
+      exitWithError INVALID_OPTION "Unexpected flag: '${_flag}'";
     fi
   fi
 
@@ -1343,7 +1345,7 @@ function CLI.parseNotProvidedFlags() {
           "${_callbackFunction}" "${_defaultValue}";
         else
           camelCaseToSnakeCase "${_longName}";
-          toUpper "${RESULT}";
+          normalizeUppercase "${RESULT}";
           _upcasedLongName="${RESULT}";
           local -n _existingVariable=${_upcasedLongName};
           if isEmpty "${_existingVariable}"; then
@@ -1455,7 +1457,7 @@ function CLI.parseCommandLineParameters() {
         "${_parseCallback}" ${_parameterValue};
       else
         camelCaseToSnakeCase "${_parameterName}";
-        toUpper "${RESULT}";
+        normalizeUppercase "${RESULT}";
         declare -gx "${RESULT}"="${_parameterValue}";
       fi
       break;
@@ -1467,7 +1469,7 @@ function CLI.parseCommandLineParameters() {
         "${_parseCallback}" "${_parameterValue}";
       else
         camelCaseToSnakeCase "${_parameterName}";
-        toUpper "${RESULT}";
+        normalizeUppercase "${RESULT}";
         declare -gx "${RESULT}"="${_parameterValue}";
       fi
     fi
