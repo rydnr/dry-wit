@@ -250,12 +250,12 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <li><a href="#addcommandlineparameter-paramname-paramdescription-mandatoryoptional-singlemultiple">addCommandLineParameter <code>paramName</code> <code>paramDescription</code> <code>MANDATORY/OPTIONAL</code> <code>SINGLE/MULTIPLE</code></a></li>
 <li><a href="#flagenabled-flagname">flagEnabled <code>flagName</code></a></li>
 <li><a href="#removecommandlineflag-shortorlongname">removeCommandLineFlag <code>shortOrLongName</code></a></li>
-<li><a href="#setscriptcopyright-copyrightdescription">setScriptCopyright <code>copyrightDescription</code></a></li>
 <li><a href="#getscriptcopyright">getScriptCopyright</a></li>
-<li><a href="#setscriptdescription-description">setScriptDescription <code>description</code></a></li>
+<li><a href="#setscriptcopyright-copyrightdescription">setScriptCopyright <code>copyrightDescription</code></a></li>
 <li><a href="#getscriptdescription">getScriptDescription</a></li>
-<li><a href="#setscriptlicensesummary-license">setScriptLicenseSummary <code>license</code></a></li>
+<li><a href="#setscriptdescription-description">setScriptDescription <code>description</code></a></li>
 <li><a href="#getscriptlicensesummary">getScriptLicenseSummary</a></li>
+<li><a href="#setscriptlicensesummary-license">setScriptLicenseSummary <code>license</code></a></li>
 <li><a href="#printhelp">printHelp</a></li>
 <li><a href="#printusage">printUsage</a></li>
 </ul></li>
@@ -375,7 +375,7 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <li><a href="#isdockercontainerrunning-container">isDockerContainerRunning <code>container</code></a></li>
 <li><a href="#removedockernetwork-network">removeDockerNetwork <code>network</code></a></li>
 <li><a href="#retrievedockercontainerstatus-container">retrieveDockerContainerStatus <code>container</code></a></li>
-<li><a href="#retrieve_ports_from_dockerfile">retrieve_ports_from_dockerfile</a></li>
+<li><a href="#retrieveportsfromdockerfile-dockerfile">retrievePortsFromDockerfile <code>dockerfile</code></a></li>
 </ul></li>
 </ul></li>
 <li><a href="#api-reference-extfilebeat">API Reference (ext/filebeat)</a><ul>
@@ -1186,6 +1186,16 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <span id="cb24-3"><a href="#cb24-3"></a><span class="kw">fi</span></span></code></pre></div>
 </section>
 </section>
+<section id="getscriptcopyright" class="level3 function">
+<h3>getScriptCopyright</h3>
+<p>Retrieves the script copyright.</p>
+<p>Returns 0/TRUE always.</p>
+<p>The variable RESULT contains the script copyright.</p>
+<section id="usage-example-22" class="level4">
+<h4>Usage example</h4>
+<div class="sourceCode" id="cb25"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1"></a><span class="ex">getScriptCopyright</span><span class="kw">;</span> <span class="bu">echo</span> <span class="st">&quot;Copyright: </span><span class="va">${RESULT}</span><span class="st">&quot;</span><span class="kw">;</span></span></code></pre></div>
+</section>
+</section>
 <section id="setscriptcopyright-copyrightdescription" class="level3 function">
 <h3>setScriptCopyright <code>copyrightDescription</code></h3>
 <p>Sets the script copyright message.</p>
@@ -1198,19 +1208,19 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 </dl>
 <p>Returns 0/TRUE always.</p>
 </section>
-<section id="usage-example-22" class="level4">
-<h4>Usage example</h4>
-<div class="sourceCode" id="cb25"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1"></a><span class="ex">setScriptCopyright</span> <span class="st">&quot;2018-today Acme Inc.&quot;</span><span class="kw">;</span></span></code></pre></div>
-</section>
-</section>
-<section id="getscriptcopyright" class="level3 function">
-<h3>getScriptCopyright</h3>
-<p>Retrieves the script copyright.</p>
-<p>Returns 0/TRUE always.</p>
-<p>The variable RESULT contains the script copyright.</p>
 <section id="usage-example-23" class="level4">
 <h4>Usage example</h4>
-<div class="sourceCode" id="cb26"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1"></a><span class="ex">getScriptCopyright</span><span class="kw">;</span> <span class="bu">echo</span> <span class="st">&quot;Copyright: </span><span class="va">${RESULT}</span><span class="st">&quot;</span><span class="kw">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1"></a><span class="ex">setScriptCopyright</span> <span class="st">&quot;2018-today Acme Inc.&quot;</span><span class="kw">;</span></span></code></pre></div>
+</section>
+</section>
+<section id="getscriptdescription" class="level3 function">
+<h3>getScriptDescription</h3>
+<p>Retrieves the script description.</p>
+<p>Returns 0/TRUE always.</p>
+<p>The variable RESULT contains the script description.</p>
+<section id="usage-example-24" class="level4">
+<h4>Usage example</h4>
+<div class="sourceCode" id="cb27"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1"></a><span class="ex">getScriptDescription</span><span class="kw">;</span> <span class="bu">echo</span> <span class="st">&quot;description: </span><span class="va">${RESULT}</span><span class="st">&quot;</span><span class="kw">;</span></span></code></pre></div>
 </section>
 </section>
 <section id="setscriptdescription-description" class="level3 function">
@@ -1225,19 +1235,19 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 </dl>
 <p>Returns 0/TRUE in any case.</p>
 </section>
-<section id="usage-example-24" class="level4">
-<h4>Usage example</h4>
-<div class="sourceCode" id="cb27"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1"></a><span class="ex">setScriptDescription</span> <span class="st">&quot;This script calculates fibonacci sequence items&quot;</span></span></code></pre></div>
-</section>
-</section>
-<section id="getscriptdescription" class="level3 function">
-<h3>getScriptDescription</h3>
-<p>Retrieves the script description.</p>
-<p>Returns 0/TRUE always.</p>
-<p>The variable RESULT contains the script description.</p>
 <section id="usage-example-25" class="level4">
 <h4>Usage example</h4>
-<div class="sourceCode" id="cb28"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1"></a><span class="ex">getScriptDescription</span><span class="kw">;</span> <span class="bu">echo</span> <span class="st">&quot;description: </span><span class="va">${RESULT}</span><span class="st">&quot;</span><span class="kw">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1"></a><span class="ex">setScriptDescription</span> <span class="st">&quot;This script calculates fibonacci sequence items&quot;</span></span></code></pre></div>
+</section>
+</section>
+<section id="getscriptlicensesummary" class="level3 function">
+<h3>getScriptLicenseSummary</h3>
+<p>Retrieves the script license summary.</p>
+<p>Returns 0/TRUE always.</p>
+<p>The variable RESULT contains the license summary.</p>
+<section id="usage-example-26" class="level4">
+<h4>Usage example</h4>
+<div class="sourceCode" id="cb29"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1"></a><span class="ex">getScriptLicenseSummary</span><span class="kw">;</span> <span class="bu">echo</span> <span class="st">&quot;License summary: </span><span class="va">${RESULT}</span><span class="st">&quot;</span><span class="kw">;</span></span></code></pre></div>
 </section>
 </section>
 <section id="setscriptlicensesummary-license" class="level3 function">
@@ -1252,19 +1262,9 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 </dl>
 <p>Returns 0/TRUE always.</p>
 </section>
-<section id="usage-example-26" class="level4">
-<h4>Usage example</h4>
-<div class="sourceCode" id="cb29"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1"></a><span class="ex">setScriptLicenseSummary</span> <span class="st">&quot;Distributed this under the GNU General Public License v3.&quot;</span><span class="kw">;</span></span></code></pre></div>
-</section>
-</section>
-<section id="getscriptlicensesummary" class="level3 function">
-<h3>getScriptLicenseSummary</h3>
-<p>Retrieves the script license summary.</p>
-<p>Returns 0/TRUE always.</p>
-<p>The variable RESULT contains the license summary.</p>
 <section id="usage-example-27" class="level4">
 <h4>Usage example</h4>
-<div class="sourceCode" id="cb30"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1"></a><span class="ex">getScriptLicenseSummary</span><span class="kw">;</span> <span class="bu">echo</span> <span class="st">&quot;License summary: </span><span class="va">${RESULT}</span><span class="st">&quot;</span><span class="kw">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb30"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1"></a><span class="ex">setScriptLicenseSummary</span> <span class="st">&quot;Distributed this under the GNU General Public License v3.&quot;</span><span class="kw">;</span></span></code></pre></div>
 </section>
 </section>
 <section id="printhelp" class="level3 function">
@@ -2676,7 +2676,7 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <section id="parameters-80" class="level4">
 <h4>Parameters</h4>
 <dl>
-<dt><code>fun</code></dt>
+<dt><code>container</code></dt>
 <dd>the container name.
 </dd>
 </dl>
@@ -2722,8 +2722,8 @@ code span.wa { color: #008000; font-weight: bold; } /* Warning */
 <div class="sourceCode" id="cb105"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb105-1"><a href="#cb105-1"></a><span class="kw">if</span> <span class="ex">retrieveDockerContainerStatus</span> mysql<span class="kw">;</span> <span class="kw">then</span> <span class="bu">echo</span> <span class="st">&quot;mysql&#39;s status is </span><span class="va">${RESULT}</span><span class="st">&quot;</span><span class="kw">;</span> <span class="kw">fi</span></span></code></pre></div>
 </section>
 </section>
-<section id="retrieve_ports_from_dockerfile" class="level3 function">
-<h3>retrieve_ports_from_dockerfile</h3>
+<section id="retrieveportsfromdockerfile-dockerfile" class="level3 function">
+<h3>retrievePortsFromDockerfile <code>dockerfile</code></h3>
 <p>Retrieves the exposed ports in given Dockerfile.</p>
 <section id="parameters-83" class="level4">
 <h4>Parameters</h4>
