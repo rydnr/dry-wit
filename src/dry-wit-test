@@ -67,7 +67,7 @@ function DRYWITTEST.retrieveTests() {
     exitWithErrorCode NO_TESTS_FOUND;
   fi
 
-  echo "export TESTS_FOUND=${#TESTS[@]};" > ".${_script}.env";
+  echo "export TESTS_FOUND=${#TESTS[@]};" > ".$(basename ${_script}).env";
 
   export RESULT="${TESTS[@]}";
 }
@@ -597,9 +597,9 @@ function DRYWITTEST.dwtest() {
   local -i _failed=0;
 
   DW.getScriptName;
-  local _scriptName="${RESULT}";
-  logDebug -n "Retrieving tests in ${_scriptName#./}";
-  DRYWITTEST.retrieveTests ${_scriptName};
+  local _scriptName="${RESULT#./}";
+  logDebug -n "Retrieving tests in ${_scriptName}";
+  DRYWITTEST.retrieveTests "${_scriptName}";
   _tests="${RESULT}";
   if isEmpty "${_tests}"; then
     logDebugResult FAILURE "0";
@@ -634,8 +634,8 @@ function DRYWITTEST.dwtest() {
     IFS="${_oldIFS}";
   fi
 
-  echo "export PASSED_TESTS=${_passed};" >> .${_scriptName}.env;
-  echo "export FAILED_TESTS=${_failed};" >> .${_scriptName}.env;
+  echo "export PASSED_TESTS=${_passed};" >> ".$(basename ${_scriptName}).env";
+  echo "export FAILED_TESTS=${_failed};" >> ".$(basename ${_scriptName}).env";
 }
 
 # fun: __dwCallback
