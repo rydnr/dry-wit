@@ -13,12 +13,13 @@ function LOCALE.getModuleName() {
   return ${TRUE};
 }
 
-# fun: is_locale_supported
+# fun: isLocaleSupported locale encoding
 # api: public
 # txt: Checks if given locale identifier is supported.
 # opt: locale: The locale identifier.
+# opt: encoding: The file encoding.
 # txt: Returns 0/TRUE if the locale is supported; 1/FALSE otherwise.
-# use: if is_locale_supported "en_US" "UTF-8"; then echo "en_US with UTF-8 is supported"; fi
+# use: if isLocaleSupported "en_US" "UTF-8"; then echo "en_US with UTF-8 is supported"; fi
 function is_locale_supported() {
   local _locale="${1}";
   checkNotEmpty locale "${_locale}" 1;
@@ -28,8 +29,8 @@ function is_locale_supported() {
   local -i _rescode;
 
   if [ -f ${SUPPORTED_LOCALES_FOLDER}/${_locale%%_*} ]; then
-    if is_locale_file_available "${_locale}"; then
-      if is_locale_available_in_language_file "${_locale}" "${_encoding}"; then
+    if isLocaleFileAvailable "${_locale}"; then
+      if isLocaleAvailableInLanguageFile "${_locale}" "${_encoding}"; then
         _rescode=${TRUE};
       else
         _rescode=${FALSE};
@@ -44,17 +45,16 @@ function is_locale_supported() {
   return ${_rescode};
 }
 
-# fun: is_locale_file_available
+# fun: isLocaleFileAvailable locale
 # api: public
 # txt: Checks if the locale file is available.
 # opt: locale: The locale.
 # txt: Returns 0/TRUE if the locale file exists; 1/FALSE otherwise.
-# use: if is_locale_file_available "en_US"; then echo "English-US is available"; fi
-function is_locale_file_available() {
+# use: if isLocaleFileAvailable "en_US"; then echo "English-US is available"; fi
+function isLocaleFileAvailable() {
   local _locale="${1}";
+  checkNotEmpty locale "${_locale}" 1;
   local -i _rescode;
-
-  checkNotEmpty "locale" "${_locale}" 1;
 
   if [ -f ${AVAILABLE_LOCALES_FOLDER}/${_locale} ]; then
     _rescode=${TRUE};
@@ -65,20 +65,19 @@ function is_locale_file_available() {
   return ${_rescode};
 }
 
-# fun: locale_requires_encoding_suffix
+# fun: localeRequiresEncodingSuffix locale encoding
 # api: public
 # txt: Checks if locale requires appending the encoding or not.
 # opt: locale: the locale.
-# opt enocding: the encoding.
+# opt: enocding: the encoding.
 # txt: Returns 0/TRUE if the locale requires the encoding suffix; 1/FALSE otherwise.
-# use: if locale_requires_encoding_suffix "${locale}" "${encoding}"; then localeDefinition="${locale}.${encoding}"; fi
-function locale_requires_encoding_suffix() {
+# use: if localeRequiresEncodingSuffix "${locale}" "${encoding}"; then localeDefinition="${locale}.${encoding}"; fi
+function localeRequiresEncodingSuffix() {
   local _locale="${1}";
+  checkNotEmpty locale "${_locale}" 1;
   local _encoding="${2}";
+  checkNotEmpty encoding "${_encoding}" 2;
   local -i _rescode;
-
-  checkNotEmpty "locale" "${_locale}" 1;
-  checkNotEmpty "encoding" "${_encoding}" 2;
 
   grep "${_locale}.${_encoding} ${_encoding}" "${SUPPORTED_LOCALES_FILE}" > /dev/null 2>&1;
   _rescode=$?;
@@ -86,25 +85,24 @@ function locale_requires_encoding_suffix() {
   return ${_rescode};
 }
 
-# fun is_locale_available_in_language_file
+# fun isLocaleAvailableInLanguageFile locale encoding
 # api: public
 # txt: Checks if given locale + encoding is supported.
 # opt: locale: The locale.
 # opt: encoding: The encoding.
 # txt: Returns 0/TRUE if the language is supported; 1/FALSE otherwise.
 # txt: The variable RESULT contains the supported locales if the funcion returns 0/TRUE.
-# use: if is_locale_available_in_language_file "en_US" "UTF-8"; then echo "Supported English locales: ${RESULT}"; fi
-function is_locale_available_in_language_file() {
+# use: if isLocaleAvailableInLanguageFile "en_US" "UTF-8"; then echo "Supported English locales: ${RESULT}"; fi
+function isLocaleAvailableInLanguageFile() {
   local _locale="$1";
+  checkNotEmpty locale "${_locale}" 1;
   local _encoding="$2";
+  checkNotEmpty encoding "${_encoding}" 2;
   local -i _rescode;
   local _language;
 
-  checkNotEmpty "locale" "${_locale}" 1;
-  checkNotEmpty "encoding" "${_encoding}" 2;
-
-  if is_locale_file_available "${_locale}"; then
-    if locale_requires_encoding_suffix "${_locale}" "${_encoding}"; then
+  if isLocaleFileAvailable "${_locale}"; then
+    if localeRequiresEncodingSuffix "${_locale}" "${_encoding}"; then
       _rescode=${TRUE}; # Implicit since it greps the same file.
     else
       grep "${_locale} ${_encoding}" ${SUPPORTED_LOCALES_FILE} > /dev/null 2>&1;
@@ -117,20 +115,20 @@ function is_locale_available_in_language_file() {
   return ${_rescode};
 }
 
-# fun: change_default_locale
+# fun: change_default_locale locale
 # api: public
 # txt: Changes the default locale.
 # opt: locale: The locale.
 # txt: Returns 0/TRUE always.
-# use: change_default_locale "en_US.UTF-8";
-function change_default_locale() {
+# use: changeDefaultLocale "en_US.UTF-8";
+function changeDefaultLocale() {
   local _locale="${1}";
   checkNotEmpty locale "${_locale}" 1;
   local _encoding="${2}";
   checkNotEmpty encoding "${_encoding}" 2;
 
   logInfo -n "Checking if the ${_locale}/${_encoding} pair is valid";
-  if is_locale_supported "${_locale}" "${_encoding}"; then
+  if isLocaleSupported "${_locale}" "${_encoding}"; then
     logInfoResult SUCCESS "valid";
     logInfo -n "Modifying ${DEFAULT_LOCALE_FILE}";
     echo "LANG=\"${_locale}.${_encoding}\"" > ${DEFAULT_LOCALE_FILE};
