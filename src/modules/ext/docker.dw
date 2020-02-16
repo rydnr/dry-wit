@@ -239,7 +239,7 @@ function retrieveDockerContainerStatus() {
 # opt: dockerfile: The dockerfile
 # txt: Returns 0/TRUE if the ports could be retrieved; 1/FALSE otherwise.
 # txt: If the ports are found, the variable RESULT contains a space-separated list of ports exposed in the Dockerfile.
-# use: if retrieve_exposed_ports /Dockerfiles/Dockerfile; then echo "Exposed ports in the Dockerfile: ${RESULT}"; fi
+# use: if retrievePortsFromDockerfile /Dockerfiles/Dockerfile; then echo "Exposed ports in the Dockerfile: ${RESULT}"; fi
 function retrievePortsFromDockerfile() {
   local _dockerfile="${1}";
   checkNotEmpty dockerfile "${_dockerfile}" 1;
