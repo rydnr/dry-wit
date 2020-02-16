@@ -2,7 +2,7 @@
 # api: public
 # txt: Nexus 3 functions.
 
-# fun: appendLogConfigDirToNexusSystemProperties
+# fun: appendLogConfigDirToNexusSystemProperties file folder
 # api: public
 # txt: Appends the log-config-dir setting to given file.
 # opt: file: The file to update.
@@ -11,11 +11,10 @@
 # use: if appendLogConfigDirToNexusSystemProperties "/opt/sonatype/nexus/etc/system.properties" "/backup/nexus-conf/"
 function appendLogConfigDirToNexusSystemProperties() {
   local _file="${1}";
-  local _dir="${2}";
-  local -i _rescode;
-
   checkNotEmpty file "${_file}" 1;
+  local _dir="${2}";
   checkNotEmpty folder "${_dir}" 2;
+  local -i _rescode;
 
   echo "nexus.log-config-dir=${_dir}" >> "${_file}";
   _rescode=$?;
@@ -23,7 +22,7 @@ function appendLogConfigDirToNexusSystemProperties() {
   return ${_rescode};
 }
 
-# fun: appendWorkDirInNexusSystemProperties
+# fun: appendWorkDirInNexusSystemProperties file workDir
 # api: public
 # txt: Appends the work-dir setting to given file.
 # opt: file: The file to update.
@@ -32,11 +31,10 @@ function appendLogConfigDirToNexusSystemProperties() {
 # use: if appendWorkDirInNexusSystemProperties "/opt/sonatype/nexus/etc/system.properties" "/sonatype-work"; then ...; fi
 function appendWorkDirInNexusSystemProperties() {
   local _file="${1}";
-  local _dir="${2}";
-  local -i _rescode;
-
   checkNotEmpty file "${_file}" 1;
+  local _dir="${2}";
   checkNotEmpty workDir "${_dir}" 2;
+  local -i _rescode;
 
   echo "nexus.work-dir=${_dir}" >> "${_file}" 2> /dev/null;
   _rescode=$?;
@@ -44,7 +42,7 @@ function appendWorkDirInNexusSystemProperties() {
   return ${_rescode};
 }
 
-# fun: enableJettyHttpsConfigInNexusProperties
+# fun: enableJettyHttpsConfigInNexusProperties file output
 # api: public
 # txt: Enables the Jetty HTTPS configuration in Nexus.
 # opt: file: The nexus-default.properties file location.
@@ -53,11 +51,10 @@ function appendWorkDirInNexusSystemProperties() {
 # use: if enableJettyHttpsConfigInNexusProperties "/opt/sonatype/nexus/etc/nexus-default.properties" "/opt-sonatype/nexus/etc/nexus.properties"; then ...; fi
 function enableJettyHttpsConfigInNexusProperties() {
   local _file="${1}";
-  local _output="${2}";
-  local -i _rescode;
-
   checkNotEmpty file "${_file}" 1;
+  local _output="${2}";
   checkNotEmpty output "${_output}" 2;
+  local -i _rescode;
 
   grep 'nexus-args' "${_file}" 2> /dev/null | sed "s|nexus-args=\(.*\)|nexus-args=\1,\${jetty.etc}/jetty-https.xml|g" >> "${_output}";
   _rescode=$?;
@@ -65,7 +62,7 @@ function enableJettyHttpsConfigInNexusProperties() {
   return ${_rescode};
 }
 
-# fun: appendHttpsConnectorPortToNexusCfg
+# fun: appendHttpsConnectorPortToNexusCfg nexusCfg port
 # api: public
 # txt: Appends the HTTPS connector port to given file.
 # opt: nexusCfg: The file to update.
@@ -74,11 +71,10 @@ function enableJettyHttpsConfigInNexusProperties() {
 # use: if appendHttpsConnectorPortToNexusCfg "/opt/sonatype/nexus/etc/org.sonatype.nexus.cfg" 8443; then ...; fi
 function appendHttpsConnectorPortToNexusCfg() {
   local _file="${1}";
-  local _port="${2}";
-  local -i _rescode;
-
   checkNotEmpty nexusCfg "${_file}" 1;
+  local _port="${2}";
   checkNotEmpty port "${_port}" 2;
+  local -i _rescode;
 
   echo "application-port-ssl=${_port}" >> "${_file}" 2> /dev/null;
   _rescode=$?;

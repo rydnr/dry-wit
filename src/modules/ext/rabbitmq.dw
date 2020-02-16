@@ -8,34 +8,33 @@
 # env: RABBITMQ_NODENAME: The name of the RabbitMQ node.
 # env: ADMIN_PASSWORD: The password of the 'admin' user.
 
-# fun: addUser username password
+# fun: addUser user password
 # api: public
 # txt: Adds a new RabbitMQ user.
-# txt: Returns 0/TRUE if the user was added; 1/FALSE otherwise.
-# opt: username: The username.
+# opt: user: The username.
 # opt: password: The password.
+# txt: Returns 0/TRUE if the user was added; 1/FALSE otherwise.
 # use: if addUser "admin" "secret"; then echo "User admin added successfully"; fi
 function addUser() {
-    local _user="${1}";
-    local _password="${2}";
-    local -i _rescode;
-    local _log;
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _password="${2}";
+  checkNotEmpty password "${_password}" 2;
+  local -i _rescode;
+  local _log;
 
-    checkNotEmpty "user" "${_user}" 1;
-    checkNotEmpty "password" "${_password}" 2;
+  logTrace -n "Adding ${_user}";
+  rabbitmqctl -n ${RABBITMQ_NODENAME} add_user ${_user} "${_password}" > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} add_user ${_user} "${_password}" 2>&1)";
+    logTrace "${_log}";
+  fi
 
-    logTrace -n "Adding ${_user}";
-    rabbitmqctl -n ${RABBITMQ_NODENAME} add_user ${_user} "${_password}" > /dev/null 2>&1;
-    _rescode=$?;
-    if isTrue ${_rescode}; then
-        logTraceResult SUCCESS "done";
-    else
-        logTraceResult FAILURE "failed";
-        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} add_user ${_user} "${_password}" 2>&1)";
-        logTrace "${_log}";
-    fi
-
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: addVhost virtualHost
@@ -45,25 +44,24 @@ function addUser() {
 # txt: Returns 0/TRUE if the virtual host gets created successfully; 1/FALSE otherwise.
 # use: if ! addVhost "/"; then echo "Could not add vhost /"; fi
 function addVhost() {
-    local _vhost="${1}";
-    local -i _rescode;
-    local _log;
+  local _vhost="${1}";
+  checkNotEmpty virtualHost "${_vhost}" 1;
+  local -i _rescode;
+  local _log;
 
-    checkNotEmpty "vhost" "${_vhost}" 1;
+  logTrace -n "Adding virtual host ${_vhost}";
 
-    logTrace -n "Adding virtual host ${_vhost}";
+  rabbitmqctl -n ${RABBITMQ_NODENAME} add_vhost "${_vhost}" > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} add_vhost "${_vhost}" 2>&1;)";
+    logTrace "${_log}";
+  fi
 
-    rabbitmqctl -n ${RABBITMQ_NODENAME} add_vhost "${_vhost}" > /dev/null 2>&1;
-    _rescode=$?;
-    if isTrue ${_rescode}; then
-        logTraceResult SUCCESS "done";
-    else
-        logTraceResult FAILURE "failed";
-        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} add_vhost "${_vhost}" 2>&1;)";
-        logTrace "${_log}";
-    fi
-
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: declareBdbinding source destinationType destination routingKey
@@ -77,16 +75,15 @@ function addVhost() {
 # use: if declareBinding "my-exchange" "queue" "my-queue" "#"; then echo "binding created successfully"; fi
 function declareBinding() {
   local _source="${1}";
+  checkNotEmpty source "${_source}" 1;
   local _destinationType="${2}";
+  checkNotEmpty destinationType "${_destinationType}" 2;
   local _destination="${3}";
+  checkNotEmpty destination "${_destination}" 3;
   local _routingKey="${4}";
+  checkNotEmpty routingKey "${_routingKey}" 4;
   local -i _rescode;
   local _log;
-
-  checkNotEmpty "source" "${_source}" 1;
-  checkNotEmpty "destinationType" "${_destinationType}" 2;
-  checkNotEmpty "destination" "${_destination}" 3;
-  checkNotEmpty "routingKey" "${_routingKey}" 4;
 
   logTrace -n "Declaring binding: source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey}";
   rabbitmqadmin -N ${RABBITMQ_NODENAME}  -u admin -p ${ADMIN_PASSWORD} declare binding source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey} > /dev/null 2>&1;
@@ -114,7 +111,9 @@ function declareBinding() {
 # use: if declareExchange "ex" "topic"; then echo "ex exchange created successfully"; fi
 function declareExchange() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local _type="${2}";
+  checkNotEmpty type "${_type}" 2;
   local _durable;
   local _internal;
   local _extra;
@@ -133,9 +132,6 @@ function declareExchange() {
     fi
   fi
   local -i _rescode;
-
-  checkNotEmpty "name" "${_name}" 1;
-  checkNotEmpty "type" "${_type}" 2;
 
   if ! isEmpty "${_durable}"; then
     _durable="durable=${_durable}";
@@ -168,12 +164,11 @@ function declareExchange() {
 # use: if declareQueue "my-queue" "true"; then echo "Queue my-queue created successfully"; fi
 function declareQueue() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local _durable="${2}";
+  checkNotEmpty durable "${_durable}" 2;
   local -i _rescode=$?;
   local _log;
-
-  checkNotEmpty "name" "${_name}" 1;
-  checkNotEmpty "durable" "${_durable}" 2;
 
   logTrace -n "Declaring queue name=${_name} durable=${_durable}";
   rabbitmqadmin -N ${RABBITMQ_NODENAME}  -u admin -p ${ADMIN_PASSWORD} declare queue name=${_name} durable=${_durable} > /dev/null 2>&1;
@@ -196,25 +191,24 @@ function declareQueue() {
 # txt: Returns 0/TRUE if the user gets deleted successfully; 1/FALSE otherwise.
 # use: if deleteUser "guest"; then echo "guest user deleted successfully"; fi
 function deleteUser() {
-    local _name="${1}";
-    local -i _rescode;
-    local _log;
+  local _name="${1}";
+  checkNotEmpty user "${_name}" 1;
+  local -i _rescode;
+  local _log;
 
-    checkNotEmpty "name" "${_name}" 1;
+  logTrace -n "Deleting user ${_name}";
 
-    logTrace -n "Deleting user ${_name}";
+  rabbitmqctl -n ${RABBITMQ_NODENAME} delete_user ${_name} > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} delete_user ${_name} 2>&1;)";
+    logTrace "${_log}";
+  fi
 
-    rabbitmqctl -n ${RABBITMQ_NODENAME} delete_user ${_name} > /dev/null 2>&1;
-    _rescode=$?;
-    if isTrue ${_rescode}; then
-        logTraceResult SUCCESS "done";
-    else
-        logTraceResult FAILURE "failed";
-        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} delete_user ${_name} 2>&1;)";
-        logTrace "${_log}";
-    fi
-
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: enableRabbitmqManagement
@@ -223,12 +217,12 @@ function deleteUser() {
 # txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
 # use: if ! enableRabbitmqManagement; then echo "Cannot enable plugin management mode"; fi
 function enableRabbitmqManagement() {
-    local -i _rescode;
+  local -i _rescode;
 
-    rabbitmq-plugins -n ${RABBITMQ_NODENAME} --offline enable rabbitmq_management > /dev/null 2>&1;
-    _rescode=$?;
+  rabbitmq-plugins -n ${RABBITMQ_NODENAME} --offline enable rabbitmq_management > /dev/null 2>&1;
+  _rescode=$?;
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: isRabbitmqRunning
@@ -237,15 +231,15 @@ function enableRabbitmqManagement() {
 # txt: Returns 0/TRUE if it's running; 1/FALSE otherwise.
 # use: if ! isRabbitmqRunning; then echo "RabbitMQ is not running"; fi
 function isRabbitmqRunning() {
-    local -i _rescode;
+  local -i _rescode;
 
-    #  rabbitmqctl status --offline > /dev/null
-    exec 6<>/dev/tcp/127.0.0.1/15672;
-    _rescode=$?;
-    exec 6>&- # close output connection
-    exec 6<&- # close input connection
+  #  rabbitmqctl status --offline > /dev/null
+  exec 6<>/dev/tcp/127.0.0.1/15672;
+  _rescode=$?;
+  exec 6>&- # close output connection
+  exec 6<&- # close input connection
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: rabbitmq_migrate
@@ -352,16 +346,16 @@ function rabbitmq_migrate() {
 # txt: Returns 0/TRUE if a concurrent bootstrap process has not yet finished; 1/FALSE otherwise.
 # use: if RABBITMQ.acquireBootstrapLock; then ...; fi
 function RABBITMQ.acquireBootstrapLock() {
-    local -i _rescode;
+  local -i _rescode;
 
-    if [ -e ${LOCK_FILE} ]; then
-        _rescode=${FALSE};
-    else
-        touch ${LOCK_FILE};
-        _rescode=${TRUE};
-    fi
+  if [ -e ${LOCK_FILE} ]; then
+    _rescode=${FALSE};
+  else
+    touch ${LOCK_FILE};
+    _rescode=${TRUE};
+  fi
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: RABBITMQ.alreadyBootstrapped
@@ -370,15 +364,15 @@ function RABBITMQ.acquireBootstrapLock() {
 # txt: Returns 0/TRUE if the bootstrap has already done in the past; 1/FALSE otherwise.
 # use: if RABBITMQ.alreadyBootstrapped; then echo "Instance already bootstrapped"; fi
 function RABBITMQ.alreadyBootstrapped() {
-    local -i _rescode;
+  local -i _rescode;
 
-    if [ -e ${BOOTSTRAPPED_FILE} ]; then
-        _rescode=${TRUE};
-    else
-        _rescode=${FALSE};
-    fi
+  if [ -e ${BOOTSTRAPPED_FILE} ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: RABBITMQ.exitWithErrorCodeIfFailFast errorLabel
@@ -387,11 +381,12 @@ function RABBITMQ.alreadyBootstrapped() {
 # txt: Exits with an error code if FAIL_FAST flag is active; otherwise returns 0/TRUE.
 # use: RABBITMQ.exitWithErrorCodeIfFailFast CANNOT_ACQUIRE_LOCK
 function RABBITMQ.exitWithErrorCodeIfFailFast() {
-    local _label="${1}";
-    shift;
-    if RABBITMQ.inFailFastMode; then
-        exitWithErrorCode "${_label}" $@;
-    fi
+  local _label="${1}";
+  checkNotEmpty errorLabel "${_label}" 1;
+  shift;
+  if RABBITMQ.inFailFastMode; then
+    exitWithErrorCode "${_label}" $@;
+  fi
 }
 
 # fun: RABBITMQ.fixRabbitmqadmin file
@@ -401,20 +396,19 @@ function RABBITMQ.exitWithErrorCodeIfFailFast() {
 # txt: Returns 0/TRUE if the script was fixed; 1/FALSE otherwise.
 # use: if RABBITMQ.fixRabbitmqadmin /usr/sbin/rabbitmqadmin; then echo "/usr/sbin/rabbitmqadmin fixed"; fi
 function RABBITMQ.fixRabbitmqadmin() {
-    local _rabbitmqadmin="${1}";
-    local -i _rescode;
+  local _rabbitmqadmin="${1}";
+  checkNotEmpty file "${_rabbitmqadmin}" 1;
+  local -i _rescode;
 
-    checkNotEmpty "rabbitmqadmin" "${_rabbitmqadmin}" 1;
+  chmod a+x "${_rabbitmqadmin}";
+  _rescode=$?;
 
-    chmod a+x "${_rabbitmqadmin}";
+  if isTrue ${_rescode}; then
+    sed -i 's|#!/usr/bin/env python|#!/usr/bin/env python3|g' "${_rabbitmqadmin}";
     _rescode=$?;
+  fi
 
-    if isTrue ${_rescode}; then
-        sed -i 's|#!/usr/bin/env python|#!/usr/bin/env python3|g' "${_rabbitmqadmin}";
-        _rescode=$?;
-    fi
-
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: RABBITMQ.inFailFastMode
@@ -423,7 +417,7 @@ function RABBITMQ.fixRabbitmqadmin() {
 # txt: Returns 0/TRUE if the script is running in fail-fast mode; 1/FALSE otherwise.
 # use: if RABBITMQ.inFailFastMode; then echo "Running in fail-fast mode"; fi
 function RABBITMQ.inFailFastMode() {
-    flagEnabled FAIL_FAST;
+  flagEnabled FAIL_FAST;
 }
 
 # fun: RABBITMQ.inForceMode
@@ -441,12 +435,12 @@ function RABBITMQ.inForceMode() {
 # txt: Returns 0/TRUE if the bootstrap has been annotated successfully; 1/FALSE otherwise.
 # use: if RABBITMQ.markAsBootstrapped; then echo "Instance annotated as bootstrapped"; fi
 function RABBITMQ.markAsBootstrapped() {
-    local -i _rescode;
+  local -i _rescode;
 
-    touch ${BOOTSTRAPPED_FILE};
-    _rescode=$?;
+  touch ${BOOTSTRAPPED_FILE};
+  _rescode=$?;
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: RABBITMQ.releaseBootstrapLock
@@ -476,9 +470,9 @@ function RABBITMQ.releaseBootstrapLock() {
 # txt: Releases the lock file if FAIL_FAST flag is active.
 # use: RABBITMQ.releaseBootstrapLockIfFailFast;
 function RABBITMQ.releaseBootstrapLockIfFailFast() {
-    if RABBITMQ.inFailFastMode; then
-        RABBITMQ.releaseBootstrapLock;
-    fi
+  if RABBITMQ.inFailFastMode; then
+    RABBITMQ.releaseBootstrapLock;
+  fi
 }
 
 # fun: RABBITMQ.retrieveRabbitmqadmin url outputFile
@@ -490,11 +484,10 @@ function RABBITMQ.releaseBootstrapLockIfFailFast() {
 # use: if RABBITMQ.retrieveRabbitmqadmin /tmp/rabbitmqadmin; then ...; fi
 function RABBITMQ.retrieveRabbitmqadmin() {
   local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
   local _output="${2}";
+  checkNotEmpty outputFile "${_output}" 2;
   local -i _rescode;
-
-  checkNotEmpty "url" "${_url}" 1;
-  checkNotEmpty "output" "${_output}" 2;
 
   wget -O "${_output}" "${_url}" 2> /dev/null
   _rescode=$?;
@@ -513,18 +506,17 @@ function RABBITMQ.retrieveRabbitmqadmin() {
 # use: if ! setPermissions / admin ".*" ".*" ".*"; then echo "Could not set permissions for admin"; fi
 function setPermissions() {
   local _vhost="${1}";
+  checkNotEmpty virtualHost "${_vhost}" 1;
   local _user="${2}";
+  checkNotEmpty user "${_user}" 2;
   local _configure="${3}";
+  checkNotEmpty configurePermissions "${_configure}" 3;
   local _write="${4}";
+  checkNotEmpty writePermissions "${_write}" 4;
   local _read="${5}";
+  checkNotEmpty readPermissions "${_read}" 5;
   local -i _rescode;
   local _log;
-
-  checkNotEmpty "vhost" "${_vhost}" 1;
-  checkNotEmpty "user" "${_user}" 2;
-  checkNotEmpty "configure" "${_configure}" 3;
-  checkNotEmpty "write" "${_write}" 4;
-  checkNotEmpty "read" "${_read}" 5;
 
   logTrace -n "Setting permissions: vhost ${_vhost}, user ${_user}, configure ${_configure}, write ${_write}, read ${_read}";
   rabbitmqctl -n ${RABBITMQ_NODENAME} set_permissions -p ${_vhost} ${_user} "${_configure}" "${_write}" "${_read}" > /dev/null 2>&1;
@@ -551,16 +543,15 @@ function setPermissions() {
 # use: if setPolicy "my-dlx" "^my-ex" '{"dead-letter-exchange":"my-dlx"}' "queues"; then echo "Policy created successfully"; fi
 function setPolicy() {
   local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
   local _match="${2}";
+  checkNotEmpty match "${_match}" 2;
   local _body="${3}";
+  checkNotEmpty body "${_body}" 3;
   local _objectType="${4}";
+  checkNotEmpty type "${_objectType}" 4;
   local -i _rescode;
   local _log;
-
-  checkNotEmpty "name" "${_name}" 1;
-  checkNotEmpty "match" "${_match}" 2;
-  checkNotEmpty "body" "${_body}" 3;
-  checkNotEmpty "objectType" "${_objectType}" 4;
 
   logTrace -n "Setting policy  ${_name} ${_match} ${_body} --apply-to ${_objectType}";
   rabbitmqctl -n ${RABBITMQ_NODENAME} set_policy "${_name}" "${_match}" "${_body}" --apply-to "${_objectType}" > /dev/null 2>&1;
@@ -584,26 +575,25 @@ function setPolicy() {
 # txt: Returns 0/TRUE if the tags were set successfully; 1/FALSE otherwise.
 # use: if ! setUserTags admin Admin; then echo "Could not set Admin tag for admin user"; fi
 function setUserTags() {
-    local _user="${1}";
-    local _tags="${@}";
-    local -i _rescode;
-    local _log;
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _tags="${@}";
+  checkNotEmpty tags "${_tags}" 2;
+  local -i _rescode;
+  local _log;
 
-    checkNotEmpty "user" "${_user}" 1;
-    checkNotEmpty "tags" "${_tags}" 2;
+  logTrace -n "Setting ${_user} tags: ${_tags}";
+  rabbitmqctl -n ${RABBITMQ_NODENAME} set_user_tags ${_user} ${_tags} > /dev/null 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+    _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} set_user_tags ${_user} ${_tags} 2>&1;)";
+    logTrace "${_log}";
+  fi
 
-    logTrace -n "Setting ${_user} tags: ${_tags}";
-    rabbitmqctl -n ${RABBITMQ_NODENAME} set_user_tags ${_user} ${_tags} > /dev/null 2>&1;
-    _rescode=$?;
-    if isTrue ${_rescode}; then
-        logTraceResult SUCCESS "done";
-    else
-        logTraceResult FAILURE "failed";
-        _log="$(rabbitmqctl -n ${RABBITMQ_NODENAME} set_user_tags ${_user} ${_tags} 2>&1;)";
-        logTrace "${_log}";
-    fi
-
-    return ${_rescode};
+  return ${_rescode};
 }
 
 
@@ -623,4 +613,4 @@ addError CANNOT_FIX_RABBITMQADMIN "Cannot patch rabbitmqadmin";
 addError CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT "Cannot enable plugin management";
 addError CANNOT_ADD_ADMIN_USER "Cannot add admin user";
 addError CANNOT_DELETE_GUEST_USER "Cannot delete guest user";
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

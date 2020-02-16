@@ -22,7 +22,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # fun: ENVVAR.getModuleName
-# api: public
+# api: private
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
@@ -47,7 +47,7 @@ function ENVVAR.getModuleName() {
 #      fi
 function defineButDoNotOverrideEnvVar() {
   local _varName="${1}";
-  checkNotEmpty name "${_varName}" 1;
+  checkNotEmpty varName "${_varName}" 1;
   local _varDescription="${2}";
   checkNotEmpty description "${_varDescription}" 2;
   local _varDefault="${3}";
@@ -85,9 +85,9 @@ function defineButDoNotOverrideEnvVar() {
 # use: defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
 function defineEnvVar() {
   local _varName="${1}";
-  checkNotEmpty "name" "${_varName}" 1;
+  checkNotEmpty varName "${_varName}" 1;
   local _varMandatory="${2}";
-  checkMandatoryOrOptional "MANDATORY|OPTIONAL" "${_varMandatory}" 2;
+  checkMandatoryOrOptional "${_varMandatory}" 2;
   local _varDescription="${3}";
   checkNotEmpty description "${_varDescription}" 3;
   local _varDefault="${4}";
@@ -262,7 +262,7 @@ function isEnvVarMandatory() {
 #      fi
 function isEnvVarOptional() {
   local _varName="${1}";
-  checkNotEmpty name "${_varName}" 1;
+  checkNotEmpty varName "${_varName}" 1;
   local _varMandatory;
   local -i _rescode;
 
@@ -279,12 +279,12 @@ function isEnvVarOptional() {
   return ${_rescode};
 }
 
-# fun: overrideEnvVar varName varValue description
+# fun: overrideEnvVar varName varValue description?
 # api: public
 # txt: Overrides the value of an environment variable.
 # opt: varName: The variable name.
 # opt: varValue: The variable value.
-# opt: description: The variable description (optional).
+# opt: description: The variable description. Optional.
 # txt: Returns 0/TRUE always.
 # use: overrideEnvVar MY_VAR "new-value";
 function overrideEnvVar() {
@@ -388,6 +388,7 @@ function retrieveCustomEnvironmentVariables() {
 #      g() { local "$1" && upvar $1 bar; }
 #      f  # Ok: b=bar
 function upvar() {
+  checkNotEmpty varName "${1}" 1;
   if unset -v "$1"; then           # Unset & validate varname
     if (( $# == 2 )); then
       eval $1=\"\$2\"          # Return single value
@@ -414,10 +415,7 @@ function upvar() {
 #      f  # Ok: a=A, b=(foo bar)
 function upvars() {
   local _flag="${1}";
-
-  if isEmpty "${_flag}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'name' (1) is mandatory in '${FUNCNAME[0]}'. Review ${FUNCNAME[1]}";
-  fi
+  checkNotEmpty flag "${_flag}" 1;
 
   while (( $# )); do
     case $1 in

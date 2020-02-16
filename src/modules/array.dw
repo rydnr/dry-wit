@@ -2,7 +2,7 @@
 # api: public
 # txt: Functions related to arrays and associative arrays.
 
-# fun: arrayContains array element
+# fun: arrayContains element array
 # api: public
 # txt: Checks if an element is already contained in an array.
 # opt: element: The element to check.
@@ -36,7 +36,7 @@ function arrayContains() {
   return ${_rescode};
 }
 
-# fun: arrayDoesNotContain array element
+# fun: arrayDoesNotContain element array
 # api: public
 # txt: Checks if an element is not already contained in an array.
 # opt: element: The element to check.
@@ -62,7 +62,7 @@ function arrayDoesNotContain() {
   return ${_rescode};
 }
 
-# fun: getIndexOfItemInArray
+# fun: getIndexOfItemInArray item array
 # api: public
 # txt: Retrieves the index of given item in an array.
 # txt: item: The item.
@@ -102,45 +102,46 @@ function getIndexOfItemInArray() {
   return ${_rescode};
 }
 
-# fun: clearAssociativeArray array
+# fun: clearAssociativeArray arrayName
 # api: public
 # txt: Clears given associative array.
-# opt: array: The associative array.
+# opt: arrayName: The name of the associative array.
 # txt: Returns 0/TRUE always.
 # use: clearAssociativeArray myArray;
 function clearAssociativeArray() {
-    local _arrayName="${1}";
-    checkNotEmpty arrayName "${_arrayName}" 1;
-    local _key;
+  local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
+  local _key;
 
-    declare -n _directArray="${_arrayName}";
+  declare -n _directArray="${_arrayName}";
 
-    local _oldIFS="${IFS}";
-    IFS="${DWIFS}";
-    for _key in "${!_directArray[@]}"; do
-        IFS="${_oldIFS}";
-        unset _directArray[${_key}];
-    done
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
+    unset _directArray[${_key}];
+  done
+  IFS="${_oldIFS}";
 }
 
-# fun: flattenArray array separator
+# fun: flattenArray arrayName separator
 # api: public
 # txt: Flattens an array, using given separator.
-# opt: array: The name of the array variable.
+# opt: arrayName: The name of the array variable.
 # opt: separator: The separator to use.
+# txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the resulting string.
 # use: A=(a b c); flattenArray A "x"; echo "A->${RESULT}" # axbxc
 function flattenArray() {
   local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
   local _separator="${2}";
-  local result="";
+  checkNotEmpty separator "${_separator}" 2;
+  local _result="";
   local _aux;
   local _len;
   local _oldIFS="${IFS}";
   local -i _i;
-
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
 
   _aux="$(echo "\${#${_arrayName}[@]}")";
   _len=$((-1+$(eval echo "${_aux}")));
@@ -151,19 +152,21 @@ function flattenArray() {
     IFS="${_oldIFS}";
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");
-    result="${result}${_separator}${_item}";
+    _result="${_result}${_separator}${_item}";
   done
   IFS="${_oldIFS}";
 
-  result="${result#${_separator}}";
+  _result="${_result#${_separator}}";
 
-  export RESULT="${result}";
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
-# fun: forEachAssociativeArrayEntryDo array callback
+# fun: forEachAssociativeArrayEntryDo arrayName callback
 # api: public
 # txt: Calls a given function for each entry found in given associative array.
-# opt: array: The name of the associative array variable.
+# opt: arrayName: The name of the associative array variable.
 # opt: callback: The name of the callback function.
 # txt: Returns 0/TRUE always.
 # use: function process_code() {
@@ -172,59 +175,58 @@ function flattenArray() {
 #      ...
 #      forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
 function forEachAssociativeArrayEntryDo() {
-    local _arrayName="${1}";
-    local _callback="${2}";
-    local _key;
-    local _oldIFS="${IFS}";
+  local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
+  local _callback="${2}";
+  checkFunctionPresent callback "${_callback}" 2;
+  local _key;
+  local _oldIFS="${IFS}";
 
-    checkNotEmpty "arrayName" "${_arrayName}" 1;
-    checkFunctionPresent "callback" "${_callback}" 2;
+  declare -n _directArray="${_arrayName}";
 
-    declare -n _directArray="${_arrayName}";
-
-    IFS="${DWIFS}";
-    for _key in "${!_directArray[@]}"; do
-        IFS="${_oldIFS}";
-
-        ${_callback} "${_key}" "${_directArray[${_key}]}";
-    done
+  IFS="${DWIFS}";
+  for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
+
+    ${_callback} "${_key}" "${_directArray[${_key}]}";
+  done
+  IFS="${_oldIFS}";
 }
 
-# fun: isArrayEmpty array
+# fun: isArrayEmpty arrayName
 # api: public
 # txt: Checks whether given array is empty.
-# opt: array: The name of the array.
+# opt: arrayName: The name of the array.
 # txt: Returns 0/TRUE if the array is empty; 1/FALSE otherwise.
 # use: if isArrayEmpty array; then ...; fi
 function isArrayEmpty() {
-    local _arrayName="${1}";
-    local -i _rescode;
+  local _arrayName="${1}";
+  local -i _rescode;
 
-    if isEmpty "${_arrayName}"; then
-        _rescode=${TRUE};
-    else
-        _rescode=${FALSE};
-    fi
+  if isEmpty "${_arrayName}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
-# fun: retrieveAssociativeArrayKeys array
+# fun: retrieveAssociativeArrayKeys arrayName
 # api: public
 # txt: Extracts the keys of given associative array.
 # opt: arrayName: The array name.
+# txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the list of the keys, wrapped in double quotes.
 # use: myMapping=([foo]=bar [with spaces]="with spaces");
 #      retrieveAssociativeArrayKeys myMapping;
 #      for key in ${RESULT}; do ...; done
 function retrieveAssociativeArrayKeys() {
   local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
   local _key;
   local _result;
   local _oldIFS="${IFS}";
-
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
 
   declare -n _directArray="${_arrayName}";
 
@@ -239,9 +241,11 @@ function retrieveAssociativeArrayKeys() {
   IFS="${_oldIFS}";
 
   export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
-# fun: nth
+# fun: nth array nth
 # api: public
 # txt: Retrieves the nth element of given array.
 # opt: array: The array.
@@ -251,7 +255,9 @@ function retrieveAssociativeArrayKeys() {
 # use: nth "${myArray}" 0; echo "First element: ${RESULT}";
 function nth() {
   local _array="${1}";
+  checkNotEmpty array "${_array}" 1;
   local _nth="${2}";
+  checkNumber nth "${_nth}" 2;
   local _result;
   local _item;
   local -i _index=0;
@@ -259,9 +265,6 @@ function nth() {
   local -i _rescode=${FALSE};
   local _aux;
   local -i _arrayLogic=${FALSE};
-
-  checkNotEmpty "array" "${_array}" 1;
-  checkNumber "nth" "${_nth}" 2;
 
   if isGreaterOrEqualTo ${_nth} 0; then
     local _tmp="${_array}";

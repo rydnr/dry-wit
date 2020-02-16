@@ -15,15 +15,15 @@ function areEqual() {
   local -i _rescode;
 
   if isEmpty "${_first}"; then
-      if isEmpty "${_second}"; then
-          _rescode=${TRUE};
-      else
-        _rescode=${FALSE};
-      fi
-  elif isEmpty "${_second}"; then
-      _rescode=${FALSE};
-  elif [[ "${_first}" == "${_second}" ]]; then
+    if isEmpty "${_second}"; then
       _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  elif isEmpty "${_second}"; then
+    _rescode=${FALSE};
+  elif [[ "${_first}" == "${_second}" ]]; then
+    _rescode=${TRUE};
   else
     _rescode=${FALSE};
   fi
@@ -44,7 +44,7 @@ function areNotEqual() {
   local -i _rescode;
 
   if areEqual "${_first}" "${_second}"; then
-      _rescode=${FALSE};
+    _rescode=${FALSE};
   else
     _rescode=${TRUE};
   fi
@@ -59,13 +59,13 @@ function areNotEqual() {
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
 # use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isDefined() {
-    local -i rescode;
-    if [ -z ${1+x} ]; then
-        rescode=${TRUE};
-    else
-        rescode=${FALSE};
-    fi
-    return ${rescode};
+  local -i rescode;
+  if [ -z ${1+x} ]; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+  return ${rescode};
 }
 
 # fun: isEmpty value
@@ -75,15 +75,15 @@ function isDefined() {
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
 # use: if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
 function isEmpty() {
-    local -i rescode;
+  local -i rescode;
 
-    if [ -z "${1}" ]; then
-        rescode=${TRUE};
-    else
-        rescode=${FALSE};
-    fi
+  if [ -z "${1}" ]; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
 
-    return ${rescode};
+  return ${rescode};
 }
 
 # fun: isFalse value
@@ -93,15 +93,15 @@ function isEmpty() {
 # txt: Returns 0/TRUE if the value is false; 1/FALSE otherwise.
 # use: if isFalse "${MYVAR}"; then ...; fi
 function isFalse() {
-    local -i rescode;
-    checkNotEmpty "value" "${1}" 1;
+  local -i rescode;
+  checkNotEmpty "value" "${1}" 1;
 
-    if isTrue $*; then
-        rescode=${FALSE};
-    else
-        rescode=${TRUE};
-    fi
-    return ${rescode};
+  if isTrue $*; then
+    rescode=${FALSE};
+  else
+    rescode=${TRUE};
+  fi
+  return ${rescode};
 }
 
 # fun: isFunctionDefined functionName
@@ -129,15 +129,15 @@ function isFunctionDefined() {
 # txt: Returns 0/TRUE if the value is not empty; 1/FALSE otherwise.
 # use: if isNotEmpty "${MYVAR}"; then echo "MYVAR is not empty"; fi
 function isNotEmpty() {
-    local -i rescode;
+  local -i rescode;
 
-    if isEmpty "${1}"; then
-        rescode=${FALSE};
-    else
-        rescode=${TRUE};
-    fi
+  if isEmpty "${1}"; then
+    rescode=${FALSE};
+  else
+    rescode=${TRUE};
+  fi
 
-    return ${rescode};
+  return ${rescode};
 }
 
 # fun: isNotZero value
@@ -147,17 +147,17 @@ function isNotEmpty() {
 # txt: Returns 0/TRUE if the value is zero; 1/FALSE otherwise.
 # use: if isNotZero "${MYVAR}"; then ...; fi
 function isNotZero() {
-    local _value="${1}";
-    #  checkNotEmpty "value" "${_value}" 1;
+  local _value="${1}";
+  #  checkNotEmpty "value" "${_value}" 1;
 
-    local  -i rescode;
-    if [[ ${_value} -ne 0 ]]; then
-        rescode=${TRUE};
-    else
-        rescode=${FALSE};
-    fi
+  local  -i rescode;
+  if [[ ${_value} -ne 0 ]]; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
 
-    return ${rescode};
+  return ${rescode};
 }
 
 # fun: isTrue value
@@ -167,23 +167,23 @@ function isNotZero() {
 # txt: Returns 0/TRUE if the value is true; 1/FALSE otherwise.
 # use: if isTrue "${MYVAR}"; then ...; fi
 function isTrue() {
-    local _value="${1}";
-    #  checkNotEmpty "value" "${_value}" 1;
+  local _value="${1}";
+  #  checkNotEmpty "value" "${_value}" 1;
 
-    local  -i rescode;
-    if isZero ${_value}; then
-        rescode=${TRUE};
-    elif [ "${_value}" == "${TRUE}" ]; then
-        rescode=${TRUE};
-    elif [ "${_value}" == TRUE ]; then
-        rescode=${TRUE};
-    elif [ "${_value}" == "true" ]; then
-        rescode=${TRUE};
-    else
-        rescode=${FALSE};
-    fi
+  local  -i rescode;
+  if isZero ${_value}; then
+    rescode=${TRUE};
+  elif [ "${_value}" == "${TRUE}" ]; then
+    rescode=${TRUE};
+  elif [ "${_value}" == TRUE ]; then
+    rescode=${TRUE};
+  elif [ "${_value}" == "true" ]; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
 
-    return ${rescode};
+  return ${rescode};
 }
 
 # fun: isVariableDefined var
@@ -193,21 +193,21 @@ function isTrue() {
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
 # use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
 function isVariableDefined() {
-    local _var="${1}";
-    local -i rescode;
-    #  set +o nounset  # allow unset variables
-    #  eval "[ -v \${$1} ] 2> /dev/null"
-    #  eval "[ -v ${1} ] 2> /dev/null"
-    checkNotEmpty "var" "${_var}" 1
+  local _var="${1}";
+  local -i rescode;
+  #  set +o nounset  # allow unset variables
+  #  eval "[ -v \${$1} ] 2> /dev/null"
+  #  eval "[ -v ${1} ] 2> /dev/null"
+  checkNotEmpty "var" "${_var}" 1
 
-    if [ -v "${_var}" ]; then
-        rescode=${TRUE};
-    else
-        rescode=${FALSE};
-    fi
-    #  set -o nounset  # terminate on any unset variable
+  if [ -v "${_var}" ]; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+  #  set -o nounset  # terminate on any unset variable
 
-    return ${rescode};
+  return ${rescode};
 }
 
 # fun: isZero value
@@ -217,16 +217,16 @@ function isVariableDefined() {
 # txt: Returns 0/TRUE: if the value is zero; 1/FALSE otherwise.
 # use: if isZero "${MYVAR}"; then ...; fi
 function isZero() {
-    local _value="${1}";
-    local  -i rescode;
+  local _value="${1}";
+  local  -i rescode;
 
-    if isEmpty "${_value}"; then
-        rescode=${FALSE};
-    elif [[ "${_value}" == "0" ]]; then
-        rescode=${TRUE};
-    else
-        rescode=${FALSE};
-    fi
-    return ${rescode};
+  if isEmpty "${_value}"; then
+    rescode=${FALSE};
+  elif [[ "${_value}" == "0" ]]; then
+    rescode=${TRUE};
+  else
+    rescode=${FALSE};
+  fi
+  return ${rescode};
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -93,10 +93,9 @@ function retrieveIfaces() {
 # use: if retrieveIp "eth0"; then echo "IP: ${RESULT}"; fi
 function retrieveIp() {
   local _iface="${1}";
+  checkNotEmpty interface "${_iface}" 1;
   local -i _rescode;
   local _result;
-
-  checkNotEmpty "interface" "${_iface}" 1;
 
   if isInstalled "ifconfig"; then
     _result="$(ifconfig ${_iface} 2> /dev/null | grep 'inet ' | sed 's/ addr:/:/g' | sed 's/inet /inet:/g' | cut -d':' -f 2 | awk '{print $1;}')";
@@ -162,11 +161,10 @@ function retrieveOwnIp() {
 # use: if retrieveSubnet24 "eth0"; then echo "The /24 subnet for eth0 is ${RESULT}"; fi
 function retrieveSubnet24() {
   local _iface="${1}";
+  checkNotEmpty interface "${_iface}" 1;
   local _ip;
   local -i rescode=${FALSE};
   local _result;
-
-  checkNotEmpty "iface" "${_iface}" 1;
 
   if retrieveIp "${_iface}"; then
     _ip="${RESULT}";

@@ -12,7 +12,7 @@ declare -gx SINGLE=${FALSE};
 declare -gx MULTIPLE=${TRUE};
 
 # fun: CLI.getModuleName
-# api: public
+# api: private
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
@@ -120,9 +120,9 @@ function addCommandLineFlag() {
   local _description="${3}";
   checkNotEmpty description "${_description}" 3;
   local _mandatory="${4}";
-  checkOneOf mandatory "${_mandatory}" "MANDATORY OPTIONAL" 4;
+  checkMandatoryOrOptional "${_mandatory}" 4;
   local _expectsArgument="${5}";
-  checkOneOf expectsArgument "${_expectsArgument}" "EXPECTS_ARGUMENT NO_ARGUMENT" 5;
+  checkExpectsArgumentOrNoArgument "${_expectsArgument}" 5;
   local _defaultValue="${6}";
 
   local -i _rescode=${TRUE};
@@ -239,8 +239,8 @@ function CLI.getSingleParametersVariableName() {
 # txt: Declares the script expects another command-line parameter.
 # opt: paramName: The parameter name.
 # opt: paramDescription: The parameter description.
-# opt: MANDATORY/OPTIONAL: MANDATORY if the parameter is mandatory; OPTIONAL otherwise.
-# opt: SINGLE/MULTIPLE: SINGLE if the parameter can not be repeated; MULTIPLE otherwise.
+# opt: MANDATORY|OPTIONAL: MANDATORY if the parameter is mandatory; OPTIONAL otherwise.
+# opt: SINGLE|MULTIPLE: SINGLE if the parameter can not be repeated; MULTIPLE otherwise.
 # txt: Returns 0/TRUE always.
 # use: addCommandLineParameter "project" "The project to process" MANDATORY SINGLE;
 function addCommandLineParameter() {
@@ -250,10 +250,10 @@ function addCommandLineParameter() {
   checkNotEmpty description "${_description}" 2;
   local _mandatoryOrOptional="${3}";
   checkNotEmpty mandatoryOrOptional "${_mandatoryOrOptional}" 3;
-  checkMandatoryOrOptional "${_name}" "${_mandatoryOrOptional}" 3;
+  checkMandatoryOrOptional "${_mandatoryOrOptional}" 3;
   local _singleOrMultiple="${4}";
   checkNotEmpty singleOrMultiple "${_singleOrMultiple}" 4;
-  checkSingleOrMultiple "${_name}" "${_singleOrMultiple}" 4;
+  checkSingleOrMultiple "${_singleOrMultiple}" 4;
 
   CLI.getParameterNamesVariableName;
   local -n _parameterNames="${RESULT}";
@@ -368,7 +368,7 @@ function removeCommandLineFlag() {
   return ${_rescode};
 }
 
-# fun: setScriptCopyright
+# fun: setScriptCopyright copyrightDescription
 # api: public
 # txt: Sets the script copyright message.
 # opt: copyrightDescription: The copyright message.
@@ -402,7 +402,7 @@ function getScriptCopyright() {
   return ${TRUE};
 }
 
-# fun: setScriptDescription
+# fun: setScriptDescription description
 # api: public
 # txt: Defines the script description.
 # opt: description: The description.
@@ -436,10 +436,10 @@ function getScriptDescription() {
   return ${TRUE};
 }
 
-# fun: setScriptLicenseSummary
+# fun: setScriptLicenseSummary license
 # api: public
 # txt: Sets the script license summary.
-# opt: licenseDescription: The license message.
+# opt: license: The license message.
 # txt: Returns 0/TRUE always.
 # use: setScriptLicenseSummary "Distributed this under the GNU General Public License v3.";
 function setScriptLicenseSummary() {
@@ -539,7 +539,7 @@ function checkInput() {
   fi
 }
 
-# fun: parseInput
+# fun: parseInput arguments
 # api: private
 # txt: Parses the command-line arguments.
 # opt: arguments: The command-line arguments.
@@ -1639,7 +1639,7 @@ function CLI.retrieveCommandLineFlagLongNameFromKey() {
 #      fi
 function CLI.retrieveCommandLineFlagDescriptionFromKey() {
   local _key="${1}";
-  checkNotEmpty key "${_key}" 1;
+  checkNotEmpty flagKey "${_key}" 1;
   local _result;
   local -i _rescode;
 
@@ -1694,7 +1694,7 @@ function CLI.retrieveCommandLineFlagKey() {
 #      fi
 function CLI.isCommandLineFlagDefined() {
   local _flag="${1}";
-  checkNotEmpty flag "${_flag}" 1;
+  checkNotEmpty shortOrLongName "${_flag}" 1;
   local -i _rescode;
   local _flagKey;
 
@@ -1804,7 +1804,7 @@ function CLI.retrieveCommandLineParameterDescriptionFromName() {
 #      fi
 function CLI.isCommandLineParameterMandatory() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty paramName "${_name}" 1;
   local -i _rescode;
 
   CLI.getMandatoryParametersVariableName;

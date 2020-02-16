@@ -1,9 +1,9 @@
-# mod: locale/02_change_default_locale
+# mod: locale
 # api: public
 # txt: Changes the system's default locale.
 
 # fun: LOCALE.getModuleName
-# api: public
+# api: private
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
@@ -71,7 +71,7 @@ function is_locale_file_available() {
 # opt: locale: the locale.
 # opt enocding: the encoding.
 # txt: Returns 0/TRUE if the locale requires the encoding suffix; 1/FALSE otherwise.
-# use: if locale_requires_encoding_suffix "${locale}" "${encoding}"; then locale Definition="${locale}.${encoding}"; fi
+# use: if locale_requires_encoding_suffix "${locale}" "${encoding}"; then localeDefinition="${locale}.${encoding}"; fi
 function locale_requires_encoding_suffix() {
   local _locale="${1}";
   local _encoding="${2}";

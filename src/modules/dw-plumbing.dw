@@ -20,6 +20,7 @@ declare -gx OPTIONAL=${FALSE};
 # use: checkReq jq;
 function checkReq() {
   local _dependency="${1}";
+  checkNotEmpty dependency "${_dependency}" 1;
   local _errorCode="${2:-}";
 
   if [ -z "${_errorCode}" ]; then
@@ -33,7 +34,7 @@ function checkReq() {
 # fun: DRYWIT.addMissingDependencyError dependency
 # api: private
 # txt: Annotates a new error describing a missing dependency.
-# opt: message: The the missing dependency.
+# opt: dependency: The the missing dependency.
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.addMissingDependencyError "docker";
 function DRYWIT.addMissingDependencyError() {
@@ -44,7 +45,6 @@ function DRYWIT.addMissingDependencyError() {
 
   local _constant="${RESULT}";
 
-#  debugEcho "addError ${_constant} \"${_dependency}\" is not installed\"";
   addError "${_constant}" "${_dependency} is not installed";
 }
 
@@ -118,10 +118,9 @@ function cleanup() {
 #      fi
 function isFunctionMissing() {
   local _function="${1}";
+  checkNotEmpty funcName "${_function}" 1;
   local _script="${2}";
   local -i _rescode;
-
-  checkNotEmpty "function" "${_function}" 1;
 
   if isFunctionPresent "${_function}" "${_script}"; then
     _rescode=${FALSE};
@@ -132,7 +131,7 @@ function isFunctionMissing() {
   return ${_rescode};
 }
 
-# fun: isFunctionPresent
+# fun: isFunctionPresent funcName
 # api: public
 # txt: Checks if given function is present.
 # opt: funcName: The function name.
@@ -143,7 +142,7 @@ function isFunctionMissing() {
 #      fi
 function isFunctionPresent() {
   local _function="${1}";
-  checkNotEmpty "function" "${_function}" 1;
+  checkNotEmpty funcName "${_function}" 1;
 
   local _scriptName="${2}";
   local -i _rescode;
@@ -198,6 +197,7 @@ function isFunctionPresent() {
 # use: DRYWIT.checkDependency jq JQ_IS_NOT_INSTALLED;
 function DRYWIT.checkDependency() {
   local _req="${1}";
+  checkNotEmpty name "${_req}" 1;
   local _errorCode="${2}";
 
   if isEmpty "${_errorCode}"; then
@@ -338,8 +338,7 @@ function DRYWIT.main() {
 # api: private
 # txt: Retrieves the settings files.
 # txt: The variable RESULT contains a space-separated list of settings files.
-# use: DRYWIT.retrieveSettingsFiles;
-#      echo "settings files: ${RESULT}";
+# use: DRYWIT.retrieveSettingsFiles; echo "settings files: ${RESULT}";
 function DRYWIT.retrieveSettingsFiles() {
   local _f;
   local _d;

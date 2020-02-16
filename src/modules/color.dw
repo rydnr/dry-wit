@@ -25,7 +25,7 @@ function getSuccessColor() {
   DW.getGlobalString "${_moduleName}" SUCCESS_COLOR;
 }
 
-# fun: setSuccessColor
+# fun: setSuccessColor color
 # api: public
 # txt: Specifies the color to use to represent success.
 # opt: color: The color for success.
@@ -52,7 +52,7 @@ function getFailureColor() {
   DW.getGlobalString "${_moduleName}" FAILURE_COLOR;
 }
 
-# fun: setFailureColor
+# fun: setFailureColor color
 # api: public
 # txt: Specifies the color to use to represent failure.
 # opt: color: The color to use.
@@ -79,7 +79,7 @@ function getInProgressColor() {
   DW.getGlobalString "${_moduleName}" IN_PROGRESS_COLOR;
 }
 
-# fun: setInProgressColor
+# fun: setInProgressColor color
 # api: public
 # txt: Specifies the color used to represent in-progress tasks.
 # opt: color: The color to use.
@@ -106,7 +106,7 @@ function getNoColor() {
   DW.getGlobalString "${_moduleName}" NO_COLOR;
 }
 
-# fun: setNoColor
+# fun: setNoColor color
 # api: public
 # txt: Specifies the value to use when we don't want to use colored logging.
 # opt: color: The name of the color for no-colored texts.
@@ -132,7 +132,7 @@ function setNoColor() {
 # use: buildColor "GREEN" "32" "42";
 function buildColor() {
   local _color="${1}";
-  checkNotEmpty color "${_color}" 1;
+  checkNotEmpty name "${_color}" 1;
   local _fgValue="${2}";
   checkNotEmpty foreground "${_fgValue}" 2;
   local _bgValue="${3}";

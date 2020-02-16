@@ -5,7 +5,7 @@
 # set -o xtrace
 
 # fun: LOGGING.getModuleName
-# api: public
+# api: private
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
@@ -180,7 +180,7 @@ function LOGGING.getBuiltinFailureKeywordsVariableName() {
   DW.getGlobalVariableName "${RESULT}" BUILTIN_FAILURE_KEYWORDS;
 }
 
-# fun: isFailureKeyword
+# fun: isFailureKeyword keyword
 # api: public
 # txt: Checks whether given keyword represents a failure.
 # opt: keyword: The keyword.
@@ -316,8 +316,8 @@ function isSuccessKeyword() {
     for _i in ${_successKeywords[@]}; do
       IFS="${_oldIFS}";
       if    areEqual "${_i}" "${_keyword}" \
-          || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
-                      "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
+         || areEqual "$(echo \"${_keyword}\" | tr [:upper:] [:lower:] 2> /dev/null)" \
+                     "$(echo \"${_i}\"       | tr [:upper:] [:lower:] 2> /dev/null)"; then
         _rescode=${TRUE};
         break;
       fi;
@@ -577,7 +577,7 @@ function LOGGING.getLogPrefixColorsVariableName() {
   DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_COLORS;
 }
 
-# fun: LOGGING.echoColorAwareLogPrefix category TRUE|FALSE level
+# fun: LOGGING.echoColorAwareLogPrefix category TRUE|FALSE TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Prints the log prefix, for color terminals.
 # opt: category: The log category.
@@ -648,7 +648,7 @@ function LOGGING.getLogOutcomeColorsVariableName() {
   DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_COLORS;
 }
 
-# fun: LOGGING.echoLogOutcome level SUCCESS|FAILURE|IN_PROGRESS text
+# fun: LOGGING.echoLogOutcome TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS text
 # api: private
 # txt: Prints the log outcome.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -732,7 +732,7 @@ function LOGGING.getLogNestedIndentation() {
   DW.getGlobalVariableName "${RESULT}" LOG_NESTED_INDENTATION;
 }
 
-# fun: LOGGING.echoLogOutcomeNested level SUCCESS|FAILURE|IN_PROGRESS text
+# fun: LOGGING.echoLogOutcomeNested TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS text
 # api: private
 # txt: Prints the log outcome, used when nesting log calls.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -780,7 +780,7 @@ function LOGGING.echoLogOutcomeNested() {
   LOGGING.pushLogCategory "${_category}";
 }
 
-# fun: LOGGING.echoLogPrefix category level
+# fun: LOGGING.echoLogPrefix category TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Prints the log prefix.
 # opt: category: The log category.
@@ -821,7 +821,7 @@ function isLogLineOpen() {
   return ${RESULT};
 }
 
-# fun: LOGGING.logCompleted level SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompleted TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -864,7 +864,7 @@ function LOGGING.getDefaultLogResumingTaskColor() {
   DW.getGlobalString "${RESULT}" DEFAULT_LOG_RESUMING_TASK_COLOR;
 }
 
-# fun: LOGGING.logCompletedNested level SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompletedNested TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task, when there're nested tasks.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -905,7 +905,7 @@ function LOGGING.logCompletedNested() {
   echoColorizedText "${_nestedTask}" "" "${_defaultLogResumingTaskColor}";
 }
 
-# fun: LOGGING.checkTraceDebugInfoWarnOrError
+# fun: LOGGING.checkTraceDebugInfoWarnOrError TRACE|DEBUG|INFO|WARN|ERROR index
 # api: private
 # txt: Checks whether given parameter is either TRACE, DEBUG, INFO, WARN or ERROR.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -921,7 +921,7 @@ function LOGGING.checkTraceDebugInfoWarnOrError() {
   CHECK.checkOneOf 2 "TRACE|DEBUG|INFO|WARN|ERROR" "${_logLevel}" "TRACE DEBUG INFO WARN ERROR" "${_index}";
 }
 
-# fun: LOGGING.checkSuccessFailureOrInProgress
+# fun: LOGGING.checkSuccessFailureOrInProgress keyword index
 # api: private
 # txt: Checks whether given parameter is either SUCCESS, FAILURE or IN_PROGRESS.
 # opt: keyword: The keyword.
@@ -953,7 +953,7 @@ function LOGGING.checkSuccessOrFailure() {
   CHECK.checkOneOf 2 "SUCCESS|FAILURE" "${_keyword}" "SUCCESS FAILURE" "${_index}";
 }
 
-# fun: LOGGING.logCompletedNestedNoPop level SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompletedNestedNoPop TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task, when there're nested tasks.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -976,7 +976,7 @@ function LOGGING.logCompletedNestedNoPop() {
   LOGGING.echoLogOutcomeNested "${_level}" "${_keyword}" "${_message}";
 }
 
-# fun: LOGGING.logCompletedNoNested level SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompletedNoNested TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -1005,7 +1005,7 @@ function LOGGING.logCompletedNoNested() {
   echo;
 }
 
-# fun: LOGGING.logInProgress level message
+# fun: LOGGING.logInProgress TRACE|DEBUG|INFO|WARN|ERROR message
 # api: private
 # txt: Prints a log message, indicating some uncompleted task.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -1047,7 +1047,7 @@ function LOGGING.getNestedTaskInProgress() {
   DW.getGlobalString "${RESULT}" NESTED_TASK_IN_PROGRESS;
 }
 
-# fun: LOGGING.logInProgressNested category level message
+# fun: LOGGING.logInProgressNested category TRACE|DEBUG|INFO|WARN|ERROR message
 # api: private
 # txt: Prints a log message, indicating some uncompleted task, when there're nested tasks.
 # opt: category: The category.
@@ -1098,7 +1098,7 @@ function LOGGING.getDefaultLogPrefixColor() {
   DW.getGlobalString "${RESULT}" DEFAULT_LOG_PREFIX_COLOR;
 }
 
-# fun: LOGGING.logInProgressNoNested
+# fun: LOGGING.logInProgressNoNested category TRACE|DEBUG|INFO|WARN|ERROR message
 # api: private
 # txt: Prints a log message, indicating some uncompleted task, when there're no nested tasks.
 # opt: category: The log category.
@@ -1130,7 +1130,7 @@ function LOGGING.logInProgressNoNested() {
   echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}";
 }
 
-# fun: LOGGING.logMessage
+# fun: LOGGING.logMessage TRACE|DEBUG|INFO|WARN|ERROR message
 # api: private
 # txt: Prints a log message.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -1149,7 +1149,7 @@ function LOGGING.logMessage() {
   echo;
 }
 
-# fun: LOGGING.logStuff
+# fun: LOGGING.logStuff TRACE|DEBUG|INFO|WARN|ERROR [-n]? message
 # api: private
 # txt: Main logging logic.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -1176,7 +1176,7 @@ function LOGGING.logStuff() {
   fi
 }
 
-# fun: LOGGING.setLastLogLevel level
+# fun: LOGGING.setLastLogLevel TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Annotates the level of the last logged message.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -1206,7 +1206,7 @@ function getLastLogLevel() {
   fi
 }
 
-# fun: LOGGING.logStuffResult
+# fun: LOGGING.logStuffResult TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE message
 # api: private
 # txt: Logs the outcome of an operation.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -1454,20 +1454,21 @@ function LOGGING.popLogLevel() {
   return ${_rescode};
 }
 
-# fun: LOGGING.pushLog
+# fun: LOGGING.pushLog message
 # api: private
 # txt: Pushes given message to the log stack.
 # opt: message: The message to push.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.pushLog "Operation in progress";
 function LOGGING.pushLog() {
+  checkNotEmpty message "$*" 1;
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_STACK;
   local -n _logStack=${RESULT};
   _logStack[${#_logStack[@]}]="$*";
 }
 
-# fun: LOGGING.pushLogCategory
+# fun: LOGGING.pushLogCategory category
 # api: private
 # txt: Pushes given category to the log category stack.
 # opt: category: The category to push.
@@ -1480,13 +1481,14 @@ function LOGGING.pushLogCategory() {
   _logCategoryStack[${#_logCategoryStack[@]}]="$*";
 }
 
-# fun: LOGGING.pushLogLevel level
+# fun: LOGGING.pushLogLevel TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Pushes given level to the log level stack.
-# opt: level: The level to push.
+# opt: TRACE|DEBUG|INFO|WARN|ERROR: The level to push.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.pushLogLevel INFO
 function LOGGING.pushLogLevel() {
+  checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${1}" 1;
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
   local -n _logLevelStack=${RESULT};
@@ -1504,7 +1506,7 @@ function LOGGING.retrieveCategoryPositionInLogPrefix() {
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_CATEGORY_POSITION;
 }
 
-# fun: LOGGING.retrieveKeywordColor
+# fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|IN_PROGRESS
 # api: private
 # txt: Retrieves the color for a given keyword.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
@@ -1514,7 +1516,7 @@ function LOGGING.retrieveCategoryPositionInLogPrefix() {
 # use: LOGGING.retrieveKeywordColor SUCCESS GREEN; echo "Color -> ${RESULT}";
 function LOGGING.retrieveKeywordColor() {
   local _keyword="${1}";
-  checkNotEmpty "keyword" "${_keyword}" 1;
+  checkNotEmpty keyword "${_keyword}" 1;
   LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 2;
 
   getNoColor;
@@ -1589,7 +1591,7 @@ function LOGGING.retrieveLogNamespace() {
   export RESULT="${_result}";
 }
 
-# fun: LOGGING.processLogOutcomeColors
+# fun: LOGGING.processLogOutcomeColors SUCCESS|FAILURE|IN_PROGRESS
 # api: private
 # txt: Processes the log outcome colors based on given outcome and text.
 #      Call LOGGING.getLogOutcomeColorsVariableName afterwards to use them.
@@ -1625,7 +1627,7 @@ function LOGGING.processLogOutcomeColors() {
   _logOutcomeColors[${_outcomeTextPosition}]="${_keywordColor}";
 }
 
-# fun: LOGGING.processLogOutcomeTokens
+# fun: LOGGING.processLogOutcomeTokens text
 # api: private
 # txt: Processes the tokens composing the log outcome.
 # opt: text: The outcome text.
@@ -1633,7 +1635,7 @@ function LOGGING.processLogOutcomeColors() {
 # use: LOGGING.processLogOutcomeTokens "done";
 function LOGGING.processLogOutcomeTokens() {
   local _text="${1}";
-  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty text "${_text}" 1;
 
   local result=();
   local _aux="";
@@ -1659,7 +1661,7 @@ function LOGGING.processLogOutcomeTokens() {
   _logOutcomeTokens[${_outcomeTextPosition}]="${_text}";
 }
 
-# fun: LOGGING.retrieveLogPrefix
+# fun: LOGGING.retrieveLogPrefix category TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Retrieves the log prefix.
 # opt: category: The log category.
@@ -1668,7 +1670,7 @@ function LOGGING.processLogOutcomeTokens() {
 # use: LOGGING.retrieveLogPrefix "cat" DEBUG; echo "log prefix -> ${RESULT}";
 function LOGGING.retrieveLogPrefix() {
   local _category="${1}";
-  checkNotEmpty "category" "${_category}" 1;
+  checkNotEmpty category "${_category}" 1;
   local _level="${2}";
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 2;
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 2;
@@ -1677,7 +1679,7 @@ function LOGGING.retrieveLogPrefix() {
   export RESULT="${_result}";
 }
 
-# fun: LOGGING.retrieveLogPrefixToken
+# fun: LOGGING.retrieveLogPrefixToken TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Retrieves the log prefix token, depending on the given log level.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
@@ -1696,7 +1698,7 @@ function LOGGING.retrieveLogPrefixToken() {
   return ${_rescode};
 }
 
-# fun: LOGGING.processLogPrefixTokens
+# fun: LOGGING.processLogPrefixTokens category TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Processes the tokens composing the log prefix.
 # opt: category: The log category.
@@ -1705,7 +1707,7 @@ function LOGGING.retrieveLogPrefixToken() {
 # use: LOGGING.processLogPrefixTokens "a:b:c" DEBUG;
 function LOGGING.processLogPrefixTokens() {
   local _category="${1}";
-  checkNotEmpty "category" "${_category}" 1;
+  checkNotEmpty category "${_category}" 1;
   local _level="${2:-INFO}";
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 2;
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 2;
@@ -1804,7 +1806,7 @@ function LOGGING.getLastLog() {
   DW.getGlobalString "${RESULT}" LAST_LOG;
 }
 
-# fun: logInfo
+# fun: logInfo message
 # api: public
 # txt: Logs a message as "info".
 # opt: message: The message to log.
@@ -1812,12 +1814,12 @@ function LOGGING.getLastLog() {
 # use: logInfo "Operation in progress";
 function logInfo() {
   if isInfoEnabled; then
-    checkNotEmpty "message" "${1}" 1;
+    checkNotEmpty message "${1}" 1;
     LOGGING.logStuff INFO "$@";
   fi
 }
 
-# fun: logInfoFile
+# fun: logInfoFile file
 # api: public
 # txt: Logs the contents of a file as "info".
 # opt: file: The file containing the text to log.
@@ -1825,14 +1827,15 @@ function logInfo() {
 # use: logInfoFile /tmp/my-log.txt;
 function logInfoFile() {
   if isInfoEnabled; then
-    checkNotEmpty "file" "${1}" 1;
+    checkNotEmpty file "${1}" 1;
+    local line;
     cat "${1}" | while IFS='' read -r line; do LOGGING.logStuff INFO "${line}"; done
   fi
 }
 
-# fun: logInfoResult
+# fun: logInfoResult SUCCESS|FAILURE message
 # api: public
-# txt: Logs the outcome of an operation as "info"
+# txt: Logs the outcome of an operation as "info".
 # opt: SUCCESS|FAILURE: The outcome.
 # opt: message: The message to log.
 # txt: Returns 0/TRUE always.
@@ -1851,7 +1854,7 @@ function logInfoResult() {
   fi
 }
 
-# fun: logResult
+# fun: logResult TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE message
 # api: public
 # txt: Logs the outcome of an operation, as "info", under a certain level.
 # txt: The level is assumed to be enabled already.
@@ -1875,7 +1878,7 @@ function logResult() {
   LOGGING.logStuffResult "${_level}" "${_outcome}" "${_message}";
 }
 
-# fun: logTrace
+# fun: logTrace message
 # api: public
 # txt: Logs given message under the "trace" level.
 # opt: message: The message to log.
@@ -1888,7 +1891,7 @@ function logTrace() {
   fi
 }
 
-# fun: logTraceFile
+# fun: logTraceFile file
 # api: public
 # txt: Logs the contents of given file, under the "trace" level.
 # opt: file: The file to log.
@@ -1903,10 +1906,10 @@ function logTraceFile() {
   fi
 }
 
-# fun: logTraceResult
+# fun: logTraceResult SUCCESS|FAILURE message
 # api: public
 # txt: Logs given text as a log result, under the "trace" level.
-# opt: keyword: The keyword.
+# opt: SUCCESS|FAILURE: The keyword.
 # opt: message: The result message to log.
 # txt: Returns 0/TRUE always.
 # use: logTraceResult SUCCESS "Operation completed";
@@ -1917,6 +1920,7 @@ function logTraceResult() {
 
   if isTraceEnabled; then
     checkNotEmpty outcome "${_outcome}" 1;
+    LOGGING.checkSuccessOrFailure "${_outcome}" 1;
     checkNotEmpty message "${_message}" 2;
     LOGGING.logStuffResult TRACE "${_outcome}" "${_message}";
   fi
@@ -1964,7 +1968,7 @@ function setInfoEnabled() {
   DW.setGlobalInt "${RESULT}" LOG_INFO ${TRUE};
 }
 
-# fun: setLogCategory
+# fun: setLogCategory category
 # api: public
 # txt: Specifies the log category.
 # opt: category: The log category.
@@ -1977,7 +1981,7 @@ function setLogCategory() {
   DW.setGlobalString "${RESULT}" LOG_CATEGORY "${_category}";
 }
 
-# fun: setLogCategoryNamespace
+# fun: setLogCategoryNamespace namespace
 # api: public
 # txt: Sets the log category namespace.
 # opt: namespace: The namespace.
@@ -1991,7 +1995,7 @@ function setLogCategoryNamespace() {
   DW.setGlobalString "${RESULT}" LOG_CATEGORY_NAMESPACE "${_namespace}";
 }
 
-# fun: setQuietMode
+# fun: setQuietMode mode
 # api: public
 # txt: Sets the quiet mode on or off.
 # opt: mode: The mode (0/TRUE or 1/FALSE).

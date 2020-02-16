@@ -4,7 +4,7 @@
 
 checkReq perl;
 
-# fun: configureFilebeatToAddLogFileToForward
+# fun: configureFilebeatToAddLogFileToForward logFile filebeatYml
 # api: public
 # txt: Adds a new log file to the filebeat.yml file.
 # opt: logFile: The log file to add.
@@ -15,11 +15,10 @@ checkReq perl;
 #      fi
 function configureFilebeatToAddLogFileToForward() {
   local _logFile="${1}";
+  checkNotEmpty logFile "${_logFile}" 1;
   local _filebeatYml="${2}";
+  checkNotEmpty filebeatYml "${_filebeatYml}" 2;
   local -i _rescode;
-
-  checkNotEmpty "logFile" "${_logFile}" 1;
-  checkNotEmpty "filebeatYml" "${_filebeatYml}" 2;
 
   if grep -e '^#        - /var/log/\*.log$' > /dev/null; then
       perl -i -pe "BEGIN{undef $/;} s|^#        - /var/log/\*.log$|        - ${_logFile}\n#        - /var/log/\*.log|sgm" "${_filebeatYml}";

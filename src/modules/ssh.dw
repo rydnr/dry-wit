@@ -2,7 +2,7 @@
 # api: public
 # txt: SSH-related functions.
 
-# fun: remoteSshCommand user server command
+# fun: remoteSshCommand user server command*
 # api: public
 # txt: Runs a command in a remote server, via SSH.
 # opt: user: The user name.
@@ -12,19 +12,22 @@
 # txt: If the function returns 0/TRUE; then the variable RESULT contains the output of the command.
 # use: if remoteSshCommand user ssh.example.com "who"; then echo "Remote logged users: ${RESULT}"; fi
 function remoteSshCommand() {
-  local result;
-  local -i resultCode=${TRUE};
   local _user="$1";
+  checkNotEmpty user "${_user}" 1;
   local _server="$2";
+  checkNotEmpty server "${_server}" 2;
   local _command="$*";
+  checkNotEmpty command "${_command}" 3;
+  local _result;
+  local -i _rescode=${TRUE};
 
-  result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
-  resultCode=$?;
-  if [ ${resultCode} == 0 ]; then
-    export RESULT="${result}";
+  _result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
-  return ${resultCode};
+  return ${_rescode};
 }
 
 # fun: remoteSshCommandPipe user server command previousPipe
@@ -38,24 +41,29 @@ function remoteSshCommand() {
 # txt: If the function returns 0/TRUE; then the variable RESULT contains the output of the command.
 # use: if remoteSshCommandPipe user ssh.example.com "tar -cvfz - /www" "cat > www.tar.gz"
 function remoteSshCommandPipe() {
-  local result;
-  local -i resultCode=${TRUE};
   local _user="$1";
+  checkNotEmpty user "${_user}" 1;
   local _server="$2";
-  local _command="$3";
+  checkNotEmpty server "${_server}" 2;
+  local _command="$*";
+  checkNotEmpty command "${_command}" 3;
   shift;
   shift;
   shift;
   local _previousPipe="$@";
+  checkNotEmpty previousPipe "${_previousPipe}" 4;
+  local _result;
+  local -i _rescode=${TRUE};
+  local line;
 
 #  echo "_previousPipe=${_previousPipe}";
 #  echo "_command=${_command}";
-  result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
-  resultCode=$?;
-  if [ ${resultCode} == 0 ]; then
-    export RESULT="${result}";
+  _result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
+  rescode=$?;
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
-  return ${resultCode};
+  return ${_rescode};
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

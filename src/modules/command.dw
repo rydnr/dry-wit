@@ -42,9 +42,13 @@ function runCommand() {
 #      fi
 function runCommandAsUidGid() {
   local _uid="${1}";
+  checkNotEmpty uid "${_uid}" 1;
   local _gid="${2}";
+  checkNotEmpty gid "${_gid}" 2;
   local _folder="${3}";
+  checkNotEmpty folder "${_folder}" 3;
   local _command="${4}";
+  checkNotEmpty command "${_command}" 4;
   shift
   shift
   shift
@@ -73,9 +77,13 @@ function runCommandAsUidGid() {
 #      fi
 function runCommandAsUserAndGroup() {
   local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
   local _group="${2}";
+  checkNotEmpty group "${_group}" 2;
   local _folder="${3}";
+  checkNotEmpty folder "${_folder}" 3;
   local _command="${4}";
+  checkNotEmpty command "${_4}";
   shift
   shift
   shift
@@ -86,12 +94,6 @@ function runCommandAsUserAndGroup() {
   local _line="${_command//$'\n'/ } ${_args//$'\n'/ }";
   createTempFile;
   local _runme="${RESULT}";
-
-  checkNotEmpty "user" "${_user}" 1;
-  checkNotEmpty "group" "${_group}" 2;
-  checkNotEmpty "folder" "${_folder}" 3;
-  checkNotEmpty "command" "${_command}" 4;
-
 
   createTempFile;
   _runme="${RESULT}";
@@ -125,11 +127,12 @@ EOF
 # use: if runCommandLongOutput "nmap -Pn"; then ...; fi
 function runCommandLongOutput() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
-  local result;
-  local -i resultCode;
+  checkNotEmpty command "${_command}" 1;
+  local _result;
+  local -i _rescode;
 
   createTempFile;
-  result="${RESULT}";
+  _result="${RESULT}";
 
   getLogCategory;
   local _previousLogCategory="${RESULT}";
@@ -139,16 +142,18 @@ function runCommandLongOutput() {
 
   if isDebugEnabled; then
     $@ 2>&1 | tee "${result}";
-    resultCode=${PIPESTATUS[0]};
+    _rescode=${PIPESTATUS[0]};
   else
-    $@ > "${result}" 2>&1;
-    resultCode=$?;
+    $@ > "${_result}" 2>&1;
+    _rescode=$?;
   fi
 
-  export RESULT="${result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
   setLogCategory "${_previousLogCategory}";
 
-  return ${resultCode};
+  return ${_rescode};
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

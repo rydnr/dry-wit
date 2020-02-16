@@ -3,7 +3,7 @@
 # txt: Terminal-related functions
 
 # fun: TERM.getModuleName
-# api: public
+# api: private
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
@@ -47,10 +47,10 @@ function getTermWidth() {
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
 # use: if getTermWidthForTerm "${TERM}"; then ...; fi
 function getTermWidthForTerm() {
-  local -i _rescode;
-  local _result;
   local _term="${1}";
   checkNotEmpty term "${_term}" 1;
+  local -i _rescode;
+  local _result;
 
   $(tput cols &> /dev/null > /dev/null 2>&1);
   _rescode=$?;

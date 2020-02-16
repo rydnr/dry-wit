@@ -11,13 +11,12 @@
 # use: if flyLogin ci http://concourse:8080; then ...; fi
 function flyLogin() {
   local _concourseTarget="${1}";
+  checkNotEmpty target "${_concourseTarget}" 1;
   local _concourseUrl="${2}";
+  checkNotEmpty url "${_concourseUrl}" 2;
   local -i _rescode;
   local _output;
   local _fly="$(which fly)";
-
-  checkNotEmpty "target" "${_concourseTarget}" 1;
-  checkNotEmpty "url" "${_concourseUrl}" 2;
 
   logTrace -n "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl} 2>&1";
   echo "${_fly} -t ${_concourseTarget} login -c ${_concourseUrl}" >> "${TRACE_FILE}"
@@ -46,13 +45,12 @@ function flyLogin() {
 # use: if runFlyCommand y -t ci set-pipeline -p main; then echo "fly -t ci set-pipeline -p main -> ${RESULT}"; fi
 function runFlyCommand() {
   local _yesOrNo="${1}";
+  checkNotEmpty yesOrNo "${_yesOrNo}" 1;
   shift;
   local _args="${@}";
+  checkNotEmpty args "${_args}" 2;
   local -i _rescode;
   local _result;
-
-  checkNotEmpty "yesOrNo" "${_yesOrNo}" 1;
-  checkNotEmpty "args" "${_args}" 2;
 
   case "${_yesOrNo}" in
     y | yes | Y | YES) _yesOrNo="y";
@@ -78,8 +76,10 @@ function runFlyCommand() {
     logTraceResult WARNING "failed";
   fi
 
-  export RESULT="${_result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -2,7 +2,7 @@
 # api: public
 # txt: Standard, general-purpose numeric functions.
 
-# fun: isNumber
+# fun: isNumber input
 # api: public
 # txt: Checks whether given value is a number
 # opt: input: The input.
@@ -10,10 +10,9 @@
 # use: if isNumber "${value}"; then echo "${value} is a number"; fi
 function isNumber() {
   local _input="${1}";
+  checkNotEmpty input "${_input}" 1;
   local -i _value;
   local -i _rescode;
-
-  checkNotEmpty "input" "${_input}" 1;
 
   _value=$(expr "${_input}" + 0 2>/dev/null);
 
@@ -26,7 +25,7 @@ function isNumber() {
   return ${_rescode};
 }
 
-# fun: mod
+# fun: mod dividend divisor
 # api: public
 # txt: Calculates the modulus.
 # opt: dividend: The dividend.
@@ -35,12 +34,11 @@ function isNumber() {
 # use: if mod ${value} 100; then echo "${value} mod 100 -> ${RESULT}"; fi
 function mod() {
   local _dividend="${1}";
+  checkNotEmpty dividend "${_dividend}" 1;
   local _divisor="${2}";
+  checkNotEmpty divisor "${_divisor}" 2;
   local -i _rescode;
   local _result;
-
-  checkNotEmpty dividend "${_dividend}" 1;
-  checkNotEmpty divisor "${_divisor}" 2;
 
   if isNumber "${_dividend}" && isNumber "${_divisor}"; then
     _result=$((${_dividend} % ${_divisor}));
@@ -54,7 +52,7 @@ function mod() {
   return ${_rescode};
 }
 
-# fun: isGreaterThan
+# fun: isGreaterThan first second
 # api: public
 # txt: Checks whether the first number is greater than the second number.
 # opt: first: The first number.
@@ -63,11 +61,10 @@ function mod() {
 # use: if isGreaterThan ${value} 0; then echo "${value} is positive"; fi
 function isGreaterThan() {
   local _first="${1}";
-  local _second="${2}";
-  local -i _rescode;
-
   checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
   checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
 
   if isNumber "${_first}" && isNumber "${_second}"; then
     if [[ ${_first} -gt ${_second} ]]; then
@@ -82,7 +79,7 @@ function isGreaterThan() {
   return ${_rescode};
 }
 
-# fun: isGreaterOrEqualTo
+# fun: isGreaterOrEqualTo first second
 # api: public
 # txt: Checks whether the first number is greater or equal to the second number.
 # opt: first: The first number.
@@ -91,11 +88,10 @@ function isGreaterThan() {
 # use: if isGreaterOrEqualTo ${value} 1; then echo "${value} is positive"; fi
 function isGreaterOrEqualTo() {
   local _first="${1}";
-  local _second="${2}";
-  local -i _rescode;
-
   checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
   checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
 
   if isNumber "${_first}" && isNumber "${_second}"; then
     if [[ ${_first} -ge ${_second} ]]; then
@@ -110,7 +106,7 @@ function isGreaterOrEqualTo() {
   return ${_rescode};
 }
 
-# fun: isLessThan
+# fun: isLessThan first second
 # api: public
 # txt: Checks whether the first number is less than the second number.
 # opt: first: The first number.
@@ -119,11 +115,10 @@ function isGreaterOrEqualTo() {
 # use: if isLessThan ${value} 0; then echo "${value} is negative"; fi
 function isLessThan() {
   local _first="${1}";
-  local _second="${2}";
-  local -i _rescode;
-
   checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
   checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
 
   if isNumber "${_first}" && isNumber "${_second}"; then
     if [[ ${_first} -lt ${_second} ]]; then
@@ -138,7 +133,7 @@ function isLessThan() {
   return ${_rescode};
 }
 
-# fun: isLessOrEqualTo
+# fun: isLessOrEqualTo first second
 # api: public
 # txt: Checks whether the first number is less or equal to than the second number.
 # opt: first: The first number.
@@ -147,11 +142,10 @@ function isLessThan() {
 # use: if isLessOrEqualTo ${value} -1; then echo "${value} is negative"; fi
 function isLessOrEqualTo() {
   local _first="${1}";
-  local _second="${2}";
-  local -i _rescode;
-
   checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
   checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
 
   if isNumber "${_first}" && isNumber "${_second}"; then
     if [[ ${_first} -le ${_second} ]]; then
@@ -166,7 +160,7 @@ function isLessOrEqualTo() {
   return ${_rescode};
 }
 
-# fun: toOrdinal
+# fun: toOrdinal input input
 # api: public
 # txt: Converts a number to its ordinal representation.
 # opt: input: The input number.
@@ -175,7 +169,7 @@ function isLessOrEqualTo() {
 # use: if toOrdinal "${index}"; then echo "${RESULT} item"; fi
 function toOrdinal() {
   local _number="${1}";
-  checkNotEmpty number "${_number}" 1;
+  checkNotEmpty input "${_number}" 1;
   local -i _rescode=${FALSE};
   local _result="";
   local _lastCharacter;
@@ -206,7 +200,7 @@ function toOrdinal() {
   return ${_rescode};
 }
 
-# fun: lastDigit
+# fun: lastDigit number
 # api: public
 # txt: Retrieves the last digit of given number.
 # opt: number: The input number.
@@ -230,4 +224,4 @@ function lastDigit() {
 
   return ${_rescode};
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

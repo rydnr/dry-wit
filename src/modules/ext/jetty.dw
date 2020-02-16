@@ -2,7 +2,7 @@
 # api: public
 # txt: Some Jetty-related functions.
 
-# fun: updateKeyStorePathInJettyConf
+# fun: updateKeyStorePathInJettyConf keyStorePath configFile
 # api: public
 # txt: Updates the keystore path in given Jetty config file.
 # opt: keystorePath: The keystore path.
@@ -11,11 +11,10 @@
 # use: if  updateKeyStorePathInJettyConf "/etc/ssl/keystore.jks" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateKeyStorePathInJettyConf() {
   local _keyStorePath="${1}";
+  checkNotEmpty keyStorePath "${_keyStorePath}" 1;
   local _configFile="${2}";
+  checkNotEmpty configFile "${_configFile}" 2;
   local -i _rescode;
-
-  checkNotEmpty "keyStorePath" "${_keyStorePath}" 1;
-  checkNotEmpty "configFile" "${_configFile}" 2;
 
   sed -i "s|<Set name=\"KeyStorePath\">.*</Set>|<Set name=\"KeyStorePath\">${_keyStorePath}</Set>|g" "${_configFile}";
   _rescode=$?;
@@ -24,7 +23,7 @@ function updateKeyStorePathInJettyConf() {
 }
 
 
-# fun: updateKeyStorePasswordInJettyConf
+# fun: updateKeyStorePasswordInJettyConf keyStorePassword configFile
 # api: public
 # txt: Updates the keystore password in given Jetty config file.
 # opt: keyStorePassword: The keystore password.
@@ -33,11 +32,10 @@ function updateKeyStorePathInJettyConf() {
 # use: if updateKeyStorePasswordInJettyConf "secret" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateKeyStorePasswordInJettyConf() {
   local _keyStorePassword="${1}";
+  checkNotEmpty keyStorePassword "${_keyStorePassword}" 1;
   local _configFile="${2}";
+  checkNotEmpty configFile "${_configFile}" 2;
   local -i _rescode;
-
-  checkNotEmpty "keyStorePassword" "${_keyStorePassword}" 1;
-  checkNotEmpty "configFile" "${_configFile}" 2;
 
   sed -i "s|<Set name=\"KeyStorePassword\">.*</Set>|<Set name=\"KeyStorePassword\">${_keyStorePassword}</Set>|g" "${_configFile}";
   _rescode=$?;
@@ -45,7 +43,7 @@ function updateKeyStorePasswordInJettyConf() {
   return ${_rescode};
 }
 
-# fun: updateTrustStorePathInJettyConf
+# fun: updateTrustStorePathInJettyConf trustStorePath configFile
 # api: public
 # txt: Updates the trust store path in given Jetty config file.
 # opt: trustStorePath: The trust store path.
@@ -54,11 +52,10 @@ function updateKeyStorePasswordInJettyConf() {
 # use: if  updateTrustStorePathInJettyConf "/etc/ssl/keystore.jks" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateTrustStorePathInJettyConf() {
   local _trustStorePath="${1}";
+  checkNotEmpty trustStorePath "${_trustStorePath}" 1;
   local _configFile="${2}";
+  checkNotEmpty configFile "${_configFile}" 2;
   local -i _rescode;
-
-  checkNotEmpty "trustStorePath" "${_trustStorePath}" 1;
-  checkNotEmpty "configFile" "${_configFile}" 2;
 
   sed -i "s|<Set name=\"TrustStorePath\">.*</Set>|<Set name=\"TrustStorePath\">${_trustStorePath}</Set>|g" "${_configFile}";
   _rescode=$?;
@@ -66,7 +63,7 @@ function updateTrustStorePathInJettyConf() {
   return ${_rescode};
 }
 
-# fun: updateTrustStorePasswordInJettyConf
+# fun: updateTrustStorePasswordInJettyConf trustStorePassword configFile
 # api: public
 # txt: Updates the trust store password in given Jetty config file.
 # opt: trustStorePassword: The trust store password.
@@ -75,11 +72,10 @@ function updateTrustStorePathInJettyConf() {
 # use: if updateTrustStorePasswordInJettyConf "secret" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateTrustStorePasswordInJettyConf() {
   local _trustStorePassword="${1}";
+  checkNotEmpty trustStorePassword "${_trustStorePassword}" 1;
   local _configFile="${2}";
+  checkNotEmpty configFile "${_configFile}" 2;
   local -i _rescode;
-
-  checkNotEmpty "trustStorePassword" "${_trustStorePassword}" 1;
-  checkNotEmpty "configFile" "${_configFile}" 2;
 
   sed -i "s|<Set name=\"TrustStorePassword\">.*</Set>|<Set name=\"TrustStorePassword\">${_trustStorePassword}</Set>|g" "${_configFile}";
   _rescode=$?;
@@ -87,7 +83,7 @@ function updateTrustStorePasswordInJettyConf() {
   return ${_rescode};
 }
 
-# fun: updateKeyManagerPasswordInJettyConf
+# fun: updateKeyManagerPasswordInJettyConf keyManagerPassword configFile
 # api: public
 # txt: Updates the key password in given Jetty config file.
 # opt: keyManagerPassword: The key manader password.
@@ -96,16 +92,14 @@ function updateTrustStorePasswordInJettyConf() {
 # use: if updateKeyManagePasswordInJettyConf "secret" "/opt/sonatype/nexus/etc/jetty-https.xml"; then ...; fi
 function updateKeyManagerPasswordInJettyConf() {
   local _keyPassword="${1}";
+  checkNotEmpty keyManagerPassword "${_keyPassword}" 1;
   local _configFile="${2}";
+  checkNotEmpty configFile "${_configFile}" 2;
   local -i _rescode;
-
-  checkNotEmpty "keyPassword" "${_keyPassword}" 1;
-  checkNotEmpty "configFile" "${_configFile}" 2;
 
   sed -i "s|<Set name=\"KeyManagerPassword\">.*</Set>|<Set name=\"KeyManagerPassword\">${_keyPassword}</Set>|g" "${_configFile}";
   _rescode=$?;
 
   return ${_rescode};
 }
-
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

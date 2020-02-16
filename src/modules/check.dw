@@ -12,56 +12,68 @@
 # use: checkFunctionPresent "callback" "echo" 1;
 function checkFunctionPresent() {
   local _name="${1}";
-  local _functionName="${2}";
-  local _index="${3}";
-
   if isEmpty "${_name}"; then
     exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
-
-  if isEmpty "${_index}"; then
+  local _functionName="${2}";
+  if isEmpty "${_functionName}"; then
     exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
-
-  if isEmpty "${_functionName}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
-  fi
-
   if isFunctionMissing "${_functionName}"; then
     exitWithError UNACCEPTABLE_API_CALL "${_name} (parameter at position ${_index}) is a non-existent function when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
+  local _index="${3}";
+  if isEmpty "${_index}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
 }
 
-# fun: checkMandatoryOrOptional paramName paramValue paramIndex
+# fun: checkMandatoryOrOptional paramValue paramIndex
 # api: public
 # txt: Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
-# opt: paramName: The parameter name.
 # opt: paramValue: The parameter value.
 # opt: paramIndex: The parameter index.
 # txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: checkMandatoryOrOptional "${paramName}" "${mandatoryOrOptional}" 1 # -> throws an error if the first (1) parameter ("paramName") is neither MANDATORY or OPTIONAL.
+# use: checkMandatoryOrOptional "${mandatoryOrOptional}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither MANDATORY or OPTIONAL.
 function checkMandatoryOrOptional() {
-  local _name="${1}";
-  local _value="${2}";
-  local _index="${3}";
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
 
-  CHECK.checkOneOf 1 "${_name}" "${_value}" "MANDATORY OPTIONAL" "${_index}";
+  CHECK.checkOneOf 1 "MANDATORY|OPTIONAL" "${_value}" "MANDATORY OPTIONAL" "${_index}";
 }
 
-# fun: checkSingleOrMultiple paramName paramValue paramIndex
+# fun: checkSingleOrMultiple paramValue paramIndex
 # api: public
 # txt: Performs a precondition check on given parameter to ensure it's either SINGLE or MULTIPLE.
-# opt: paramName: The parameter name.
 # opt: paramValue: The parameter value.
 # opt: paramIndex: The parameter index.
 # txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: checkSingleOrMultiple "${paramName}" "${singleOrMultiple}" 1 # -> throws an error if the first (1) parameter ("${paramName}") is neither SINGLE or MULTIPLE.
+# use: checkSingleOrMultiple "${singleOrMultiple}" 1 # -> throws an error if the first (1) parameter ("${paramValue}") is neither SINGLE or MULTIPLE.
 function checkSingleOrMultiple() {
-  local _name="${1}";
-  local _value="${2}";
-  local _index="${3}";
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
 
-  CHECK.checkOneOf 1 "${_name}" "${_value}" "SINGLE MULTIPLE" "${_index}";
+  CHECK.checkOneOf 1 "SINGLE|MULTIPLE" "${_value}" "SINGLE MULTIPLE" "${_index}";
+}
+
+# fun: checkExpectsArgumentOrNoArgument paramValue paramIndex
+# api: public
+# txt: Performs a precondition check on given parameter to ensure it's either SINGLE or MULTIPLE.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: checkExpectsArgumentOrNoArgument "${expectsArgumentOrNoArgument}" 1 # -> throws an error if the first (1) parameter ("${paramValue}") is neither EXPECTS_ARGUMENT or NO_ARGUMENT.
+function checkExpectsArgumentOrNoArgument() {
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
+
+  CHECK.checkOneOf 1 "EXPECTS_ARGUMENT|NO_ARGUMENT" "${_value}" "EXPECTS_ARGUMENT NO_ARGUMENT" "${_index}";
 }
 
 # fun: checkNotEmpty paramName paramValue paramIndex
@@ -122,10 +134,30 @@ function checkOneOf() {
 # use: CHECK.checkOneOf 0 "option" "${option}" "VALID INVALID" 1 # -> throws an error if the first (1) parameter ("option") is neither VALID nor INVALID.
 function CHECK.checkOneOf() {
   local _callStackOffset="${1}";
+  if isEmpty "${_callStackOffset}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'callStackOffset' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _name="${2}";
+  if isEmpty "${_name}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _value="${3}";
+  if isEmpty "${_value}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${_callee}. Review ${_caller}";
+  fi
+
   local _validValues="${4}";
+  if isEmpty "${_validValues}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'validValues' (${_validValues}) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _index="${5}";
+  if isEmpty "${_index}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'index' (4) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
   local _validValue;
   local _oldIFS="${IFS}";
   local _valid=${FALSE};
@@ -134,26 +166,6 @@ function CHECK.checkOneOf() {
   local _callee="${FUNCNAME[${_callStackOffset}]}";
   local _caller="${FUNCNAME[((_callStackOffset+1))]}";
   local _parentCaller="${FUNCNAME[((_callStackOffset+2))]}";
-
-  if isEmpty "${_callStackOffset}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'callStackOffset' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
-  fi
-
-  if isEmpty "${_name}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
-  fi
-
-  if isEmpty "${_value}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${_callee}. Review ${_caller}";
-  fi
-
-  if isEmpty "${_validValues}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'validValues' (${_validValues}) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
-  fi
-
-  if isEmpty "${_index}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'index' (4) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
-  fi
 
   IFS=$' \t\n';
   for _validValue in ${_validValues}; do
@@ -173,7 +185,7 @@ function CHECK.checkOneOf() {
   fi
 }
 
-# fun: checkNumber
+# fun: checkNumber paramName paramValue paramIndex
 # api: public
 # txt: Checks whether given parameter is a number.
 # opt: paramName: The parameter name.
@@ -183,23 +195,23 @@ function CHECK.checkOneOf() {
 # use: checkNumber "index" "${index}" 1 # -> throws an error if the first (1) parameter ("index") is not a number.
 function checkNumber() {
   local _name="${1}";
-  local _value="${2}";
-  local _index="${3}";
 
   if isEmpty "${_name}"; then
     exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 
-  if isEmpty "${_index}"; then
-    exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
-  fi
-
+  local _value="${2}";
   if isEmpty "${_value}"; then
     exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
 
   if ! isNumber "${_value}"; then
     exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) must be a number when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
+
+  local _index="${3}";
+  if isEmpty "${_index}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

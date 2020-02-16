@@ -10,8 +10,8 @@ function authorizeInVault() {
 
   logDebug -n "Retrieving Vault token";
   if retrieveVaultToken "${KEYS_FILE}"; then
-      _vaultToken="${RESULT}";
-      logDebugResult SUCCESS "${_vaultToken}";
+    _vaultToken="${RESULT}";
+    logDebugResult SUCCESS "${_vaultToken}";
   else
     logDebugResult FAILURE "failed";
     exitWithErrorCode CANNOT_RETRIEVE_VAULT_TOKEN;
@@ -30,7 +30,7 @@ function authorizeInVault() {
 
   logDebug -n "Requesting authorization in Vault";
   if runVaultCommand vault auth -address=${VAULT_URL} ${_vaultToken}; then
-      logDebugResult SUCCESS "done";
+    logDebugResult SUCCESS "done";
   else
     _output="${RESULT}";
     logDebugResult FAILURE "failed";
@@ -50,15 +50,14 @@ function authorizeInVault() {
 # use: if buildPipelineParameterPathInVault "/concourse" "main" "default" "src-git-branch"; then echo "src-git-branch in Vault under: ${RESULT}"; fi
 function buildPipelineParameterPathInVault() {
   local _concourseFolder="${1}";
+  checkNotEmpty concourseFolder "${_concourseFolder}" 1;
   local _concourseTeam="${2}";
+  checkNotEmpty concourseTeam "${_concourseTeam}" 2;
   local _pipelineName="${3}";
+  checkNotEmpty pipelineName "${_pipelineName}" 3;
   local _parameter="${4}";
+  checkNotEmpty parameter "${_parameter}" 4;
   local -i _rescode;
-
-  checkNotEmpty "concourseFolder" "${_concourseFolder}" 1;
-  checkNotEmpty "concourseTeam" "${_concourseTeam}" 2;
-  checkNotEmpty "pipelineName" "${_pipelineName}" 3;
-  checkNotEmpty "parameter" "${_parameter}" 4;
 
   export RESULT="${_concourseFolder#/}/${_concourseTeam}/${_pipelineName}/${_parameter}";
   _rescode=${TRUE};
@@ -72,68 +71,72 @@ function buildPipelineParameterPathInVault() {
 # txt: Returns 0/TRUE if Vault is running; 1/FALSE otherwise.
 # use: if checkVaultRunning; then echo "${VAULT_CONTAINER_NAME} is running"; fi
 function checkVaultRunning() {
-    logDebug -n "Checking if ${VAULT_CONTAINER_NAME} is running";
-    if isDockerContainerRunning "${VAULT_CONTAINER_NAME}"; then
-        logDebugResult SUCCESS "true";
-    else
-        _output="${RESULT}";
-        logDebugResult FAILURE "false";
-        exitWithErrorCode ERROR_VAULT_CONTAINER_NOT_RUNNING "${_output}";
-    fi
+  logDebug -n "Checking if ${VAULT_CONTAINER_NAME} is running";
+  if isDockerContainerRunning "${VAULT_CONTAINER_NAME}"; then
+    logDebugResult SUCCESS "true";
+  else
+    _output="${RESULT}";
+    logDebugResult FAILURE "false";
+    exitWithErrorCode ERROR_VAULT_CONTAINER_NOT_RUNNING "${_output}";
+  fi
 }
-# fun: createOrStartVaultContainer virtualHost network
+# fun: createOrStartVaultContainer vaultContainerName vaultVersion virtualHost vaultPort network configContainerName vaultHclFile
 # api: public
 # txt: Creates the Vault container if it does not exist, or starts the already existing Vault container.
+# opt: vaultContainerName: The name of the Vault container.
+# opt: vaultVersion: The version of Vault.
 # opt: virtualHost: The virtual host.
+# opt: vaultPort: The Vault port.
 # opt: network: The network.
+# opt: configContainerName: The name of the config container.
+# opt: vaultHclFile: The vault.hcl file.
 # txt: Returns 0/TRUE if the container was missing and could be created, or if it was started; 1/FALSE otherwise.
-# use: if createOrStartVaultContainer "vault.example.com" "my_network"; then echo "vault.example.com started in my_network"; fi
+# use: if createOrStartVaultContainer "vault" "2" "vault.example.com" 1111 "my_network" "vault-cfg" "vault.hcl"; then echo "vault.example.com started in my_network"; fi
 function createOrStartVaultContainer() {
   local _vaultContainerName="${1}";
+  checkNotEmpty vaultContainerName "${_vaultContainerName}" 1;
   local _vaultVersion="${2}"
+  checkNotEmpty vaultVersion "${_vaultVersion}" 2;
   local _virtualHost="${3}";
+  checkNotEmpty virtualHost "${_virtualHost}" 3;
   local _vaultPort="${4}";
+  checkNotEmpty vaultPort "${_vaultPort}" 4;
   local _network="${5}";
+  checkNotEmpty network "${_network}" 5;
   local _configContainerName="${6}";
+  checkNotEmpty configContainerName "${_configContainerName}" 6;
   local _vaultHclFile="${7}";
+  checkNotEmpty vaultHclFile "${_vaultHclFile}" 7;
   local -i _rescode;
   local _output;
 
-  checkNotEmpty "vaultContainerName" "${_vaultContainerName}" 1;
-  checkNotEmpty "vaultVersion" "${_vaultVersion}" 2;
-  checkNotEmpty "virtualHost" "${_virtualHost}" 3;
-  checkNotEmpty "vaultPort" "${_vaultPort}" 4;
-  checkNotEmpty "network" "${_network}" 5;
-  checkNotEmpty "configContainerName" "${_configContainerName}" 6;
-  checkNotEmpty "vaultHclFile" "${_vaultHclFile}" 7;
-
   logDebug -n "Checking if ${_vaultContainerName} container already exists";
   if dockerContainerExists ${_vaultContainerName}; then
+    _output="${RESULT}";
+    logDebugResult SUCCESS "true";
+
+    logDebug -n "Checking if ${_vaultContainerName} container is already running";
+    if isDockerContainerRunning ${_vaultContainerName}; then
       _output="${RESULT}";
       logDebugResult SUCCESS "true";
+      _rescode=${TRUE};
+    else
+      _output="${RESULT}";
+      logDebugResult FAILURE "${_output}";
 
-      logDebug -n "Checking if ${_vaultContainerName} container is already running";
-      if isDockerContainerRunning ${_vaultContainerName}; then
-          _output="${RESULT}";
-          logDebugResult SUCCESS "true";
-          _rescode=${TRUE};
+      logDebug -n "Starting existing Vault container";
+      if dockerCommand start ${_vaultContainerName}; then
+        _output="${RESULT}";
+        logDebugResult SUCCESS "done";
+        export RESULT="${_output}";
+        _rescode=${TRUE};
       else
         _output="${RESULT}";
-        logDebugResult FAILURE "${_output}";
-
-        logDebug -n "Starting existing Vault container";
-        if dockerCommand start ${_vaultContainerName}; then
-            _output="${RESULT}";
-            logDebugResult SUCCESS "done";
-            export RESULT="${_output}";
-            _rescode=${TRUE};
-        else
-          _output="${RESULT}";
-          logDebugResult FAILURE "failed";
-          export RESULT="${_output}";
-          _rescode=${FALSE};
-        fi
+        logDebugResult FAILURE "failed";
+        export RESULT="${_output}";
+        _rescode=${FALSE};
       fi
+    fi
   else
     _output="${RESULT}";
     logDebugResult SUCCESS "false";
@@ -162,26 +165,25 @@ function createOrStartVaultContainer() {
 # use: if deleteVaultContainer vault; then echo "Vault container deleted"; fi
 function deleteVaultContainer() {
   local _vaultContainerName="${1}";
+  checkNotEmpty containerName "${_vaultContainerName}" 1;
   local -i _rescode;
   local _output;
 
-  checkNotEmpty "vaultContainerName" "${_vaultContainerName}" 1;
-
   logDebug -n "Checking if ${_vaultContainerName} container already exists";
   if dockerContainerExists ${_vaultContainerName}; then
-      _output="${RESULT}";
-      logDebugResult SUCCESS "${_output}";
+    _output="${RESULT}";
+    logDebugResult SUCCESS "${_output}";
 
-      logDebug -n "Deleting existing Vault container";
-      if dockerCommand rm -fv ${_vaultContainerName}; then
-        logDebugResult SUCCESS "done";
-        _rescode=${TRUE};
-      else
-        _output="${RESULT}";
-        logDebugResult FAILURE "failed";
-        export RESULT="${_output}";
-        _rescode=${FALSE};
-      fi
+    logDebug -n "Deleting existing Vault container";
+    if dockerCommand rm -fv ${_vaultContainerName}; then
+      logDebugResult SUCCESS "done";
+      _rescode=${TRUE};
+    else
+      _output="${RESULT}";
+      logDebugResult FAILURE "failed";
+      export RESULT="${_output}";
+      _rescode=${FALSE};
+    fi
   else
     _output="${RESULT}";
     logDebugResult SUCCESS "false";
@@ -201,15 +203,14 @@ function deleteVaultContainer() {
 # use: if generateVaultHclFile "./vault.hcl" "168h" "720h" localhost; then echo "vault.hcl file generated successfully"; fi
 function generateVaultHclFile() {
   local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
   local _leaseTtl="${2}";
+  checkNotEmpty leaseTTL "${_leaseTtl}" 2;
   local _maxLeaseTtl="${3}";
+  checkNotEmuty maxLeaseTTL "${_maxLeaseTtl}" 3;
   local _vaultIp="${4:-0.0.0.0}";
   local -i _rescode;
   local _output;
-
-  checkNotEmpty "file" "${_file}" 1;
-  checkNotEmpty "leaseTTL" "${_leaseTtl}" 2;
-  checkNotEmuty "maxLeaseTTL" "${_maxLeaseTtl}" 3;
 
   if fileExists "${_file}"; then
     logDebug -n "Removing previous ${_file}";
@@ -227,7 +228,7 @@ function generateVaultHclFile() {
   touch "${_file}";
   _rescode=${TRUE};
   if isTrue ${_rescode}; then
-      logDebugResult SUCCESS "done";
+    logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
     exitWithErrorCode CANNOT_CREATE_VAULT_HCL;
@@ -265,25 +266,24 @@ EOF
 # txt: If the function returns 0/TRUE, the variable RESULT contains the Vault token.
 # use: if retrieveVaultToken "keys.txt"; then echo "Vault token: ${RESULT}"; fi
 function retrieveVaultToken() {
-    local _file="${1}";
-    local -i _rescode;
-    local _result;
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local -i _rescode;
+  local _result;
 
-    checkNotEmpty "file" "${_file}" 1;
+  _result="$(grep 'Initial Root Token:' "${_file}" | awk '{print substr($NF, 1, length($NF)-1)}')";
 
-    _result="$(grep 'Initial Root Token:' "${_file}" | awk '{print substr($NF, 1, length($NF)-1)}')";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+    export RESULT=""
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
 
-    if isEmpty "${_result}"; then
-        _rescode=${FALSE};
-        export RESULT=""
-    else
-        _rescode=${TRUE};
-        export RESULT="${_result}";
-    fi
+  echo "Retrieving Vault token -> ${RESULT}" >> "${TRACE_FILE}"
 
-    echo "Retrieving Vault token -> ${RESULT}" >> "${TRACE_FILE}"
-
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: retrieveVaultUrl
@@ -293,22 +293,22 @@ function retrieveVaultToken() {
 # txt: If the funcion returns 0/TRUE, the variable RESULT contains the Vault url.
 # use: if retrieveVaultUrl; then echo "The Vault URL is ${RESULT}"; fi
 function retrieveVaultUrl() {
-    local _protocol="${VAULT_URL_PROTOCOL}";
-    local _port="${VAULT_URL_PORT}";
-    local _virtualHost="${VAULT_VIRTUAL_HOST}";
-    local _portAux="";
-    local -i _rescode;
+  local _protocol="${VAULT_URL_PROTOCOL}";
+  local _port="${VAULT_URL_PORT}";
+  local _virtualHost="${VAULT_VIRTUAL_HOST}";
+  local _portAux="";
+  local -i _rescode;
 
-    if ([[ "${_protocol}" == "https" ]] && [[ "${_port}" == "443" ]]) || ([[ "${_protocol}" == "http" ]] && [[ "${_port}" == "80" ]]); then
-        _portAux="";
-    else
-        _portAux=":${_port}";
-    fi
+  if ([[ "${_protocol}" == "https" ]] && [[ "${_port}" == "443" ]]) || ([[ "${_protocol}" == "http" ]] && [[ "${_port}" == "80" ]]); then
+    _portAux="";
+  else
+    _portAux=":${_port}";
+  fi
 
-    export RESULT="${_protocol}://${_virtualHost}${_portAux}";
-    _rescode=${TRUE};
+  export RESULT="${_protocol}://${_virtualHost}${_portAux}";
+  _rescode=${TRUE};
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: runVaultCommand command args*
@@ -319,25 +319,24 @@ function retrieveVaultUrl() {
 # txt: Returns 0/TRUE if the command succeeds; 1/FALSE otherwise.
 # use: if runVaultCommand vault read; then echo "vault read -> ${RESULT}"; fi
 function runVaultCommand() {
-    local _args="${@}";
-    local -i _rescode;
-    local _result;
+  local _args="${@}";
+  checkNotEmpty args "${_args}" 1;
+  local -i _rescode;
+  local _result;
 
-    checkNotEmpty "args" "${_args}" 1;
+  echo "docker exec -it ${VAULT_CONTAINER_NAME} $(echo "${_args}" | tr '\n' ' ') 2>&1" >> "${TRACE_FILE}"
+  logTrace -n "docker exec -it ${VAULT_CONTAINER_NAME} $(echo "${_args}" | tr '\n' ' ') 2>&1";
+  _result="$(docker exec -it ${VAULT_CONTAINER_NAME} $(echo "${_args}"))";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+  else
+    logTraceResult FAILURE "failed";
+  fi
 
-    echo "docker exec -it ${VAULT_CONTAINER_NAME} $(echo "${_args}" | tr '\n' ' ') 2>&1" >> "${TRACE_FILE}"
-    logTrace -n "docker exec -it ${VAULT_CONTAINER_NAME} $(echo "${_args}" | tr '\n' ' ') 2>&1";
-    _result="$(docker exec -it ${VAULT_CONTAINER_NAME} $(echo "${_args}"))";
-    _rescode=$?;
-    if isTrue ${_rescode}; then
-        logTraceResult SUCCESS "done";
-    else
-        logTraceResult FAILURE "failed";
-    fi
+  export RESULT="${_result}";
 
-    export RESULT="${_result}";
-
-    return ${_rescode};
+  return ${_rescode};
 }
 
 # fun: writeFileInVault source destination
@@ -349,11 +348,10 @@ function runVaultCommand() {
 # use: if writeFileInVault "config/concourse-private-key" "concourse/main/main/private-key"; then echo "Private key written in Vault"; fi
 function writeFileInVault() {
   local _sourcePath="${1}";
+  checkNotEmpty source "${_sourcePath}" 1;
   local _destinationPath="${2}";
+  checkNotEmpty destination "${_destinationPath}" 2;
   local -i _rescode;
-
-  checkNotEmpty "sourcePath" "${_sourcePath}" 1;
-  checkNotEmpty "destinationPath" "${_destinationPath}" 2;
 
   if runVaultCommand vault write -address="${VAULT_URL}" "${_destinationPath}" "value=@${_sourcePath}"; then
     _rescode=${TRUE};
@@ -373,11 +371,10 @@ function writeFileInVault() {
 # use: if writeInVault "config/registry-username" "johndoe"; then echo "Registry username written in Vault"; fi
 function writeValueInVault() {
   local _destinationPath="${1}";
+  checkNotEmpty destination "${_destinationPath}" 1;
   local _value="${2}";
+  checkNotEmpty value "${_value}" 2;
   local -i _rescode;
-
-  checkNotEmpty "destinationPath" "${_destinationPath}" 1;
-  checkNotEmpty "value" "${_value}" 2;
 
   if runVaultCommand vault write -address="${VAULT_URL}" "${_destinationPath}" "value=${_value}"; then
     _rescode=${TRUE};
@@ -387,4 +384,4 @@ function writeValueInVault() {
 
   return ${_rescode};
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

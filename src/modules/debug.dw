@@ -3,7 +3,7 @@
 # txt: Functions to help while debugging scripts.
 
 # fun: DEBUG.getModuleName
-# api: public
+# api: private
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
@@ -21,6 +21,7 @@ function DEBUG.getModuleName() {
 # use: A=( "1" "2" "3" );
 #      debugArray "${A}"
 function debugArray() {
+  checkNotEmpty arrayName "${1}" 1;
   flattenArray "${1}" " + ";
   debugEcho "${RESULT}";
 }
@@ -81,7 +82,7 @@ function debugEcho() {
 # use: debugVariable "foo" "bar";
 function debugVariable() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty varName "${_name}" 1;
   shift;
   local _value="${@}";
 
@@ -105,7 +106,7 @@ function isDebugEchoEnabled() {
   return ${_rescode};
 }
 
-# fun: setDebugEchoEnabled
+# fun: setDebugEchoEnabled bool
 # api: public
 # txt: Specifies whether "debugEcho" is enabled.
 # opt: bool: That condition.
@@ -113,7 +114,7 @@ function isDebugEchoEnabled() {
 # use: setDebugEchoEnabled TRUE;
 function setDebugEchoEnabled() {
   local _flag="${1}";
-  checkNotEmpty flag "${_flag}" 1;
+  checkNotEmpty bool "${_flag}" 1;
 
   DEBUG.getModuleName;
   local _moduleName="${RESULT}";
@@ -131,7 +132,7 @@ function setDebugEchoEnabled() {
   fi
 }
 
-# fun: setDebugLogFile
+# fun: setDebugLogFile fileName
 # api: public
 # txt: Specifies the log file for debugging purposes.
 # opt: fileName: The log file.
@@ -139,6 +140,8 @@ function setDebugEchoEnabled() {
 # use: setDebugLogFile "/tmp/.dw-debug.log";
 function setDebugLogFile() {
   local _file="${1}";
+  checkNotEmpty fileName "${_file}" 1;
+
   local -i _rescode=${TRUE};
 
   if isNotEmpty "${_file}"; then
@@ -184,14 +187,14 @@ function traceApiCall() {
 function printApiCall() {
   local -i _i=0;
 
-  echo "${FUNCNAME[0]}"
+  echo "${FUNCNAME[0]}";
   while caller $i; do
     i=$((i+1))
   done
 }
 
 # fun: DEBUG.getDebugLogFile
-# api: privaet
+# api: private
 # txt: Retrieves the log file for debugging purposes.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the path of the debug file.
@@ -219,7 +222,7 @@ function DEBUG.defaultState() {
   setDebugEchoEnabled FALSE;
 }
 
-# fun: debugDuration
+# fun: debugDuration command*
 # api: public
 # txt: Runs a function or a command and prints the elapsed time in the debug log.
 # opt: command*: The command or function.
