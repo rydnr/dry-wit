@@ -1243,12 +1243,10 @@ function CLI.parseFlag() {
         elif CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
           _argument="${RESULT}";
         fi
-        if isNotEmpty "${_argument}"; then
-          camelCaseToSnakeCase "${_longName}";
-          normalizeUppercase "${RESULT}";
-          _upcasedLongName="${RESULT}";
-          declare -gx ${_upcasedLongName}="${_argument}";
-        fi
+        camelCaseToSnakeCase "${_longName}";
+        normalizeUppercase "${RESULT}";
+        _upcasedLongName="${RESULT}";
+        declare -gx ${_upcasedLongName}="${_argument}";
       fi
     else
       exitWithError INVALID_OPTION "Unexpected flag: '${_flag}'";

@@ -319,6 +319,15 @@ function parseInput_calls_parameter_callback_with_just_the_parameter_test() {
   Assert.areEqual "base" "${REPOSITORIES}" 'Repositories are not parsed correctly'
 }
 
+function empty_default_values_for_optional_flags_are_allowed_test() {
+  addCommandLineFlag "probablyEmpty" "pe" "A probably empty flag" OPTIONAL EXPECTS_ARGUMENT "";
+  checkInput;
+  Assert.isEmpty "${PROBABLY_EMPTY}" "PROBABLY_EMPTY should be empty";
+
+  addCommandLineFlag "anotherProbablyEmpty" "ape" "A probably empty flag" OPTIONAL EXPECTS_ARGUMENT "false";
+  checkInput -ape "";
+  Assert.isEmpty "${ANOTHER_PROBABLY_EMPTY}" "ANOTHER_PROBABLY_EMPTY should be empty";
+}
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
 declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
