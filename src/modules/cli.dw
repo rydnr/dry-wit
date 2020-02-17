@@ -99,14 +99,14 @@ function CLI.getOptionalFlagDefaultValuesVariableName() {
   DW.getGlobalVariableName "${_moduleName}" OPTIONAL_FLAG_DEFAULT_VALUES;
 }
 
-# fun: addCommandLineFlag longName shortName description MANDATORY/OPTIONAL EXPECTS_ARGUMENT/NO_ARGUMENT defaultValue?
+# fun: addCommandLineFlag longName shortName description MANDATORY|OPTIONAL EXPECTS_ARGUMENT|NO_ARGUMENT defaultValue?
 # api: public
 # txt: Adds a command-line flag.
 # opt: longName: The long name of the flag.
 # opt: shortName: The short name of the flag.
 # opt: description: The flag description.
-# opt: MANDATORY/OPTIONAL: MANDATORY if the flag is mandatory; OPTIONAL otherwise.
-# opt: EXPECTS_ARGUMENT/NO_ARGUMENT: EXPECTS_ARGUMENT if the flag contains a value; NO_ARGUMENT otherwise.
+# opt: MANDATORY|OPTIONAL: MANDATORY if the flag is mandatory; OPTIONAL otherwise.
+# opt: EXPECTS_ARGUMENT|NO_ARGUMENT: EXPECTS_ARGUMENT if the flag contains a value; NO_ARGUMENT otherwise.
 # opt: defaultValue: The default value (if the flag is optional).
 # txt: Returns 0/TRUE if the flag is added successfully; 1/FALSE otherwise.
 # use: if addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT "/tmp/file.log"; then
@@ -120,9 +120,9 @@ function addCommandLineFlag() {
   local _description="${3}";
   checkNotEmpty description "${_description}" 3;
   local _mandatory="${4}";
-  checkMandatoryOrOptional "${_mandatory}" 4;
+  CLI.checkMandatoryOrOptional "${_mandatory}" 4;
   local _expectsArgument="${5}";
-  checkExpectsArgumentOrNoArgument "${_expectsArgument}" 5;
+  CLI.checkExpectsArgumentOrNoArgument "${_expectsArgument}" 5;
   local _defaultValue="${6}";
 
   local -i _rescode=${TRUE};
@@ -234,7 +234,7 @@ function CLI.getSingleParametersVariableName() {
   DW.getGlobalVariableName "${_moduleName}" SINGLE_PARAMETERS;
 }
 
-# fun: addCommandLineParameter paramName paramDescription MANDATORY/OPTIONAL SINGLE/MULTIPLE
+# fun: addCommandLineParameter paramName paramDescription MANDATORY|OPTIONAL SINGLE|MULTIPLE
 # api: public
 # txt: Declares the script expects another command-line parameter.
 # opt: paramName: The parameter name.
@@ -250,10 +250,10 @@ function addCommandLineParameter() {
   checkNotEmpty description "${_description}" 2;
   local _mandatoryOrOptional="${3}";
   checkNotEmpty mandatoryOrOptional "${_mandatoryOrOptional}" 3;
-  checkMandatoryOrOptional "${_mandatoryOrOptional}" 3;
+  CLI.checkMandatoryOrOptional "${_mandatoryOrOptional}" 3;
   local _singleOrMultiple="${4}";
   checkNotEmpty singleOrMultiple "${_singleOrMultiple}" 4;
-  checkSingleOrMultiple "${_singleOrMultiple}" 4;
+  CLI.checkSingleOrMultiple "${_singleOrMultiple}" 4;
 
   CLI.getParameterNamesVariableName;
   local -n _parameterNames="${RESULT}";
@@ -287,15 +287,14 @@ function addCommandLineParameter() {
 # use: if flagEnabled MY_FLAG; then ...
 function flagEnabled() {
   local _flagVar="${1}";
+  checkNotEmpty flagName "${_flagVar}" 1;
   local _flagVal;
   local -i rescode;
-
-  checkNotEmpty "flagVar" "${_flagVar}" 1;
 
   evalVar "${_flagVar}";
   _flagVal="${RESULT}";
   if    areEqual "${_flagVal}" "${TRUE}" \
-      || areEqual "${_flagVal}" "TRUE"; then
+     || areEqual "${_flagVal}" "TRUE"; then
     rescode=${TRUE};
   else
     rescode=${FALSE};
@@ -314,12 +313,11 @@ function flagEnabled() {
 #      fi
 function removeCommandLineFlag() {
   local _flag="${1}";
+  checkNotEmpty shortOrLongName "${_flag}" 1;
   local _longName;
   local _shortName;
   local -i _rescode;
   local _flagKey;
-
-  checkNotEmpty "flag" "${_flag}" 1;
 
   if CLI.retrieveCommandLineFlagKey "${_flag}"; then
     _flagKey="${RESULT}";
@@ -375,7 +373,6 @@ function removeCommandLineFlag() {
 # txt: The variable RESULT contains the script copyright.
 # use: getScriptCopyright; echo "Copyright: ${RESULT}";
 function getScriptCopyright() {
-
   CLI.getModuleName;
   local _moduleName="${RESULT}";
 
@@ -392,7 +389,7 @@ function getScriptCopyright() {
 # use: setScriptCopyright "2018-today Acme Inc.";
 function setScriptCopyright() {
   local _copyright="${1}";
-  checkNotEmpty copyright "${_copyright}" 1;
+  checkNotEmpty copyrightDescription "${_copyright}" 1;
 
   CLI.getModuleName;
   local _moduleName="${RESULT}";
@@ -409,7 +406,6 @@ function setScriptCopyright() {
 # txt: The variable RESULT contains the script description.
 # use: getScriptDescription; echo "description: ${RESULT}";
 function getScriptDescription() {
-
   CLI.getModuleName;
   local _moduleName="${RESULT}";
 
@@ -426,7 +422,7 @@ function getScriptDescription() {
 # use: setScriptDescription "This script calculates fibonacci sequence items"
 function setScriptDescription() {
   local _description="${1}";
-  checkNotEmpty "description" "${_description}" 1;
+  checkNotEmpty description "${_description}" 1;
 
   CLI.getModuleName;
   local _moduleName="${RESULT}";
@@ -443,7 +439,6 @@ function setScriptDescription() {
 # txt: The variable RESULT contains the license summary.
 # use: getScriptLicenseSummary; echo "License summary: ${RESULT}";
 function getScriptLicenseSummary() {
-
   CLI.getModuleName;
   local _moduleName="${RESULT}";
 
@@ -460,7 +455,7 @@ function getScriptLicenseSummary() {
 # use: setScriptLicenseSummary "Distributed this under the GNU General Public License v3.";
 function setScriptLicenseSummary() {
   local _license="${1}";
-  checkNotEmpty "license" "${_license}" 1;
+  checkNotEmpty license "${_license}" 1;
 
   CLI.getModuleName;
   local _moduleName="${RESULT}";
@@ -656,7 +651,10 @@ function CLI.extractFlags() {
 # use: local _Ext=$(CLI.extractFlagValue "ext" $*);
 function CLI.extractFlagValue() {
   local _flag=${1};
+  checkNotEmpty flagName "${_flag}" 1;
   shift;
+  checkNotEmpty cliArguments "${@}" 2;
+
   echo " $@" \
     | awk -F" -" '{printf("-"); for (i=2; i<=NF; i++){if(i%2 == 1) {printf("-");}; printf("%s \n", $i);}}' \
     | grep -e "^${_flag} " \
@@ -885,12 +883,13 @@ function CLI.retrieveCommandLineFlagShortName() {
   return ${_rescode};
 }
 
-# fun: CLI.checkCommandLineFlag flagKey
+# fun: CLI.checkCommandLineFlag flagKey longName
 # api: private
 # txt: Checks a command line flag.
 # opt: flagKey: The key of the flag.
+# opt: longName: The flag long name.
 # txt: If the check is successful it returns the number of arguments to shift. Otherwise it exits with an error.
-# use: CLI.checkCommandLineFlag "${_flagKey}";
+# use: CLI.checkCommandLineFlag "${flagKey}" "${longName}";
 function CLI.checkCommandLineFlag() {
   local _flagKey="${1}";
   checkNotEmpty flagKey "${_flagKey}" 1;
@@ -989,7 +988,7 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
 #      fi
 function CLI.isCommandLineFlagAlreadyChecked() {
   local _flagsAlreadyChecked="${1}";
-  checkNotEmpty flagsAlreadyChecked "${_flagsAlreadyChecked}" 1;
+  checkNotEmpty alreadyCheckedFlags "${_flagsAlreadyChecked}" 1;
   local _flagKey="${2}";
   checkNotEmpty flagKey "${_flagKey}" 2;
   local -i _rescode;
@@ -1116,9 +1115,8 @@ function CLI.checkEnvironmentVariables() {
 #      fi
 function CLI.isFlagDefined() {
   local _flagKey="${1}";
+  checkNotEmpty flagKey "${_flagKey}" 1;
   local -i _rescode;
-
-  checkNotEmpty "flagKey" "${_flagKey}" 1;
 
   CLI.getFlagKeysVariableName;
   local -n _flagKeys="${RESULT}";
@@ -1129,7 +1127,7 @@ function CLI.isFlagDefined() {
   return ${_rescode};
 }
 
-# fun: CLI.buildNameOfTheCallbackFunctionToCheckFlag
+# fun: CLI.buildNameOfTheCallbackFunctionToCheckFlag longName
 # api: private
 # txt: Builds the name of the callback function used when checking a flag.
 # opt: longName: The long name of the flag.
@@ -1404,7 +1402,7 @@ function CLI.buildNameOfTheCallbackFunctionToParseParameter() {
   export RESULT="dw_parse_${_longName}_cli_parameter";
 }
 
-# fun: CLI.parseCallbackDefinedForParameter
+# fun: CLI.parseCallbackDefinedForParameter longName
 # api: private
 # txt: Checks whether the callback function to parse given parameter exists.
 # opt: longName: The long name of the parameter.
@@ -1509,7 +1507,7 @@ function CLI.buildCommandLineFlagKey() {
 #      fi
 function CLI.retrieveCommandLineFlagKeyFromShortName() {
   local _shortName="${1}";
-  checkNotEmpty "shortName" "${_shortName}" 1;
+  checkNotEmpty shortName "${_shortName}" 1;
   local -i _rescode=${TRUE};
 
   if removePrefix "${_shortName}" "-*"; then
@@ -1540,7 +1538,7 @@ function CLI.retrieveCommandLineFlagKeyFromShortName() {
 # fun: CLI.retrieveCommandLineFlagKeyFromLongName longName
 # api: private
 # txt: Retrieves the key of a command-line flag from its long name.
-# opt: longNname: the long name of the flag.
+# opt: longName: the long name of the flag.
 # txt: Returns 0/TRUE if the key was built successfully; 1/FALSE otherwise.
 #      If the function returns 0/TRUE, the variable RESULT contains the key.
 # use: if CLI.retrieveCommandLineFlagKeyFromLongName "file"; then
@@ -1586,7 +1584,7 @@ function CLI.retrieveCommandLineFlagKeyFromLongName() {
 #      fi
 function CLI.retrieveCommandLineFlagShortNameFromKey() {
   local _key="${1}";
-  checkNotEmpty key "${_key}" 1;
+  checkNotEmpty flagKey "${_key}" 1;
   local _result;
   local -i _rescode;
 
@@ -1612,7 +1610,7 @@ function CLI.retrieveCommandLineFlagShortNameFromKey() {
 #      fi
 function CLI.retrieveCommandLineFlagLongNameFromKey() {
   local _key="${1}";
-  checkNotEmpty key "${_key}" 1;
+  checkNotEmpty flagKey "${_key}" 1;
 
   local _result;
   local -i _rescode;
@@ -1659,7 +1657,7 @@ function CLI.retrieveCommandLineFlagDescriptionFromKey() {
 
 # fun: CLI.retrieveCommandLineFlagKey shortOrLongName
 # api: private
-# txt: Retrieves the command-line flag flag.
+# txt: Retrieves the command-line flag.
 # opt: shortOrLongName: The flag (either short or long version).
 # txt: Returns 0/TRUE if the flag is defined; 1/FALSE otherwise.
 # use: if CLI.retrieveCommandLineFlagKey "-f"; then
@@ -1667,7 +1665,7 @@ function CLI.retrieveCommandLineFlagDescriptionFromKey() {
 #      fi
 function CLI.retrieveCommandLineFlagKey() {
   local _flag="${1}";
-  checkNotEmpty flag "${_flag}" 1;
+  checkNotEmpty shortOrLongName "${_flag}" 1;
   local -i _rescode;
 
   if CLI.retrieveCommandLineFlagKeyFromShortName "${_flag}"; then
@@ -1776,7 +1774,7 @@ function CLI.doesCommandLineFlagExpectArgument() {
 #      fi
 function CLI.retrieveCommandLineParameterDescriptionFromName() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty paramName "${_name}" 1;
   local _result;
   local -i _rescode;
 
@@ -1833,7 +1831,7 @@ function CLI.isCommandLineParameterMandatory() {
 #      fi
 function CLI.isCommandLineParameterSingle() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty paramName "${_name}" 1;
   local -i _rescode;
 
   CLI.getSingleParametersVariableName;
@@ -1861,7 +1859,7 @@ function CLI.isCommandLineParameterSingle() {
 #      fi
 function CLI.isCommandLineParameterMultiple() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty paramName "${_name}" 1;
   local -i _rescode;
 
   if CLI.isCommandLineParameterSingle "${_name}"; then
@@ -2041,7 +2039,7 @@ function CLI.commandLineFlagsDetailedUsage() {
 #      fi
 function CLI.commandLineParameterIsSingle() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty paramName "${_name}" 1;
   local -i _rescode;
 
   CLI.getSingleParametersVariableName;
@@ -2070,7 +2068,7 @@ function CLI.commandLineParameterIsSingle() {
 #      fi
 function CLI.commandLineParameterIsMultiple() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty paramName "${_name}" 1;
   local -i _rescode;
 
   if CLI.commandLineParameterIsSingle "${_name}"; then
@@ -2092,7 +2090,7 @@ function CLI.commandLineParameterIsMultiple() {
 #      fi
 function CLI.commandLineParameterIsMandatory() {
   local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
+  checkNotEmpty paramName "${_name}" 1;
   local -i _rescode;
 
   CLI.getMandatoryParametersVariableName;
@@ -2220,6 +2218,54 @@ function printHelp() {
 # use: printUsage;
 function printUsage() {
   printHelp >&2
+}
+
+# fun: CLI.checkMandatoryOrOptional paramValue paramIndex
+# api: private
+# txt: Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: CLI.checkMandatoryOrOptional "${mandatoryOrOptional}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither MANDATORY or OPTIONAL.
+function CLI.checkMandatoryOrOptional() {
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
+
+  CHECK.checkOneOf 1 "MANDATORY|OPTIONAL" "${_value}" "MANDATORY OPTIONAL" "${_index}";
+}
+
+# fun: CLI.checkSingleOrMultiple paramValue paramIndex
+# api: private
+# txt: Performs a precondition check on given parameter to ensure it's either SINGLE or MULTIPLE.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: CLI.checkSingleOrMultiple "${singleOrMultiple}" 1 # -> throws an error if the first (1) parameter ("${paramValue}") is neither SINGLE or MULTIPLE.
+function CLI.checkSingleOrMultiple() {
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
+
+  CHECK.checkOneOf 1 "SINGLE|MULTIPLE" "${_value}" "SINGLE MULTIPLE" "${_index}";
+}
+
+# fun: CLI.checkExpectsArgumentOrNoArgument paramValue paramIndex
+# api: private
+# txt: Performs a precondition check on given parameter to ensure it's either EXPECTS_ARGUMENT or NO_ARGUMENT.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: CLI.checkExpectsArgumentOrNoArgument "${expectsArgumentOrNoArgument}" 1 # -> throws an error if the first (1) parameter ("${paramValue}") is neither EXPECTS_ARGUMENT or NO_ARGUMENT.
+function CLI.checkExpectsArgumentOrNoArgument() {
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
+
+  CHECK.checkOneOf 1 "EXPECTS_ARGUMENT|NO_ARGUMENT" "${_value}" "EXPECTS_ARGUMENT NO_ARGUMENT" "${_index}";
 }
 
 # fun: CLI.defaultState

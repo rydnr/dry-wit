@@ -2,7 +2,7 @@
 # api: public
 # txt: Functions related to displaying text to stdout.
 
-# fun: echoColorizedText text keyword defaultColor?
+# fun: echoColorizedText text keyword? defaultColor?
 # api: public
 # txt: Echoes given text, colorized.
 # opt: text: The text to colorize.
@@ -104,10 +104,9 @@ function echoInColor() {
     _flagMinusN=${FALSE};
   fi
   local _color="${1}";
-  checkNotEmpty "color" "${_color}" 1;
+  checkNotEmpty colorName "${_color}" 1;
   local _text="${2}";
-  checkNotEmpty "text" "${_text}" 2;
-#   echo "color: ${_color}, text: ${_text}"
+  checkNotEmpty text "${_text}" 2;
   local _colorAux="";
   local _inColor=${FALSE};
   local _noColor;

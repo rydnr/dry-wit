@@ -32,12 +32,12 @@ function ENVVAR.getModuleName() {
   return ${TRUE};
 }
 
-# fun: defineButDoNotOverrideEnvVar varName description defaultValue command?
+# fun: defineButDoNotOverrideEnvVar varName description defaultValue? command?
 # api: public
 # txt: Defines an environment variable, if it's not already defined.
 # opt: varName: The variable name.
 # opt: description: The variable description.
-# opt: defaultValue: The default value.
+# opt: defaultValue: The default value. Optional.
 # opt: command: An optional command to provide the variable value at runtime.
 # txt: Returns 0/TRUE if the variable is defined; 1/FALSE otherwise.
 # use: if defineButDoNotOverrideEnvVar "MY_VAR" "MY_VAR is used for this and that" "dummy";
@@ -87,7 +87,7 @@ function defineEnvVar() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
   local _varMandatory="${2}";
-  checkMandatoryOrOptional "${_varMandatory}" 2;
+  ENVVAR.checkMandatoryOrOptional "${_varMandatory}" 2;
   local _varDescription="${3}";
   checkNotEmpty description "${_varDescription}" 3;
   local _varDefault="${4}";
@@ -279,7 +279,7 @@ function isEnvVarOptional() {
   return ${_rescode};
 }
 
-# fun: overrideEnvVar varName varValue description?
+# fun: overrideEnvVar varName varValue? description?
 # api: public
 # txt: Overrides the value of an environment variable.
 # opt: varName: The variable name.
@@ -398,12 +398,12 @@ function upvar() {
   fi
 }
 
-# fun: upvars [-v varname value] | [-aN varname value+]
+# fun: upvars [-v varName value] | [-aN varName value+]
 # api: public
 # txt: Assign variables one scope above the caller
 # txt: Usage: local varname [varname ...] && upvars [-v varname value] | [-aN varname [value ...]] ...
 # opt:  -v: Assign single value to varname.
-# opt: varname: The name of the variable.
+# opt: varName: The name of the variable.
 # opt: -aN: Assign next N values to varname as array.
 # opt: value: The value(s) to assign.
 # txt: Returns 0/TRUE if the variables are assigned; 1/FALSE otherwise.
@@ -415,7 +415,6 @@ function upvar() {
 #      f  # Ok: a=A, b=(foo bar)
 function upvars() {
   local _flag="${1}";
-  checkNotEmpty flag "${_flag}" 1;
 
   while (( $# )); do
     case $1 in
@@ -436,8 +435,8 @@ function upvars() {
           shift 3 || { exitWithErrorCode UNACCEPTABLE_API_CALL "$1: missing argument(s) to ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"; }
         ;;
       --help) echo "\
-Usage: local varname [varname ...] &&
-   ${FUNCNAME[0]} [-v varname value] | [-aN varname [value ...]] ...
+Usage: local varName [varName ...] &&
+   ${FUNCNAME[0]} [-v varName value] | [-aN varName [value ...]] ...
 Available OPTIONS:
 -aN VARNAME [value ...]   assign next N values to varname as array
 -v VARNAME value          assign single value to varname
@@ -468,11 +467,11 @@ function ENVVAR.getEnvironmentVariablesVariableName() {
   DW.getGlobalVariableName "${RESULT}" ENVIRONMENT_VARIABLES;
 }
 
-# fun: ENVVAR.addEnvVar varName varValue
+# fun: ENVVAR.addEnvVar varName varValue?
 # api: private
 # txt: Annotates given environment variable.
 # opt: varName: The variable name.
-# opt: varValue: The value.
+# opt: varValue: The value. Optional.
 # txt: Returns 0/TRUE always.
 # use: ENVVAR.addEnvVar FOO "bar";
 function ENVVAR.addEnvVar() {
@@ -503,12 +502,12 @@ function ENVVAR.getEnvironmentVariablesCommandsVariableName() {
 # api: private
 # txt: Annotates the command of given environment variable.
 # opt: varName: The variable name.
-# opt: command:: The command.
+# opt: command: The command.
 # txt: Returns 0/TRUE always.
 # use: ENVVAR.addEnvVarCommand "MY_VAR" "curl http://zeroconf.example.com/version | bash";
 function ENVVAR.addEnvVarCommand() {
   local _varName="${1}";
-  checkNotEmpty name "${_varName}" 1;
+  checkNotEmpty varName "${_varName}" 1;
   local _varCommand="${2}";
   checkNotEmpty command "${_varCommand}" 1;
 
@@ -537,9 +536,9 @@ function ENVVAR.getEnvironmentVariablesDefaultsVariableName() {
 # use: ENVVAR.addEnvVarDefault "MY_VAR" "MY_VAR's default value";
 function ENVVAR.addEnvVarDefault() {
   local _varName="${1}";
-  checkNotEmpty name "${_varName}" 1;
+  checkNotEmpty varName "${_varName}" 1;
   local _varDefault="${2}";
-  checkNotEmpty default "${_varDefault}" 1;
+  checkNotEmpty defaultValue "${_varDefault}" 1;
 
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults=${RESULT};
@@ -597,7 +596,7 @@ function ENVVAR.addEnvVarMandatory() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
   local _varMandatory="${2}";
-  checkNotEmpty "MANDATORY|OPTIONAL" "${_varMandatory}" 2;
+  ENVVAR.checkMandatoryOrOptional "${_varMandatory}" 2;
 
   ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
@@ -615,11 +614,11 @@ function ENVVAR.getOverriddenEnvironmentVariablesVariableName() {
   DW.getGlobalVariableName "${RESULT}" OVERRIDDEN_ENVIRONMENT_VARIABLES;
 }
 
-# fun: ENVVAR.addOverridenEnvVar varName value
+# fun: ENVVAR.addOverridenEnvVar varName value?
 # api: private
 # txt: Annotates given environment variable as overridden.
 # opt: varName: The variable name.
-# opt: value: The value.
+# opt: value: The value. Optional.
 # txt: Returns 0/TRUE always.
 # use: ENVVAR.addOverriddenEnvvar "MY_VAR" "MY_VAR's new value";
 function ENVVAR.addOverriddenEnvVar() {
@@ -854,7 +853,7 @@ function ENVVAR.removeDollarSquareBrackets() {
   return ${rescode};
 }
 
-# fun: extractKeyInPair
+# fun: extractKeyInPair tuple
 # api: public
 # txt: Given a key=value, it extracts the key.
 # opt: tuple: The pair.
@@ -862,7 +861,7 @@ function ENVVAR.removeDollarSquareBrackets() {
 # use: if extractKeyInPair "a=b"; then echo "Key: ${RESULT}"; fi
 function extractKeyInPair() {
   local _pair="${1}";
-  checkNotEmpty pair "${_pair}" 1;
+  checkNotEmpty tuple "${_pair}" 1;
   local -i _rescode;
 
   ENVVAR.extractItemInPair "${_pair}" 0;
@@ -871,7 +870,7 @@ function extractKeyInPair() {
   return ${_rescode};
 }
 
-# fun: extractValueInPair
+# fun: extractValueInPair tuple
 # api: public
 # txt: Given a key=value, it extracts the value.
 # opt: tuple: The pair.
@@ -879,7 +878,7 @@ function extractKeyInPair() {
 # use: if extractValueInPair "a=b"; then echo "Value: ${RESULT}"; fi
 function extractValueInPair() {
   local _pair="${1}";
-  checkNotEmpty pair "${_pair}" 1;
+  checkNotEmpty tuple "${_pair}" 1;
   local -i _rescode;
 
   ENVVAR.extractItemInPair "${_pair}" 1;
@@ -888,7 +887,7 @@ function extractValueInPair() {
   return ${_rescode};
 }
 
-# fun: ENVVAR.extractItemInPair
+# fun: ENVVAR.extractItemInPair tuple index
 # api: private
 # txt: Given a key=value, it extracts the element matching the index.
 # opt: tuple: The pair.
@@ -897,7 +896,7 @@ function extractValueInPair() {
 # use: if ENVVAR.extractItemInPair "a=b" 1; then echo "Element at 1: ${RESULT}"; fi
 function ENVVAR.extractItemInPair() {
   local _pair="${1}";
-  checkNotEmpty pair "${_pair}" 1;
+  checkNotEmpty tuple "${_pair}" 1;
   local _index="${2}";
   checkNotEmpty index "${_index}" 2;
   local -i _rescode=${FALSE};
@@ -918,6 +917,23 @@ function ENVVAR.extractItemInPair() {
 
   return ${_rescode};
 }
+
+# fun: ENVVAR.checkMandatoryOrOptional paramValue paramIndex
+# api: private
+# txt: Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: ENVVAR.checkMandatoryOrOptional "${mandatoryOrOptional}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither MANDATORY or OPTIONAL.
+function ENVVAR.checkMandatoryOrOptional() {
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
+
+  CHECK.checkOneOf 1 "MANDATORY|OPTIONAL" "${_value}" "MANDATORY OPTIONAL" "${_index}";
+}
+
 
 # fun: ENVVAR.resetState
 # api: private

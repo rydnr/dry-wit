@@ -151,9 +151,9 @@ function createTempFolder() {
 # use:  if FILE.mktempFile /tmp .removeme.XXXX; then ...; fi
 function FILE.mktempFile() {
   local _baseFolder="${1}";
-  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
+  checkNotEmpty baseFolder "${_baseFolder}" 1;
   local _format="${2}"
-  checkNotEmpty "format" "${_format}" 2;
+  checkNotEmpty format "${_format}" 2;
   local -i _rescode;
   local _result;
 
@@ -182,12 +182,11 @@ function FILE.mktempFile() {
 # use: if FILE.mktempFolder /tmp .removeme.XXXX; then ...; fi
 function FILE.mktempFolder() {
   local _baseFolder="${1}";
+  checkNotEmpty baseFolder "${_baseFolder}" 1;
   local _format="${2}"
+  checkNotEmpty format "${_format}" 2;
   local -i _rescode;
   local _result;
-
-  checkNotEmpty "baseFolder" "${_baseFolder}" 1;
-  checkNotEmpty "format" "${_format}" 2;
 
   if isMacOSX; then
     _result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
@@ -212,14 +211,16 @@ function FILE.mktempFolder() {
 # use: if fileExists "/tmp/test.txt"; then ...; fi
 function fileExists() {
   local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -e ${_file} ]]; then
+  checkNotEmpty file "${_file}" 1;
+
+  if [[ -e ${_file} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
   fi
 }
 
-# fun: folderExists
+# fun: folderExists folder
 # api: public
 # txt: Checks if given folder exists.
 # opt: folder: The folder to check.
@@ -227,14 +228,16 @@ function fileExists() {
 # use: if folderExists "/tmp"; then ...; fi
 function folderExists() {
   local _folder="${1}";
-  if isNotEmpty "${_folder}" && [[ -e ${_folder} ]]; then
+  checkNotEmpty folder "${_folder}" 1;
+
+  if [[ -e ${_folder} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
   fi
 }
 
-# fun: fileIsNotEmpty
+# fun: fileIsNotEmpty file
 # api: public
 # txt: Checks if given file is not empty.
 # opt: file: The file to check.
@@ -242,7 +245,9 @@ function folderExists() {
 # use: if fileIsNotEmpty "/tmp/test.txt"; then ...; fi
 function fileIsNotEmpty() {
   local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -s ${_file} ]]; then
+  checkNotEmpty file "${_file}" 1;
+
+  if [[ -s ${_file} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
@@ -257,7 +262,9 @@ function fileIsNotEmpty() {
 # use: if fileIsReadable "/tmp/test.txt"; then ...; fi
 function fileIsReadable() {
   local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -r ${_file} ]]; then
+  checkNotEmpty file "${_file}" 1;
+
+  if [[ -r ${_file} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
@@ -272,7 +279,9 @@ function fileIsReadable() {
 # use: if fileIsRegularFile "/tmp/test.txt"; then ...; fi
 function fileIsRegularFile() {
   local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -f ${_file} ]]; then
+  checkNotEmpty file "${_file}" 1;
+
+  if [[ -f ${_file} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
@@ -287,14 +296,16 @@ function fileIsRegularFile() {
 # use: if fileIsWritable "/tmp/test.txt"; then ...; fi
 function fileIsWritable() {
   local _file="${1}";
-  if isNotEmpty "${_file}" && [[ -w ${_file} ]]; then
+  checkNotEmpty file "${_file}" 1;
+
+  if [[ -w ${_file} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
   fi
 }
 
-# fun: folderIsWritable file
+# fun: folderIsWritable folder
 # api: public
 # txt: Checks if given folder is writable.
 # opt: folder: The folder to check.
@@ -302,7 +313,9 @@ function fileIsWritable() {
 # use: if folderIsWritable "/tmp"; then ...; fi
 function folderIsWritable() {
   local _folder="${1}";
-  if isNotEmpty "${_folder}" && [[ -w ${_folder} ]]; then
+  checkNotEmpty folder "${_folder}" 1;
+
+  if [[ -w ${_folder} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
@@ -319,8 +332,10 @@ function folderIsWritable() {
 # use: findFolderDistance "/home/myuser/a/b/c" "/home/myuser/a/b/d/e";
 function findFolderDistance() {
   local _pathA="$1";
+  checkNotEmpty folderA "${_pathA}" 1;
   local _pathB="$2";
-  local result=-1;
+  checkNotEmpty folderB "${_pathB}" 2;
+  local -i result=-1;
 
   local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
   local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
@@ -371,7 +386,9 @@ function findFolderDistance() {
 # use: findGreatestCommonParentFolder ${HOME}/a/b/c ${HOME}/a/b/d/e;
 function findGreatestCommonParentFolder() {
   local _pathA="$1";
+  checkNotEmpty folderA "${_pathA}" 1;
   local _pathB="$2";
+  checkNotEmpty folderB "${_pathB}" 2;
   local result="";
 
   local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
@@ -409,6 +426,7 @@ function findGreatestCommonParentFolder() {
 # txt: Prints the file path via (stdin).
 # use: local path="$(findInPath myFile)";
 function findInPath() {
+  checkNotEmpty file "${1}" 1;
   local result="";
   local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
   local _path;
@@ -445,7 +463,9 @@ function findRelativePathBetweenFolders() {
   # 4) Replace the greatest 'd' parent folders with '..' in A -> P*
   # 5) Result=P*/B*
   local _pathA="$1";
+  checkNotEmpty folderA "${_pathA}" 1;
   local _pathB="$2";
+  checkNotEmpty folderB "${_pathB}" 2;
   local _parent;
   local _pathAb;
   local _pathBb;
@@ -486,9 +506,9 @@ function findRelativePathBetweenFolders() {
 #      fi
 function folderExists() {
   local _folder="${1}";
-  local -i rescode;
+  checkNotEmpty folder "${_folder}" 1;
 
-  checkNotEmpty "folder" "${_folder}" 1;
+  local -i rescode;
 
   if [ -d "${_folder}" ]; then
     rescode=${TRUE};
@@ -499,7 +519,7 @@ function folderExists() {
   return ${rescode};
 }
 
-# fun: isExecutable folder
+# fun: isExecutable fileOrFolder
 # api: public
 # txt: Checks whether given file or folder are executable.
 # opt: fileOrFolder: The file or folder to check.
@@ -507,9 +527,8 @@ function folderExists() {
 # use: if isExecutable "/tmp"; then cd /tmp; fi
 function isExecutable() {
   local _fileOrFolder="${1}";
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
   local -i rescode;
-
-  checkNotEmpty "fileOrFolder" "${_fileOrFolder}" 1;
 
   if fileExists "${_fileOrFolder}" && [[ -x "${_fileOrFolder}" ]]; then
     rescode=${TRUE};
@@ -528,9 +547,8 @@ function isExecutable() {
 # use: if folderExistsAndIsNotASymlink "/tmp"; then ...; fi
 function folderExistsAndIsNotASymlink() {
   local _folder="${1}";
+  checkNotEmpty folder "${_folder}" 1;
   local -i rescode;
-
-  checkNotEmpty "folder" "${_folder}" 1;
 
   if folderExists "${_folder}"; then
     if isSymlink "${_folder}"; then
@@ -570,9 +588,8 @@ function isMacOSX() {
 # use: if isSymlink "/tmp"; then ...; fi
 function isSymlink() {
   local _path="${1}";
+  checkNotEmpty path "${_path}" 1;
   local -i rescode;
-
-  checkNotEmpty "path" "${_path}" 1;
 
   if [ -L "${_path}" ]; then
     rescode=${TRUE};
@@ -593,18 +610,18 @@ function isSymlink() {
 #      fi
 function readConfFile() {
   local _confFile="${1}";
-  checkNotEmpty "confFile" "${_confFile}" 1;
-  local result=${TRUE};
+  checkNotEmpty file "${_confFile}" 1;
+  local -i _rescode=${TRUE};
 
-  [ ! -e "${_confFile}" ] && result=${FALSE};
+  [ ! -e "${_confFile}" ] && _rescode=${FALSE};
 
   local _actualConfFile="${_confFile}";
 
   createTempFile;
-  result=$?;
+  _rescode=$?;
 
-  if isFalse ${result}; then
-    return ${result};
+  if isFalse ${_rescode}; then
+    return ${_rescode};
   fi
 
   _actualConfFile="${RESULT}";
@@ -618,7 +635,7 @@ function readConfFile() {
 
   . "${_actualConfFile}";
 
-  return ${result};
+  return ${_rescode};
 }
 
 # fun: readLink param*
@@ -631,23 +648,22 @@ function readConfFile() {
 #        echo "readlink result: ${RESULT}"
 #      fi
 function readLink() {
-  local -i rescode;
-  local result;
-
-  checkNotEmpty readlinkParam "${@}" 1;
+  checkNotEmpty param "${1}" 1;
+  local -i _rescode;
+  local _result;
 
   if isMacOSX; then
-    result="$(greadlink $@)";
-    rescode=$?;
+    _result="$(greadlink $@)";
+    _rescode=$?;
   else
-    result="$(readlink $@)";
-    rescode=$?;
+    _result="$(readlink $@)";
+    _rescode=$?;
   fi
-  if isTrue ${rescode}; then
-    export RESULT="${result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: removeExtension fileName
@@ -658,8 +674,8 @@ function readLink() {
 # txt: The variable RESULT contains the file name, without the extension.
 # use: removeExtension "myfile.sh" # -> RESULT="myfile";
 function removeExtension() {
-  local _file="$1";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}";
+  checkNotEmpty fileName "${_file}" 1;
 
   local result="$(basename ${_file}$)";
   result="${result%.*}";
@@ -667,7 +683,7 @@ function removeExtension() {
   export RESULT="${result}";
 }
 
-# fun: retrieveAbsolutePath relativePath.
+# fun: retrieveAbsolutePath relativePath
 # api: public
 # txt: Retrieves the absolute path of given argument.
 # opt: relativePath: The relative path.
@@ -678,8 +694,7 @@ function removeExtension() {
 #      fi
 function retrieveAbsolutePath() {
   local _relativePath="${1}";
-
-  checkNotEmpty "relativePath" "${_relativePath}" 1;
+  checkNotEmpty relativePath "${_relativePath}" 1;
 
   readLink -f "${_relativePath}";
 
@@ -695,9 +710,10 @@ function retrieveAbsolutePath() {
 #        echo "/tmp -> ${RESULT}";
 #      fi
 function retrieveFreeDiskSpaceUnderFolder() {
-  local result;
-  local -i resultCode=${FALSE};
   local _folder="$1";
+  checkNotEmpty folder "${_folder}" 1;
+  local _result;
+  local -i _rescode=${FALSE};
   local _aux="${_folder}";
 
   if [ -d "${_folder}" ]; then
@@ -707,17 +723,19 @@ function retrieveFreeDiskSpaceUnderFolder() {
     done;
 
     mountpoint -q "${_aux}";
-    resultCode=$?;
+    _rescode=$?;
 
-    if isTrue ${resultCode}; then
-      result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
-      resultCode=$?;
+    if isTrue ${_rescode}; then
+      _result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
+      _rescode=$?;
     fi
   fi
 
-  export RESULT="${result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
-  return ${resultCode};
+  return ${_rescode};
 }
 
 # fun: sourceFileIfExists file
@@ -728,20 +746,19 @@ function retrieveFreeDiskSpaceUnderFolder() {
 # use: sourceFileIfExists "/tmp/my-env";
 function sourceFileIfExists() {
   local _file="${1}";
-  local -i rescode=${FALSE};
-
-  checkNotEmpty "file" "${_file}" 1;
+  checkNotEmpty file "${_file}" 1;
+  local -i _rescode=${FALSE};
 
   logTrace -n "Reading ${_file}";
   if fileExists "${_file}"; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
     source "${_file}";
     logTraceResult SUCCESS "done";
   else
     logTraceResult SUCCESS "not found";
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: uncompress file outputFolder
@@ -753,8 +770,10 @@ function sourceFileIfExists() {
 # use: uncompress "my.zip" "/tmp";
 function uncompress() {
   local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
   local _destination="${2}";
-  local result=${TRUE};
+  checkNotEmpty outputFolder "${_destination}" 2;
+  local -i _rescohe=${TRUE};
 
   createTempFile;
   local _errorOutput="${RESULT}";
@@ -771,38 +790,41 @@ function uncompress() {
   elif file "${_file}" | cut -d ":" -f 2 | grep tar /dev/null 2>&1; then
     _flags="xf";
   else
-    result=1;
+    _rescode=${FALSE};
   fi
 
-  if [ ${result} == 0 ]; then
+  if isTrue ${_rescode}; then
     logDebug -n "Uncompressing ${_file}";
     tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
-    if [ $? == 0 ]; then
+    if isTrue $?; then
       logDebugResult "done";
     else
       logDebugResult "Failed";
       logDebugFile "${_errorOutput}";
-      result=2;
+      _rescode=2;
     fi
   fi
 
-  return ${result};
+  return ${_rescode};
 }
 
-# fun: replaceVariablesInFile
+# fun: replaceVariablesInFile file output variables+
 # api: public
 # txt: Processes the variables in given file. It uses enviroment variables as well as extra variables.
 # opt: file: The input file.
 # opt: output: The output file.
-# opt: variables*: name=value pairs.
+# opt: variables+: name=value pairs.
 # txt: Returns 0/TRUE if the file was processed successfully; 1/FALSE otherwise.
 # use: if replaceVariablesInFile "my.template" "my" "name=John" "age=23"; fi
 function replaceVariablesInFile() {
   local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
   local _output="${2}";
+  checkNotEmpty output "${_output}" 2;
   shift;
   shift;
   local _variables="${@}";
+  checkNotEmpty variables "${_variables}" 3;
   local -i _rescode;
   local _oldIFS="${IFS}";
   local _env;
@@ -810,10 +832,6 @@ function replaceVariablesInFile() {
   local _pair;
   local _key;
   local _value;
-
-  checkNotEmpty "file" "${_file}" 1;
-  checkNotEmpty "output" "${_output}" 2;
-  checkNotEmpty "variables" "${_variables}" 3;
 
   keyValueSplit "${_variables}";
   _splittedVariables="${RESULT}";
@@ -859,7 +877,7 @@ function replaceVariablesInFile() {
   return ${_rescode};
 }
 
-# fun: updateFilePermissions
+# fun: updateFilePermissions file permissions
 # api: public
 # txt: Changes the permissions of given file.
 # opt: file: The file to update.
@@ -868,30 +886,29 @@ function replaceVariablesInFile() {
 # use: if updateFilePermissions /tmp/my-file 0700; then echo "Permissions changed"; fi
 function updateFilePermissions() {
   local _file="${1}";
-  local _permissions="${2}";
-
   checkNotEmpty file "${_file}" 1;
+  local _permissions="${2}";
   checkNotEmpty permissions "${_permissions}" 2;
 
   chmod ${_permissions} ${_file} > /dev/null 2>&1;
 }
 
-# fun: changeOwnerOfFile
+# fun: changeOwnerOfFile file user group? ownership?
 # api: public
 # txt: Changes the ownership of given file.
 # opt: file: The file to update.
 # opt: user: The owner.
 # opt: group: The group. Optional.
+# opt: ownership: The ownership. Optional.
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
 # use: if changeOwnerOfFile /tmp/my-file 0700; then echo "Ownership changed"; fi
 function changeOwnerOfFile() {
   local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
   local _user="${2}";
+  checkNotEmpty user "${_user}" 2;
   local _group="${3}";
   local _ownership="${_user}";
-
-  checkNotEmpty file "${_file}" 1;
-  checkNotEmpty user "${_user}" 2;
 
   if isNotEmpty "${_group}"; then
     _ownership="${_ownership}:${_group}";
@@ -900,22 +917,22 @@ function changeOwnerOfFile() {
   chown "${_ownership}" "${_file}" > /dev/null 2>&1;
 }
 
-# fun: changeOwnerOfFolderRecursively
+# fun: changeOwnerOfFolderRecursively dir user group? ownership?
 # api: public
 # txt: Changes the ownership of given folder and its contents.
 # opt: dir: The folder to update.
 # opt: user: The user.
 # opt: group: The group. Optional.
+# opt: ownership: The ownership. Optional.
 # txt: Returns 0/TRUE if the owner information was updated; 1/FALSE otherwise.
 # use: if changeOwnerOfFolderRecursively /tmp root wheel; then echo "Ownership changed"; fi
 function changeOwnerOfFolderRecursively() {
   local _dir="${1}";
+  checkNotEmpty dir "${_dir}" 1;
   local _user="${2}";
+  checkNotEmpty user "${_user}" 2;
   local _group="${3}";
   local _ownership="${_user}";
-
-  checkNotEmpty dir "${_dir}" 1;
-  checkNotEmpty user "${_user}" 2;
 
   if isNotEmpty "${_group}"; then
     _ownership="${_ownership}:${_group}";

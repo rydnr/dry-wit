@@ -13,9 +13,9 @@
 #      fi
 function addUserToGroup() {
   local _user="${1}";
-  checkNotEmpty user "${_user}" 1;
+  checkNotEmpty userName "${_user}" 1;
   local _group="${2}";
-  checkNotEmpty group "${_group}" 2;
+  checkNotEmpty groupName "${_group}" 2;
 
   local -i _rescode;
 
@@ -241,10 +241,10 @@ function retrieveGidFromGroup() {
   return ${rescode};
 }
 
-# fun: retrieveGroupFromGid group
+# fun: retrieveGroupFromGid gid
 # api: public
 # txt: Retrieves the group id of given group.
-# opt: group: The group name.
+# opt: gid: The group id.
 # txt: Returns 0/TRUE if the gid is processed successfully; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the group id.
 # use: if retrieveGroupFromGid "100"; then echo "The name of group 1 is ${RESULT}"; fi
@@ -341,10 +341,10 @@ function retrieveUidFromUser() {
   return ${rescode};
 }
 
-# fun: retrieveUserFromUid user
+# fun: retrieveUserFromUid uid
 # api: public
 # txt: Retrieves the user id of given user.
-# opt: user: The user name.
+# opt: uid: The user id.
 # txt: Returns 0/TRUE if the user is found; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the user id.
 # use: if retrieveUserFromUid "1"; then echo "The name of user 1 is ${RESULT}"; fi

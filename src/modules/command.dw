@@ -11,6 +11,7 @@
 # use: if runCommand "nmap -Pn"; then ...; fi
 function runCommand() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
+  checkNotEmpty command "${_command}" 1;
   local result;
   local -i resultCode;
 

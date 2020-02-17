@@ -30,7 +30,7 @@ function BOOTSTRAP.getModuleName() {
   return ${TRUE};
 }
 
-# fun: DW.declareGlobalInt
+# fun: DW.declareGlobalInt module varName value
 # api: public
 # txt: Declares a global integer variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -49,7 +49,7 @@ function DW.declareGlobalInt() {
   DW.declareGlobalVariable "${_module}" "${_varName}" "int" "${_value}";
 }
 
-# fun: DW.setGlobalInt
+# fun: DW.setGlobalInt module varName value
 # api: public
 # txt: Sets the value of a global integer variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -71,7 +71,7 @@ function DW.setGlobalInt() {
   fi
 }
 
-# fun: DW.getGlobalInt
+# fun: DW.getGlobalInt module varName
 # api: public
 # txt: Retrieves the value of a global integer variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -99,7 +99,7 @@ function DW.getGlobalInt() {
   return ${_rescode};
 }
 
-# fun: DW.declareGlobalString
+# fun: DW.declareGlobalString module varName value
 # api: private
 # txt: Declares a global String variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -118,7 +118,7 @@ function DW.declareGlobalString() {
   DW.declareGlobalVariable "${_module}" "${_varName}" "string" "${_value}";
 }
 
-# fun: DW.setGlobalString
+# fun: DW.setGlobalString module varName value
 # api: public
 # txt: Sets the value of a global string variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -140,7 +140,7 @@ function DW.setGlobalString() {
   fi
 }
 
-# fun: DW.getGlobalString
+# fun: DW.getGlobalString module varName
 # api: public
 # txt: Retrieves the value of a global String variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -169,7 +169,7 @@ function DW.getGlobalString() {
   return ${_rescode};
 }
 
-# fun: DW.declareGlobalArray
+# fun: DW.declareGlobalArray module varName values*
 # api: public
 # txt: Declares a global array variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -188,11 +188,12 @@ function DW.declareGlobalArray() {
   DW.declareGlobalVariable "${_module}" "${_varName}" "array" ${@};
 }
 
-# fun: DW.declareGlobalMap
+# fun: DW.declareGlobalMap module varName values*
 # api: public
 # txt: Declares a global associative array variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
 # opt: varName: The name of the variable.
+# opt: values: The initial values. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
 # use: if DW.declareGlobalMap "LOGGING" "MY_ASSOCIATIVE_ARRAY"; then local -n map=${RESULT}; fi
@@ -206,7 +207,7 @@ function DW.declareGlobalMap() {
   DW.declareGlobalVariable "${_module}" "${_varName}" "map" ${@};
 }
 
-# fun: DW.declareGlobalVariable
+# fun: DW.declareGlobalVariable module varName varType initialValue
 # api: public
 # txt: Declares a global variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -268,7 +269,7 @@ function DW.declareGlobalVariable() {
   return ${_rescode};
 }
 
-# fun: DW.getGlobalVariableName
+# fun: DW.getGlobalVariableName module varName
 # api: public
 # txt: Retrieves the name of a global variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
@@ -289,7 +290,7 @@ function DW.getGlobalVariableName() {
   return ${_rescode};
 }
 
-# fun: DW.buildGlobalVariableName
+# fun: DW.buildGlobalVariableName module varName
 # api: public
 # txt: Retrieves the name of a global variable. Its name depends on the nesting level. It might not yet exist.
 # opt: module: The name of the module.
@@ -369,7 +370,7 @@ function DW.getScriptFolder() {
   DW.getGlobalString "${_moduleName}" SCRIPT_FOLDER;
 }
 
-# fun: BOOTSTRAP.exitWithError
+# fun: BOOTSTRAP.exitWithError label message
 # api: private
 # txt: A fail-safe version of exitWithError.
 # opt: label: The error label.
@@ -387,19 +388,7 @@ function BOOTSTRAP.exitWithError() {
   fi
 }
 
-# fun: checkNotEmpty
-# api: public
-# txt: A fail-safe version of checkNotEmpty.
-# opt: name: The parameter name.
-# opt: value: The parameter value.
-# opt: index: The parameter index.
-# txt: Exits if the parameter value is empty.
-# use: checkNotEmpty module "${module}" 1
-#function checkNotEmpty() {
-#  BOOTSTRAP.checkNotEmpty $@;
-#}
-
-# fun: BOOTSTRAP.checkNotEmpty
+# fun: BOOTSTRAP.checkNotEmpty name value index
 # api: private
 # txt: A fail-safe version of checkNotEmpty.
 # opt: name: The parameter name.
@@ -424,7 +413,7 @@ function BOOTSTRAP.checkNotEmpty() {
   fi
 }
 
-# fun: BOOTSTRAP.isEmpty
+# fun: BOOTSTRAP.isEmpty name
 # api: private
 # txt: A fail-safe version of isEmpty.
 # opt: name: The parameter name.
@@ -460,8 +449,8 @@ function BOOTSTRAP.isDebugEnabled() {
     for _flag in ${BASH_ARGV[@]}; do
       IFS="${_oldIFS}";
       if [ "${_flag}" == "-v" ]; then
-	        _rescode=${TRUE};
-	        break;
+	      _rescode=${TRUE};
+	      break;
       fi
     done
     IFS="${_oldIFS}";
@@ -476,45 +465,44 @@ function BOOTSTRAP.isDebugEnabled() {
 # txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
 # use: if BOOTSTRAP.isTraceEnabled; then ...; fi
 function BOOTSTRAP.isTraceEnabled() {
-    local -i _rescode=${FALSE};
-    local _oldIFS="${IFS}";
+  local -i _rescode=${FALSE};
+  local _oldIFS="${IFS}";
 
-    if BOOTSTRAP.isFunctionDefined "isTraceEnabled"; then
-        isTraceEnabled;
-        _rescode=$?;
-    else
-        IFS="${DWIFS}";
-        for _flag in ${BASH_ARGV[@]}; do
-            IFS="${_oldIFS}";
-            if [ "${_flag}" == "-vv" ]; then
-	              _rescode=${TRUE};
-	              break;
-            fi
-        done
-        IFS="${_oldIFS}";
-    fi
+  if BOOTSTRAP.isFunctionDefined "isTraceEnabled"; then
+    isTraceEnabled;
+    _rescode=$?;
+  else
+    IFS="${DWIFS}";
+    for _flag in ${BASH_ARGV[@]}; do
+      IFS="${_oldIFS}";
+      if [ "${_flag}" == "-vv" ]; then
+	      _rescode=${TRUE};
+	      break;
+      fi
+    done
+    IFS="${_oldIFS}";
+  fi
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
-# fun: BOOTSTRAP.logDebug
+# fun: BOOTSTRAP.logDebug [-n]? message
 # api: private
 # txt: A fail-safe version of logDebug.
 # opt: -n: Whether to omit a newline. Optional.
 # opt: message: The message.
+# txt: Returns 0/TRUE always.
 # use: BOOTSTRAP.logDebug "Processing file ${file}";
 function BOOTSTRAP.logDebug() {
   local _message="${1}";
-  local -i _newline=0;
-  local -i _position=1;
-
   if [ "${_message}" == "-n" ]; then
     _newline=1;
     _message="${2}";
     _position=2;
   fi
-
-  BOOTSTRAP.checkNotEmpty "message" "${_message}" ${_position};
+  BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
+  local -i _newline=0;
+  local -i _position=1;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTrace is loaded.
@@ -529,50 +517,49 @@ function BOOTSTRAP.logDebug() {
   fi
 }
 
-# fun: BOOTSTRAP.logTrace
+# fun: BOOTSTRAP.logTrace [-n]? message
 # api: private
 # txt: A fail-safe version of logTrace.
 # opt: -n: Whether to omit a newline. Optional.
 # opt: message: The message.
+# txt: Returns 0/TRUE always.
 # use: BOOTSTRAP.logTrace "Processing file ${file}";
 function BOOTSTRAP.logTrace() {
-    local _message="${1}";
-    local -i _newline=0;
-    local -i _position=1;
+  local _message="${1}";
+  if [ "${_message}" == "-n" ]; then
+    _newline=1;
+    _message="${2}";
+    _position=2;
+  fi
+  BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
+  local -i _newline=0;
+  local -i _position=1;
 
-    if [ "${_message}" == "-n" ]; then
-        _newline=1;
-        _message="${2}";
-        _position=2;
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## logTrace is loaded.
+  if BOOTSTRAP.isFunctionDefined "logTrace"; then
+    logTrace $@;
+  elif BOOTSTRAP.isTraceEnabled; then
+    if [ ${_newline} -eq 0 ]; then
+      command echo "[dry-wit:bootstrap] ${_message}";
+    else
+      command echo "[dry-wit:bootstrap] ${_message} ... ";
     fi
-
-    BOOTSTRAP.checkNotEmpty "message" "${_message}" ${_position};
-
-    ## Needed since this function is used in bootstrapping, and could be loaded before
-    ## logTrace is loaded.
-    if BOOTSTRAP.isFunctionDefined "logTrace"; then
-        logTrace $@;
-    elif BOOTSTRAP.isTraceEnabled; then
-        if [ ${_newline} -eq 0 ]; then
-            command echo "[dry-wit:bootstrap] ${_message}";
-        else
-            command echo "[dry-wit:bootstrap] ${_message} ... ";
-        fi
-    fi
+  fi
 }
 
-# fun: BOOTSTRAP.logDebugResult.
+# fun: BOOTSTRAP.logDebugResult outcome message
 # api: private
 # txt: A fail-safe version of logDebugResult.
 # opt: outcome: The outcome.
 # opt: message: The message.
+# txt: Returns 0/TRUE always.
 # use: BOOTSTRAP.logDebugResult SUCCESS "done"
 function BOOTSTRAP.logDebugResult() {
   local _outcome="${1}";
+  BOOTSTRAP.checkNotEmpty outcome "${_outcome}" 1;
   local _outcomeMessage="${2}";
-
-  BOOTSTRAP.checkNotEmpty "outcome" "${_outcome}" 1;
-  BOOTSTRAP.checkNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
+  BOOTSTRAP.checkNotEmpty outcomeMessage "${_outcomeMessage}" 2;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTraceResult is loaded.
@@ -581,27 +568,26 @@ function BOOTSTRAP.logDebugResult() {
   fi
 }
 
-# fun: BOOTSTRAP.logTraceResult.
+# fun: BOOTSTRAP.logTraceResult outcome message
 # api: private
 # txt: A fail-safe version of logTraceResult.
 # opt: outcome: The outcome.
 # opt: message: The message.
 # use: BOOTSTRAP.logTraceResult SUCCESS "done"
 function BOOTSTRAP.logTraceResult() {
-    local _outcome="${1}";
-    local _outcomeMessage="${2}";
+  local _outcome="${1}";
+  BOOTSTRAP.checkNotEmpty outcome "${_outcome}" 1;
+  local _outcomeMessage="${2}";
+  BOOTSTRAP.checkNotEmpty outcomeMessage "${_outcomeMessage}" 2;
 
-    BOOTSTRAP.checkNotEmpty "outcome" "${_outcome}" 1;
-    BOOTSTRAP.checkNotEmpty "outcomeMessage" "${_outcomeMessage}" 2;
-
-    ## Needed since this function is used in bootstrapping, and could be loaded before
-    ## logTraceResult is loaded.
-    if BOOTSTRAP.isFunctionDefined "logTraceResult"; then
-        logTraceResult ${_outcome} "${_outcomeMessage}";
-    fi
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## logTraceResult is loaded.
+  if BOOTSTRAP.isFunctionDefined "logTraceResult"; then
+    logTraceResult ${_outcome} "${_outcomeMessage}";
+  fi
 }
 
-# fun: BOOTSTRAP.isFunctionDefined
+# fun: BOOTSTRAP.isFunctionDefined name
 # api: private
 # txt: A fail-safe version of isFunctionDefined.
 # opt: name: The function name.
@@ -609,9 +595,8 @@ function BOOTSTRAP.logTraceResult() {
 # use: if BOOTSTRAP.isFunctionDefined "readFile"; then echo "readFile defined"; fi
 function BOOTSTRAP.isFunctionDefined() {
   local _function="${1}";
+  BOOTSTRAP.checkNotEmpty name "${_function}" 1;
   local -i _rescode;
-
-  BOOTSTRAP.checkNotEmpty "function" "${_function}" 1;
 
   type "${_function}" 2> /dev/null | grep -q 'function';
   _rescode=$?;
@@ -619,7 +604,7 @@ function BOOTSTRAP.isFunctionDefined() {
   return ${_rescode};
 }
 
-# fun: BOOTSTRAP.arrayContains
+# fun: BOOTSTRAP.arrayContains item array
 # api: private
 # txt: A fail-safe version of arrayContains.
 # opt: array: The array (passed as "${array[@]}".
@@ -648,7 +633,7 @@ function BOOTSTRAP.arrayContains() {
   return ${_rescode};
 }
 
-# fun: BOOTSTRAP.toUpper
+# fun: BOOTSTRAP.toUpper text
 # api: public
 # txt: Converts given string to upper case.
 # opt: text: The string to convert.
@@ -657,13 +642,13 @@ function BOOTSTRAP.arrayContains() {
 # use: local _text="abc"; toUpper "${_text}"; local _upcased="${RESULT}";
 function BOOTSTRAP.toUpper() {
   local _text="${1}";
-  BOOTSTRAP.checkNotEmpty "text" "${_text}" 1;
+  BOOTSTRAP.checkNotEmpty text "${_text}" 1;
 
   local result=$(echo "${_text}" | awk '{print toupper($0);}');
   export RESULT="${result}";
 }
 
-# fun: BOOTSTRAP.normalize
+# fun: BOOTSTRAP.normalize text
 # api: public
 # txt: Converts given string to upper case and replaces non-alphanumeric characters with underscores.
 # opt: text: The string to convert.
@@ -672,24 +657,23 @@ function BOOTSTRAP.toUpper() {
 # use: local _text="abc&oeu"; normalize "${_text}"; local _normalized="${RESULT}";
 function BOOTSTRAP.normalize() {
   local _text="${1}";
-  BOOTSTRAP.checkNotEmpty "text" "${_text}" 1;
+  BOOTSTRAP.checkNotEmpty text "${_text}" 1;
 
   local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g');
   BOOTSTRAP.toUpper "${_result}";
 }
 
-# fun: downloadModule
+# fun: downloadModule module
 # api: public
 # txt: Downloads given module.
-# opt: name: The module name.
+# opt: module: The module name.
 # txt: Returns 0/TRUE if the module is downloaded; 1/FALSE otherwise.
 # use:  if downloadModule "fibonacci"; then echo "fibonacci module downloaded"; fi
 function downloadModule() {
   local _module="${1}";
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local -i _rescode;
   local _result="";
-
-  BOOTSTRAP.checkNotEmpty "module" "${_module}" 1;
 
   BOOTSTRAP.getModulePath;
   local _modulePath="${RESULT}";
@@ -754,7 +738,7 @@ function BOOTSTRAP.bootstrap() {
   IFS="${_oldIFS}";
 }
 
-# fun: DW.import
+# fun: DW.import module
 # api: public
 # txt: Imports given module.
 # opt: module: The module to import.
@@ -762,7 +746,7 @@ function BOOTSTRAP.bootstrap() {
 # use: DW.import logging;
 function DW.import() {
   local _module="${1}";
-  BOOTSTRAP.checkNotEmpty "module" "${_module}" 1;
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
 
   local _modulePath;
 
@@ -779,7 +763,7 @@ function DW.import() {
   local -n _importedModules=${RESULT};
 
   if    BOOTSTRAP.isEmpty "${_importedModules[@]}" \
-     || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[@]}"; then
+      || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[@]}"; then
     BOOTSTRAP.logTrace -n "Loading ${_modulePath}";
     source "${_modulePath}";
     BOOTSTRAP.logTraceResult SUCCESS "done";
@@ -812,7 +796,7 @@ function BOOTSTRAP.getImportedModulesVariableName() {
   DW.getGlobalVariableName "${_moduleName}" IMPORTED_MODULES;
 }
 
-# fun: findModule
+# fun: findModule module
 # api: public
 # txt: Finds given module locally.
 # opt: module: The name of the module.
@@ -820,6 +804,7 @@ function BOOTSTRAP.getImportedModulesVariableName() {
 # use: if findModule "fibonacci"; then DW.import fibonacci; fi
 function findModule() {
   local _module="${1}";
+  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local -i _rescode=${FALSE};
 
   BOOTSTRAP.getModuleName;
@@ -831,14 +816,14 @@ function findModule() {
     _rescode=${TRUE};
     export RESULT="${_modulePath}/${_module}.dw";
   elif [[ -e "${_modulePath}/ext/${_module}.dw" ]]; then
-     _rescode=${TRUE};
-      export RESULT="${_modulePath}/ext/${_module}.dw";
+    _rescode=${TRUE};
+    export RESULT="${_modulePath}/ext/${_module}.dw";
   fi
 
   return ${_rescode};
 }
 
-# fun: BOOTSTRAP.endsWith
+# fun: BOOTSTRAP.endsWith text substring
 # api: private
 # txt: Checks whether the first parameter ends with the second value.
 # opt: text: The text.
@@ -847,7 +832,7 @@ function findModule() {
 # use: if BOOTSTRAP.endsWith "${text}" "c"; then echo "${text} ends with c"; fi
 function BOOTSTRAP.endsWith() {
   local _container="${1}";
-  BOOTSTRAP.checkNotEmpty container "${_container}" 1;
+  BOOTSTRAP.checkNotEmpty text "${_container}" 1;
   local _substring="${2}";
   BOOTSTRAP.checkNotEmpty substring "${_substring}" 2;
 
@@ -937,7 +922,7 @@ function DW.isTest() {
 
   if [[ -n ${_scriptName} ]]; then
     if    BOOTSTRAP.endsWith "${_scriptName}" "-tests.sh" \
-       || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
+        || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
       source $(which dry-wit-test) "${_scriptName}" $@;
     fi
   fi

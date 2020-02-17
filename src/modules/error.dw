@@ -22,9 +22,9 @@ function ERROR.getModuleName() {
 # use: addError INVALID_NAME "The name is not valid";
 function addError() {
   local _label="${1}";
-  checkNotEmpty "label" "${_label}" 1;
+  checkNotEmpty label "${_label}" 1;
   local _message="${2}";
-  checkNotEmpty "message" "${_message}" 2;
+  checkNotEmpty message "${_message}" 2;
 
   normalizeUppercase "${_label}";
   local _normalizedLabel="${RESULT}";
@@ -45,7 +45,7 @@ function addError() {
 # use: appendErrorMessage "item";
 function appendErrorMessage() {
   local _error="${1}";
-  checkNotEmpty "error" "${_error}" 1;
+  checkNotEmpty error "${_error}" 1;
 
   ERROR.getErrorMessagesVariableName;
   local -n _errorMessages=${RESULT};
@@ -60,10 +60,10 @@ function appendErrorMessage() {
 # use: exitWithError UNKNOWN_OPTION "Unknown option";
 function exitWithError() {
   local _label="${1}";
-  checkNotEmpty "label" "${_label}" 1;
+  checkNotEmpty label "${_label}" 1;
   shift;
   local _message="${@}";
-  local -i _rescode;
+  checkNotEmpty message "${_message}" 2;
 
   if isErrorUndefined "${_label}"; then
     addError "${_label}" "${_message}";
@@ -79,7 +79,7 @@ function exitWithError() {
 # use: exitWithErrorCode UNKNOWN_OPTION;
 function exitWithErrorCode() {
   local _label="${1}";
-  checkNotEmpty "label" "${_label}" 1;
+  checkNotEmpty label "${_label}" 1;
   shift;
   local -i _rescode;
 
@@ -106,8 +106,7 @@ function exitWithErrorCode() {
 #      fi
 function isErrorDefined() {
   local _label="${1}";
-  checkNotEmpty "label" "${_label}" 1;
-
+  checkNotEmpty label "${_label}" 1;
   local -i _rescode;
 
   ERROR.getErrorMessagesVariableName;
@@ -131,9 +130,8 @@ function isErrorDefined() {
 #      fi
 function isErrorUndefined() {
   local _label="${1}";
+  checkNotEmpty label "${_label}" 1;
   local -i _rescode;
-
-  checkNotEmpty "label" "${_label}" 1;
 
   if isErrorDefined "${_label}"; then
     _rescode=${FALSE};
@@ -152,7 +150,7 @@ function isErrorUndefined() {
 # use: if printErrorMessage INVALID_OPTION; then ...; fi
 function printErrorMessage() {
   local _label="${1}";
-  checkNotEmpty "label" "${_label}" 1;
+  checkNotEmpty label "${_label}" 1;
   shift;
   local -i _rescode=${TRUE};
   local _message;

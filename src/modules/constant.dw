@@ -14,7 +14,7 @@
 #      echo "${MYVAR}->${RESULT}" # OTHERVAR->works
 function evalConstant() {
   local _constant="${1}";
-  checkNotEmpty constant "${_constant}" 1;
+  checkNotEmpty constantName "${_constant}" 1;
 
   local result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
 

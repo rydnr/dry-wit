@@ -28,54 +28,6 @@ function checkFunctionPresent() {
   fi
 }
 
-# fun: checkMandatoryOrOptional paramValue paramIndex
-# api: public
-# txt: Performs a precondition check on given parameter to ensure it's either MANDATORY or OPTIONAL.
-# opt: paramValue: The parameter value.
-# opt: paramIndex: The parameter index.
-# txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: checkMandatoryOrOptional "${mandatoryOrOptional}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither MANDATORY or OPTIONAL.
-function checkMandatoryOrOptional() {
-  local _value="${1}";
-  checkNotEmpty paramValue "${_value}" 1;
-  local _index="${2}";
-  checkNotEmpty paramIndex "${_index}" 2;
-
-  CHECK.checkOneOf 1 "MANDATORY|OPTIONAL" "${_value}" "MANDATORY OPTIONAL" "${_index}";
-}
-
-# fun: checkSingleOrMultiple paramValue paramIndex
-# api: public
-# txt: Performs a precondition check on given parameter to ensure it's either SINGLE or MULTIPLE.
-# opt: paramValue: The parameter value.
-# opt: paramIndex: The parameter index.
-# txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: checkSingleOrMultiple "${singleOrMultiple}" 1 # -> throws an error if the first (1) parameter ("${paramValue}") is neither SINGLE or MULTIPLE.
-function checkSingleOrMultiple() {
-  local _value="${1}";
-  checkNotEmpty paramValue "${_value}" 1;
-  local _index="${2}";
-  checkNotEmpty paramIndex "${_index}" 2;
-
-  CHECK.checkOneOf 1 "SINGLE|MULTIPLE" "${_value}" "SINGLE MULTIPLE" "${_index}";
-}
-
-# fun: checkExpectsArgumentOrNoArgument paramValue paramIndex
-# api: public
-# txt: Performs a precondition check on given parameter to ensure it's either SINGLE or MULTIPLE.
-# opt: paramValue: The parameter value.
-# opt: paramIndex: The parameter index.
-# txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: checkExpectsArgumentOrNoArgument "${expectsArgumentOrNoArgument}" 1 # -> throws an error if the first (1) parameter ("${paramValue}") is neither EXPECTS_ARGUMENT or NO_ARGUMENT.
-function checkExpectsArgumentOrNoArgument() {
-  local _value="${1}";
-  checkNotEmpty paramValue "${_value}" 1;
-  local _index="${2}";
-  checkNotEmpty paramIndex "${_index}" 2;
-
-  CHECK.checkOneOf 1 "EXPECTS_ARGUMENT|NO_ARGUMENT" "${_value}" "EXPECTS_ARGUMENT NO_ARGUMENT" "${_index}";
-}
-
 # fun: checkNotEmpty paramName paramValue paramIndex
 # api: public
 # txt: Performs a precondition check on given parameter to ensure it's not empty. Exits if the check fails.

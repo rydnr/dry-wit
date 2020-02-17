@@ -35,7 +35,7 @@ function debugArray() {
 #      debugArray "${A}"
 function debugAssociativeArray() {
   local _associativeArrayName="${1}";
-  checkNotEmpty associativeArrayName "${_associativeArrayName}" 1;
+  checkNotEmpty arrayName "${_associativeArrayName}" 1;
 
   debugEcho "BEGIN processing array ${_associativeArrayName}";
 
@@ -69,7 +69,7 @@ function debugEcho() {
   if isDebugEchoEnabled; then
     DEBUG.getDebugLogFile;
     local _logFile="${RESULT}";
-    echo -- "$*" >> "${_logFile}";
+    echo "$*" >> "${_logFile}";
   fi
 }
 
@@ -172,7 +172,6 @@ function setDebugLogFile() {
 # txt: Returns 0/TRUE always.
 # use: traceApiCall;
 function traceApiCall() {
-
   DEBUG.getDebugLogFile;
   local _logFile="${RESULT}";
 

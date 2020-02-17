@@ -303,6 +303,7 @@ function isQuietMode() {
 # use: if isSuccessKeyword "${keyword}"; then logInfoResult SUCCESS "done"; fi
 function isSuccessKeyword() {
   local _keyword="${1}";
+  checkNotEmpty keyword "${_keyword}" 1;
   local -i _rescode=${FALSE};
   local _i;
   local _oldIFS="${IFS}";
@@ -438,8 +439,8 @@ function logDebugResult() {
   local _message="${@}";
 
   if isDebugEnabled; then
-    checkNotEmpty outcome "${_outcome}" 1;
-    checkSuccessOrFailure "${_outcome}" 1;
+    checkNotEmpty "SUCCESS|FAILURE" "${_outcome}" 1;
+    LOGGING.checkSuccessOrFailure "${_outcome}" 1;
     checkNotEmpty message "${_message}" 2;
     LOGGING.logStuffResult DEBUG "${_outcome}" "${_message}";
   fi
@@ -491,8 +492,7 @@ function LOGGING.alignRight() {
   local _logLineMessage="${1}";
   checkNotEmpty message "${_logLineMessage}" 1;
   local _outcome="${2}";
-  checkNotEmpty outcome "${_outcome}" 2;
-
+  checkNotEmpty "outcome" "${_outcome}" 2;
   local _logMessage;
 
   local -i _termWidth;
@@ -937,7 +937,7 @@ function LOGGING.checkSuccessFailureOrInProgress() {
   CHECK.checkOneOf 2 "SUCCESS|FAILURE|IN_PROGRESS" "${_keyword}" "SUCCESS FAILURE IN_PROGRESS" "${_index}";
 }
 
-# fun: LOGGING.checkSuccessOrFailure
+# fun: LOGGING.checkSuccessOrFailure keyword index
 # api: private
 # txt: Checks whether given parameter is either SUCCESS or FAILURE.
 # opt: keyword: The keyword.
@@ -951,6 +951,38 @@ function LOGGING.checkSuccessOrFailure() {
   checkNotEmpty index "${_index}" 2;
 
   CHECK.checkOneOf 2 "SUCCESS|FAILURE" "${_keyword}" "SUCCESS FAILURE" "${_index}";
+}
+
+# fun: LOGGING.checkSuccessOrFailure paramValue paramIndex
+# api: private
+# txt: Performs a precondition check on given parameter to ensure it's either SUCCESS or FAILURE.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: LOGGING.checkSuccessOrFailure "${successOrFailure}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither SUCCESS or FAILURE.
+function LOGGING.checkSuccessOrFailure() {
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
+
+  CHECK.checkOneOf 1 "SUCCESS|FAILURE" "${_value}" "SUCCESS FAILURE" "${_index}";
+}
+
+# fun: LOGGING.checkSuccessFailureOrInProgress paramValue paramIndex
+# api: private
+# txt: Performs a precondition check on given parameter to ensure it's either SUCCESS, FAILURE or IN_PROGRESS.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: LOGGING.checkSuccessFailureOrInProgress "${successFailureOrInProgress}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither SUCCESS, nor FAILURE, nor IN_PROGRESS.
+function LOGGING.checkSuccessFailureOnInProgress() {
+  local _value="${1}";
+  checkNotEmpty paramValue "${_value}" 1;
+  local _index="${2}";
+  checkNotEmpty paramIndex "${_index}" 2;
+
+  CHECK.checkOneOf 1 "SUCCESS|FAILURE|IN_PROGRESS" "${_value}" "SUCCESS FAILURE IN_PROGRESS" "${_index}";
 }
 
 # fun: LOGGING.logCompletedNestedNoPop TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
@@ -1506,11 +1538,11 @@ function LOGGING.retrieveCategoryPositionInLogPrefix() {
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_CATEGORY_POSITION;
 }
 
-# fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|IN_PROGRESS
+# fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|IN_PROGRESS defaultColor
 # api: private
 # txt: Retrieves the color for a given keyword.
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
-# opt: defaultColor: The default color.
+# opt: defaultColor: The default color. Optional.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the associated color.
 # use: LOGGING.retrieveKeywordColor SUCCESS GREEN; echo "Color -> ${RESULT}";
@@ -1784,10 +1816,10 @@ function LOGGING.retrieveTimestampPositionInLogPrefix() {
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_TIMESTAMP_POSITION;
 }
 
-# fun: LOGGING.setLastLog
+# fun: LOGGING.setLastLog message?
 # api: private
 # txt: Annotates the last log message.
-# opt: message: The message.
+# opt: message: The message. Optional.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.setLastLog "Operation in progress";
 function LOGGING.setLastLog() {

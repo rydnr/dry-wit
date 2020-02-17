@@ -38,7 +38,7 @@ addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
 addError NO_TESTS_FOUND "No tests found";
 addError TEST_FAILED "Test failed"
 
-# fun: DRYWITTEST.retrieveTests
+# fun: DRYWITTEST.retrieveTests script
 # api: private
 # txt: Retrieves all available tests.
 # opt: script: The script name.
@@ -47,6 +47,7 @@ addError TEST_FAILED "Test failed"
 # use: DRYWITTEST.retrieveTests "dry-wit"; echo "Tests found: ${RESULT}";
 function DRYWITTEST.retrieveTests() {
   local _script="${1}";
+  checkNotEmpty script "${_script}" 1;
   local _functions="$(typeset -f | awk '!/^main[ (]/ && /^[^ {}]+ *\(\)/ { gsub(/[()]/, "", $1); print $1}')";
   local _oldIFS="${IFS}";
 
@@ -72,12 +73,14 @@ function DRYWITTEST.retrieveTests() {
   export RESULT="${TESTS[@]}";
 }
 
-# fun: DRYWITTEST.addTestError
+# fun: DRYWITTEST.addTestError test
 # api: private
 # txt: Annotates a new error when executing a test.
 # txt: Note: This function is used by dry-wit itself.
+# opt: test: The test.
+# opt: message: The error message.
 # txt: Returns 0/TRUE always.
-# use: DRYWITTEST.addTestError "my_test";
+# use: DRYWITTEST.addTestError "my_test" "my_test failed";
 function DRYWITTEST.addTestError() {
   local _test="${1}";
   checkNotEmpty test "${_test}" 1;
@@ -97,7 +100,7 @@ function DRYWITTEST.addTestError() {
   TEST_ERROR_MESSAGES["${_test}:${_index}"]="${_message}";
 }
 
-# fun: DRYWITTEST.removeTestError
+# fun: DRYWITTEST.removeTestError test
 # api: private
 # txt: Removes a detected error for a given test, since it expected in an assertErrorThrown.
 # opt: test: The test.
@@ -118,7 +121,7 @@ function DRYWITTEST.removeTestError() {
   fi
 }
 
-# fun: DRYWITTEST.addTestFailure
+# fun: DRYWITTEST.addTestFailure test message
 # api: private
 # txt: Annotates a new failed test.
 # opt: test: The test name.
@@ -144,7 +147,7 @@ function DRYWITTEST.addTestFailure() {
   TEST_FAILURE_MESSAGES["${_test}:${_index}"]="${_message}";
 }
 
-# fun: DRYWITTEST.addTestSuccess
+# fun: DRYWITTEST.addTestSuccess test
 # api: private
 # txt: Annotates a new passed test.
 # opt: test: The test name.
@@ -164,7 +167,7 @@ function DRYWITTEST.addTestSuccess() {
   TEST_SUCCESSES["${_test}"]=${_count};
 }
 
-# fun: DRYWITTEST.addTestAssertionFailure
+# fun: DRYWITTEST.addTestAssertionFailure test message
 # api: private
 # txt: Annotates a new failed test assertion.
 # opt: test: The test name.
@@ -198,7 +201,7 @@ function DRYWITTEST.addTestAssertionFailure() {
   fi
 }
 
-# fun: DRYWITTEST.addTestAssertionSuccess
+# fun: DRYWITTEST.addTestAssertionSuccess test
 # api: private
 # txt: Annotates a new passed test assertion.
 # opt: test: The test name.
@@ -217,7 +220,7 @@ function DRYWITTEST.addTestAssertionSuccess() {
   TEST_ASSERTION_SUCCESSES["${_test}"]=${_count};
 }
 
-# fun: retrievePassingTestAssertions
+# fun: retrievePassingTestAssertions test
 # api: public
 # txt: Retrieves the number of passing assertions for given test.
 # opt: test: The test name.
@@ -237,7 +240,7 @@ function retrievePassingTestAssertions() {
   export RESULT="${_result}";
 }
 
-# fun: retrieveFailedTestAssertions
+# fun: retrieveFailedTestAssertions test
 # api: public
 # txt: Retrieves the number of failed assertions for given test.
 # opt: test: The test name.
@@ -257,7 +260,7 @@ function retrieveFailedTestAssertions() {
   export RESULT="${_result}";
 }
 
-# fun: DRYWITTEST.allAssertionsPassed
+# fun: DRYWITTEST.allAssertionsPassed test
 # api: private
 # txt: Checks whether all assertions passed for given test.
 # opt: test: The test.
@@ -281,7 +284,7 @@ function DRYWITTEST.allAssertionsPassed() {
   return ${_rescode};
 }
 
-# fun: DRYWITTEST.noAssertionPassed
+# fun: DRYWITTEST.noAssertionPassed test
 # api: private
 # txt: Checks whether all assertions passed for given test.
 # opt: test: The test.
@@ -305,7 +308,7 @@ function DRYWITTEST.noAssertionsPassed() {
   return ${_rescode};
 }
 
-# fun: DRYWITTEST.noAssertionsDefined
+# fun: DRYWITTEST.noAssertionsDefined test
 # api: private
 # txt: Checks whether given test defined no assertions.
 # opt: test: The test.
@@ -331,7 +334,7 @@ function DRYWITTEST.noAssertionsDefined() {
   return ${_rescode};
 }
 
-# fun: runTest
+# fun: runTest test
 # api: public
 # txt: Runs given test.
 # opt: test: The test to run.
@@ -372,7 +375,7 @@ function runTest() {
   return ${_rescode};
 }
 
-# fun: DRYWITTEST.annotateTestSuccess
+# fun: DRYWITTEST.annotateTestSuccess test
 # api: private
 # txt: Annotates a test success.
 # opt: test: The test name.
@@ -435,7 +438,7 @@ function DRYWITTEST.logSummary() {
   IFS="${_oldIFS}";
 }
 
-# fun: DRYWITTEST.logErrorReasons
+# fun: DRYWITTEST.logErrorReasons test
 # api: private
 # txt: Logs the detailed information about why a given test has thrown errors.
 # opt: test: The test name.
@@ -466,7 +469,7 @@ function DRYWITTEST.logErrorReasons() {
   fi
 }
 
-# fun: DRYWITTEST.logFailureReasons
+# fun: DRYWITTEST.logFailureReasons test
 # api: private
 # txt: Logs the detailed information about why a given test has failed.
 # opt: test: The test name.
@@ -497,7 +500,7 @@ function DRYWITTEST.logFailureReasons() {
   fi
 }
 
-# fun: DRYWITTEST.logFailedAssertions
+# fun: DRYWITTEST.logFailedAssertions test
 # api: private
 # txt: Logs the failed assertions for given test.
 # opt: test: The test name.
@@ -536,7 +539,7 @@ function DRYWITTEST.logFailedAssertions() {
   fi
 }
 
-# fun: DRYWITTEST.logTestSummary
+# fun: DRYWITTEST.logTestSummary test
 # txt: Logs a summary of given test.
 # opt: test: The test name.
 # txt: Returns 0/TRUE always.
@@ -657,7 +660,7 @@ function __dwCallback() {
 
 ### ASSERTIONS ###
 
-# fun: Assert.isTrue
+# fun: Assert.isTrue condition error
 # api: public
 # txt: Asserts given condition holds true.
 # opt: condition: The condition to check.
@@ -677,7 +680,7 @@ function Assert.isTrue() {
   fi
 }
 
-# fun: Assert.isFalse
+# fun: Assert.isFalse condition error
 # api: public
 # txt: Asserts given condition holds true.
 # opt: condition: The condition to check.
@@ -697,7 +700,7 @@ function Assert.isFalse() {
   fi
 }
 
-# fun: Assert.noErrorThrown
+# fun: Assert.noErrorThrown message
 # api: public
 # txt: Asserts no error has been thrown so far in current test.
 # opt: message: The error message.
@@ -734,7 +737,7 @@ function Assert.errorThrown() {
   fi
 }
 
-# fun: Assert.areEqual
+# fun: Assert.areEqual expected actual message
 # api: public
 # txt: Asserts both values are equal.
 # opt: expected: The expected value.
@@ -757,7 +760,7 @@ function Assert.areEqual() {
   fi
 }
 
-# fun: Assert.areNotEqual
+# fun: Assert.areNotEqual expected actual message
 # api: public
 # txt: Asserts both values are different.
 # opt: expected: The expected value.
@@ -780,7 +783,7 @@ function Assert.areNotEqual() {
   fi
 }
 
-# fun: Assert.isEmpty
+# fun: Assert.isEmpty value message
 # api: public
 # txt: Asserts given value is empty.
 # opt: value: The value.
@@ -799,7 +802,7 @@ function Assert.isEmpty() {
   fi
 }
 
-# fun: Assert.isNotEmpty
+# fun: Assert.isNotEmpty value message
 # api: public
 # txt: Asserts given value is not empty.
 # opt: value: The value.
@@ -818,7 +821,7 @@ function Assert.isNotEmpty() {
   fi
 }
 
-# fun: Assert.functionExists
+# fun: Assert.functionExists functionName message
 # api: public
 # txt: Asserts given value is an existing function.
 # opt: functionName: The function name.
@@ -841,7 +844,7 @@ function Assert.functionExists() {
   fi
 }
 
-# fun: Assert.fail
+# fun: Assert.fail error
 # api: public
 # txt: Fails the test directly.
 # opt: error: The error message.
@@ -863,7 +866,7 @@ function Assert.pass() {
   DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
 }
 
-# fun: Assert.contains
+# fun: Assert.contains text substring
 # api: public
 # txt: Checks a substring is contained in given text.
 # opt: text: The text.
@@ -886,7 +889,30 @@ function Assert.contains() {
   fi
 }
 
-# fun: Assert.fileContains
+# fun: Assert.doesNotContain text substring
+# api: public
+# txt: Checks whether a text does not contain given substring.
+# opt: text: The text.
+# opt: substring: The substring.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.doesNotContain "sample text" "sample" "'sample text' does not contain 'sample'";
+function Assert.doesNotContain() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+  local _substring="${2}";
+  checkNotEmpty substring "${_substring}" 2;
+  local _errorMessage="${3}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+  if contains "${_text}" "${_substring}"; then
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_substring}')";
+  else
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  fi
+}
+
+# fun: Assert.fileContains file text
 # api: public
 # txt: Checks a file contains a text.
 # opt: file: The file.
@@ -909,7 +935,30 @@ function Assert.fileContains() {
   fi
 }
 
-# fun: Assert.arrayContains
+# fun: Assert.fileDoesNotContain file text
+# api: public
+# txt: Checks a file doesn't contain a text.
+# opt: file: The file.
+# opt: text: The text to test.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.fileDoesNotContain "/tmp/debug.log" "TESTING" "/tmp/debug.log contains TESTING";
+function Assert.fileDoesNotContain() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local _text="${2}";
+  checkNotEmpty text "${_text}" 2;
+  local _errorMessage="${3}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+  if grep -q "${_text}" "${_file}" 2> /dev/null; then
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+  else
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  fi
+}
+
+# fun: Assert.arrayContains text array
 # api: public
 # txt: Checks an array contains a text.
 # opt: text: The text to test.
@@ -934,7 +983,7 @@ function Assert.arrayContains() {
   fi
 }
 
-# fun: Assert.arrayDoesNotContain
+# fun: Assert.arrayDoesNotContain text array
 # api: public
 # txt: Checks an array doesn't contain a text.
 # opt: text: The text to test.
@@ -1006,7 +1055,7 @@ function DRYWITTEST.sourceSUT() {
   return ${_rescode};
 }
 
-# fun: humanReadableTest
+# fun: humanReadableTest test
 # api: private
 # txt: Extracts a human-readable description from given test name.
 # opt: test: The test.

@@ -2,7 +2,7 @@
 # api: public
 # txt: String-related functions.
 
-# fun: firstCharacter
+# fun: firstCharacter text
 # api: public
 # txt: Retrieves the first character of given text.
 # opt: text: The input text.
@@ -26,7 +26,7 @@ function firstCharacter() {
   return ${_rescode};
 }
 
-# fun: lastCharacter
+# fun: lastCharacter text
 # api: public
 # txt: Retrieves the last character of given text.
 # opt: text: The input text.
@@ -84,7 +84,7 @@ function contains() {
 # use: if endsWith "${text}" "c"; then echo "${text} ends with c"; fi
 function endsWith() {
   local _container="${1}";
-  checkNotEmpty container "${_container}" 1;
+  checkNotEmpty text "${_container}" 1;
   local _substring="${2}";
   checkNotEmpty substring "${_substring}" 2;
 
@@ -108,7 +108,8 @@ function endsWith() {
 # use: normalize "a_b.C" # returns "a_b_C";
 function normalize() {
   local _text="${1}";
-  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty text "${_text}" 1;
+
   local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g');
   export RESULT="${result}";
 }
@@ -122,7 +123,8 @@ function normalize() {
 # use: normalize "a_b.C" # returns "A_B_C";
 function normalizeUppercase() {
   local _text="${1}";
-  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty string "${_text}" 1;
+
   local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
   export RESULT="${result}";
 }
@@ -205,10 +207,16 @@ function removeSuffix() {
 # use: replaceNLeftmostTokens "a a a b b" "b" 3 " " # "b b b b b"
 function replaceNLeftmostTokens() {
   local _text="$1";
+  checkNotEmpty text "${_text}" 1;
   local _newToken="$2";
+  checkNotEmpty newToken "${_newToken}" 2;
   local _number=$(($3));
+  checkNotEmpty n "${_number}" 3;
   local _separator="$4";
+  checkNotEmpty separator "${_separator}" 4;
+
   local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
+
   export RESULT="${result}";
 }
 
@@ -224,9 +232,14 @@ function replaceNLeftmostTokens() {
 # use: replaceNRightmostTokens "a a a b b" "a" 2 " " # "a a a a a"
 function replaceNRightmostTokens() {
   local _text="$1";
+  checkNotEmpty text "${_text}" 1;
   local _newToken="$2";
+  checkNotEmpty newToken "${_newToken}" 2;
   local _number=$(($3));
+  checkNotEmpty n "${_number}" 3;
   local _separator="$4";
+  checkNotEmpty separator "${_separator}" 4;
+
   local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
   export RESULT="${result}";
 }
@@ -234,15 +247,15 @@ function replaceNRightmostTokens() {
 # fun: startsWith text substring
 # api: public
 # txt: Checks whether the first parameter starts with the second value.
-# opt: text:: The text.
+# opt: text: The text.
 # opt: substring: The substring to check.
 # txt: Returns 0/TRUE if the text starts with the substring; 1/FALSE otherwise.
 # use: if startsWith "${text}" "a"; then echo "${text} starts with a"; fi
 function startsWith() {
   local _container="${1}";
-  checkNotEmpty "container" "${_container}" 1;
+  checkNotEmpty text "${_container}" 1;
   local _substring="${2}";
-  checkNotEmpty "substring" "${_substring}" 2;
+  checkNotEmpty substring "${_substring}" 2;
 
   local -i _rescode;
 
@@ -266,7 +279,8 @@ function startsWith() {
 #      local _lowerCase="${RESULT}";
 function toLower() {
   local _text="${1}";
-  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty text "${_text}" 1;
+
   local result=$(echo "${_text}" | awk '{print tolower($0);}');
   export RESULT="${result}";
 }
@@ -289,7 +303,7 @@ function toUpper() {
   export RESULT="${result}";
 }
 
-# fun: replaceAll
+# fun: replaceAll text old replacement
 # api: public
 # txt: Replaces all occurrences of a string in given text.
 # opt: text: The text to process.
@@ -299,14 +313,13 @@ function toUpper() {
 # use: if replaceAll "a b c" " " ","; then ...; fi
 function replaceAll() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local _old="${2}";
+  checkNotEmpty old "${_old}" 2;
   local _replacement="${3}";
+  checkNotEmpty replacement "${_replacement}" 3;
   local _result;
   local -i _rescode;
-
-  checkNotEmpty text "${_text}" 1;
-  checkNotEmpty old "${_old}" 2;
-  checkNotEmpty replacement "${_replacement}" 3;
 
   _result="${_text//${_old}/${_replacement}}";
 
@@ -320,7 +333,7 @@ function replaceAll() {
   return ${_rescode};
 }
 
-# fun: split
+# fun: split text separator
 # api: public
 # txt: Splits given text using a separator.
 # opt: text: The text.
@@ -329,14 +342,13 @@ function replaceAll() {
 # use: if split "${csvVariable}" ","; then "Splitted: ${RESULT}"; fi
 function split() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local _separator="${2}";
+  checkNotEmpty separator "${_separator}" 2;
   local _result="";
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
   local _aux;
-
-  checkNotEmpty text "${_text}" 1;
-  checkNotEmpty separator "${_separator}" 2;
 
   while IFS="${_separator}" read -ra _aux; do
     if isEmpty "${_result}"; then
@@ -354,7 +366,7 @@ function split() {
   return ${_rescode};
 }
 
-# fun: startsAndEndsWith
+# fun: startsAndEndsWith text delimiter
 # api: public
 # txt: Checks whether given text is surrounded by a specific delimiter.
 # opt: text: The text.
@@ -363,11 +375,10 @@ function split() {
 # use: if startsAndEndsWith "${line}" '|'; then echo "Org table format"; fi
 function startsAndEndsWith() {
   local _text="${1}";
-  local _delimiter="${2}";
-  local -i _rescode=${FALSE};
-
   checkNotEmpty text "${_text}" 1;
+  local _delimiter="${2}";
   checkNotEmpty delimiter "${_delimiter}" 2;
+  local -i _rescode=${FALSE};
 
   if startsWith "${_text}" "${_delimiter}" && endsWith "${_text}" "${_delimiter}"; then
     _rescode=${TRUE};
@@ -376,7 +387,7 @@ function startsAndEndsWith() {
   return ${_rescode};
 }
 
-# fun: removeSurrounding
+# fun: removeSurrounding text delimiter
 # api: public
 # txt: Removes the delimiter at the start and at the end of given text.
 # opt: text: The text.
@@ -386,12 +397,11 @@ function startsAndEndsWith() {
 # use: if removeSurrounding "${var}" '"'; then echo "Trimmed var: ${RESULT}"; fi
 function removeSurrounding() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local _delimiter="${2}";
+  checkNotEmpty delimiter "${_delimiter}" 2;
   local _result;
   local -i _rescode=${FALSE};
-
-  checkNotEmpty text "${_text}" 1;
-  checkNotEmpty delimiter "${_delimiter}" 2;
 
   if startsAndEndsWith "${_text}" "${_delimiter}"; then
     if removePrefix "${_text}" "${_delimiter}"; then
@@ -409,7 +419,7 @@ function removeSurrounding() {
   return ${_rescode};
 }
 
-# fun: keyValueSplit
+# fun: keyValueSplit text
 # api: public
 # txt: Splits given text into a newline-delimited key=value pairs.
 # opt: text: The text.
@@ -418,11 +428,11 @@ function removeSurrounding() {
 # use: if keyValueSplit "${vars}"; then IFS='\n' for var in ${vars}; do echo "var: ${var}"; fi
 function keyValueSplit() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local -i _rescode;
   local _result;
   local _oldIFS="${IFS}";
 
-  checkNotEmpty text "${_text}" 1;
 
   _result="$(echo -e "${_text}" | awk -F'=' '\
 function printKey(text,     value, len) {
@@ -459,7 +469,7 @@ function printValue(text,   value, len, a) {
   return ${_rescode};
 }
 
-# fun: splitAndExtract
+# fun: splitAndExtract input separator index
 # api: public
 # txt: Extracts an item after splitting given input using a separator.
 # opt: input: The input.
@@ -470,11 +480,11 @@ function printValue(text,   value, len, a) {
 # use: if splitAndExtract "2019-09-01" "-" 0; then echo "Year: ${RESULT}"; fi
 function splitAndExtract() {
   local _input="${1}";
-  checkNotEmpty "input" "${_input}" 1;
+  checkNotEmpty input "${_input}" 1;
   local _separator="${2}";
-  checkNotEmpty "separator" "${_separator}" 2;
+  checkNotEmpty separator "${_separator}" 2;
   local _index="${3}";
-  checkNotEmpty "index" "${_index}" 3;
+  checkNotEmpty index "${_index}" 3;
 
   local -i _rescode=${FALSE};
   local _result;
@@ -504,7 +514,7 @@ function splitAndExtract() {
   return ${_rescode};
 }
 
-# fun: sha512
+# fun: sha512 value
 # api: public
 # txt: Calculates the SHA-512 hash of given value.
 # opt: value: The value.
@@ -517,7 +527,7 @@ function sha512() {
   hash sha512 "${_value}";
 }
 
-# fun: sha384
+# fun: sha384 value
 # api: public
 # txt: Calculates the SHA-384 hash of given value.
 # opt: value: The value.
@@ -530,7 +540,7 @@ function sha384() {
   hash sha384 "${_value}";
 }
 
-# fun: sha256
+# fun: sha256 value
 # api: public
 # txt: Calculates the SHA-256 hash of given value.
 # opt: value: The value.
@@ -543,7 +553,7 @@ function sha256() {
   hash sha256 "${_value}";
 }
 
-# fun: sha224
+# fun: sha224 value
 # api: public
 # txt: Calculates the SHA-224 hash of given value.
 # opt: value: The value.
@@ -556,7 +566,7 @@ function sha224() {
   hash sha224 "${_value}";
 }
 
-# fun: sha1
+# fun: sha1 value
 # api: public
 # txt: Calculates the SHA-1 hash of given value.
 # opt: value: The value.
@@ -569,7 +579,7 @@ function sha1() {
   hash sha1 "${_value}";
 }
 
-# fun: sha
+# fun: sha value
 # api: public
 # txt: Calculates the SHA hash of given value.
 # opt: value: The value.
@@ -582,7 +592,7 @@ function sha() {
   hash sha "${_value}";
 }
 
-# fun: hash
+# fun: hash hash value
 # api: public
 # txt: Calculates a hash of given value.
 # opt: hash: The hash.
@@ -610,7 +620,7 @@ function hash() {
   return ${_rescode};
 }
 
-# fun: countMatchesOfCharsInString
+# fun: countMatchesOfCharsInString chars string
 # api: public
 # txt: Counts the number of occurrences of given characters in a string.
 # opt: chars: The characters.
@@ -637,7 +647,7 @@ function countMatchesOfCharsInString() {
   return ${_rescode};
 }
 
-# fun: camelCaseToPascalCase
+# fun: camelCaseToPascalCase text
 # api: public
 # txt: Converts given text in camel case to Pascal case.
 # opt: text: The text to convert.
@@ -656,7 +666,7 @@ function camelCaseToPascalCase() {
   return ${_rescode};
 }
 
-# fun: camelCaseToSnakeCase
+# fun: camelCaseToSnakeCase text
 # api: public
 # txt: Converts given text in camel case to snake case.
 # opt: text: The text to convert.
@@ -674,7 +684,7 @@ function camelCaseToSnakeCase() {
   return ${_rescode};
 }
 
-# fun: snakeCaseToCamelCase
+# fun: snakeCaseToCamelCase text
 # api: public
 # txt: Converts given text in snake case to camel case.
 # opt: text: The text to convert.
@@ -692,7 +702,7 @@ function snakeCaseToCamelCase() {
   return ${_rescode};
 }
 
-# fun: snakeCaseToPascalCase
+# fun: snakeCaseToPascalCase text
 # api: public
 # txt: Converts given text in snake case to Pascal case.
 # opt: text: The text to convert.
@@ -710,7 +720,7 @@ function snakeCaseToPascalCase() {
   return ${_rescode};
 }
 
-# fun: uncapitalize
+# fun: uncapitalize text
 # api: public
 # txt: Uncapitalizes given text.
 # opt: text: The text to uncapitalize.
@@ -736,7 +746,7 @@ function uncapitalize() {
   return ${_rescode};
 }
 
-# fun: capitalize
+# fun: capitalize text
 # api: public
 # txt: Capitalizes given text.
 # opt: text: The text to capitalize.
@@ -762,7 +772,7 @@ function capitalize() {
   return ${_rescode};
 }
 
-# fun: tailText
+# fun: tailText text
 # api: public
 # txt: Removes the first character.
 # opt: text: The text.

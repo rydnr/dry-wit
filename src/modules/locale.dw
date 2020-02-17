@@ -20,7 +20,7 @@ function LOCALE.getModuleName() {
 # opt: encoding: The file encoding.
 # txt: Returns 0/TRUE if the locale is supported; 1/FALSE otherwise.
 # use: if isLocaleSupported "en_US" "UTF-8"; then echo "en_US with UTF-8 is supported"; fi
-function is_locale_supported() {
+function isLocaleSupported() {
   local _locale="${1}";
   checkNotEmpty locale "${_locale}" 1;
   local _encoding="${2}";
@@ -115,12 +115,13 @@ function isLocaleAvailableInLanguageFile() {
   return ${_rescode};
 }
 
-# fun: change_default_locale locale
+# fun: changeDefaultLocale locale encoding
 # api: public
 # txt: Changes the default locale.
 # opt: locale: The locale.
+# opt: encoding: The file encoding.
 # txt: Returns 0/TRUE always.
-# use: changeDefaultLocale "en_US.UTF-8";
+# use: changeDefaultLocale "en_US.UTF-8" "UTF-8";
 function changeDefaultLocale() {
   local _locale="${1}";
   checkNotEmpty locale "${_locale}" 1;

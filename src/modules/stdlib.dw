@@ -94,7 +94,7 @@ function isEmpty() {
 # use: if isFalse "${MYVAR}"; then ...; fi
 function isFalse() {
   local -i rescode;
-  checkNotEmpty "value" "${1}" 1;
+  checkNotEmpty value "${1}" 1;
 
   if isTrue $*; then
     rescode=${FALSE};
@@ -112,9 +112,8 @@ function isFalse() {
 # use: if functionDefined "readFile"; then readFile ...; fi
 function isFunctionDefined() {
   local _function="${1}";
+  checkNotEmpty functionName "${_function}" 1;
   local -i _rescode;
-
-  checkNotEmpty "function" "${_function}" 1;
 
   type "${_function}" 2> /dev/null | grep -q 'function';
   _rescode=$?;
@@ -148,9 +147,8 @@ function isNotEmpty() {
 # use: if isNotZero "${MYVAR}"; then ...; fi
 function isNotZero() {
   local _value="${1}";
-  #  checkNotEmpty "value" "${_value}" 1;
-
   local  -i rescode;
+
   if [[ ${_value} -ne 0 ]]; then
     rescode=${TRUE};
   else

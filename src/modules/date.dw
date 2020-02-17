@@ -13,10 +13,12 @@
 # use: date2jd 2019 6 2
 function date2jd() {
   local result=0;
-
   local _year=$1;
+  checkNotEmpty year "${_year}" 1;
   local _month=$2;
+  checkNotEmpty month "${_month}" 2;
   local _day=$3;
+  checkNotEmpty day "${_day}" 3;
 
   local _standardJd=$(( _day - 32075
                         + 1461 * (_year + 4800 - (14 - _month)/12)/4
@@ -41,14 +43,19 @@ function date2jd() {
 # txt: The variable RESULT contains the number of seconds.
 # use: date2jjds 2019 6 2 18 13 56
 function date2jds() {
-  local result=0;
-
   local _year=$1;
+  checkNotEmpty year "${_year}" 1;
   local _month=$2;
+  checkNotEmpty month "${_month}" 2;
   local _day=$3;
+  checkNotEmpty day "${_day}" 3;
   local _hour=$4;
+  checkNotEmpty hour "${_hour}" 4;
   local _minute=$5;
+  checkNotEmpty minute "${_minute}" 5;
   local _second=$6;
+  checkNotEmpty second "${_second}" 6;
+  local -i result=0;
 
   date2jd ${_year} ${_month} ${_day};
   result=${RESULT};
