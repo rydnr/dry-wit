@@ -1021,35 +1021,42 @@ function DRYWITTEST.sourceSUT() {
   local _sutFilePath;
   DW.getScriptName;
   local _scriptName="${RESULT}";
+  local _bootstrapException=${FALSE};
 
-  if removeSuffix "${_scriptName}" "-tests.sh"; then
-    _sutFilename="${RESULT}.sh";
-  elif removeSuffix "${_scriptName}" "-test.sh"; then
-    _sutFilename="${RESULT}.sh";
-  else
-    _sutFilename="${_scriptName}";
+  if endsWith "${_scriptName}" "bootstrap-tests.sh"; then
+    _bootstrapException=${TRUE};
   fi
 
-  if removeSuffix "${_sutFilename}" ".sh"; then
-    _sutFilename="${RESULT}.dw";
-  fi
+  if isFalse ${_bootstrapException}; then
+    if removeSuffix "${_scriptName}" "-tests.sh"; then
+      _sutFilename="${RESULT}.sh";
+    elif removeSuffix "${_scriptName}" "-test.sh"; then
+      _sutFilename="${RESULT}.sh";
+    else
+      _sutFilename="${_scriptName}";
+    fi
 
-  if fileExists "$(dirname $0)/${_sutFilename}"; then
-    _sutFilePath="$(dirname $0)/${_sutFilename}";
-  elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
-    _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
-  elif fileExists "$(dirname $0)/../src/modules/${_sutFilename}"; then
-    _sutFilePath="$(dirname $0)/../src/modules/${_sutFilename}";
-  elif fileExists "$(dirname $0)/../../src/modules/ext/${_sutFilename}"; then
-    _sutFilePath="$(dirname $0)/../../src/modules/ext/${_sutFilename}";
-  else
-    logInfo -n "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
-    logInfoResult WARN "failed";
-    _rescode=${FALSE};
-  fi
+     if removeSuffix "${_sutFilename}" ".sh"; then
+       _sutFilename="${RESULT}.dw";
+     fi
 
-  if isTrue ${_rescode}; then
-    source "${_sutFilePath}";
+     if fileExists "$(dirname $0)/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/${_sutFilename}";
+     elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
+     elif fileExists "$(dirname $0)/../src/modules/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/../src/modules/${_sutFilename}";
+     elif fileExists "$(dirname $0)/../../src/modules/ext/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/../../src/modules/ext/${_sutFilename}";
+     else
+       logInfo -n "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
+       logInfoResult FAILURE "failed";
+       _rescode=${FALSE};
+     fi
+
+     if isTrue ${_rescode}; then
+       source "${_sutFilePath}";
+     fi
   fi
 
   return ${_rescode};
