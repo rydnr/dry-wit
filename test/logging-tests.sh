@@ -13,5 +13,6 @@ function echoLogOutcome_does_not_call_alignRight_with_invalid_keyword_parameter_
   local _result="$(logInfo 'sample log' 2>&1)";
   Assert.doesNotContain "'SUCCESS|FAILURE' (pass) is not valid when calling LOGGING.alignRight. Review LOGGING.echoLogOutcome" "${_result}" "LOGGING.echoLogOutcome calls LOGGING.alignRight incorrectly";
 }
+
 setScriptDescription "Runs all tests implemented for logging.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
