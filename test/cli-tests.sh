@@ -328,6 +328,23 @@ function empty_default_values_for_optional_flags_are_allowed_test() {
   checkInput -ape "";
   Assert.isEmpty "${ANOTHER_PROBABLY_EMPTY}" "ANOTHER_PROBABLY_EMPTY should be empty";
 }
+
+function flags_whose_values_contain_spaces_are_supported_test() {
+  addCommandLineFlag "myFlag" "pe" "A flag" OPTIONAL EXPECTS_ARGUMENT "";
+  parseInput -pe 'with spaces';
+  Assert.areEqual 'with spaces' "${MY_FLAG}" "Flags with spaces are not correctly parsed";
+
+  addCommandLineFlag "versionFlag" "vf" "A flag" OPTIONAL EXPECTS_ARGUMENT "version 1";
+  parseInput -vf 'with spaces';
+  Assert.areEqual 'with spaces' "${VERSION_FLAG}" "Flags with spaces are not correctly parsed";
+}
+
+function mandatory_flags_are_parsed_correctly_test() {
+  addCommandLineFlag "myFlag" "pe" "A flag" MANDATORY EXPECTS_ARGUMENT "";
+  parseInput -pe 'mandatory';
+  Assert.areEqual 'mandatory' "${MY_FLAG}" "Mandatory flags are not correctly parsed";
+}
+
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
 declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
