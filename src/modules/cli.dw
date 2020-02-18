@@ -549,6 +549,8 @@ function parseInput() {
   local -i _shifts;
   local -i _aux1=0;
   local -i _aux2=0;
+  local _aux3;
+  local _argsAux;
 
   # Flags
   IFS="${DWIFS}";
@@ -558,7 +560,7 @@ function parseInput() {
     _aux1=$((_aux1+1));
     _providedFlags[${#_providedFlags[@]}]="${_flag}";
 
-    CLI.parseFlag "${_flag}" ${@};
+    CLI.parseFlag "${_flag}" "${@}";
     _shifts=$?;
     IFS="${DWIFS}";
     for _i in $(seq 1 ${_shifts}); do
@@ -1230,7 +1232,7 @@ function CLI.parseFlag() {
       if CLI.parseCallbackDefinedForFlag "${_longName}"; then
         _callbackFunction="${RESULT}";
         if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
-          _argument="${@}";
+          _argument="${1}";
           _result=$((_result+1));
           "${_callbackFunction}" "${_argument}";
         else
@@ -1238,7 +1240,7 @@ function CLI.parseFlag() {
         fi
       else
         if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
-          _argument="${@}";
+          _argument="${1}";
           _result=$((_result+1));
         elif CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
           _argument="${RESULT}";

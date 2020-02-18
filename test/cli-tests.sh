@@ -337,6 +337,11 @@ function flags_whose_values_contain_spaces_are_supported_test() {
   addCommandLineFlag "versionFlag" "vf" "A flag" OPTIONAL EXPECTS_ARGUMENT "version 1";
   parseInput -vf 'with spaces';
   Assert.areEqual 'with spaces' "${VERSION_FLAG}" "Flags with spaces are not correctly parsed";
+
+  addCommandLineFlag "anotherVersionFlag" "avf" "Another flag" OPTIONAL EXPECTS_ARGUMENT "version 2";
+  parseInput -vf 'with spaces' -avf 'another flag with spaces';
+  Assert.areEqual 'with spaces' "${VERSION_FLAG}" "Flags with spaces are not correctly parsed";
+  Assert.areEqual 'another flag with spaces' "${ANOTHER_VERSION_FLAG}" "Flags with spaces are not correctly parsed";
 }
 
 function mandatory_flags_are_parsed_correctly_test() {
