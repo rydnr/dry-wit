@@ -467,21 +467,17 @@ function BOOTSTRAP.isDebugEnabled() {
 function BOOTSTRAP.isTraceEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
+  local _flag;
 
-  if BOOTSTRAP.isFunctionDefined "isTraceEnabled"; then
-    isTraceEnabled;
-    _rescode=$?;
-  else
-    IFS="${DWIFS}";
-    for _flag in ${BASH_ARGV[@]}; do
-      IFS="${_oldIFS}";
-      if [ "${_flag}" == "-vv" ]; then
-	      _rescode=${TRUE};
-	      break;
-      fi
-    done
+  IFS="${DWIFS}";
+  for _flag in ${BASH_ARGV[@]}; do
     IFS="${_oldIFS}";
-  fi
+    if [ "${_flag}" == "-DW:vv" ]; then
+	    _rescode=${TRUE};
+	    break;
+    fi
+  done
+  IFS="${_oldIFS}";
 
   return ${_rescode};
 }
