@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
     <head>
-        <title>dry-wit</title>
+        <title>dry-wit 3 is out</title>
         <meta charset="utf-8" />
     </head>
     <body>
@@ -9,54 +9,78 @@
         <nav></nav>
         <main>
             <article>
-                <h1>dry-wit 2.0 is out</h1>
-                <p>After some time, I've managed to release dry-wit 2.0. If you have scripts written in dry-wit 1, you'll need to update them to work in dry-wit 2.</p>
-                <p>dry-wit 2 basically is a modularisation of dry-wit 1. You can now write your own modules.</p>
-                <p>The API documentation is available <a href="api.html">here</a>.</p>
+                <h1>dry-wit 3 is out</h1>
+                <p>I've decided to wrap the current state of dry-wit as a new version. I've finished some initial tests and now I'm confident dry-wit scripts can now run other dry-wit scripts without conflicting each other.</p>
+                <p>As before, the API documentation is available <a href="api.html">here</a>.</p>
                 <section>
                     <h2>Release notes</h2>
                     <ul>
-                        <li>Existing dry-wit 1 functions have been organized into the following modules:
+                        <li>Stateful modules:
                             <ul>
-                                <li><strong>array.dw</strong>: functions to check if a value is contained in an array, to flatten an array, to deal with associate arrays, and so on.</li>
-                                <li><strong>cache.dw</strong>: simple memoization implementation.</li>
-                                <li><strong>check.dw</strong>: helper functions to add contract checking to your functions (validating non-empty or fixed-value parameters, checking if a function is defined, and so on).</li>
-                                <li><strong>cli.dw</strong>: logic to process command-line arguments and flags.</li>
-                                <li><strong>color.dw</strong>: functions to print output in custom colors.</li>
-                                <li><strong>command.dw</strong>: useful functions when running external commands in your scripts.</li>
-                                <li><strong>constant.dw</strong>: functions to evaluate constants (based on the value of a variable).</li>
-                                <li><strong>date.dw</strong>: logic to parse and operate with dates.</li>
-                                <li><strong>debug.dw</strong>: debugging support.</li>
-                                <li><strong>dw-plumbing.dw</strong>: dry-wit internal logic. Not part of the API.</li>
-                                <li><strong>echo.dw</strong>: module that knows how to write text to standard output.</li>
-                                <li><strong>envvar.dw</strong>: functions to evaluate and define environment variables.</li>
-                                <li><strong>error.dw</strong>: error-related functions (to define them, to exit the script, etc.)</li>
-                                <li><strong>file.dw</strong>: module for working with files.</li>
-                                <li><strong>logging.dw</strong>: simple color-aware logging you can use in your scripts.</li>
-                                <li><strong>net.dw</strong>: function that deal with network interfaces, IPs, etc.</li>
-                                <li><strong>package.dw</strong>: module used to checking external dependencies on your scripts.</li>
-                                <li><strong>ssh.dw</strong>: Minimal set of functions to perform operations over ssh connections.</li>
-                                <li><strong>stdlib.dw</strong>: Basic dry-wit API, with a variety of general-purpose functions.</li>
-                                <li><strong>string.dw</strong>: string-related functions.</li>
-                                <li><strong>sudo.dw</strong>: sudo-related functions.</li>
-                                <li><strong>term.dw</strong>: dry-wit functions dealing with term's capabilities (needed mostly for logging).</li>
-                                <li><strong>url.dw</strong>: knows how to encode parameters and other url-related stuff.</li>
-                                <li><strong>usage.dw</strong>: part of dry-wit to provide information to your users about how to use your scripts.</li>
-                                <li><strong>user.dw</strong>: user and group-related functions (add user, update its uid, add user to a group, ...).</li>
+                                <li>Each module that needs its own variables can now define them using DW.declareGlobalString, DW.declareGlobalInt, DW.declareGlobalArray, DW.declareGlobalMap.</li>
+                                <li>They're expected to provide an unique name, to avoid variable name conflicts. Usually, it'll be provided by [module].getModuleName() function.</li>
+                                <li>For string or int variables, you can retrieve the variable value by just doing something like:
+                                    <pre>[module].getModuleName;
+DW.getGlobalString "${RESULT}" MY_VARIABLE;</pre></li>
+                                <li>For array or associative arrays, you can retrieve the variable value similarly:
+                                    <pre>[module].getModuleName;
+DW.getGlobalVariableName "${RESULT}" MY_ARRAY;
+local -n myArray=${RESULT};</pre></li>
+                                <li>For string or int variables, you can set a new value with:
+                                    <pre>[module].getModuleName;
+DW.setGlobalString "${RESULT}" MY_VARIABLE "new-value";</pre></li>
+                                <li>For array or associative arrays, you can change its contents with:
+                                    <pre>[module].getModuleName;
+DW.getGlobalVariableName "${RESULT}" MY_ARRAY;
+local -n myArray=${RESULT};
+myArray[0]='hello';
+myArray[1]='world';</pre></li>
                             </ul>
                         </li>
-                        <li>New modules:
+                        <li>Improved CLI, logging modules.</li>
+                        <li>Improved modules, and added new functions:
                             <ul>
-                                <li><strong>concourse.dw</strong>: Concourse-specific commands.</li>
-                                <li><strong>docker.dw</strong>: Docker-related functions useful to check it a container is running, copy files to a container, or run arbitrary commands inside a container.</li>
-                                <li><strong>git.dw</strong>: module for everything git-related.</li>
-                                <li><strong>phabricator.dw</strong>: functions useful when accessing Phabricator's API.</li>
-                                <li><strong>rabbitmq-cli.dw</strong>: functions useful for bootstrapping a RabbitMQ node (usually within a Docker container).</li>
-                                <li><strong>rabbitmq.dw</strong>: RabbitMQ functions to programatically add users, exchanges, queues, bindings, etc.</li>
-                                <li><strong>vault.dw</strong>: useful functions to access HashiCorp's <a href="https://www.vaultproject.io" alt="Vault homepage">Vault</a>.</li>
+                                <li>array.dw:
+                                    <ul>
+                                        <li>getIndexOfItemInArray</li>
+                                    </ul>
+                                </li>
+                                <li>cli.dw:
+                                    <ul>
+                                        <li>setScriptCopyright</li>
+                                        <li>setScriptDescription</li>
+                                        <li>setScriptLicenseSummary</li>
+                                    </ul>
+                                </li>
+                                <li>number.dw:
+                                    <ul>
+                                        <li>lastDigit</li>
+                                    </ul>
+                                </li>
+                                <li>string.dw:
+                                    <ul>
+                                        <li>camelCaseToPascalCase</li>
+                                        <li>camelCaseToSnakeCase</li>
+                                        <li>snakeCaseToCamelCase</li>
+                                        <li>snakeCaseToPascalCase</li>
+                                        <li>uncapitalize</li>
+                                        <li>capitalize</li>
+                                        <li>tailText</li>
+                                        <li>countMatchesOfCharsInString</li>
+                                        <li>firstCharacter</li>
+                                        <li>lastCharacter</li>
+                                    </ul>
+                                </li>
                             </ul>
                         </li>
+                        <li>Added 35 new unit tests.</li>
                     </ul>
+                </section>
+            </article>
+            <article>
+                <h1>dry-wit 2</h1>
+                <section>
+                    <p>dry-wit 2 release notes can be found <a href="release-2.html">here</a>.</p>
                 </section>
             </article>
         </main>
