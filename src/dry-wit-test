@@ -1,37 +1,53 @@
 #!/bin/bash dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
+# mod: dry-wit-test
+# api: public
+# txt: Framework for unit testing Bash scripts.
 
 #set -o xtrace
 
-# The tests
-declare -ax TESTS;
+# env: TESTS: The tests
+declare -agx TESTS;
 
 # The associative arrays
-declare -Ax TEST_ERRORS;
-declare -Ax TEST_ERROR_MESSAGES;
-declare -Ax TEST_FAILURES;
-declare -Ax TEST_SUCCESSES;
-declare -Ax TEST_FAILURE_MESSAGES;
-declare -Ax TEST_ASSERTION_FAILURES;
-declare -Ax TEST_ASSERTION_SUCCESSES;
-declare -Ax TEST_ASSERTION_LINE_NUMBERS;
-declare -Ax TEST_ASSERTION_FAILURE_MESSAGES;
-declare -Ax TEST_ASSERTION_FAILURE_CONTEXT;
+# env: TEST_ERRORS: The test errors.
+declare -Agx TEST_ERRORS;
+# env: TEST_ERROR_MESSAGES: The error messages.
+declare -Agx TEST_ERROR_MESSAGES;
+# env: TEST_FAILURES: The test failures.
+declare -Agx TEST_FAILURES;
+# env: TEST_SUCCESSES: The passing tests.
+declare -Agx TEST_SUCCESSES;
+# env: TEST_FAILURE_MESSAGES: The messages of the failing tests.
+declare -Agx TEST_FAILURE_MESSAGES;
+# env: TEST_ASSERTION_FAILURES: The failing asserts.
+declare -Agx TEST_ASSERTION_FAILURES;
+# env: TEST_ASSERTION_SUCCESSES: The passing asserts.
+declare -Agx TEST_ASSERTION_SUCCESSES;
+# env: TEST_ASSERTION_LINE_NUMBERS: The line numbers of the asserts.
+declare -Agx TEST_ASSERTION_LINE_NUMBERS;
+# env: TEST_ASSERTION_FAILURE_MESSAGES: The messages of the failing asserts.
+declare -Agx TEST_ASSERTION_FAILURE_MESSAGES;
+# env: TEST_ASSERTION_FAILURE_CONTEXT: The context of the failing asserts.
+declare -Agx TEST_ASSERTION_FAILURE_CONTEXT;
+# env: TESTS_FOUND: The number of tests found.
 
 addError TEST_WITH_FAILED_ASSERTIONS "Test with failed assertions";
 addError TEST_WITH_NO_ASSERTIONS "Test with no assertions";
 addError NO_TESTS_FOUND "No tests found";
 addError TEST_FAILED "Test failed"
 
-## Retrieves all available tests.
-## -> 1: The script name.
-## <- RESULT: The space-separated list of tests found.
-## Example:
-##   DRYWITTEST.retrieveTests "dry-wit";
-##   echo "Tests found: ${RESULT}";
+# fun: DRYWITTEST.retrieveTests script
+# api: private
+# txt: Retrieves all available tests.
+# opt: script: The script name.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the space-separated list of tests found.
+# use: DRYWITTEST.retrieveTests "dry-wit"; echo "Tests found: ${RESULT}";
 function DRYWITTEST.retrieveTests() {
   local _script="${1}";
+  checkNotEmpty script "${_script}" 1;
   local _functions="$(typeset -f | awk '!/^main[ (]/ && /^[^ {}]+ *\(\)/ { gsub(/[()]/, "", $1); print $1}')";
   local _oldIFS="${IFS}";
 
@@ -52,25 +68,30 @@ function DRYWITTEST.retrieveTests() {
     exitWithErrorCode NO_TESTS_FOUND;
   fi
 
+  echo "export TESTS_FOUND=${#TESTS[@]};" > ".$(basename ${_script}).env";
+
   export RESULT="${TESTS[@]}";
 }
 
-## Annotates a new error when executing a test.
-## Note: This function is used by dry-wit itself.
-## Example:
-##   DRYWITTEST.addTestError "my_test";
+# fun: DRYWITTEST.addTestError test
+# api: private
+# txt: Annotates a new error when executing a test.
+# txt: Note: This function is used by dry-wit itself.
+# opt: test: The test.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.addTestError "my_test" "my_test failed";
 function DRYWITTEST.addTestError() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
   local -i _count;
   local -i _index;
 
-  checkNotEmpty "test" "${_test}" 1;
-  checkNotEmpty "message" "${_message}" 2;
-
   _count=${TEST_ERRORS[${_test}]};
   if isEmpty "${_count}"; then
-      _count=0;
+    _count=0;
   fi
   _index=${_count};
   _count=$((_count+1));
@@ -79,43 +100,45 @@ function DRYWITTEST.addTestError() {
   TEST_ERROR_MESSAGES["${_test}:${_index}"]="${_message}";
 }
 
-## PRIVATE
-## Removes a detected error for a given test, since it expected in an assertErrorThrown.
-## Example:
-##   DRYWITTEST.removeTestError "my_test";
+# fun: DRYWITTEST.removeTestError test
+# api: private
+# txt: Removes a detected error for a given test, since it expected in an assertErrorThrown.
+# opt: test: The test.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.removeTestError "my_test";
 function DRYWITTEST.removeTestError() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _count;
   local -i _index;
-
-  checkNotEmpty "test" "${_test}" 1;
 
   _count=${TEST_ERRORS[${_test}]};
   if ! isEmpty "${_count}"; then
-      _index=${_count};
-      _count=$((_count-1));
-      TEST_ERRORS["${_test}"]=${_count};
-      TEST_ERROR_MESSAGES["${_test}:${_index}"]="";
+    _index=${_count};
+    _count=$((_count-1));
+    TEST_ERRORS["${_test}"]=${_count};
+    TEST_ERROR_MESSAGES["${_test}:${_index}"]="";
   fi
 }
 
-## Annotates a new failed test.
-## -> 1: The test name.
-## -> 2: The message.
-## Example:
-##   DRYWITTEST.addTestFailure "my_test" "Failed assertions";
+# fun: DRYWITTEST.addTestFailure test message
+# api: private
+# txt: Annotates a new failed test.
+# opt: test: The test name.
+# opt: message: The message.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.addTestFailure "my_test" "Failed assertions";
 function DRYWITTEST.addTestFailure() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
   local -i _count;
   local -i _index;
 
-  checkNotEmpty "test" "${_test}" 1;
-  checkNotEmpty "message" "${_message}" 2;
-
   _count=${TEST_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
-      _count=0;
+    _count=0;
   fi
   _index=${_count};
   _count=$((_count+1));
@@ -124,13 +147,16 @@ function DRYWITTEST.addTestFailure() {
   TEST_FAILURE_MESSAGES["${_test}:${_index}"]="${_message}";
 }
 
-## Annotates a new passed test.
-## -> 1: The test name.
-## Example:
-##   DRYWITTEST.addTestSuccess "my_test";
+# fun: DRYWITTEST.addTestSuccess test
+# api: private
+# txt: Annotates a new passed test.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.addTestSuccess "my_test";
 function DRYWITTEST.addTestSuccess() {
   local _test="${1}";
-  local _count;
+  checkNotEmpty test "${_test}" 1;
+  local -i _count;
 
   _count=${TEST_SUCCESSES["${_test}"]};
   if isEmpty "${_count}"; then
@@ -141,18 +167,19 @@ function DRYWITTEST.addTestSuccess() {
   TEST_SUCCESSES["${_test}"]=${_count};
 }
 
-## Annotates a new failed test assertion.
-## -> 1: The test name.
-## -> 2: The error message.
-## -> 3: Additional context information (optional).
-## Example:
-##   DRYWITTEST.addTestAssertionFailure "my_test" "Should not fail";
+# fun: DRYWITTEST.addTestAssertionFailure test message
+# api: private
+# txt: Annotates a new failed test assertion.
+# opt: test: The test name.
+# opt: message: The error message.
+# opt: extra: Additional context information (optional).
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.addTestAssertionFailure "my_test" "Should not fail";
 function DRYWITTEST.addTestAssertionFailure() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local _message="${2}";
-
-  checkNotEmpty "test" "${_test}" 1;
-  checkNotEmpty "message" "${_message}" 2;
+  checkNotEmpty message "${_message}" 2;
 
   local _extra="${3}";
   local _lineNumber="${BASH_LINENO[1]}";
@@ -161,7 +188,7 @@ function DRYWITTEST.addTestAssertionFailure() {
 
   _count=${TEST_ASSERTION_FAILURES["${_test}"]};
   if isEmpty "${_count}"; then
-      _count=0;
+    _count=0;
   fi
   _index=${_count};
   _count=$((_count+1));
@@ -170,17 +197,20 @@ function DRYWITTEST.addTestAssertionFailure() {
   TEST_ASSERTION_LINE_NUMBERS["${_test}:${_index}"]=${_lineNumber};
   TEST_ASSERTION_FAILURE_MESSAGES["${_test}:${_index}"]="${_message}";
   if isNotEmpty "${_extra}"; then
-      TEST_ASSERTION_FAILURE_CONTEXT["${_test}:${_index}"]="${_extra}";
+    TEST_ASSERTION_FAILURE_CONTEXT["${_test}:${_index}"]="${_extra}";
   fi
 }
 
-## Annotates a new passed test assertion.
-## -> 1: The test name.
-## Example:
-##   DRYWITTEST.addTestAssertionSuccess "my_test";
+# fun: DRYWITTEST.addTestAssertionSuccess test
+# api: private
+# txt: Annotates a new passed test assertion.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.addTestAssertionSuccess "my_test";
 function DRYWITTEST.addTestAssertionSuccess() {
   local _test="${1}";
-  local _count;
+  checkNotEmpty test "${_test}" 1;
+  local -i _count;
 
   _count=${TEST_ASSERTION_SUCCESSES["${_test}"]};
   if isEmpty "${_count}"; then
@@ -190,14 +220,17 @@ function DRYWITTEST.addTestAssertionSuccess() {
   TEST_ASSERTION_SUCCESSES["${_test}"]=${_count};
 }
 
-## Retrieves the number of passing assertions for given test.
-## -> 1: The test name.
-## Example:
-##   retrievePassingTestAssertions "my_test";
-##   echo "my_test: ${RESULT} assertions passed"
+# fun: retrievePassingTestAssertions test
+# api: public
+# txt: Retrieves the number of passing assertions for given test.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the passing asserts.
+# use: retrievePassingTestAssertions "my_test"; echo "my_test: ${RESULT} assertions passed"
 function retrievePassingTestAssertions() {
   local _test="${1}";
-  local _result;
+  checkNotEmpty test "${_test}" 1;
+  local -i _result;
 
   _result=${TEST_ASSERTION_SUCCESSES["${_test}"]};
   if isEmpty "${_result}"; then
@@ -207,13 +240,17 @@ function retrievePassingTestAssertions() {
   export RESULT="${_result}";
 }
 
-## Retrieves the number of failed assertions for given test.
-## -> 1: The test name.
-## Example:
-##   retrieveFailedTestAssertions "my_test";
+# fun: retrieveFailedTestAssertions test
+# api: public
+# txt: Retrieves the number of failed assertions for given test.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the failing assertions.
+# use: retrieveFailedTestAssertions "my_test";
 function retrieveFailedTestAssertions() {
   local _test="${1}";
-  local _result;
+  checkNotEmpty test "${_test}" 1;
+  local -i _result;
 
   _result=${TEST_ASSERTION_FAILURES["${_test}"]};
   if isEmpty "${_result}"; then
@@ -223,15 +260,15 @@ function retrieveFailedTestAssertions() {
   export RESULT="${_result}";
 }
 
-## Checks whether all assertions passed for given test.
-## -> 1: The test.
-## <- 0/${TRUE} if all assertions passed; 1/${FALSE} otherwise.
-## Example:
-##   if DRYWITTEST.allAssertionsPassed "my_test"; then
-##     echo "Hurray!";
-##   fi
+# fun: DRYWITTEST.allAssertionsPassed test
+# api: private
+# txt: Checks whether all assertions passed for given test.
+# opt: test: The test.
+# txt: Returns 0/TRUE if all assertions passed; 1/FALSE otherwise.
+# use: if DRYWITTEST.allAssertionsPassed "my_test"; then echo "Hurray!"; fi
 function DRYWITTEST.allAssertionsPassed() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _failed;
   local -i _rescode;
 
@@ -247,15 +284,15 @@ function DRYWITTEST.allAssertionsPassed() {
   return ${_rescode};
 }
 
-## Checks whether all assertions passed for given test.
-## -> 1: The test.
-## <- 0/${TRUE} if all assertions passed; 1/${FALSE} otherwise.
-## Example:
-##   if DRYWITTEST.noAssertionsPassed "my_test"; then
-##     echo "Too bad!";
-##   fi
+# fun: DRYWITTEST.noAssertionPassed test
+# api: private
+# txt: Checks whether all assertions passed for given test.
+# opt: test: The test.
+# txt: Returns 0/TRUE if all assertions passed; 1/FALSE otherwise.
+# use: if DRYWITTEST.noAssertionsPassed "my_test"; then echo "Too bad!"; fi
 function DRYWITTEST.noAssertionsPassed() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _passing;
   local -i _rescode;
 
@@ -271,15 +308,15 @@ function DRYWITTEST.noAssertionsPassed() {
   return ${_rescode};
 }
 
-## Checks whether given test defined no assertions.
-## -> 1: The test.
-## <- 0/${TRUE} if the test includes no assertions; 1/${FALSE} otherwise.
-## Example:
-##   if DRYWITTEST.noAssertionsDefined "my_test"; then
-##     echo "Error: no assertions defined in my_test";
-##   fi
+# fun: DRYWITTEST.noAssertionsDefined test
+# api: private
+# txt: Checks whether given test defined no assertions.
+# opt: test: The test.
+# txt: Returns 0/TRUE if the test includes no assertions; 1/FALSE otherwise.
+# use: if DRYWITTEST.noAssertionsDefined "my_test"; then echo "Error: no assertions defined in my_test"; fi
 function DRYWITTEST.noAssertionsDefined() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
   local -i _failed;
   local _i _passing;
   local -i _rescode;
@@ -297,24 +334,24 @@ function DRYWITTEST.noAssertionsDefined() {
   return ${_rescode};
 }
 
-## Runs given test.
-## -> 1: The test to run.
-## <- 0/${TRUE} if the test passes; 1/${FALSE} otherwise.
-## Example:
-##   run_test "my_test"
-##   if isTrue $?; then
-##     echo "my_test passes";
-##   fi
+# fun: runTest test
+# api: public
+# txt: Runs given test.
+# opt: test: The test to run.
+# txt: Returns 0/TRUE if the test passes; 1/FALSE otherwise.
+# use: if run_test "my_test"; then echo "my_test passes"; fi
 function runTest() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _assertions;
-  local _rescode;
+  local -i _rescode;
 
   if isFunctionPresent "test_setup"; then
     test_setup;
   fi
 
-#  ${_test} > /dev/null 2>&1;
+  #  ${_test} > /dev/null 2>&1;
   ${_test}
   if isTrue $?; then
     if DRYWITTEST.noAssertionsDefined "${_test}"; then
@@ -338,19 +375,25 @@ function runTest() {
   return ${_rescode};
 }
 
-## Annotates a test success.
-## -> 1: The function name.
-## Example:
-##   DRYWITTEST.annotateTestSuccess "my_test";
+# fun: DRYWITTEST.annotateTestSuccess test
+# api: private
+# txt: Annotates a test success.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.annotateTestSuccess "my_test";
 function DRYWITTEST.annotateTestSuccess() {
+  local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   DRYWITTEST.addTestSuccess "${_test}";
 }
 
-## Retrieves tests with issues of some kind.
-## <- RESULT: The space-separated names of the tests with some issues.
-## Example:
-##   DRYWITTEST.retrieveTestsWithIssues;
-##   echo "Tests with issues: ${RESULT}";
+# fun: DRYWITTEST.retrieveTestsWithIssues
+# api: private
+# txt: Retrieves tests with issues of some kind.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the space-separated names of the tests with some issues.
+# use: DRYWITTEST.retrieveTestsWithIssues;
 function DRYWITTEST.retrieveTestsWithIssues() {
   local _result="";
   local _test;
@@ -379,9 +422,10 @@ function DRYWITTEST.retrieveTestsWithIssues() {
 
 ### REPORTING
 
-## Logs a summary of the tests.
-## Example:
-##   DRYWITTEST.logSummary;
+# fun: DRYWITTEST.logSummary
+# api: private
+# txt: Logs a summary of the tests.
+# use: DRYWITTEST.logSummary;
 function DRYWITTEST.logSummary() {
   local _oldIFS="${IFS}";
   local _test;
@@ -394,12 +438,16 @@ function DRYWITTEST.logSummary() {
   IFS="${_oldIFS}";
 }
 
-## Logs the detailed information about why a given test has thrown errors.
-## -> 1: the test name.
-## Example:
-##   DRYWITTEST.logErrorReasons "my_test";
+# fun: DRYWITTEST.logErrorReasons test
+# api: private
+# txt: Logs the detailed information about why a given test has thrown errors.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.logErrorReasons "my_test";
 function DRYWITTEST.logErrorReasons() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _count=${TEST_ERRORS[${_test}]};
   local -i _i=0;
   local _error;
@@ -421,12 +469,16 @@ function DRYWITTEST.logErrorReasons() {
   fi
 }
 
-## Logs the detailed information about why a given test has failed.
-## -> 1: the test name.
-## Example:
-##   DRYWITTEST.logFailureReasons "my_test";
+# fun: DRYWITTEST.logFailureReasons test
+# api: private
+# txt: Logs the detailed information about why a given test has failed.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.logFailureReasons "my_test";
 function DRYWITTEST.logFailureReasons() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _count=${TEST_FAILURES[${_test}]};
   local -i _i=0;
   local _error;
@@ -448,12 +500,16 @@ function DRYWITTEST.logFailureReasons() {
   fi
 }
 
-## Logs the failed assertions for given test.
-## -> 1: the test name.
-## Example:
-##   DRYWITTEST.logFailedAssertions "my_test";
+# fun: DRYWITTEST.logFailedAssertions test
+# api: private
+# txt: Logs the failed assertions for given test.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.logFailedAssertions "my_test";
 function DRYWITTEST.logFailedAssertions() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _count=${TEST_ASSERTION_FAILURES[${_test}]};
   local -i _i=0;
   local _error;
@@ -468,6 +524,7 @@ function DRYWITTEST.logFailedAssertions() {
       IFS="${_oldIFS}";
       _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
       _error="${TEST_ASSERTION_FAILURE_MESSAGES[${_test}:${_i}]}";
+      echo "error: ${_error}";
       evalConstant "${_error}" "${_error}";
       _message="${RESULT}";
       _context="${TEST_ASSERTION_FAILURE_CONTEXT[${_test}:${_i}]}";
@@ -482,77 +539,89 @@ function DRYWITTEST.logFailedAssertions() {
   fi
 }
 
-## Logs a summary of given test.
-## -> 1: The test name.
-## Example:
-##   DRYWITTEST.logTestSummary "my_test";
+# fun: DRYWITTEST.logTestSummary test
+# txt: Logs a summary of given test.
+# opt: test: The test name.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.logTestSummary "my_test";
 function DRYWITTEST.logTestSummary() {
   local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
   local _errors;
   local _failures;
   local _successes;
   local _assertionFailures;
   local _assertionSuccesses;
 
-  checkNotEmpty "test" "${_test}" 1;
+  humanReadableTest "${_test}";
+  local _testDescription="${RESULT}";
 
   _errors="${TEST_ERRORS[${_test}]}";
   if isEmpty "${_errors}" || [ ${_errors} -eq 0 ]; then
     _failures="${TEST_FAILURES[${_test}]}";
     _assertionFailures="${TEST_ASSERTION_FAILURES[${_test}]}";
     if isEmpty "${_assertionFailures}" || [ ${_assertionFailures} -eq 0 ]; then
-        logInfo -n "Test ${_test}: assertions passed";
-        _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
-        if isEmpty "${_assertionSuccesses}"; then
-            logInfoResult FAILURE "0";
-        else
-          logInfoResult SUCCESS "${_assertionSuccesses}";
-        fi
+      _assertionSuccesses="${TEST_ASSERTION_SUCCESSES[${_test}]}";
+      if isEmpty "${_assertionSuccesses}"; then
+        logInfo -n "${_testDescription}: No assertions found";
+        logInfoResult FAILURE "0";
+      else
+        logInfo -n "${_testDescription}: all assertions passed";
+        logInfoResult SUCCESS "${_assertionSuccesses}/${_assertionSuccesses}";
+      fi
     else
-      logInfo -n "Test ${_test}: assertions failed";
+      logInfo -n "${_testDescription}: assertions failed";
       logInfoResult FAILURE "${_assertionFailures}";
       DRYWITTEST.logFailedAssertions "${_test}";
-      logInfo -n "Test ${_test}: failures";
+      logInfo -n "${_testDescription}: failures";
       logInfoResult FAILURE "${_failures}";
       DRYWITTEST.logFailureReasons "${_test}";
     fi
   else
-    logInfo -n "Test ${_test}: errors";
+    logInfo -n "${_testDescription}: errors";
     logInfoResult FAILURE "${_errors}";
-    logErrorReasons "${_test}";
+    logError "${_testDescription}";
   fi
 }
 
-function retrieveScriptName() {
-  local _testFile="${0}";
-}
-
+# fun: DRYWITTEST.dwtest
+# api: private
+# txt: Performns the tests.
+# txt: Returns 0/TRUE always.
+# use: DRYWITTEST.dwtest
 function DRYWITTEST.dwtest() {
   local _tests;
   local _failedTests;
   local _t;
   local _oldIFS="${IFS}";
   local _scriptName;
-  retrieveScriptName;
+  local -i _passed=0;
+  local -i _failed=0;
 
-  logInfo -n "Retrieving tests in ${SCRIPT_NAME}";
-  DRYWITTEST.retrieveTests ${SCRIPT_NAME};
+  DW.getScriptName;
+  local _scriptName="${RESULT#./}";
+  logDebug -n "Retrieving tests in ${_scriptName}";
+  DRYWITTEST.retrieveTests "${_scriptName}";
   _tests="${RESULT}";
   if isEmpty "${_tests}"; then
-    logInfoResult FAILURE "0";
+    logDebugResult FAILURE "0";
     exitWithErrorCode NO_TESTS_FOUND;
   else
-    logInfoResult SUCCESS "$(echo "${_tests}" | wc -w)";
+    logDebugResult SUCCESS "$(echo "${_tests}" | wc -w)";
   fi
 
   IFS=${DWIFS};
   for _t in ${_tests}; do
     IFS="${_oldIFS}";
-    logInfo -n "Running ${_t}";
+    humanReadableTest "${_t}";
+    logInfo -n "${RESULT}";
     if runTest "${_t}"; then
       logInfoResult SUCCESS "pass";
+      _passed=$((_passed+1));
     else
       logInfoResult FAILURE "failed";
+      _failed=$((_failed+1));
     fi
   done
   IFS="${_oldIFS}";
@@ -567,14 +636,23 @@ function DRYWITTEST.dwtest() {
     done
     IFS="${_oldIFS}";
   fi
+
+  echo "export PASSED_TESTS=${_passed};" >> ".$(basename ${_scriptName}).env";
+  echo "export FAILED_TESTS=${_failed};" >> ".$(basename ${_scriptName}).env";
 }
 
-## Calling dry-wit from a well-known place
+# fun: __dwCallback
+# api: private
+# txt: Calling dry-wit from a well-known place
+# txt: Returns 0/TRUE always.
+# use: __dwCallback;
 function __dwCallback() {
   _defineDryWitErrorMessages;
   DWTEST.defineErrors;
-  if isFunctionPresent defineErrors "${SCRIPT_NAME}"; then
-      defineErrors;
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  if isFunctionPresent defineErrors "${_scriptName}"; then
+    defineErrors;
   else
     export -a ERROR_MESSAGES=();
   fi
@@ -582,17 +660,18 @@ function __dwCallback() {
 
 ### ASSERTIONS ###
 
-## Asserts given condition holds true.
-## -> 1: the condition to check.
-## -> 2: the error message.
-## Example:
-##   Assert.isTrue [ 1 == 1 ] "check [ 1 == 1 ] failed";
+# fun: Assert.isTrue condition error
+# api: public
+# txt: Asserts given condition holds true.
+# opt: condition: The condition to check.
+# opt: error: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.isTrue [ 1 == 1 ] "check [ 1 == 1 ] failed";
 function Assert.isTrue() {
   local -i _condition=${1};
+  checkNotEmpty condition "${_condition}" 1;
   local _error="${2}";
-
-  checkNotEmpty "condition" "${_condition}" 1;
-  checkNotEmpty "error" "${_error}" 2;
+  checkNotEmpty error "${_error}" 2;
 
   if isTrue ${_condition}; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -601,17 +680,18 @@ function Assert.isTrue() {
   fi
 }
 
-## Asserts given condition holds true.
-## -> 1: the condition to check.
-## -> 2: the error message.
-## Example:
-##   Assert.isFalse [ 1 != 1 ], "check [ 1 != 1 ] failed";
+# fun: Assert.isFalse condition error
+# api: public
+# txt: Asserts given condition holds true.
+# opt: condition: The condition to check.
+# opt: error: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.isFalse [ 1 != 1 ], "check [ 1 != 1 ] failed";
 function Assert.isFalse() {
   local _condition=${1};
+  checkNotEmpty condition "${_condition}" 1;
   local _error="${2}";
-
-  checkNotEmpty "condition" "${_condition}" 1;
-  checkNotEmpty "error" "${_error}" 2;
+  checkNotEmpty error "${_error}" 2;
 
   if isFalse ${_condition}; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -620,15 +700,15 @@ function Assert.isFalse() {
   fi
 }
 
-## Asserts no error has been thrown so far in current test.
-## -> 1: The error message.
-## Example:
-##   [call functionX]
-##   Assert.noErrorThrown "functionX has thrown an error";
+# fun: Assert.noErrorThrown message
+# api: public
+# txt: Asserts no error has been thrown so far in current test.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: [call functionX]; Assert.noErrorThrown "functionX has thrown an error";
 function Assert.noErrorThrown() {
   local _message="${1}";
-
-  checkNotEmpty "message" "${_message}" 1;
+  checkNotEmpty message "${_message}" 1;
 
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
@@ -638,153 +718,169 @@ function Assert.noErrorThrown() {
   fi
 }
 
-## Asserts an error has been thrown so far in current test.
-## -> 1: The error message.
-## Example:
-##   [call functionX]
-##   Assert.errorThrown "functionX should have thrown an error";
+# fun: Assert.errorThrown
+# api: public
+# txt: Asserts an error has been thrown so far in current test.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: [call functionX]; Assert.errorThrown "functionX should have thrown an error";
 function Assert.errorThrown() {
   local _message="${1}";
-
-  checkNotEmpty "message" "${_message}" 1;
+  checkNotEmpty message "${_message}" 1;
 
   local _errors=${TEST_ERRORS["${FUNCNAME[1]}"]};
   if isEmpty "${_errors}"; then
-      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${1}";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${1}";
   else
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
     DRYWITTEST.removeTestError "${FUNCNAME[1]}";
   fi
 }
 
-## Asserts both values are equal.
-## -> 1: The expected value.
-## -> 2: The actual value.
-## -> 3: The error message.
-## Example:
-##   Assert.areEqual 1 1 "1 does not equal 1";
+# fun: Assert.areEqual expected actual message
+# api: public
+# txt: Asserts both values are equal.
+# opt: expected: The expected value.
+# opt: actual: The actual value.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.areEqual 1 1 "1 does not equal 1";
 function Assert.areEqual() {
   local _expected="${1}";
+  #  checkNotEmpty expected "${_expected}" 1;
   local _actual="${2}";
+  #  checkNotEmpty actual "${_actual}" 2;
   local _message="${3}";
-
-#  checkNotEmpty "expected" "${_expected}" 1;
-#  checkNotEmpty "actual" "${_actual}" 2;
-  checkNotEmpty "message" "${_message}" 3;
+  checkNotEmpty message "${_message}" 3;
 
   if areEqual "${_expected}" "${_actual}"; then
-      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} != ${_actual})";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(expected '${_expected}', got '${_actual}')";
   fi
 }
 
-## Asserts both values are different.
-## -> 1: The expected value.
-## -> 2: The actual value.
-## -> 3: The error message.
-## Example:
-##   Assert.areNotEqual 1 2 "1 is equal to 2";
+# fun: Assert.areNotEqual expected actual message
+# api: public
+# txt: Asserts both values are different.
+# opt: expected: The expected value.
+# opt: actual: The actual value.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.areNotEqual 1 2 "1 is equal to 2";
 function Assert.areNotEqual() {
   local _expected="${1}";
+  checkNotEmpty expected "${_expected}" 1;
   local _actual="${2}";
+  checkNotEmpty actual "${_actual}" 2;
   local _message="${3}";
-
-  checkNotEmpty "expected" "${_expected}" 1;
-  checkNotEmpty "actual" "${_actual}" 2;
-  checkNotEmpty "message" "${_message}" 3;
+  checkNotEmpty message "${_message}" 3;
 
   if areNotEqual "${_expected}" "${_actual}"; then
-      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_expected} == ${_actual})";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_expected}' == '${_actual}')";
   fi
 }
 
-## Asserts given value is empty.
-## -> 1: The value.
-## -> 2: The error message.
-## Example:
-##   Assert.isEmpty "${testValue}" "testValue is not empty";
+# fun: Assert.isEmpty value message
+# api: public
+# txt: Asserts given value is empty.
+# opt: value: The value.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.isEmpty "${testValue}" "testValue is not empty";
 function Assert.isEmpty() {
   local _value="${1}";
   local _message="${2}";
-
-  checkNotEmpty "message" "${_message}" 2;
+  checkNotEmpty message "${_message}" 2;
 
   if isEmpty "${_value}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is not empty)";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_value}' is not empty)";
   fi
 }
 
-## Asserts given value is not empty.
-## -> 1: The value.
-## -> 2: The error message.
-## Example:
-##   Assert.isNotEmpty "${testValue}" "testValue is empty";
+# fun: Assert.isNotEmpty value message
+# api: public
+# txt: Asserts given value is not empty.
+# opt: value: The value.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.isNotEmpty "${testValue}" "testValue is empty";
 function Assert.isNotEmpty() {
   local _value="${1}";
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
 
   if isNotEmpty "${_value}"; then
-    checkNotEmpty "message" "${_message}" 2;
-
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_value} is empty)";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(value is empty)";
   fi
 }
 
-## Asserts given value is an existing function.
-## -> 1: The function name.
-## -> 2: The error message.
-## Example:
-##   Assert.functionExists "my_function" "my_function does not exist";
+# fun: Assert.functionExists functionName message
+# api: public
+# txt: Asserts given value is an existing function.
+# opt: functionName: The function name.
+# opt: message: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.functionExists "my_function" "my_function does not exist";
 function Assert.functionExists() {
   local _functionName="${1}";
   local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
 
   if isNotEmpty "${_functionName}"; then
-    checkNotEmpty "message" "${_message}" 2;
-
     if isFunctionPresent "${_functionName}"; then
       DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
     else
-      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_functionName} is not defined)";
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_functionName}' is not defined)";
     fi
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(${_functionName} is not defined)";
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "('${_functionName}' is not defined)";
   fi
 }
 
-## Fails the test directly.
-## -> 1: The error message. Mandatory.
-## Example:
-##   fail "my_test";
+# fun: Assert.fail error
+# api: public
+# txt: Fails the test directly.
+# opt: error: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.fail "my_test shouldn't have passed";
 function Assert.fail() {
   local _message="${1}";
-
-  checkNotEmpty "errorMessage" "${_message}" 1;
+  checkNotEmpty error "${_message}" 1;
 
   DRYWITTEST.addTestFailure "${FUNCNAME[1]}" "${_message}";
 }
 
-## Checks a substring is contained in given text.
-## -> 1: The text.
-## -> 2: The substring.
-## -> 3: The error message.
-## Example:
-##   Assert.contains "sample text" "sample" "'sample text' does not contain 'sample'";
+# fun: Assert.pass
+# api: public
+# txt: Passes the test directly.
+# txt: Returs 0/TRUE always.
+# use: Assert.pass;
+function Assert.pass() {
+  DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+}
+
+# fun: Assert.contains text substring
+# api: public
+# txt: Checks a substring is contained in given text.
+# opt: text: The text.
+# opt: substring: The substring.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.contains "sample text" "sample" "'sample text' does not contain 'sample'";
 function Assert.contains() {
   local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
   local _substring="${2}";
+  checkNotEmpty substring "${_substring}" 2;
   local _errorMessage="${3}";
-
-  checkNotEmpty "text" "${_text}" 1;
-  checkNotEmpty "substring" "${_substring}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
   if contains "${_text}" "${_substring}"; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -793,20 +889,44 @@ function Assert.contains() {
   fi
 }
 
-## Checks a file contains a text.
-## -> 1: The file.
-## -> 2: The text to test.
-## -> 3: The error message.
-## Example:
-##   Assert.fileContains "/tmp/debug.log" "TESTING" "/tmp/debug.log doesn't contain TESTING";
+# fun: Assert.doesNotContain text substring
+# api: public
+# txt: Checks whether a text does not contain given substring.
+# opt: text: The text.
+# opt: substring: The substring.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.doesNotContain "sample text" "sample" "'sample text' does not contain 'sample'";
+function Assert.doesNotContain() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+  local _substring="${2}";
+  checkNotEmpty substring "${_substring}" 2;
+  local _errorMessage="${3}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+  if contains "${_text}" "${_substring}"; then
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_substring}')";
+  else
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  fi
+}
+
+# fun: Assert.fileContains file text
+# api: public
+# txt: Checks a file contains a text.
+# opt: file: The file.
+# opt: text: The text to test.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.fileContains "/tmp/debug.log" "TESTING" "/tmp/debug.log doesn't contain TESTING";
 function Assert.fileContains() {
   local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
   local _text="${2}";
+  checkNotEmpty text "${_text}" 2;
   local _errorMessage="${3}";
-
-  checkNotEmpty "file" "${_file}" 1;
-  checkNotEmpty "text" "${_text}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
   if grep -q "${_text}" "${_file}" 2> /dev/null; then
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
@@ -815,89 +935,156 @@ function Assert.fileContains() {
   fi
 }
 
-## Checks an array contains a text.
-## -> 1: The array.
-## -> 2: The text to test.
-## -> 3: The error message.
-## Example:
-##   Assert.arrayContains "${array[@]}" "TESTING" "array doesn't contain TESTING";
-function Assert.arrayContains() {
-  local _array="${1}";
+# fun: Assert.fileDoesNotContain file text
+# api: public
+# txt: Checks a file doesn't contain a text.
+# opt: file: The file.
+# opt: text: The text to test.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: Assert.fileDoesNotContain "/tmp/debug.log" "TESTING" "/tmp/debug.log contains TESTING";
+function Assert.fileDoesNotContain() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
   local _text="${2}";
+  checkNotEmpty text "${_text}" 2;
   local _errorMessage="${3}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  checkNotEmpty "array" "${_array}" 1;
-  checkNotEmpty "text" "${_text}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
-
-  if arrayContains "${_array}" "${_text}"; then
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
-  else
+  if grep -q "${_text}" "${_file}" 2> /dev/null; then
     DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
-  fi
-}
-
-## Checks an array doesn't contain a text.
-## -> 1: The array.
-## -> 2: The text to test.
-## -> 3: The error message.
-## Example:
-##   Assert.arrayDoesNotContain "${array[@]}" "TESTING" "array contains TESTING";
-function Assert.arrayDoesNotContain() {
-  local _array="${1}";
-  local _text="${2}";
-  local _errorMessage="${3}";
-
-  checkNotEmpty "array" "${_array}" 1;
-  checkNotEmpty "text" "${_text}" 2;
-  checkNotEmpty "errorMessage" "${_errorMessage}" 3;
-
-  if arrayContains "${_array}" "${_text}"; then
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_actual}')";
   else
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   fi
 }
 
-## Sources the Subject-under-test, if found, using a convention.
-## If the tests are in foo-tests.sh, it'll try to source ./foo.sh first.
-## If it doesn't exist, then it'll try to source ../src/foo.sh.
+# fun: Assert.arrayContains text array
+# api: public
+# txt: Checks an array contains a text.
+# opt: text: The text to test.
+# opt: array: The array.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: local arrayContents="${array[@]}"; Assert.arrayContains "TESTING" "${arrayContents}" "array doesn't contain TESTING";
+function Assert.arrayContains() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+  shift;
+  local _array="${1}";
+  checkNotEmpty array "${_array}" 2;
+  shift;
+  local _errorMessage="${@}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+  if arrayContains "${_text}" "${_array}"; then
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  else
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_array}' does not contain '${_text}')";
+  fi
+}
+
+# fun: Assert.arrayDoesNotContain text array
+# api: public
+# txt: Checks an array doesn't contain a text.
+# opt: text: The text to test.
+# opt: array: The array.
+# opt: errorMessage: The error message.
+# txt: Returns 0/TRUE always.
+# use: local arrayContents="${array[@]}"; Assert.arrayDoesNotContain "TESTING" "${arrayContents}" "array contains TESTING";
+function Assert.arrayDoesNotContain() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+  shift;
+  local _array="${1}";
+  checkNotEmpty array "${_array}" 2;
+  shift;
+  local _errorMessage="${@}";
+  checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+  if arrayContains "${_text}" "${_array}"; then
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_array}' contains '${_text}')";
+  else
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  fi
+}
+
+# fun: DRYWITTEST.sourceSUT
+# api: private
+# txt: Sources the Subject-under-test, if found, using a convention.
+# txt: If the tests are in foo-tests.sh, it'll try to source ./foo.sh first.
+# txt: If it doesn't exist, then it'll try to source ../src/foo.sh.
+# txt: Returns 0/TRUE if the Subject-under-test is found; 1/FALSE otherwise.
+# use: DRYWITTEST.sourceSUT;
 function DRYWITTEST.sourceSUT() {
-  local -i _rescode;
+  local -i _rescode=${TRUE};
   local _sutFilename;
   local _sutFilePath;
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  local _bootstrapException=${FALSE};
 
-  if removeSuffix "${SCRIPT_NAME}" "-tests.sh"; then
-    _sutFilename="${RESULT}.sh";
-    _rescode=${TRUE};
-  elif removeSuffix "${SCRIPT_NAME}" "-test.sh"; then
-    _sutFilename="${RESULT}.sh";
-    _rescode=${TRUE};
-  else
-    echo "Could not find out the name of the sut for ${SCRIPT_NAME}";
-    _rescode=${FALSE};
+  if endsWith "${_scriptName}" "bootstrap-tests.sh"; then
+    _bootstrapException=${TRUE};
   fi
 
-  if isTrue ${_rescode}; then
-    if fileExists "$(dirname $0)/${_sutFilename}"; then
-      _sutFilePath="$(dirname $0)/${_sutFilename}";
-    elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
-      _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
+  if isFalse ${_bootstrapException}; then
+    if removeSuffix "${_scriptName}" "-tests.sh"; then
+      _sutFilename="${RESULT}.sh";
+    elif removeSuffix "${_scriptName}" "-test.sh"; then
+      _sutFilename="${RESULT}.sh";
     else
-      echo "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
-      _rescode=${FALSE};
+      _sutFilename="${_scriptName}";
     fi
-  fi
 
-  if isTrue ${_rescode}; then
-    source "${_sutFilePath}";
+     if removeSuffix "${_sutFilename}" ".sh"; then
+       _sutFilename="${RESULT}.dw";
+     fi
+
+     if fileExists "$(dirname $0)/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/${_sutFilename}";
+     elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
+     elif fileExists "$(dirname $0)/../src/modules/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/../src/modules/${_sutFilename}";
+     elif fileExists "$(dirname $0)/../../src/modules/ext/${_sutFilename}"; then
+       _sutFilePath="$(dirname $0)/../../src/modules/ext/${_sutFilename}";
+     else
+       logInfo -n "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
+       logInfoResult FAILURE "failed";
+       _rescode=${FALSE};
+     fi
+
+     if isTrue ${_rescode}; then
+       source "${_sutFilePath}";
+     fi
   fi
 
   return ${_rescode};
 }
 
+# fun: humanReadableTest test
+# api: private
+# txt: Extracts a human-readable description from given test name.
+# opt: test: The test.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the test description.
+# use: humanReadableTest "function_a_works_as_expected_test"; echo "${RESULT}"; # 'function a works as expected'
+function humanReadableTest() {
+  local _test="${1}";
+  checkNotEmpty test "${_test}" 1;
+
+  removeSuffix "${_test}" "_test";
+  replaceAll "${RESULT}" "_" " ";
+
+  return ${TRUE};
+}
+# fun: main
+# api: private
+# txt: Runs dry-wit-test.
+# txt: Returns 0/TRUE always.
+# use: main
 function main() {
   DRYWITTEST.sourceSUT;
   DRYWITTEST.dwtest;
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

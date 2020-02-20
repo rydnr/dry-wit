@@ -17,23 +17,24 @@ function cache() {
   local IFS='
   ';
   local _key="$*";
-  local -i rescode;
-  local result;
+  checkNotEmpty function "${_key}" 1;
+  local -i _rescode;
+  local _result;
   local _cachedRescode=${rescode_cache["${_key}"]:--1};
 
   if [ ${_cachedRescode} -lt 0 ]; then
     ${_key};
-    rescode=$?;
-    result="${RESULT}";
-    result_cache["${_key}"]="${result}";
-    result="${result_cache[${_key}]}";
-    rescode_cache["${_key}"]=${rescode};
+    _rescode=$?;
+    _result="${RESULT}";
+    result_cache["${_key}"]="${_result}";
+    _result="${result_cache[${_key}]}";
+    rescode_cache["${_key}"]=${_rescode};
   else
-    rescode=${rescode_cache["${_key}"]};
-    result="${result_cache[${_key}]}";
+    _rescode=${rescode_cache["${_key}"]};
+    _result="${result_cache[${_key}]}";
   fi
-  export RESULT="${result}";
-  return ${rescode};
+  export RESULT="${_result}";
+  return ${_rescode};
 }
 
 # fun: uncache function functionArguments

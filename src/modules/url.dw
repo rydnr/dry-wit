@@ -11,7 +11,7 @@
 #      echo "URL encoded: ${encoded}";
 function urlEncode() {
   local _text="$1";
-  checkNotEmpty "text" "${_text}" 1;
+  checkNotEmpty url "${_text}" 1;
 
     echo "${_text}"  \
   | sed 's % %25 g'  \
@@ -40,3 +40,27 @@ function urlEncode() {
 #  ?    %    #    [    ]
 # %3F  %25  %23  %5B  %5D
 }
+
+# fun: extractPathSegmentFromUrl url index
+# api: public
+# txt: Extracts a path segment from given url.
+# opt: url: The url.
+# opt: index: The 0-based index of the segment to extract.
+# txt: Returns 0/TRUE if the segment was extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the requested segment.
+# use: if extractPathSegmentFromUrl "http://acme.com/context/post" 0; then echo "First segment: ${RESULT}"; fi
+function extractPathSegmentFromUrl() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+  local _index="${2}";
+  checkNotEmpty index "${_index}" 2;
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if splitAndExtract "${_url}" "/" $((_index + 2)); then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

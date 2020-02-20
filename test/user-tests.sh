@@ -4,8 +4,8 @@
 
 # set -o xtrace
 
-function retrieveUidFromUser_test() {
-  import user;
+function retrieveUidFromUser_works_test() {
+  DW.import user;
   local _expectedUid=$(grep root /etc/passwd | cut -d':' -f 3);
   retrieveUidFromUser "root";
   Assert.isTrue $? "retrieveUidFromUser \"root\" failed";
@@ -13,13 +13,16 @@ function retrieveUidFromUser_test() {
   Assert.areEqual ${_expectedUid} ${_actualUid} "retrieveUidFromUser \"root\" returned an invalid uid (${_actualUid})";
 }
 
-function retrieveGroupFromGid_test() {
-  import user;
+function retrieveGroupFromGid_works_test() {
+  DW.import user;
   local _gid=$(grep root /etc/group | cut -d':' -f 3);
-  retrieveGroupFromGid "${_gid}";
-  Assert.isTrue $? "retrieveGroupFromGid failed";
-  local _actualGroup=${RESULT};
-  Assert.areEqual "root" ${_actualGroup} "retrieveGroupFromGid returned an invalid group (${_actualGroup})";
+  if retrieveGroupFromGid "${_gid}"; then
+      local _actualGroup=${RESULT};
+      Assert.areEqual "root" ${_actualGroup} "retrieveGroupFromGid returned an invalid group (${_actualGroup})";
+  else
+      Assert.fail "retrieveGroupFromGid failed";
+  fi
 }
 
-setScriptDescription "Runs all tests implemented for user.dw."
+setScriptDescription "Runs all tests implemented for user.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

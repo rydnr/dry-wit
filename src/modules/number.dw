@@ -1,0 +1,227 @@
+# mod: number
+# api: public
+# txt: Standard, general-purpose numeric functions.
+
+# fun: isNumber input
+# api: public
+# txt: Checks whether given value is a number
+# opt: input: The input.
+# txt: Returns 0/TRUE if the input is a number; 1/FALSE otherwise.
+# use: if isNumber "${value}"; then echo "${value} is a number"; fi
+function isNumber() {
+  local _input="${1}";
+  checkNotEmpty input "${_input}" 1;
+  local -i _value;
+  local -i _rescode;
+
+  _value=$(expr "${_input}" + 0 2>/dev/null);
+
+  if areEqual "${_value}" "${_input}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: mod dividend divisor
+# api: public
+# txt: Calculates the modulus.
+# opt: dividend: The dividend.
+# opt: divisor: The divisor.
+# txt: Returns 0/TRUE unless any operation is not numeric; 1/FALSE otherwise.
+# use: if mod ${value} 100; then echo "${value} mod 100 -> ${RESULT}"; fi
+function mod() {
+  local _dividend="${1}";
+  checkNotEmpty dividend "${_dividend}" 1;
+  local _divisor="${2}";
+  checkNotEmpty divisor "${_divisor}" 2;
+  local -i _rescode;
+  local _result;
+
+  if isNumber "${_dividend}" && isNumber "${_divisor}"; then
+    _result=$((${_dividend} % ${_divisor}));
+    _rescode=$?;
+  else
+    _rescode=${FALSE};
+  fi
+
+  export RESULT="${_result}";
+
+  return ${_rescode};
+}
+
+# fun: isGreaterThan first second
+# api: public
+# txt: Checks whether the first number is greater than the second number.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the first number is greater than the second; 1/FALSE if is less or equal than the second; 255 if any of them is not a number.
+# use: if isGreaterThan ${value} 0; then echo "${value} is positive"; fi
+function isGreaterThan() {
+  local _first="${1}";
+  checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
+  checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
+
+  if isNumber "${_first}" && isNumber "${_second}"; then
+    if [[ ${_first} -gt ${_second} ]]; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=255;
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isGreaterOrEqualTo first second
+# api: public
+# txt: Checks whether the first number is greater or equal to the second number.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the first number is equal to or greater than the second; 1/FALSE if is less than the second; 255 if any of them is not a number.
+# use: if isGreaterOrEqualTo ${value} 1; then echo "${value} is positive"; fi
+function isGreaterOrEqualTo() {
+  local _first="${1}";
+  checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
+  checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
+
+  if isNumber "${_first}" && isNumber "${_second}"; then
+    if [[ ${_first} -ge ${_second} ]]; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=255;
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isLessThan first second
+# api: public
+# txt: Checks whether the first number is less than the second number.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the first number is less than the second; 1/FALSE if is greater or equal than the second; 255 if any of them is not a number.
+# use: if isLessThan ${value} 0; then echo "${value} is negative"; fi
+function isLessThan() {
+  local _first="${1}";
+  checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
+  checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
+
+  if isNumber "${_first}" && isNumber "${_second}"; then
+    if [[ ${_first} -lt ${_second} ]]; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=255;
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isLessOrEqualTo first second
+# api: public
+# txt: Checks whether the first number is less or equal to than the second number.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the first number is less or equal to the second; 1/FALSE if is greater than the second; 255 if any of them is not a number.
+# use: if isLessOrEqualTo ${value} -1; then echo "${value} is negative"; fi
+function isLessOrEqualTo() {
+  local _first="${1}";
+  checkNotEmpty first "${_first}" 1;
+  local _second="${2}";
+  checkNotEmpty second "${_second}" 2;
+  local -i _rescode;
+
+  if isNumber "${_first}" && isNumber "${_second}"; then
+    if [[ ${_first} -le ${_second} ]]; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=255;
+  fi
+
+  return ${_rescode};
+}
+
+# fun: toOrdinal input
+# api: public
+# txt: Converts a number to its ordinal representation.
+# opt: input: The input number.
+# txt: Returns 0/TRUE if the number could be converted; 1/FALSE otherwise.
+# txt: The variable RESULT contains the ordinal.
+# use: if toOrdinal "${index}"; then echo "${RESULT} item"; fi
+function toOrdinal() {
+  local _number="${1}";
+  checkNotEmpty input "${_number}" 1;
+  local -i _rescode=${FALSE};
+  local _result="";
+  local _lastCharacter;
+
+  if isNumber "${_number}" && [ "${_number}" != "0" ]; then
+
+    if lastCharacter "${_number}"; then
+      _lastCharacter="${RESULT}";
+      _rescode=${TRUE};
+
+      case "${_lastCharacter}" in
+        "1") _result="${_number}st";
+             ;;
+        "2") _result="${_number}nd";
+             ;;
+        "3") _result="${_number}rd";
+             ;;
+        *) _result="${_number}th";
+           ;;
+      esac
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: lastDigit number
+# api: public
+# txt: Retrieves the last digit of given number.
+# opt: number: The input number.
+# txt: Returns 0/TRUE if the input is a number; 1/FALSE otherwise.
+# use: if lastDigit "335"; then echo "Last digit: ${RESULT}"; fi
+function lastDigit() {
+  local _number="${1}";
+  checkNotEmpty number "${_number}" 1;
+  local -i _rescode=${FALSE};
+  local _result="";
+  local _lastCharacter;
+
+  if isNumber "${_number}" && lastCharacter "${_number}"; then
+    _rescode=${TRUE};
+    _result="${RESULT}";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

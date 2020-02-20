@@ -9,6 +9,7 @@ DW.import debug;
 function test_reset() {
   DEBUG.resetState;
   DEBUG.defaultState;
+  setDebugEchoEnabled TRUE;
 }
 
 ## Called before each test.
@@ -24,30 +25,83 @@ function test_tearDown() {
 }
 
 function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
-  local _debugFile="${TEMP:-/tmp}/.$$.${SCRIPT_NAME}.log";
-  setDebugLogFile "${_debugFile}";
-  debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;
+  DEBUG.getDebugLogFile;
+  local _debugFile="${RESULT}";
   Assert.isNotEmpty "${_debugFile}" "debugFile is not set";
+  debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;
   Assert.fileContains "${_debugFile}" "foo11 -> bar11" "debugAssociativeArray didn't write 'foo11 -> bar11' in the log file";
   Assert.fileContains "${_debugFile}" "foo214 -> bar214" "debugAssociativeArray didn't write 'foo214 -> bar214' in the log file";
   Assert.fileContains "${_debugFile}" "key-without-spaces -> value with spaces" "debugAssociativeArray didn't write 'key-without-spaces -> value with spaces' in the log file";
   Assert.fileContains "${_debugFile}" "key with spaces -> value with spaces" "debugAssociativeArray didn't write 'key with spaces -> value with spaces' in the log file";
 }
 
-function defineEnvVar_adds_an_env_var_to___DW_ENVVAR_ENV_VARIABLES_test() {
+function defineEnvVar_adds_an_environment_variable_test() {
   defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
-  Assert.isNotEmpty "${__DW_ENVVAR_ENV_VARIABLES[*]}" "__DW_ENVVAR_ENV_VARIABLES is empty";
-  Assert.arrayContains "${__DW_ENVVAR_ENV_VARIABLES[@]}" "MY_VAR" "__DW_ENVVAR_ENV_VARIABLES does not contain MY_VAR";
+  ENVVAR.getEnvironmentVariablesVariableName;
+  local _variableName=${RESULT};
+  local -n _envVariables=${_variableName};
+  Assert.isNotEmpty "${_envVariables[@]}" "Environment variables array is empty";
+  # The next line is critical!
+  local _array="${_envVariables[@]}";
+  Assert.arrayContains "MY_VAR" "${_array}" 'Environment variables array does not contain MY_VAR.';
 }
 
-function ___DW_ENVVAR_ENV_VARIABLES_does_not_include_empty_vars_test() {
-  local i;
+function empty_vars_are_not_included_as_environment_variables_test() {
+  local -i i;
   defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
-  Assert.isNotEmpty "${__DW_ENVVAR_ENV_VARIABLES[*]}" "__DW_ENVVAR_ENV_VARIABLES is empty";
-  for ((i = 0; i < ${#__DW_ENVVAR_ENV_VARIABLES[*]}; i++)); do
-    Assert.isNotEmpty "${__DW_ENVVAR_ENV_VARIABLES[$i]}" "Variable at position $i is empty";
+  ENVVAR.getEnvironmentVariablesVariableName;
+  local -n _envVariables=${RESULT};
+  Assert.isNotEmpty "${_envVariables[@]}" "Environment variables arary is empty";
+  for ((i = 0; i < ${#_envVariables[@]}; i++)); do
+    Assert.isNotEmpty "${_envVariables[$i]}" "Variable at position $i is empty";
   done
 }
 
+function extractKeyInPair_works_test() {
+  local _pair="name1=value1"
+  local _expected="name1";
+  if extractKeyInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractKeyInPair ${_pair} failed";
+  else
+    Assert.fail "extractKeyInPair ${_pair} failed";
+  fi
+
+  _pair="name99=value1x"
+  _expected="name99";
+  if extractKeyInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractKeyInPair ${_pair} failed";
+  else
+    Assert.fail "extractKeyInPair ${_pair} failed";
+  fi
+}
+
+function extractValueInPair_works_test() {
+  local _pair="name1=value1"
+  local _expected="value1";
+  if extractValueInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
+  else
+    Assert.fail "extractValueInPair ${_pair} failed";
+  fi
+
+  _pair="name1=\"value with spaces\"";
+  _expected="value with spaces";
+  if extractValueInPair "${_pair}"; then
+      Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
+  else
+      Assert.fail "extractValueInPair ${_pair} failed";
+  fi
+
+  _pair="name1= ";
+  _expected="";
+  if extractValueInPair "${_pair}"; then
+    Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
+  else
+    Assert.fail "extractValueInPair ${_pair} failed";
+  fi
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
-#
+
+setScriptDescription "Runs all tests implemented for envvar.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

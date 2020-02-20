@@ -4,29 +4,52 @@
 
 # set -o xtrace
 
-## Tests for dry-wit's DRYWIT.
-function DRYWIT.parseCommonInput_test() {
-
-  DRYWIT.parseCommonInput "-h";
-  Assert.noErrorThrown PARSECOMMONINPUT_DOES_NOT_SUPPORT_SMALL_H;
-}
-
-function DRYWIT.retrieveSettingsFiles_test() {
+function DRYWIT.retrieveSettingsFiles_works_test() {
   local _settingsFiles;
   local _f;
+  local _oldIFS="${IFS}";
+  local -a _toDelete=();
 
-  import dw-plumbing;
+  DW.import dw-plumbing;
 
+  IFS="${DWIFS}";
+  DW.getScriptPath;
+  local _scriptPath="${RESULT}";
+  DW.getScriptFolder;
+  local _scriptFolder="${RESULT}";
+
+  for _f in "$(basename ${_scriptPath} .sh).inc.sh" \
+            ".$(basename ${_scriptPath} .sh).inc.sh" \
+            "${_scriptFolder}/$(basename ${_scriptPath} .sh).inc.sh" \
+            "${_scriptFolder}/.$(basename ${_scriptPath} .sh).inc.sh"; do
+      IFS="${_oldIFS}";
+      if touch "${_f}" 2> /dev/null; then
+          _toDelete+=("${_f}");
+      fi
+  done
+  IFS="${_oldIFS}";
   DRYWIT.retrieveSettingsFiles;
   _settingsFiles="${RESULT}";
   if isNotEmpty "${_settingsFiles}"; then
-    for _f in "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-              "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-              "${DRY_WIT_SCRIPT_FOLDER}/.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" \
-              "./.$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
-      Assert.contains "${_settingsFiles}" "${_f}" "Unexpected settings files";
+    IFS="${DWIFS}";
+    for _f in "$(basename ${_scriptPath} .sh).inc.sh" \
+              ".$(basename ${_scriptPath} .sh).inc.sh" \
+              "${_scriptFolder}/$(basename ${_scriptPath} .sh).inc.sh" \
+              "${_scriptFolder}/.$(basename ${_scriptPath} .sh).inc.sh"; do
+      IFS="${_oldIFS}";
+      retrieveAbsolutePath "${_f}";
+      Assert.contains "${_settingsFiles}" "${RESULT}" "Unexpected settings files";
     done
+    IFS="${DWIFS}";
+    for _f in _toDelete; do
+        retrieveAbsolutePath "${_f}";
+        if ! rm -f "${RESULT}" 2> /dev/null; then
+            echo "Could not remove ${RESULT}";
+        fi
+    done
+    IFS="${_oldIFS}";
   fi
 }
 
-setScriptDescription "Runs all tests implemented for dw-plumbing.dw.";
+setScriptDescription "Runs all tests implemented for dw-plumbing.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -2,29 +2,30 @@
 # api: public
 # txt: Functions related to arrays and associative arrays.
 
-# fun: arrayContains array element
+# fun: arrayContains element array
 # api: public
 # txt: Checks if an element is already contained in an array.
-# opt: array: The array (passed as "${array[@]}").
 # opt: element: The element to check.
+# opt: array: The array (passed as "${array[@]}").
 # txt: Returns 0/TRUE if the element is present in the array; 1/FALSE otherwise.
 # use: a=("one" "two" "three" "other number")
-#      if arrayContains "${a[@]}" "other number"; then ...; fi
+#      if arrayContains "other number" "${a[@]}"; then ...; fi
 function arrayContains() {
-  local _array="${1}";
-  local _item="${2}";
+  local _item="${1}";
+  shift;
+  local _array="${@}";
   local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## checkNotEmpty is loaded.
-  DRYWIT.failsafeCheckNotEmpty "array" "${_array}" 1;
-  DRYWIT.failsafeCheckNotEmpty "item" "${_item}" 2;
+  checkNotEmpty "item" "${_item}" 1;
+
+  # array can be empty.
 
   IFS="${DWIFS}";
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
+
     if areEqual "${_aux}" "${_item}"; then
       _rescode=${TRUE};
       break;
@@ -35,25 +36,24 @@ function arrayContains() {
   return ${_rescode};
 }
 
-# fun: arrayDoesNotContain array element
+# fun: arrayDoesNotContain element array
 # api: public
 # txt: Checks if an element is not already contained in an array.
-# opt: array: The array (passed as "${array[@]}").
 # opt: element: The element to check.
+# opt: array: The array (passed as "${array[@]}").
 # txt: Returns 0/TRUE if the element is not present in the array; 1/FALSE Otherwise.
 # use: a=("one" "two" "three" "other number")
-#      if arrayDoesNotContain "${a[@]}" "four"; then ...; fi
+#      if arrayDoesNotContain "four" "${a[@]}"; then ...; fi
 function arrayDoesNotContain() {
-  local _array="${1}";
-  local _item="${2}";
+  local _item="${1}";
+  checkNotEmpty item "${_item}" 1;
+  shift;
+  local _array="${@}";
+  checkNotEmpty array "${_array}" 2;
+
   local -i _rescode=${FALSE};
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## checkNotEmpty is loaded.
-  DRYWIT.failsafeCheckNotEmpty "array" "${_array}" 1;
-  DRYWIT.failsafeCheckNotEmpty "item" "${_item}" 2;
-
-  if arrayContains "${_array}" "${_item}"; then
+  if arrayContains "${_item}" "${_array}"; then
     _rescode=${FALSE};
   else
     _rescode=${TRUE};
@@ -62,45 +62,86 @@ function arrayDoesNotContain() {
   return ${_rescode};
 }
 
-# fun: clearAssociativeArray array
+# fun: getIndexOfItemInArray item array
+# api: public
+# txt: Retrieves the index of given item in an array.
+# txt: item: The item.
+# txt: array: The array (passed as "${array[@]}")
+# txt: Returns 0/TRUE if the item was found in the array; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the index of the item.
+# use: if getIndexOfItemInArray "a" "a b c"; then echo "Index of 'a': ${RESULT}"; then
+function getIndexOfItemInArray() {
+  local _item="${1}";
+  checkNotEmpty item "${_item}" 1;
+  shift;
+  local _array="${@}";
+  checkNotEmpty array "${_array}" 2;
+
+  local -i _rescode=${FALSE};
+  local -i _result;
+
+  local -i _i=0;
+
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  for _arrayItem in ${_array[@]}; do
+    IFS="${_oldIFS}";
+    if areEqual "${_item}" "${_arrayItem}"; then
+      _result=${_i};
+      _rescode=${TRUE};
+      break;
+    fi
+    _i=$((_i+1));
+  done;
+  IFS="${_oldIFS}";
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: clearAssociativeArray arrayName
 # api: public
 # txt: Clears given associative array.
-# opt: array: The associative array.
+# opt: arrayName: The name of the associative array.
 # txt: Returns 0/TRUE always.
 # use: clearAssociativeArray myArray;
 function clearAssociativeArray() {
-    local _arrayName="${1}";
-    local _key;
+  local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
+  local _key;
 
-    checkNotEmpty "arrayName" "${_arrayName}" 1;
+  declare -n _directArray="${_arrayName}";
 
-    declare -n _directArray="${_arrayName}";
-
-    IFS="${DWIFS}";
-    for _key in "${!_directArray[@]}"; do
-        IFS="${_oldIFS}";
-        unset _directArray[${_key}];
-    done
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
+    unset _directArray[${_key}];
+  done
+  IFS="${_oldIFS}";
 }
 
-# fun: flattenArray array separator
+# fun: flattenArray arrayName separator
 # api: public
 # txt: Flattens an array, using given separator.
-# opt: array: The name of the array variable.
+# opt: arrayName: The name of the array variable.
 # opt: separator: The separator to use.
+# txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the resulting string.
 # use: A=(a b c); flattenArray A "x"; echo "A->${RESULT}" # axbxc
 function flattenArray() {
   local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
   local _separator="${2}";
-  local result="";
+  checkNotEmpty separator "${_separator}" 2;
+  local _result="";
   local _aux;
   local _len;
   local _oldIFS="${IFS}";
   local -i _i;
-
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
 
   _aux="$(echo "\${#${_arrayName}[@]}")";
   _len=$((-1+$(eval echo "${_aux}")));
@@ -111,19 +152,21 @@ function flattenArray() {
     IFS="${_oldIFS}";
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");
-    result="${result}${_separator}${_item}";
+    _result="${_result}${_separator}${_item}";
   done
   IFS="${_oldIFS}";
 
-  result="${result#${_separator}}";
+  _result="${_result#${_separator}}";
 
-  export RESULT="${result}";
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
-# fun: forEachAssociativeArrayEntryDo array callback
+# fun: forEachAssociativeArrayEntryDo arrayName callback
 # api: public
 # txt: Calls a given function for each entry found in given associative array.
-# opt: array: The name of the associative array variable.
+# opt: arrayName: The name of the associative array variable.
 # opt: callback: The name of the callback function.
 # txt: Returns 0/TRUE always.
 # use: function process_code() {
@@ -132,57 +175,58 @@ function flattenArray() {
 #      ...
 #      forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
 function forEachAssociativeArrayEntryDo() {
-    local _arrayName="${1}";
-    local _callback="${2}";
-    local _key;
-    local _oldIFS="${IFS}";
+  local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
+  local _callback="${2}";
+  checkFunctionPresent callback "${_callback}" 2;
+  local _key;
+  local _oldIFS="${IFS}";
 
-    checkNotEmpty "arrayName" "${_arrayName}" 1;
-    checkFunctionPresent "callback" "${_callback}" 2;
+  declare -n _directArray="${_arrayName}";
 
-    declare -n _directArray="${_arrayName}";
-
-    IFS="${DWIFS}";
-    for _key in "${!_directArray[@]}"; do
-        IFS="${_oldIFS}";
-        ${_callback} "${_key}" "${_directArray[${_key}]}";
-    done
+  IFS="${DWIFS}";
+  for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
+
+    ${_callback} "${_key}" "${_directArray[${_key}]}";
+  done
+  IFS="${_oldIFS}";
 }
 
-# fun: isArrayEmpty array
+# fun: isArrayEmpty arrayName
 # api: public
 # txt: Checks whether given array is empty.
-# opt: array: The name of the array.
+# opt: arrayName: The name of the array.
 # txt: Returns 0/TRUE if the array is empty; 1/FALSE otherwise.
 # use: if isArrayEmpty array; then ...; fi
 function isArrayEmpty() {
-    local _arrayName="${1}";
-    local -i _rescode;
+  local _arrayName="${1}";
+  local -i _rescode;
 
-    if isEmpty "${_arrayName}"; then
-        _rescode=${TRUE};
-    else
-        _rescode=${FALSE};
-    fi
+  if isEmpty "${_arrayName}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
 
-    return ${_rescode};
+  return ${_rescode};
 }
 
-# fun: retrieveAssociativeArrayKeys array
+# fun: retrieveAssociativeArrayKeys arrayName
 # api: public
 # txt: Extracts the keys of given associative array.
-# opt: array: The array name.
+# opt: arrayName: The array name.
+# txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the list of the keys, wrapped in double quotes.
 # use: myMapping=([foo]=bar [with spaces]="with spaces");
 #      retrieveAssociativeArrayKeys myMapping;
 #      for key in ${RESULT}; do ...; done
 function retrieveAssociativeArrayKeys() {
   local _arrayName="${1}";
+  checkNotEmpty arrayName "${_arrayName}" 1;
   local _key;
   local _result;
-
-  checkNotEmpty "arrayName" "${_arrayName}" 1;
+  local _oldIFS="${IFS}";
 
   declare -n _directArray="${_arrayName}";
 
@@ -197,5 +241,81 @@ function retrieveAssociativeArrayKeys() {
   IFS="${_oldIFS}";
 
   export RESULT="${_result}";
+
+  return ${TRUE};
 }
-#
+
+# fun: nth array nth
+# api: public
+# txt: Retrieves the nth element of given array.
+# opt: array: The array.
+# opt: nth: The index.
+# txt: Returns 0/TRUE if the element could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the nth element.
+# use: nth "${myArray}" 0; echo "First element: ${RESULT}";
+function nth() {
+  local _array="${1}";
+  checkNotEmpty array "${_array}" 1;
+  local _nth="${2}";
+  checkNumber nth "${_nth}" 2;
+  local _result;
+  local _item;
+  local -i _index=0;
+  local _oldIFS="${IFS}";
+  local -i _rescode=${FALSE};
+  local _aux;
+  local -i _arrayLogic=${FALSE};
+
+  if isGreaterOrEqualTo ${_nth} 0; then
+    local _tmp="${_array}";
+    if endsWith "${_tmp}" " "; then
+      if countMatchesOfCharsInString " " "${_tmp}"; then
+        if isGreaterThan "${RESULT}" 1; then
+          _tmp="${_tmp%% *}";
+          _arrayLogic=${TRUE};
+        elif isGreatherThan ${_nth} 0; then
+          _rescode=${FALSE};
+        else
+          _rescode=${TRUE};
+          _result="${_tmp}";
+        fi
+      fi
+    elif endsWith "${_tmp}" ' "'; then
+      if countMatchesOfCharsInString " " "${_tmp}"; then
+        if isGreaterThan "${RESULT}" 1; then
+          if countMatchesOfCharsInString '"' "${_tmp}"; then
+            _arrayLogic=${TRUE};
+            if isLessThan "${RESULT}" 2; then
+              _rescode=${TRUE};
+              _tmp="${_tmp% \"}";
+            fi
+          fi
+        elif isGreaterThan ${_nth} 0; then
+          _rescode=${TRUE};
+          _result="";
+        else
+          _rescode=${TRUE};
+          _result="${_tmp% \"}";
+        fi
+      fi
+    else
+      _arrayLogic=${TRUE};
+    fi
+
+    if isTrue ${_arrayLogic}; then
+      declare -a _aux="($(echo "${_tmp}" 2> /dev/null))";
+      _rescode=$?;
+      if isTrue ${_rescode} && isLessThan ${_nth} "${#_aux[@]}"; then
+        _result=${_aux[${_nth}]};
+        _rescode=${TRUE};
+      fi
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

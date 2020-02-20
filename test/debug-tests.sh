@@ -4,8 +4,6 @@
 
 # set -o xtrace
 
-DW.import debug;
-
 function test_reset() {
   DEBUG.resetState;
   DEBUG.defaultState;
@@ -24,8 +22,11 @@ function test_tearDown() {
 }
 
 function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
-  local _debugFile="${TEMP:-/tmp}/.$$.$(basename ${SCRIPT_NAME}).log";
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  local _debugFile="${TEMP:-/tmp}/.$$.$(basename ${_scriptName}).log";
   setDebugLogFile "${_debugFile}";
+  setDebugEchoEnabled TRUE;
   debugAssociativeArray __DW_ASSOCIATIVE_ARRAY_FOR_TESTING;
   Assert.isNotEmpty "${_debugFile}" "debugFile is not set";
   Assert.fileContains "${_debugFile}" "foo11 -> bar11" "debugAssociativeArray didn't write 'foo11 -> bar11' in the log file";
@@ -35,4 +36,6 @@ function debugAssociativeArray_prints_each_entry_in_the_debug_file_test() {
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
-#
+
+setScriptDescription "Runs all tests implemented for debug.dw";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
