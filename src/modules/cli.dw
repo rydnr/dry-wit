@@ -789,6 +789,10 @@ function CLI.checkFlag() {
       ;;
   esac
 
+  if startsWith "${_flag}" "-DW:"; then
+    _continue=${FALSE};
+  fi
+
   if isTrue ${_continue}; then
     if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
       _longName="${RESULT}";
