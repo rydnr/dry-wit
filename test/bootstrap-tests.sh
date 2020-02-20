@@ -16,5 +16,19 @@ function trace_logging_honors_dw_vv_flag_test() {
   Assert.isFalse ${_rescode} "BOOTSTRAP.isTraceEnabled honors -DW:vv to determine if tracing is enabled";
 }
 
+function debug_logging_does_not_apply_to_bootstrap_module_test() {
+  setDebugEnabled;
+  BOOTSTRAP.isDebugEnabled;
+  local -i _rescode=$?;
+  Assert.isFalse ${_rescode} "BOOTSTRAP.isDebugEnabled uses setDebugEnabled to determine if tracing is enabled";
+}
+
+function debug_logging_honors_dw_v_flag_test() {
+  BASH_ARGV="-DW:v";
+  BOOTSTRAP.isDebugEnabled;
+  local -i _rescode=$?;
+  Assert.isFalse ${_rescode} "BOOTSTRAP.isDebugEnabled honors -DW:v to determine if tracing is enabled";
+}
+
 setScriptDescription "Runs all tests implemented for dry-wit (bootstrap)";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
