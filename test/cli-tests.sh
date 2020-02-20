@@ -367,6 +367,18 @@ function mandatory_flags_are_parsed_correctly_test() {
   Assert.areEqual 'mandatory' "${MY_FLAG}" "Mandatory flags are not correctly parsed";
 }
 
+function any_dw_flag_is_ignored_test() {
+  local _flag="undefined";
+  local _result="$(checkInput -DW:${_flag})";
+  Assert.isTrue $? "-DW:${_flag} is not ignored";
+  Assert.isEmpty "${_result}" "-DW:${_flag} is not ignored";
+
+  _flag="vv";
+  _result="$(checkInput -DW:${_flag})";
+  Assert.isTrue $? "-DW:${_flag} is not ignored";
+  Assert.isEmpty "${_result}" "-DW:${_flag} is not ignored";
+}
+
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
 declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
