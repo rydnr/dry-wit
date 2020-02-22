@@ -57,6 +57,7 @@ function runCommandAsUidGid() {
   local _user;
   local _group;
 
+  DW.import user;
   retrieveUserFromUid "${_uid}";
   _user="${RESULT}";
   retrieveGroupFromGid "${_gid}";
@@ -84,13 +85,16 @@ function runCommandAsUserAndGroup() {
   local _folder="${3}";
   checkNotEmpty folder "${_folder}" 3;
   local _command="${4}";
-  checkNotEmpty command "${_4}";
+  checkNotEmpty command "${_command}" 4;
   shift
   shift
   shift
   shift
   local _args="${@}";
   local _exports="$(export)";
+
+  checkReq chpst;
+
   local -i rescode;
   local _line="${_command//$'\n'/ } ${_args//$'\n'/ }";
   createTempFile;
@@ -157,4 +161,5 @@ function runCommandLongOutput() {
 
   return ${_rescode};
 }
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
