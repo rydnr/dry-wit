@@ -53,12 +53,12 @@ function defineButDoNotOverrideEnvVar() {
   local _varDefault="${3}";
   local _varCommand="${4}";
   local _mandatoryOrOptional;
-  local -i rescode;
+  local -i _rescode;
 
   if isEnvVarDefined ${_varName}; then
     logTrace -n "Skipping already-defined ${_varName}";
     logTraceResult SUCCESS "skipped";
-    rescode=${TRUE};
+    _rescode=${TRUE};
   else
     if isEnvVarMandatory "${_varName}"; then
       _mandatoryOrOptional="MANDATORY";
@@ -66,10 +66,10 @@ function defineButDoNotOverrideEnvVar() {
       _mandatoryOrOptional="OPTIONAL";
     fi
     defineEnvVar "${_varName}" "${_mandatoryOrOptional}" "${_varDescription}" "${_varDefault}" "${_varCommand}";
-    rescode=$?;
+    _rescode=$?;
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 
