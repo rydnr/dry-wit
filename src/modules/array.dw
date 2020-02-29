@@ -302,8 +302,28 @@ function nth() {
       _arrayLogic=${TRUE};
     fi
 
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    local _item;
+    local _auxArray;
+    for _item in ${_tmp}; do
+      IFS="${_oldIFS}";
+      local _token="${_item}";
+      if startsWith "${_item}" ';'; then
+        _token="\\${_item}";
+      elif contains "${_item}" ";" && ! startsAndEndsWith "${_item}" "'"; then
+        _token="'${_item}'";
+      fi
+      if isEmpty "${_auxArray}"; then
+        _auxArray="${_token}";
+      else
+        _auxArray="${_auxArray} ${_token}";
+      fi
+    done
+    IFS="${_oldIFS}";
+
     if isTrue ${_arrayLogic}; then
-      declare -a _aux="($(echo "${_tmp}" 2> /dev/null))";
+      declare -a _aux="($(echo "${_auxArray}" 2> /dev/null))";
       _rescode=$?;
       if isTrue ${_rescode} && isLessThan ${_nth} "${#_aux[@]}"; then
         _result=${_aux[${_nth}]};

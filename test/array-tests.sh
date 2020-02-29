@@ -155,6 +155,7 @@ function getIndexOfItemInArray_works_test() {
   Assert.isTrue ${_rescode} "getIndexOfItemInArray failed";
   Assert.areEqual 3 ${_index} "getIndexOfItemInArray h|help ${_testArray[@]} returned ${_index}";
 }
+
 function nth_does_not_exit_test() {
   local -i _rescode;
   local _result;
@@ -216,6 +217,79 @@ function nth_does_not_exit_test() {
   _result="${RESULT}";
   Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
   Assert.areEqual "IFS" "${_result}" "nth '${_text}' ${_nth} failed";
+}
+
+function nth_does_not_fail_with_semicolon_in_values_test() {
+  local -i _rescode;
+  local _result;
+  local _text;
+  local -i _nth;
+
+  _text='DWIFS ";secondValue"';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+  _nth=1;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual '";secondValue"' "${_result}" "nth '${_text}' ${_nth} failed";
+}
+
+function nth_does_not_fail_with_equal_in_values_test() {
+  local -i _rescode;
+  local _result;
+  local _text;
+  local -i _nth;
+
+  _text='DWIFS "a=b"';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+  _nth=1;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "a=b" "${_result}" "nth '${_text}' ${_nth} failed";
+}
+
+function nth_does_not_fail_with_semicolon_and_equal_in_values_test() {
+  local -i _rescode;
+  local _result;
+  local _text;
+  local -i _nth;
+
+  _text=';a=b';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "${_text}" "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text='linux.tar.gz;bt_package=jfrog-artifactory-oss';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "${_text}" "${_result}" "nth '${_text}' ${_nth} failed";
+
+  _text='https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss';
+  _nth=0;
+  nth "${_text}" ${_nth};
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
+  Assert.areEqual "https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss" "${_result}" "nth '${_text}' ${_nth} failed";
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo]=bar [foo2]=bar2 );
