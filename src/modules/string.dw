@@ -333,34 +333,45 @@ function replaceAll() {
   return ${_rescode};
 }
 
-# fun: split text separator
+# fun: split text separator arrayName
 # api: public
 # txt: Splits given text using a separator.
 # opt: text: The text.
 # opt: separator: The separator.
+# opt: arrayName: The destination array.
 # txt: Returns 0/TRUE if the text could be splitted; 1/FALSE otherwise.
-# use: if split "${csvVariable}" ","; then "Splitted: ${RESULT}"; fi
+# use: if split "${csvVariable}" "," arr; then "Splitted: ${arr[@]}"; fi
 function split() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
   local _separator="${2}";
   checkNotEmpty separator "${_separator}" 2;
-  local _result="";
+  local _arrayName="${3}";
+  checkNotEmpty arrayName "${_arrayName}" 3;
+  local -n _split=${_arrayName};
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
   local _aux;
+  local -i _i=0;
+  local -i _j;
+  local -i _k;
 
   while IFS="${_separator}" read -ra _aux; do
-    if isEmpty "${_result}"; then
-      _result="${_aux[@]}";
-    else
-      _result="${_result} ${_aux[@]}";
-    fi
+    for _k in $(seq 0 ${#_aux[@]}); do
+      if ! isEmpty "${_aux[${_k}]}"; then
+        _split[${_i}]=${_aux[${_k}]};
+        ((_i++));
+      fi
+    done
     _rescode=${TRUE};
   done <<< "${_text}"
 
+  for _j in $(seq ${#_split[@]} ${_i}); do
+    unset _split[${_j}];
+  done
+
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="split";
   fi
 
   return ${_rescode};
@@ -405,9 +416,12 @@ function removeSurrounding() {
 
   if startsAndEndsWith "${_text}" "${_delimiter}"; then
     if removePrefix "${_text}" "${_delimiter}"; then
-      if removeSuffix "${RESULT}" "${_delimiter}"; then
-        _result="${RESULT}";
-        _rescode=${TRUE};
+      _result="${RESULT}";
+      _rescode=${TRUE};
+      if isNotEmpty "${_result}"; then
+        if removeSuffix "${_result}" "${_delimiter}"; then
+          _result="${RESULT}";
+        fi
       fi
     fi
   fi
@@ -488,23 +502,11 @@ function splitAndExtract() {
 
   local -i _rescode=${FALSE};
   local _result;
+  local -a _items;
 
-  if split "${_input}" "${_separator}"; then
-    local _items="${RESULT}";
-    local -i _i=0;
-    local _item;
-    local _oldIFS="${IFS}";
-    IFS="${DWIFS}";
-    for _item in ${RESULT}; do
-      IFS="${_oldIFS}";
-      if areEqual "${_i}" "${_index}"; then
-        _result="${_item}";
-        _rescode=${TRUE};
-        break;
-      fi
-      ((_i++));
-    done
-    IFS="${_oldIFS}";
+  if split "${_input}" "${_separator}" _items; then
+    _result="${_items[${_index}]}";
+    _rescode=${TRUE};
   fi
 
   if isTrue ${_rescode}; then
@@ -789,5 +791,21 @@ function tailText() {
   export RESULT="${_result}";
 
   return ${_rescode};
+}
+
+# fun: stringLength text
+# api: public
+# txt: Retrieves the length of the text, in characters.
+# opt: text: The text.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the string length.
+# use: stringLength "abc"; echo "length: ${RESULT}";
+function stringLength() {
+  local _text="${@}";
+  checkNotEmpty text "${_text}" 1;
+
+  export RESULT="${#_text}";
+
+  return ${TRUE};
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

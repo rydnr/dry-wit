@@ -142,19 +142,25 @@ function areEqual_works_test() {
 function split_works_test() {
   local _text="a;b;c";
   local _separator=";";
-  if split "${_text}" "${_separator}"; then
-    Assert.areEqual "a b c" "${RESULT}" "split \"${_text}\" \"${_separator}\" failed";
-  else
-    Assert.fail "split \"${_text}\" \"${_separator}\" failed";
-  fi
+  local -a _myArray;
+  split "${_text}" "${_separator}" _myArray;
+  local -i _rescode=$?;
+  Assert.isTrue ${_rescode} "split \"${_text}\" \"${_separator}\ _myArray failed";
+  Assert.areEqual "3" "${#_myArray[@]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
+  Assert.areEqual "a" "${_myArray[0]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
+  Assert.areEqual "b" "${_myArray[1]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
+  Assert.areEqual "c" "${_myArray[2]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
 
-  _text="a-b-c";
+  _text="d-e-f-g";
   _separator="-";
-  if split "${_text}" "${_separator}"; then
-      Assert.areEqual "a b c" "${RESULT}" "split \"${_text}\" \"${_separator}\" failed";
-  else
-      Assert.fail "split \"${_text}\" \"${_separator}\" failed";
-  fi
+  split "${_text}" "${_separator}" _myArray;
+ _rescode=$?;
+  Assert.isTrue ${_rescode} "split \"${_text}\" \"${_separator}\ _myArray failed";
+  Assert.areEqual "4" "${#_myArray[@]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
+  Assert.areEqual "d" "${_myArray[0]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
+  Assert.areEqual "e" "${_myArray[1]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
+  Assert.areEqual "f" "${_myArray[2]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
+  Assert.areEqual "g" "${_myArray[3]}" "split \"${_text}\" \"${_separator}\" _myArray failed";
 }
 
 function startsAndEndsWith_works_test() {
@@ -411,6 +417,16 @@ function tailText_works_test() {
   local _expected="bcde";
   Assert.isTrue ${_rescode} "tailText '${_text}' failed";
   Assert.areEqual "${_expected}" "${_result}" "tailText '${_text}' failed";
+}
+
+function stringLength_works_test() {
+  local _text="abc";
+  stringLength "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected=3;
+  Assert.isTrue ${_rescode} "stringLength '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "stringLength '${_text}' failed";
 }
 
 setScriptDescription "Runs all tests implemented for string.dw";

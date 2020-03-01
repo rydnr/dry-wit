@@ -901,11 +901,10 @@ function ENVVAR.extractItemInPair() {
   checkNotEmpty index "${_index}" 2;
   local -i _rescode=${FALSE};
   local _result;
-  local _pieces;
+  local -a _pieces;
 
-  if isNumber "${_index}" && split "${_pair}" "="; then
-    _pieces="${RESULT}";
-    if nth "${_pieces}" ${_index}; then
+  if isNumber "${_index}" && split "${_pair}" "=" _pieces; then
+    if nth ${_index} _pieces; then
       _result="${RESULT}";
       _rescode=${TRUE};
     fi

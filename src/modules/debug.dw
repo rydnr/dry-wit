@@ -178,17 +178,18 @@ function traceApiCall() {
   printApiCall >> "${_logFile}";
 }
 
-# fun: printApiCall
+# fun: printApiCall parentArgs*
 # api: public
 # txt: Prints the API call to the default log file using in development.
+# txt: parentArgs: The arguments passed to the parent function. Optional.
 # txt: Returns 0/TRUE always.
-# use: printApiCall;
+# use: printApiCall $*;
 function printApiCall() {
-  local -i _i=0;
+  local -i _i=1;
 
-  echo "${FUNCNAME[0]}";
-  while caller $i; do
-    i=$((i+1))
+  echo "${FUNCNAME[1]} $* $(caller 0)";
+  while caller ${_i}; do
+    _i=$((_i+1))
   done
 }
 

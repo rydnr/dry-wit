@@ -56,37 +56,44 @@ function isArrayEmpty_works_test() {
 }
 
 function nth_works_test() {
-  local _array="a b c";
-  local _position=0;
-  if nth "${_array}" "${_position}"; then
-    Assert.areEqual "a" "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
-  else
-    Assert.fail "nth \"${_array}\" \"${_position}\" failed";
-  fi
+  local -a _array=(a b c);
+  local _nth=0;
+  local -i _rescode;
+  nth ${_nth} _array;
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "nth ${_nth} ${_array[@]} failed";
+  Assert.areEqual "a" "${RESULT}" "nth ${_nth} ${_array[@]} failed";
 
-  _array="a b c";
-  _position=1;
-  if nth "${_array}" "${_position}"; then
-      Assert.areEqual "b" "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
-  else
-      Assert.fail "nth \"${_array}\" \"${_position}\" failed";
-  fi
+  _nth=1;
+  nth ${_nth} _array;
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "nth ${_nth} ${_array[@]} failed";
+  Assert.areEqual "b" "${RESULT}" "nth ${_nth} ${_array[@]} failed";
 
-  _array="a b c";
-  _position=2;
-  if nth "${_array}" "${_position}"; then
-      Assert.areEqual "c" "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
-  else
-      Assert.fail "nth \"${_array}\" \"${_position}\" failed";
-  fi
+  _nth=2;
+  nth ${_nth} _array;
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "nth ${_nth} ${_array[@]} failed";
+  Assert.areEqual "c" "${RESULT}" "nth ${_nth} ${_array[@]} failed";
 
-  _array='"value with spaces" b c';
-  _position=0;
-  if nth "${_array}" "${_position}"; then
-      Assert.areEqual 'value with spaces' "${RESULT}" "nth \"${_array}\" \"${_position}\" failed";
-  else
-      Assert.fail "nth \"${_array}\" \"${_position}\" failed";
-  fi
+  _array=("value with spaces" "a" "b");
+  _nth=0;
+  nth ${_nth} _array;
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "nth ${_nth} ${_array[@]} failed";
+  Assert.areEqual "value with spaces" "${RESULT}" "nth ${_nth} ${_array[@]} failed";
+
+  _nth=1;
+  nth ${_nth} _array;
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "nth ${_nth} ${_array[@]} failed";
+  Assert.areEqual "a" "${RESULT}" "nth ${_nth} ${_array[@]} failed";
+
+  _nth=2;
+  nth ${_nth} _array;
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "nth ${_nth} ${_array[@]} failed";
+  Assert.areEqual "b" "${RESULT}" "nth ${_nth} ${_array[@]} failed";
 }
 
 function arrayContains_works_ntest() {
@@ -159,137 +166,153 @@ function getIndexOfItemInArray_works_test() {
 function nth_does_not_exit_test() {
   local -i _rescode;
   local _result;
-  local _text;
+  local -a _text;
   local -i _nth;
 
-  _text='DWIFS "';
+  _text=('DWIFS' '');
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual "DWIFS" "${_result}" "nth ${_nth} ${_text[@]} failed";
 
-  _text='DWIFS "';
+  _text=('DWIFS' '');
   _nth=1;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.isEmpty "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.isEmpty "${_result}" "nth ${_nth} ${_text[@]} failed";
 
-  _text='MY_KEY ""';
+  _text=('MY_KEY' '""');
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "MY_KEY" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual "MY_KEY" "${_result}" "nth ${_nth} ${_text[@]} failed";
 
-  _text='MY_KEY ""';
+  _text=('MY_KEY' '""');
   _nth=1;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
    _result="${RESULT}";
-   Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-   Assert.isEmpty "${_result}" "nth '${_text}' ${_nth} failed";
+   Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+   Assert.isEmpty "${_result}" "nth ${_nth} ${_text[@]} failed";
 
-  _text="DWIFS ${DWIFS}";
+  _text=("DWIFS" "${DWIFS}");
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual "DWIFS" "${_result}" "nth ${_nth} ${_text[@]} failed";
 
-  _text="DWIFS ${DWIFS}";
+  _text=('IFS' '" "');
+  _nth=0;
+  nth ${_nth} _text;
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual "IFS" "${_result}" "nth ${_nth} ${_text[@]} failed";
+
+  _text=('name1' "value with spaces");
   _nth=1;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.isEmpty "${_result}" "nth '${_text}' ${_nth} failed";
-
-  _text='IFS " "';
-  _nth=0;
-  nth "${_text}" ${_nth};
-  _rescode=$?;
-  _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "IFS" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} 'name1' 'value with spaces'";
+  Assert.areEqual 'value with spaces' "${_result}" "nth ${_nth} ${_text[@]} failed";
 }
 
 function nth_does_not_fail_with_semicolon_in_values_test() {
   local -i _rescode;
   local _result;
-  local _text;
+  local -a _text;
   local -i _nth;
 
-  _text='DWIFS ";secondValue"';
+  _text=('DWIFS' ";secondValue");
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual "DWIFS" "${_result}" "nth ${_nth} ${_text[@]}  failed";
   _nth=1;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual '";secondValue"' "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual ';secondValue' "${_result}" "nth ${_nth} ${_text[@]} failed";
 }
 
 function nth_does_not_fail_with_equal_in_values_test() {
   local -i _rescode;
   local _result;
-  local _text;
+  local -a _text;
   local -i _nth;
 
-  _text='DWIFS "a=b"';
+  _text=('DWIFS' "a=b");
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "DWIFS" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual "DWIFS" "${_result}" "nth ${_nth} ${_text[@]} failed";
   _nth=1;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "a=b" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual 'a=b' "${_result}" "nth ${_nth} ${_text[@]} failed";
 }
 
 function nth_does_not_fail_with_semicolon_and_equal_in_values_test() {
   local -i _rescode;
   local _result;
-  local _text;
+  local -a _text;
   local -i _nth;
 
-  _text=';a=b';
+  _text=(';a=b');
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "${_text}" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} '${_text[@]}'";
+  Assert.areEqual ";a=b" "${_result}" "nth ${_nth} '${_text[@]}' failed";
 
-  _text='linux.tar.gz;bt_package=jfrog-artifactory-oss';
+  _text=('linux.tar.gz;bt_package=jfrog-artifactory-oss');
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "${_text}" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} '${_text[@]}'";
+  Assert.areEqual 'linux.tar.gz;bt_package=jfrog-artifactory-oss' "${_result}" "nth ${_nth} '${_text[@]}' failed";
 
-  _text='https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss';
+  _text=('https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss');
   _nth=0;
-  nth "${_text}" ${_nth};
+  nth ${_nth} _text;
   _rescode=$?;
   _result="${RESULT}";
-  Assert.isTrue ${_rescode} "nth fails with '${_text}' ${_nth}";
-  Assert.areEqual "https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss" "${_result}" "nth '${_text}' ${_nth} failed";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} '${_text[@]}'";
+  Assert.areEqual "https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss" "${_result}" "nth '${_text[@]}' ${_nth} failed";
+
+  _text=('key' 'https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss');
+  _nth=1;
+  nth ${_nth} _text;
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual "https://api.bintray.com/content/jfrog/artifactory/org/artifactory/oss/jfrog-artifactory-oss/latest/jfrog-artifactory-oss-latest-linux.tar.gz;bt_package=jfrog-artifactory-oss" "${_result}" "nth ${_nth} ${_text[@]} failed";
+
+  _text=('ARTIFACTORY_DOWNLOAD_URL' "jfrog-artifactory-oss");
+  _nth=1;
+  nth ${_nth} _text;
+  _rescode=$?;
+  _result="${RESULT}";
+  Assert.isTrue ${_rescode} "nth fails with ${_nth} ${_text[@]}";
+  Assert.areEqual 'jfrog-artifactory-oss' "${_result}" "nth ${_nth} ${_text[@]} failed";
 }
 
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo]=bar [foo2]=bar2 );

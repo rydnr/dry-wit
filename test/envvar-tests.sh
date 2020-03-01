@@ -84,12 +84,12 @@ function extractValueInPair_works_test() {
     Assert.fail "extractValueInPair ${_pair} failed";
   fi
 
-  _pair="name1=\"value with spaces\"";
+  _pair='name1="value with spaces"';
   _expected="value with spaces";
   if extractValueInPair "${_pair}"; then
-      Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
+    Assert.areEqual "${_expected}" "${RESULT}" "extractValueInPair ${_pair} failed";
   else
-      Assert.fail "extractValueInPair ${_pair} failed";
+    Assert.fail "extractValueInPair ${_pair} failed";
   fi
 
   _pair="name1= ";

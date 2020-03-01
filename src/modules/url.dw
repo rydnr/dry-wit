@@ -59,6 +59,11 @@ function extractPathSegmentFromUrl() {
 
   if splitAndExtract "${_url}" "/" $((_index + 2)); then
     _rescode=${TRUE};
+    _result="${RESULT}";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};

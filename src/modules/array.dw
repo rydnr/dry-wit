@@ -245,89 +245,35 @@ function retrieveAssociativeArrayKeys() {
   return ${TRUE};
 }
 
-# fun: nth array nth
+# fun: nth nth array
 # api: public
 # txt: Retrieves the nth element of given array.
-# opt: array: The array.
 # opt: nth: The index.
+# opt: arrayName: The destination array.
 # txt: Returns 0/TRUE if the element could be retrieved; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the nth element.
-# use: nth "${myArray}" 0; echo "First element: ${RESULT}";
+# use: nth 0 myArray; echo "First element: ${RESULT}";
 function nth() {
-  local _array="${1}";
-  checkNotEmpty array "${_array}" 1;
-  local _nth="${2}";
-  checkNumber nth "${_nth}" 2;
+  local _nth="${1}";
+  checkNumber nth "${_nth}" 1;
+  local _arrayName="${2}";
+  checkNotEmpty arrayName "${_arrayName}" 2;
   local _result;
-  local _item;
-  local -i _index=0;
-  local _oldIFS="${IFS}";
   local -i _rescode=${FALSE};
-  local _aux;
-  local -i _arrayLogic=${FALSE};
+  local -n _nthArray=${_arrayName};
+  local -i _index=0;
 
-  if isGreaterOrEqualTo ${_nth} 0; then
-    local _tmp="${_array}";
-    if endsWith "${_tmp}" " "; then
-      if countMatchesOfCharsInString " " "${_tmp}"; then
-        if isGreaterThan "${RESULT}" 1; then
-          _tmp="${_tmp%% *}";
-          _arrayLogic=${TRUE};
-        elif isGreatherThan ${_nth} 0; then
-          _rescode=${FALSE};
-        else
-          _rescode=${TRUE};
-          _result="${_tmp}";
+  if isLessOrEqualTo ${_nth} ${#_nthArray[@]}; then
+    _result="${_nthArray[${_nth}]}";
+    _rescode=${TRUE};
+    if isNotEmpty "${_result}"; then
+      if removeSurrounding "${_result}" '"'; then
+        _result="${RESULT}";
+      fi
+      if isNotEmpty "${_result}"; then
+        if removeSuffix "${_result}" " *"; then
+          _result="${RESULT}";
         fi
-      fi
-    elif endsWith "${_tmp}" ' "'; then
-      if countMatchesOfCharsInString " " "${_tmp}"; then
-        if isGreaterThan "${RESULT}" 1; then
-          if countMatchesOfCharsInString '"' "${_tmp}"; then
-            _arrayLogic=${TRUE};
-            if isLessThan "${RESULT}" 2; then
-              _rescode=${TRUE};
-              _tmp="${_tmp% \"}";
-            fi
-          fi
-        elif isGreaterThan ${_nth} 0; then
-          _rescode=${TRUE};
-          _result="";
-        else
-          _rescode=${TRUE};
-          _result="${_tmp% \"}";
-        fi
-      fi
-    else
-      _arrayLogic=${TRUE};
-    fi
-
-    local _oldIFS="${IFS}";
-    IFS="${DWIFS}";
-    local _item;
-    local _auxArray;
-    for _item in ${_tmp}; do
-      IFS="${_oldIFS}";
-      local _token="${_item}";
-      if startsWith "${_item}" ';'; then
-        _token="\\${_item}";
-      elif contains "${_item}" ";" && ! startsAndEndsWith "${_item}" "'"; then
-        _token="'${_item}'";
-      fi
-      if isEmpty "${_auxArray}"; then
-        _auxArray="${_token}";
-      else
-        _auxArray="${_auxArray} ${_token}";
-      fi
-    done
-    IFS="${_oldIFS}";
-
-    if isTrue ${_arrayLogic}; then
-      declare -a _aux="($(echo "${_auxArray}" 2> /dev/null))";
-      _rescode=$?;
-      if isTrue ${_rescode} && isLessThan ${_nth} "${#_aux[@]}"; then
-        _result=${_aux[${_nth}]};
-        _rescode=${TRUE};
       fi
     fi
   fi
