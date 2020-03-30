@@ -146,7 +146,7 @@ function runCommandLongOutput() {
   logDebug "${_command}";
 
   if isDebugEnabled; then
-    $@ 2>&1 | tee "${result}";
+    $@ 2>&1 | tee "${_result}";
     _rescode=${PIPESTATUS[0]};
   else
     $@ > "${_result}" 2>&1;
