@@ -14,5 +14,17 @@ function echoLogOutcome_does_not_call_alignRight_with_invalid_keyword_parameter_
   Assert.doesNotContain "'SUCCESS|FAILURE' (pass) is not valid when calling LOGGING.alignRight. Review LOGGING.echoLogOutcome" "${_result}" "LOGGING.echoLogOutcome calls LOGGING.alignRight incorrectly";
 }
 
+function logToFile_appends_logging_to_a_file_test() {
+  createTempFile;
+  local _file="${RESULT}";
+
+  local _message='sample logging message';
+  logToFile "${_file}";
+  logInfo "${_message}" 2>&1 > /dev/null;
+  tail -n 1 "${_file}" | grep "${_message}" 2>&1 > /dev/null;
+  Assert.isTrue $? "Log file didn't contain logging";
+  cat "${_file}" > /tmp/log
+}
+
 setScriptDescription "Runs all tests implemented for logging.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

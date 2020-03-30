@@ -614,8 +614,9 @@ function LOGGING.echoColorAwareLogPrefix() {
     if isTrue ${_allowsColors}; then
       echoInColor -n "${_logPrefixColors[${_i}]}" "${_aux}";
     else
-      echo -n "${_logPrefixTokens[${_i}]}";
+      echo -n "${_aux}";
     fi
+    LOGGING.logToFiles "${_aux}";
     _i=$((_i+1));
   done
   IFS="${_oldIFS}";
@@ -624,6 +625,7 @@ function LOGGING.echoColorAwareLogPrefix() {
     resetColor;
   fi
   echo -n " ";
+  LOGGING.logToFiles " ";
 }
 
 # fun: LOGGING.getLogOutcomeTokensVariableName
@@ -903,6 +905,7 @@ function LOGGING.logCompletedNested() {
   local _defaultLogResumingTaskColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_nestedTask}" "" "${_defaultLogResumingTaskColor}";
+  LOGGING.logToFiles "${_nestedTask}";
 }
 
 # fun: LOGGING.checkTraceDebugInfoWarnOrError TRACE|DEBUG|INFO|WARN|ERROR index
@@ -1035,6 +1038,7 @@ function LOGGING.logCompletedNoNested() {
   LOGGING.popLogCategory;
   LOGGING.popLogLevel;
   echo;
+  LOGGING.logToFilesAnEmptyLine;
 }
 
 # fun: LOGGING.logInProgress TRACE|DEBUG|INFO|WARN|ERROR message
@@ -1107,6 +1111,7 @@ function LOGGING.logInProgressNested() {
   local _nestedTaskInProgress="${RESULT}";
   LOGGING.logCompletedNestedNoPop "${_level}" IN_PROGRESS "${_nestedTaskInProgress}";
   echo;
+  LOGGING.logToFilesAnEmptyLine;
 
   LOGGING.retrieveLogPrefix "${_category}" "${_level}";
   _logPrefix="${RESULT}";
@@ -1117,6 +1122,7 @@ function LOGGING.logInProgressNested() {
   local _defaultLogPrefixColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_actualMessage}" "" "${_defaultLogPrefixColor}";
+  LOGGING.logToFiles "${_actualMessage}";
 }
 
 # fun: LOGGING.getDefaultLogPrefixColor
@@ -1160,6 +1166,7 @@ function LOGGING.logInProgressNoNested() {
   local _defaultLogPrefixColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}";
+  LOGGING.logToFiles "${_message}";
 }
 
 # fun: LOGGING.logMessage TRACE|DEBUG|INFO|WARN|ERROR message
@@ -1179,6 +1186,7 @@ function LOGGING.logMessage() {
 
   LOGGING.logInProgress "${_level}" "${_message}";
   echo;
+  LOGGING.logToFilesAnEmptyLine;
 }
 
 # fun: LOGGING.logStuff TRACE|DEBUG|INFO|WARN|ERROR [-n]? message
@@ -1203,6 +1211,7 @@ function LOGGING.logStuff() {
   LOGGING.logInProgress "${_level}" "$@";
   if [ "-n" != "${_minusN}" ]; then
     echo;
+    LOGGING.logToFilesAnEmptyLine;
     LOGGING.popLog;
     LOGGING.popLogCategory;
   fi
@@ -2052,6 +2061,90 @@ function setTraceEnabled() {
   setDebugEnabled;
 }
 
+# fun: logToFile file
+# api: public
+# txt: Appends all logging to given file.
+# opt: file: The file.
+# txt: Returns 0/TRUE if the file exists and is readable; 1/FALSE otherwise.
+# use: if logToFile "/tmp/logging"; then echo "Logging in /tmp/logging"; fi
+function logToFile() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+
+  local -i _rescode=${FALSE};
+
+  logInfo -n "Adding log file";
+  if fileExists "${_file}" && fileIsReadable "${_file}"; then
+    _rescode=${TRUE};
+    LOGGING.getLogFilesVariableName;
+    local -n _logFiles="${RESULT}";
+
+    _logFiles[${#_logFiles[@]}]="${_file}";
+    logInfoResult SUCCESS "${_file}";
+  else
+    logInfoResult FAILURE "failed";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: LOGGING.getLogFilesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the log files.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the variable containing the log files.
+# use: LOGGING.getLogFilesVariableName; local -n logFiles=${RESULT}
+function LOGGING.getLogFilesVariableName() {
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_FILES;
+}
+
+# fun: LOGGING.logToFiles msg+
+# api: private
+# txt: Appends a log message to all defined logging files.
+# opt: msg: The message to log.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.logToFiles "Logging sample";
+function LOGGING.logToFiles() {
+  local _msg="${@}";
+  checkNotEmpty msg "${_msg}" 1;
+
+  LOGGING.getLogFilesVariableName;
+  local -n _logFiles="${RESULT}";
+
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  local _file;
+  for _file in ${_logFiles[@]}; do
+    IFS="${_oldIFS}";
+    echo -n "${_msg}" >> "${_file}" 2> /dev/null;
+  done
+  IFS="${_oldIFS}";
+
+  return ${_rescode};
+}
+
+# fun: LOGGING.logToFilesAnEmptyLine
+# api: private
+# txt: Appends an empty line to all defined logging files.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.logToFilesAnEmptyLine;
+function LOGGING.logToFilesAnEmptyLine() {
+  LOGGING.getLogFilesVariableName;
+  local -n _logFiles="${RESULT}";
+
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  local _file;
+  for _file in ${_logFiles[@]}; do
+    IFS="${_oldIFS}";
+    echo >> "${_file}" 2> /dev/null;
+  done
+  IFS="${_oldIFS}";
+
+  return ${TRUE};
+}
+
 # State
 # env: SUCCESS: Indicates the operation has succeeded.
 declare -igx SUCCESS=0;
@@ -2181,5 +2274,8 @@ function LOGGING.resetState() {
 
   # env: LOG_OUTCOME_TEXT_POSITION: The position of the text in LOG_OUTCOME_TOKENS.
   DW.declareGlobalInt "${_moduleName}" LOG_OUTCOME_TEXT_POSITION 1;
+
+  # env: LOG_FILES: The files to write logging to.
+  DW.declareGlobalArray "${_moduleName}" LOG_FILES;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
