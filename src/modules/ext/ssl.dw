@@ -33,6 +33,11 @@ function generateKeyPair() {
   _rescode=$?;
 
   if isTrue ${_rescode}; then
+    openssl rsa -in "${_result}" -out "${_result}.rsa" -passin pass:"${_password}" > /dev/null 2>&1;
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
 
@@ -198,4 +203,5 @@ function updateSslKeyOwnership() {
 
   changeOwnerOfFile "${_keyFile}" "${_user}" "${_group}";
 }
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

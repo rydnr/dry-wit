@@ -133,11 +133,11 @@ EOF
 function runCommandLongOutput() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
   checkNotEmpty command "${_command}" 1;
-  local _result;
+
   local -i _rescode;
 
   createTempFile;
-  _result="${RESULT}";
+  local _result="${RESULT}";
 
   getLogCategory;
   local _previousLogCategory="${RESULT}";
@@ -146,7 +146,7 @@ function runCommandLongOutput() {
   logDebug "${_command}";
 
   if isDebugEnabled; then
-    $@ 2>&1 | tee "${_result}";
+    $@ 2>&1 | tee "${_result}" | logDebugFromStdin;
     _rescode=${PIPESTATUS[0]};
   else
     $@ > "${_result}" 2>&1;

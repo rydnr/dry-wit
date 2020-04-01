@@ -398,6 +398,23 @@ function logDebug() {
   fi
 }
 
+# fun: logDebugFromStdin
+# api: public
+# txt: Logs given message under the "debug" level.
+# opt: [stdin]: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logDebugFromStdin <<<"Operation in progress";
+function logDebugFromStdin() {
+  if isDebugEnabled; then
+    local _line;
+    while read _line; do
+      if isNotEmpty "${_line}"; then
+        LOGGING.logStuff DEBUG "${_line}";
+      fi
+    done
+  fi
+}
+
 # fun: logDebugFile file
 # api: public
 # txt: Logs the contents of given file, under the "debug" level.
@@ -715,6 +732,7 @@ function LOGGING.echoLogOutcome() {
     else
       echo -n "${_logOutcomeTokens[${_i}]}";
     fi
+    LOGGING.logToFiles "${_logOutcomeTokens[${_i}]}";
   done
   IFS="${_oldIFS}";
 
@@ -905,7 +923,8 @@ function LOGGING.logCompletedNested() {
   local _defaultLogResumingTaskColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_nestedTask}" "" "${_defaultLogResumingTaskColor}";
-  LOGGING.logToFiles "${_nestedTask}";
+  LOGGING.logToFiles "-${_nestedTask}-";
+  LOGGING.logToFilesAnEmptyLine;
 }
 
 # fun: LOGGING.checkTraceDebugInfoWarnOrError TRACE|DEBUG|INFO|WARN|ERROR index
@@ -1123,6 +1142,7 @@ function LOGGING.logInProgressNested() {
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_actualMessage}" "" "${_defaultLogPrefixColor}";
   LOGGING.logToFiles "${_actualMessage}";
+  LOGGING.logToFilesAnEmptyLine;
 }
 
 # fun: LOGGING.getDefaultLogPrefixColor
@@ -1167,6 +1187,7 @@ function LOGGING.logInProgressNoNested() {
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}";
   LOGGING.logToFiles "${_message}";
+  LOGGING.logToFilesAnEmptyLine;
 }
 
 # fun: LOGGING.logMessage TRACE|DEBUG|INFO|WARN|ERROR message
@@ -1860,6 +1881,23 @@ function logInfo() {
   fi
 }
 
+# fun: logInfoFromStdin
+# api: public
+# txt: Logs given message under the "debug" level.
+# opt: [stdin]: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logInfoFromStdin <<<"Operation in progress";
+function logInfoFromStdin() {
+  if isInfoEnabled; then
+    local _line;
+    while read _line; do
+      if isNotEmpty "${_line}"; then
+        LOGGING.logStuff INFO "${_line}";
+      fi
+    done
+  fi
+}
+
 # fun: logInfoFile file
 # api: public
 # txt: Logs the contents of a file as "info".
@@ -1929,6 +1967,23 @@ function logTrace() {
   if isTraceEnabled; then
     checkNotEmpty message "${1}" 1;
     LOGGING.logStuff TRACE "$@";
+  fi
+}
+
+# fun: logTraceFromStdin
+# api: public
+# txt: Logs given message under the "debug" level.
+# opt: [stdin]: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logTraceFromStdin <<<"Operation in progress";
+function logTraceFromStdin() {
+  if isTraceEnabled; then
+    local _line;
+    while read _line; do
+      if isNotEmpty "${_line}"; then
+        LOGGING.logStuff TRACE "${_line}";
+      fi
+    done
   fi
 }
 
@@ -2073,14 +2128,14 @@ function logToFile() {
 
   local -i _rescode=${FALSE};
 
-  logInfo -n "Adding log file";
+  logInfo -n "Adding log file ${_file}";
   if fileExists "${_file}" && fileIsReadable "${_file}"; then
     _rescode=${TRUE};
     LOGGING.getLogFilesVariableName;
     local -n _logFiles="${RESULT}";
 
     _logFiles[${#_logFiles[@]}]="${_file}";
-    logInfoResult SUCCESS "${_file}";
+    logInfoResult SUCCESS "done";
   else
     logInfoResult FAILURE "failed";
   fi
