@@ -838,7 +838,13 @@ function LOGGING.getLastLog() {
 function isLogLineOpen() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_LINE_OPEN;
-  return ${RESULT};
+  local _open=${RESULT};
+  local -i _rescode=${FALSE};
+  if isTrue ${_open}; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
 }
 
 # fun: LOGGING.logCompleted TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
@@ -1229,7 +1235,11 @@ function LOGGING.logStuff() {
   fi
   LOGGING.setLastLog "${@}";
   LOGGING.setLastLogLevel "${_level}";
-  LOGGING.logInProgress "${_level}" "$@";
+
+  if ! isEmpty "$@"; then
+    LOGGING.logInProgress "${_level}" "$@";
+  fi
+
   if [ "-n" != "${_minusN}" ]; then
     echo;
     LOGGING.logToFilesAnEmptyLine;
