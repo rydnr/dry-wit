@@ -481,10 +481,10 @@ function ENVVAR.addEnvVar() {
 
   if ! isEnvVarDefined "${_varName}"; then
     ENVVAR.appendEnvironmentVariable "${_varName}";
+    declare -gx "${_varName}"="${_varValue}";
   fi
   ENVVAR.getModuleName;
   DW.setGlobalString "${RESULT}" "${_varName}" "${_varValue}";
-  declare -gx "${_varName}"="${_varValue}";
 }
 
 # fun: ENVVAR.getEnvironmentVariablesCommandsVariableName
