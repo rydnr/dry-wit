@@ -169,7 +169,6 @@ function isFunctionPresent() {
   if isFalse ${_rescode}; then
     if isNotEmpty "${_script}"; then
       IFS="${DWIFS}";
-      echo "In isFunctionPresent/basename"
       for _inc in "./$(basename ${_scriptName} .sh).inc.sh" \
                     "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh"; do
         IFS="${_oldIFS}";
@@ -236,17 +235,6 @@ function DRYWIT.checkScript() {
     IFS="${_oldIFS}";
     if [ -z "${_v}" ]; then
       exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
-    fi
-  done
-  IFS="${_oldIFS}";
-  logTraceResult SUCCESS "${DONE}";
-  logTrace -n "Checking mandatory functions";
-  IFS="${DWIFS}";
-  for _f in main; do
-    IFS="${_oldIFS}";
-    isFunctionPresent ${_f} ${_script};
-    if isFalse $?; then
-      exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
     fi
   done
   IFS="${_oldIFS}";
