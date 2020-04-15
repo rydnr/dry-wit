@@ -20,8 +20,8 @@ function logToFile_appends_logging_to_a_file_test() {
 
   local _message='sample logging message';
   logToFile "${_file}";
-  logInfo "${_message}" 2>&1 > /dev/null;
-  tail -n 1 "${_file}" | grep "${_message}" 2>&1 > /dev/null;
+  logInfo "${_message}" > /dev/null 2&>1;
+  tail -n 2 "${_file}" | grep "${_message}" > /dev/null > 2&>1;
   Assert.isTrue $? "Log file didn't contain logging";
   cat "${_file}" > /tmp/log
 }
