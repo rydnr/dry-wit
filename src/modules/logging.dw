@@ -728,7 +728,9 @@ function LOGGING.echoLogOutcome() {
   for _i in $(seq 0 ${_len}); do
     IFS="${_oldIFS}";
     if isTrue ${_allowsColors}; then
-      echoInColor -n "${_logOutcomeColors[${_i}]}" "${_logOutcomeTokens[${_i}]}";
+      evalConstant "${_logOutcomeColors[${_i}]}";
+      local _outcomeColor="${RESULT}";
+      echoInColor -n "${_outcomeColor}" "${_logOutcomeTokens[${_i}]}";
     else
       echo -n "${_logOutcomeTokens[${_i}]}";
     fi
@@ -1592,11 +1594,10 @@ function LOGGING.retrieveKeywordColor() {
   LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 2;
 
   getNoColor;
-  getColor "${RESULT}";
   local _noColor="${RESULT}";
   local _defaultColor="${2:-${_noColor}}";
 
-  local result;
+  local _result;
 
   getSuccessColor;
   local _successColor="${RESULT}";
@@ -1606,17 +1607,17 @@ function LOGGING.retrieveKeywordColor() {
   local _inProgressColor="${RESULT}";
 
   case ${_keyword} in
-    SUCCESS | "${SUCCESS}") result="${_successColor}";
+    SUCCESS | "${SUCCESS}") _result="${_successColor}";
                             ;;
-    FAILURE | "${FAILURE}" | "${FAILED}" | "FAILED" | "failed" | "FAIL" | "fail" | "${KO}") result="${_failureColor}";
+    FAILURE | "${FAILURE}" | "${FAILED}" | "FAILED" | "failed" | "FAIL" | "fail" | "${KO}") _result="${_failureColor}";
                                                                                             ;;
-    IN_PROGRESS | "${IN_PROGRESS}") result="${_inProgressColor}";
+    IN_PROGRESS | "${IN_PROGRESS}") _result="${_inProgressColor}";
                                     ;;
-    *) result="${_defaultColor}";
+    *) _result="${_defaultColor}";
        ;;
   esac
 
-  export RESULT="${result}";
+  export RESULT="${_result}";
 }
 
 # fun: LOGGING.retrieveLevelPositionInLogPrefix

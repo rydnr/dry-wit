@@ -22,8 +22,6 @@ function echoColorizedText() {
   local _color="";
 
   if allowsColors; then
-    getColor ${_defaultColor};
-    _undefinedColor="${RESULT}";
     getSuccessColor;
     _successColor="${RESULT}";
     getFailureColor;
@@ -38,7 +36,7 @@ function echoColorizedText() {
          elif isFailureKeyword "${_text}"; then
            _color="${_failureColor}";
          else
-           _color="${_undefinedColor}";
+           _color="${_defaultColor}";
          fi
          ;;
     esac
@@ -105,20 +103,20 @@ function echoInColor() {
   fi
   local _color="${1}";
   checkNotEmpty colorName "${_color}" 1;
+
   local _text="${2}";
   checkNotEmpty text "${_text}" 2;
+
   local _colorAux="";
-  local _inColor=${FALSE};
+  local -i _inColor=${FALSE};
   local _noColor;
   if allowsColors; then
-    if isVariableDefined "${_color}"; then
-      _inColor=${TRUE};
-      getColor "${_color}";
-      _colorAux="${RESULT}";
-      getNoColor;
-      getColor "${RESULT}";
-      _noColor="${RESULT}";
-    fi
+    _inColor=${TRUE};
+    getColorEscapeCode "${_color}";
+    _colorAux="${RESULT}";
+    getNoColor;
+    getColorEscapeCode "${RESULT}";
+    _noColor="${RESULT}";
   fi
 
   if isTrue ${_flagMinusN}; then

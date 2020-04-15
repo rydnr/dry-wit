@@ -2,6 +2,8 @@
 # api: public
 # txt: Functions to create color constants.
 
+DW.import constant;
+
 # fun: COLOR.getModuleName
 # api: private
 # txt: Retrieves the name of the module.
@@ -106,6 +108,16 @@ function getNoColor() {
   DW.getGlobalString "${_moduleName}" NO_COLOR;
 }
 
+# fun: getNoColorVariableName
+# api: public
+# txt: Retrieves the name of the variable containing the value to use when we don't want to use colored logging.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the value for no color.
+# use: getNoColor; echo "No color: ${RESULT}";
+function getNoColorName() {
+  COLOR.getColorName NO_COLOR;
+}
+
 # fun: setNoColor color
 # api: public
 # txt: Specifies the value to use when we don't want to use colored logging.
@@ -133,28 +145,36 @@ function setNoColor() {
 function buildColor() {
   local _color="${1}";
   checkNotEmpty name "${_color}" 1;
+
   local _fgValue="${2}";
   checkNotEmpty foreground "${_fgValue}" 2;
+
   local _bgValue="${3}";
   checkNotEmpty background "${_bgValue}" 3;
+
   local result="";
 
-  upvar "${_color}" "\033[0;${_fgValue}m";
-  declare -gx "${_color}";
-  upvar "${_color}_FG" "\033[0;${_fgValue}m";
-  declare -gx "${_color}_FG";
-  upvar "${_color}_BG" "\033[${_bgValue}m";
-  declare -gx "${_color}_BG";
-  upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
-  declare -gx "LIGHT_${_color}_FG";
-  upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
-  declare -gx "UNDERSCORE_${_color}_FG";
-  upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
-  declare -gx "BLINK_${_color}_FG";
-  upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
-  declare -gx "INVERSE_${_color}_FG";
-  upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
-  declare -gx "CONCEALED_${_color}_FG";
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+
+  #  upvar "${_color}" "\033[0;${_fgValue}m";
+  DW.setGlobalString "${_moduleName}" "${_color}" "\033[0;${_fgValue}m";
+#  upvar "${_color}_FG" "\033[0;${_fgValue}m";
+  DW.setGlobalString "${_moduleName}" "${_color}_FG" "\033[0;${_fgValue}m";
+#  upvar "${_color}_BG" "\033[${_bgValue}m";
+  DW.setGlobalString "${_moduleName}" "${_color}_BG" "\033[${_bgValue}m";
+#  upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
+  DW.setGlobalString "${_moduleName}" "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
+#  upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
+  DW.setGlobalString "${_moduleName}" "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
+#  upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
+  DW.setGlobalString "${_moduleName}" "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
+#  upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
+  DW.setGlobalString "${_moduleName}" "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
+#  upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
+  DW.setGlobalString "${_moduleName}" "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
+
+  DW.getGlobalVariableName "${_moduleName}" "${_color}";
 }
 
 # fun: allowsColors
@@ -185,30 +205,66 @@ function allowsColors() {
   return ${_rescode};
 }
 
-# fun: getColor name defaultColor?
+# fun: COLOR.getColorName symbol
+# api: public
+# txt: Retrieves the color name associated to given symbol.
+# opt: symbol: The color symbol.
+# txt: Returns 0/TRUE if the symbol is known; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the color name.
+# use: if getColorName GRAY; then echo "color name: ${RESULT}"; fi
+function COLOR.getColorName() {
+  local _symbol="${1}";
+  checkNotEmpty symbol "${_symbol}" 1;
+
+  COLOR.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" "${_symbol}";
+}
+
+# fun: getColorEscapeCode name defaultColor?
 # api: public
 # txt: Retrieves the color for given name.
 # opt: name: The color name.
 # opt: defaultColor: The fallback color. Optional.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the color value.
-# use: getColor RED;
-function getColor() {
-  local _colorConstant="${1}";
-  checkNotEmpty name "${_colorConstant}" 1;
-  local _defaultColor="${2}";
-  if isEmpty "${_defaultColor}"; then
+# txt: Returns 0/TRUE if the color is defined; 1/FALSE otherwise.
+# txt: The variable RESULT contains the color value, or the default if not defined.
+# use: getColorEscapeCode RED;
+function getColorEscapeCode() {
+  local _colorSymbol="${1}";
+  checkNotEmpty name "${_colorSymbol}" 1;
+
+  local _defaultColorSymbol="${2}";
+  if isEmpty "${_defaultColorSymbol}"; then
     getNoColor;
-    _defaultColor="${RESULT}";
+   _defaultColorSymbol="${RESULT}";
   fi
   local _result;
+  local -i _rescode;
 
   if allowsColors; then
-    evalConstant "${_colorConstant}" "${_defaultColor}";
-    _result="${RESULT}";
+    COLOR.getColorName "${_colorSymbol}";
+    local _colorVariableName="${RESULT}";
+     if evalConstant "${_colorVariableName}"; then
+       _result="${RESULT}";
+    elif evalContant "${_defaultColorVariableName}"; then
+      _result="${RESULT}";
+    else
+      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol}";
+    fi
   fi
 
-  export RESULT="${_result}";
+  if isEmpty "${_result}"; then
+    _result="${_defaultColorSymbol}";
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
 }
 
 # fun: resetColor
@@ -218,15 +274,9 @@ function getColor() {
 # use: resetColor;
 function resetColor() {
   getNoColor;
-  getColor "${RESULT}";
+  getColorEscapeCode "${RESULT}";
   echo -en "${RESULT}";
 }
-
-#for c in "BLACK" "BLACK_B" "RED" "RED_B" "RED_S" "GREEN" "GREEN_B" "YELLOW" "YELLOW_B" "BLUE" "BLUE_B" "MAGENTA" "MAGENTA_B" "CYAN" "CYAN_B" "GREY" "WHITE" "WHITE_B" "NO_COLOR"; do
-#  upvars -a1 "${c}_TPUT" "";
-#  upvar "${c}" "";
-#  ${c}_TPUT=();
-#done
 
 # fun: COLOR.resetState
 # api: private
@@ -237,7 +287,7 @@ function COLOR.resetState() {
   COLOR.getModuleName;
   local _moduleName="${RESULT}";
 
-  buildColor NO_COLOR "0" "0";
+  buildColor VOID "0" "0";
   buildColor BLACK "30" "0";
   buildColor RED "31" "41";
   buildColor GREEN "32" "42";
@@ -248,8 +298,11 @@ function COLOR.resetState() {
   buildColor GRAY "37" "47";
 
   setSuccessColor GREEN;
+  getSuccessColor;
   setFailureColor RED;
+  getFailureColor;
   setInProgressColor BLUE;
+  getInProgressColor;
   setNoColor GRAY;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
