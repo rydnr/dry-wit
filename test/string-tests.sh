@@ -180,6 +180,11 @@ function removeSurrounding_works_test() {
   removeSurrounding "${_text}" "'";
   Assert.isFalse $? "removeSurrounding \"${_text}\" \"'\" succeed and it shouldn't";
 }
+function trim_works_test() {
+  local _text='    abc       ';
+  trim "${_text}";
+  Assert.areEqual 'abc' "${RESULT}" "trim \"${_text}\" failed";
+}
 
 function keyValueSplit_works_test() {
   local _text='key1="value1"';
@@ -427,6 +432,24 @@ function stringLength_works_test() {
   local _expected=3;
   Assert.isTrue ${_rescode} "stringLength '${_text}' failed";
   Assert.areEqual "${_expected}" "${_result}" "stringLength '${_text}' failed";
+}
+
+function toCamelCase_works_test() {
+  local _text="my_text";
+  toCamelCase "${_text}";
+  local -i _rescode=$?;
+  local _result="${RESULT}";
+  local _expected="MyText";
+  Assert.isTrue ${_rescode} "toCamelCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "toCamelCase '${_text}' failed";
+
+  _text="other sample";
+  toCamelCase "${_text}";
+  _rescode=$?;
+  _result="${RESULT}";
+  _expected="OtherSample";
+  Assert.isTrue ${_rescode} "toCamelCase '${_text}' failed";
+  Assert.areEqual "${_expected}" "${_result}" "toCamelCase '${_text}' failed";
 }
 
 setScriptDescription "Runs all tests implemented for string.dw";

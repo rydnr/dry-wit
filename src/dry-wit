@@ -666,7 +666,7 @@ function downloadModule() {
   local -i _rescode;
   local _result="";
 
-  BOOTSTRAP.getModulePath;
+  getModulePath;
   local _modulePath="${RESULT}";
   mkdir -p "${_modulePath}";
 
@@ -943,6 +943,19 @@ function BOOTSTRAP.getModuleTag() {
   DW.getGlobalString "${_moduleName}" MODULE_TAG;
 }
 
+# fun: BOOTSTRAP.setModuleTag tag
+# api: private
+# txt: Specifies the module tag.
+# opt: tag: The module tag.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setModuleTag "${HOME}/.dry-wit/src/modules";
+function BOOTSTRAP.setModuleTag() {
+  local _tag="${1}";
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" MODULE_TAG "${_tag}";
+}
+
 # fun: BOOTSTRAP.getModuleUrl
 # api: private
 # txt: Retrieves the url of the modules.
@@ -955,16 +968,42 @@ function BOOTSTRAP.getModuleUrl() {
   DW.getGlobalString "${_moduleName}" MODULE_URL;
 }
 
-# fun: BOOTSTRAP.getModulePath
+# fun: BOOTSTRAP.setModuleUrl url
+# api: private
+# txt: Specifies the module url.
+# opt: url: The module url.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setModuleUrl "https://raw.githubusercontent.com/rydnr/dry-wit/master/src/modules";
+function BOOTSTRAP.setModuleUrl() {
+  local _url="${1}";
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" MODULE_URL "${_url}";
+}
+
+# fun: getModulePath
 # api: private
 # txt: Retrieves the module path.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module path.
-# use: BOOTSTRAP.getModulePath; echo "module path: ${RESULT}"
-function BOOTSTRAP.getModulePath() {
+# use: getModulePath; echo "module path: ${RESULT}"
+function getModulePath() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
   DW.getGlobalString "${_moduleName}" MODULE_PATH;
+}
+
+# fun: BOOTSTRAP.setModulePath path
+# api: private
+# txt: Specifies the module path.
+# opt: path: The module path.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setModulePath "${HOME}/.dry-wit/src/modules";
+function BOOTSTRAP.setModulePath() {
+  local _path="${1}";
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" MODULE_PATH "${_path}";
 }
 
 # env: TRUE: A synomim for 0.
@@ -1013,15 +1052,13 @@ function BOOTSTRAP.resetState() {
   local _moduleTag="master";
 
   # env: MODULE_TAG: The dry-wit git tag used to download modules from github.
-  DW.declareGlobalString "${_moduleName}" MODULE_TAG "${_moduleTag}";
+  BOOTSTRAP.setModuleTag "${_moduleTag}";
 
   # env: MODULE_URL: The url to download dry-wit modules.
-  DW.declareGlobalString "${_moduleName}" MODULE_URL "https://raw.githubusercontent.com/rydnr/dry-wit/${_moduleTag}/src/modules";
+  BOOTSTRAP.setModuleUrl "https://raw.githubusercontent.com/rydnr/dry-wit/${_moduleTag}/src/modules";
 
   # env: MODULE_PATH: Where to download dry-wit modules.
-  DW.declareGlobalString "${_moduleName}" MODULE_PATH "${HOME:-/root}/.dry-wit/src/modules"
-
-  BOOTSTRAP.getModulePath;
+  BOOTSTRAP.setModulePath "${HOME:-/root}/.dry-wit/src/modules";
 }
 
 #set -o errexit  # terminate on any unhandled error

@@ -306,6 +306,7 @@ function overrideEnvVar() {
     _mandatoryOrOptional="OPTIONAL";
   fi
   defineEnvVar "${_varName}" "${_mandatoryOrOptional}" "${_varDescription}" "${_varValue}";
+  declare -gx "${_varName}"="${_varValue}";
 
   return ${TRUE};
 }

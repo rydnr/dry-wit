@@ -93,8 +93,7 @@ function findOutKeyword() {
 # txt: The variable RESULT contains the log category.
 # use: getLogCategory; echo "Log category: ${RESULT}";
 function getLogCategory() {
-  LOGGING.getModuleName;
-  DW.getGlobalString "${RESULT}" LOG_CATEGORY;
+  LOGGING.peekLogCategory;
 }
 
 # fun: getLogCategoryNamespace
@@ -487,15 +486,168 @@ function LOGGING.getLogOutcomeTokensVariableName() {
   DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_TOKENS;
 }
 
-# fun: LOGGING.getLogOutcomeSeparator
-# api: private
+# fun: setLogOutcomeTokens tokens+
+# api: public
+# txt: Specifies the log outcome tokens.
+# opt: tokens: The log outcome tokens.
+# txt: Returns 0/TRUE always.
+# use: setLogOutcomeTokens "[" "timestamp" "<" "category" ">" "logLevel" "]";
+function setLogOutcomeTokens() {
+  local _firstToken="${1}";
+  checkNotEmpty tokens "${_firstToken}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalArray "${RESULT}" LOG_OUTCOME_TOKENS $@;
+}
+
+# fun: getLogOutcomeSeparator
+# api: public
 # txt: Retrieves the log outcome separator.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log outcome separator.
-# use: LOGGING.getLogOutcomeSeparator; local logOutputSeparator="${RESULT}"
-function LOGGING.getLogOutcomeSeparator() {
+# use: getLogOutcomeSeparator; local logOutputSeparator="${RESULT}";
+function getLogOutcomeSeparator() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" LOG_OUTCOME_SEPARATOR;
+}
+
+# fun: setLogOutcomeSeparator
+# api: public
+# txt: Specifies the log outcome separator.
+# opt: separator: The separator.
+# txt: Returns 0/TRUE always.
+# use: setLogOutcomeSeparator " ";
+function setLogOutcomeSeparator() {
+  local _separator="${1}";
+  checkNotEmpty separator "${_separator}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" LOG_OUTCOME_SEPARATOR "${_separator}";
+}
+
+# fun: LOGGING.getErrorLogPrefixToken
+# api: private
+# txt: Retrieves the log prefix token for the ERROR log level.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the log outcome separator.
+# use: LOGGING.getErrorLogPrefixToken; local logPrefixToken="${RESULT}";
+function LOGGING.getErrorLogPrefixToken() {
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" ERROR_LOG_PREFIX_TOKEN;
+}
+
+# fun: setErrorLogPrefixToken token
+# api: public
+# txt: Specifies the log prefix token for the ERROR log level.
+# opt: token: The token.
+# txt: Returns 0/TRUE always.
+# use: setErrorLogPrefixToken ".";
+function setErrorLogPrefixToken() {
+  local _token="${1}";
+  checkNotEmpty token "${_token}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" ERROR_LOG_PREFIX_TOKEN "${_token}";
+}
+
+# fun: LOGGING.getWarnLogPrefixToken
+# api: private
+# txt: Retrieves the log prefix token for the WARN log level.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the log outcome separator.
+# use: LOGGING.getWarnLogPrefixToken; local logPrefixToken="${RESULT}";
+function LOGGING.getWarnLogPrefixToken() {
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" WARN_LOG_PREFIX_TOKEN;
+}
+
+# fun: setWarnLogPrefixToken token
+# api: public
+# txt: Specifies the log prefix token for the WARN log level.
+# opt: token: The token.
+# txt: Returns 0/TRUE always.
+# use: setWarnLogPrefixToken ".";
+function setWarnLogPrefixToken() {
+  local _token="${1}";
+  checkNotEmpty token "${_token}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" WARN_LOG_PREFIX_TOKEN "${_token}";
+}
+
+# fun: LOGGING.getInfoLogPrefixToken
+# api: private
+# txt: Retrieves the log prefix token for the INFO log level.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the log outcome separator.
+# use: LOGGING.getInfoLogPrefixToken; local logPrefixToken="${RESULT}";
+function LOGGING.getInfoLogPrefixToken() {
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" INFO_LOG_PREFIX_TOKEN;
+}
+
+# fun: setInfoLogPrefixToken token
+# api: public
+# txt: Specifies the log prefix token for the INFO log level.
+# opt: token: The token.
+# txt: Returns 0/TRUE always.
+# use: setInfoLogPrefixToken ".";
+function setInfoLogPrefixToken() {
+  local _token="${1}";
+  checkNotEmpty token "${_token}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" INFO_LOG_PREFIX_TOKEN "${_token}";
+}
+
+# fun: LOGGING.getDebugLogPrefixToken
+# api: private
+# txt: Retrieves the log prefix token for the DEBUG log level.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the log outcome separator.
+# use: LOGGING.getDebugLogPrefixToken; local logPrefixToken="${RESULT}";
+function LOGGING.getDebugLogPrefixToken() {
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" DEBUG_LOG_PREFIX_TOKEN;
+}
+
+# fun: setDebugLogPrefixToken token
+# api: public
+# txt: Specifies the log prefix token for the DEBUG log level.
+# opt: token: The token.
+# txt: Returns 0/TRUE always.
+# use: setDebugLogPrefixToken "o";
+function setDebugLogPrefixToken() {
+  local _token="${1}";
+  checkNotEmpty token "${_token}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" DEBUG_LOG_PREFIX_TOKEN "${_token}";
+}
+
+# fun: LOGGING.getTraceLogPrefixToken
+# api: private
+# txt: Retrieves the log prefix token for the TRACE log level.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the log outcome separator.
+# use: LOGGING.getTraceLogPrefixToken; local logPrefixToken="${RESULT}";
+function LOGGING.getTraceLogPrefixToken() {
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" TRACE_LOG_PREFIX_TOKEN;
+}
+
+# fun: setTraceLogPrefixToken token
+# api: public
+# txt: Specifies the log prefix token for the TRACE log level.
+# opt: token: The token.
+# txt: Returns 0/TRUE always.
+# use: setTraceLogPrefixToken "O";
+function setTraceLogPrefixToken() {
+  local _token="${1}";
+  checkNotEmpty token "${_token}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" TRACE_LOG_PREFIX_TOKEN "${_token}";
 }
 
 # fun: LOGGING.alignRight message outcome
@@ -524,7 +676,7 @@ function LOGGING.alignRight() {
   LOGGING.getLogOutcomeTokensVariableName;
   local -n _logOutcomeTokens=${RESULT};
 
-  LOGGING.getLogOutcomeSeparator;
+  getLogOutcomeSeparator;
   local _logOutcomeSeparator="${RESULT}";
 
   local _oldIFS="${IFS}";
@@ -581,6 +733,20 @@ function LOGGING.getLogPrefixTokensVariableName() {
   DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_TOKENS;
 }
 
+# fun: setLogPrefixTokens tokens+
+# api: public
+# txt: Specifies the log prefix tokens.
+# opt: tokens: The log prefix tokens.
+# txt: Returns 0/TRUE always.
+# use: setLogPrefixTokens "[" "timestamp" "<" "category" ">" "logLevel" "]";
+function setLogPrefixTokens() {
+  local _firstToken="${1}";
+  checkNotEmpty tokens "${_firstToken}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalArray "${RESULT}" LOG_PREFIX_TOKENS $@;
+}
+
 # fun: LOGGING.getLogPrefixColorsVariableName
 # api: private
 # txt: Retrieves the name of the variable containing the log prefix colors.
@@ -594,6 +760,45 @@ function LOGGING.getLogPrefixColorsVariableName() {
   DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_COLORS;
 }
 
+# fun: setLogPrefixColors colors+
+# api: public
+# txt: Specifies the log prefix colors.
+# opt: colors: The colors, in the same order as log prefixes.
+# txt: Returns 0/TRUE always.
+# use: setLogPrefixColors BLUE CYAN YELLOW MAGENTA YELLOW RED BLUE;
+function setLogPrefixColors() {
+  local _firstColor="${1}";
+  checkNotEmpty colors "${_firstColor}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalArray "${RESULT}" LOG_PREFIX_COLORS $@;
+}
+
+# fun: LOGGING.getLogOutcomeColorsVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the log outcome colors.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the variable name containing the log outcome colors.
+# use: LOGGING.getLogOutcomeColorsVariableName; local -n outcomeColors=${RESULT};
+function LOGGING.getLogOutcomeColorsVariableName() {
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_COLORS;
+}
+
+# fun: setLogOutcomeColors colors+
+# api: public
+# txt: Specifies the log outcome colors.
+# opt: colors: The log outcome colors.
+# txt: Returns 0/TRUE always.
+# use: setLogOutcomeColors CYAN WHITE CYAN;
+function setLogOutcomeColors() {
+  local _firstColor="${1}";
+  checkNotEmpty colors "${_firstColor}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalArray "${RESULT}" LOG_OUTCOME_COLORS $@;
+}
+
 # fun: LOGGING.echoColorAwareLogPrefix category TRUE|FALSE TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Prints the log prefix, for color terminals.
@@ -605,8 +810,10 @@ function LOGGING.getLogPrefixColorsVariableName() {
 function LOGGING.echoColorAwareLogPrefix() {
   local _category="${1}";
   checkNotEmpty category "${_category}" 1;
+
   local -i _allowsColors=${2};
   checkNotEmpty "TRUE|FALSE" "${_allowsColors}" 2;
+
   local _level="${3}";
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 3;
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 3;
@@ -643,28 +850,6 @@ function LOGGING.echoColorAwareLogPrefix() {
   fi
   echo -n " ";
   LOGGING.logToFiles " ";
-}
-
-# fun: LOGGING.getLogOutcomeTokensVariableName
-# api: private
-# txt: Retrieves the name of the variable containing the log outcome tokens.
-# txt: Returns 0/TRUE always.
-# txt: The RESULT variable contains the variable name containing the log outcome tokens.
-# use: LOGGING.getLogOutcomeTokensVariableName; local -n outcomeTokens=${RESULT};
-function LOGGING.getLogOutcomeTokensVariableName() {
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_TOKENS;
-}
-
-# fun: LOGGING.getLogOutcomeColorsVariableName
-# api: private
-# txt: Retrieves the name of the variable containing the log outcome colors.
-# txt: Returns 0/TRUE always.
-# txt: The RESULT variable contains the variable name containing the log outcome colors.
-# use: LOGGING.getLogOutcomeColorsVariableName; local -n outcomeColors=${RESULT};
-function LOGGING.getLogOutcomeColorsVariableName() {
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_COLORS;
 }
 
 # fun: LOGGING.echoLogOutcome TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS text
@@ -743,15 +928,28 @@ function LOGGING.echoLogOutcome() {
   fi
 }
 
-# fun: LOGGING.getLogNestedIndentation
-# api: private
+# fun: getLogNestedIndentation
+# api: public
 # txt: Retrieves the indentation used when logging nested tasks.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the nested indentation.
-# use: LOGGING.getLogNestedIndentation; echo "indentation: ${RESULT}";
-function LOGGING.getLogNestedIndentation() {
+# use: getLogNestedIndentation; echo "indentation: ${RESULT}";
+function getLogNestedIndentation() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_NESTED_INDENTATION;
+}
+
+# fun: setLogNestedIndentation
+# api: public
+# txt: Specifies the indentation text used when logging nested tasks.
+# opt: text: The text to use.
+# txt: Returns 0/TRUE always.
+# use: setLogNestedIndentation "  ";
+function setLogNestedIndentation() {
+  local _text="${1}";
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" LOG_NESTED_INDENTATION "${_text}";
 }
 
 # fun: LOGGING.echoLogOutcomeNested TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS text
@@ -787,7 +985,7 @@ function LOGGING.echoLogOutcomeNested() {
   LOGGING.echoLogOutcome "${_level}" "${_keyword}" "${_text}";
   LOGGING.numberOfNestedInProgressTasks;
   _nestedTasks=$?;
-  LOGGING.getLogNestedIndentation;
+  getLogNestedIndentation;
   local -n _logNestedIndentation=${RESULT};
 
   local _oldIFS="${IFS}";
@@ -881,15 +1079,29 @@ function LOGGING.logCompleted() {
   fi
 }
 
-# fun: LOGGING.getDefaultLogResumingTaskColor
-# api: private
+# fun: getDefaultLogResumingTaskColor
+# api: public
 # txt: Retrieves the default color used when logging a resuming task.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the text.
-# use: LOGGING.getDefaultLogResumingTaskColor; echo "Default log resuming task color: ${RESULT}";
-function LOGGING.getDefaultLogResumingTaskColor() {
+# use: getDefaultLogResumingTaskColor; echo "Default log resuming task color: ${RESULT}";
+function getDefaultLogResumingTaskColor() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" DEFAULT_LOG_RESUMING_TASK_COLOR;
+}
+
+# fun: setDefaultLogResumingTaskColor
+# api: public
+# txt: Specifies the default color used when logging a resuming task.
+# opt: color: The color to use.
+# txt: Returns 0/TRUE always.
+# use: setDefaultLogResumingTaskColor GREEN;
+function setDefaultLogResumingTaskColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" DEFAULT_LOG_RESUMING_TASK_COLOR "${_color}";
 }
 
 # fun: LOGGING.logCompletedNested TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
@@ -927,7 +1139,7 @@ function LOGGING.logCompletedNested() {
   LOGGING.peekLog;
   _nestedTask="${RESULT}";
   LOGGING.echoLogPrefix "${_nestedTaskCategory}" "${_nestedTaskLevel}";
-  LOGGING.getDefaultLogResumingTaskColor;
+  getDefaultLogResumingTaskColor;
   local _defaultLogResumingTaskColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_nestedTask}" "" "${_defaultLogResumingTaskColor}";
@@ -1099,15 +1311,29 @@ function LOGGING.logInProgress() {
   fi
 }
 
-# fun: LOGGING.getNestedTaskInProgress
+# fun: LOGGING.getNestedTaskInProgressMarker
 # api: private
 # txt: Retrieves the text used to represent a nested task is in progress.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the text.
-# use: LOGGING.getNestedTaskInProgress; echo "Nested task in progress: ${RESULT}";
-function LOGGING.getNestedTaskInProgress() {
+# use: LOGGING.getNestedTaskInProgressMarker; echo "Nested task in progress: ${RESULT}";
+function LOGGING.getNestedTaskInProgressMarker() {
   LOGGING.getModuleName;
-  DW.getGlobalString "${RESULT}" NESTED_TASK_IN_PROGRESS;
+  DW.getGlobalString "${RESULT}" NESTED_TASK_IN_PROGRESS_MARKER;
+}
+
+# fun: setNestedTaskInProgressMarker
+# api: public
+# txt: Specifies the text used to represent a nested task is in progress.
+# opt: text: The text used as marker.
+# txt: Returns 0/TRUE always.
+# use: setNestedTaskInProgressMarker "....";
+function setNestedTaskInProgressMarker() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" NESTED_TASK_IN_PROGRESS_MARKER "${_text}";
 }
 
 # fun: LOGGING.logInProgressNested category TRACE|DEBUG|INFO|WARN|ERROR message
@@ -1134,9 +1360,9 @@ function LOGGING.logInProgressNested() {
   LOGGING.pushLog "${_message}";
   LOGGING.pushLogCategory "${_category}";
   LOGGING.pushLogLevel "${_level}";
-  LOGGING.getNestedTaskInProgress;
-  local _nestedTaskInProgress="${RESULT}";
-  LOGGING.logCompletedNestedNoPop "${_level}" IN_PROGRESS "${_nestedTaskInProgress}";
+  LOGGING.getNestedTaskInProgressMarker;
+  local _nestedTaskInProgressMarker="${RESULT}";
+  LOGGING.logCompletedNestedNoPop "${_level}" IN_PROGRESS "${_nestedTaskInProgressMarker}";
   echo;
   LOGGING.logToFilesAnEmptyLine;
 
@@ -1145,7 +1371,7 @@ function LOGGING.logInProgressNested() {
   LOGGING.echoLogPrefix "${_category}" "${_level}";
   LOGGING.peekLog;
   _actualMessage="${RESULT}";
-  LOGGING.getDefaultLogPrefixColor;
+  getDefaultLogPrefixColor;
   local _defaultLogPrefixColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_actualMessage}" "" "${_defaultLogPrefixColor}";
@@ -1153,15 +1379,54 @@ function LOGGING.logInProgressNested() {
   LOGGING.logToFilesAnEmptyLine;
 }
 
-# fun: LOGGING.getDefaultLogPrefixColor
-# api: private
+# fun: getDefaultLogPrefixColor
+# api: public
 # txt: Retrieves the log prefix color by default.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the log prefix color by default.
-# use: LOGGING.getDefaultLogPrefixColor; echo "default log prefix color: ${RESULT}";
-function LOGGING.getDefaultLogPrefixColor() {
+# use: getDefaultLogPrefixColor; echo "default log prefix color: ${RESULT}";
+function getDefaultLogPrefixColor() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" DEFAULT_LOG_PREFIX_COLOR;
+}
+
+# fun: setDefaultLogPrefixColor
+# api: public
+# txt: Specifies the log prefix color by default.
+# opt: color: The color to use by default.
+# txt: Returns 0/TRUE always.
+# use: setDefaultLogPrefixColor GRAY;
+function setDefaultLogPrefixColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" DEFAULT_LOG_PREFIX_COLOR "${_color}";
+}
+
+# fun: getDefaultLogOutcomeColor
+# api: public
+# txt: Retrieves the log outcome color by default.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the log outcome color by default.
+# use: getDefaultLogOutcomeColor; echo "default log outcome color: ${RESULT}";
+function getDefaultLogOutcomeColor() {
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" DEFAULT_LOG_OUTCOME_COLOR;
+}
+
+# fun: setDefaultLogOutcomeColor
+# api: public
+# txt: Specifies the log outcome color by default.
+# opt: color: The color to use by default.
+# txt: Returns 0/TRUE always.
+# use: setDefaultLogOutcomeColor GRAY;
+function setDefaultLogOutcomeColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" DEFAULT_LOG_OUTCOME_COLOR "${_color}";
 }
 
 # fun: LOGGING.logInProgressNoNested category TRACE|DEBUG|INFO|WARN|ERROR message
@@ -1183,14 +1448,13 @@ function LOGGING.logInProgressNoNested() {
 
   local _message="$@";
   checkNotEmpty message "${_message}" 3;
-  local _logPrefix;
+  local _logPrefix="${RESULT}";
 
-  _logPrefix="${RESULT}";
   LOGGING.pushLogCategory "${_category}";
   LOGGING.pushLog "${_message}";
   LOGGING.pushLogLevel "${_level}";
   LOGGING.echoLogPrefix "${_category}" "${_level}";
-  LOGGING.getDefaultLogPrefixColor;
+  getDefaultLogPrefixColor;
   local _defaultLogPrefixColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
   echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}";
@@ -1292,6 +1556,7 @@ function LOGGING.logStuffResult() {
   local _level="${1}";
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1;
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1;
+
   local _outcome="${2}";
   checkNotEmpty outcome "${_outcome}" 2;
   LOGGING.checkSuccessOrFailure "${_outcome}" 2;
@@ -1355,8 +1620,7 @@ function LOGGING.peekLog() {
   local -i _rescode;
   local _result="";
 
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_STACK;
+  LOGGING.getLogStackVariableName;
   local -n _logStack=${RESULT};
 
   local -i _len=${#_logStack[@]};
@@ -1376,6 +1640,16 @@ function LOGGING.peekLog() {
   return ${_rescode};
 }
 
+# fun: LOGGING.getLogCategoryStackVariableName
+# api: private
+# txt: Retrieves the log category stack variable name.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.getLogCategoryStackVariableName;
+function LOGGING.getLogCategoryStackVariableName() {
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
+}
+
 # fun: LOGGING.peekLogCategory
 # api: private
 # txt: Peeks given category from the log category stack.
@@ -1384,10 +1658,9 @@ function LOGGING.peekLog() {
 # use: if LOGGING.peekLogCategory; then echo "Last log category: ${RESULT}"; fi
 function LOGGING.peekLogCategory() {
   local -i _rescode;
-  local _result="";
+  local _result;
 
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
+  LOGGING.getLogCategoryStackVariableName;
   local -n _logCategoryStack=${RESULT};
 
   local -i _len=${#_logCategoryStack[@]};
@@ -1403,9 +1676,21 @@ function LOGGING.peekLogCategory() {
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  else
+    export RESULT="";
   fi
 
   return ${_rescode};
+}
+
+# fun: LOGGING.getLogLevelStackVariableName
+# api: private
+# txt: Retrieves the log level stack variable name.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.getLogLevelStackVariableName;
+function LOGGING.getLogLevelStackVariableName() {
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
 }
 
 # fun: LOGGING.peekLogLevel
@@ -1418,8 +1703,7 @@ function LOGGING.peekLogLevel() {
   local -i _rescode;
   local _result="";
 
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
+  LOGGING.getLogLevelStackVariableName;
   local -n _logLevelStack=${RESULT};
 
   local -i _len=${#_logLevelStack[@]};
@@ -1482,8 +1766,7 @@ function LOGGING.popLog() {
 function LOGGING.popLogCategory() {
   local -i _rescode;
 
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
+  LOGGING.getLogCategoryStackVariableName;
   local -n _logCategoryStack=${RESULT};
 
   local -i _len=${#_logCategoryStack[@]};
@@ -1511,8 +1794,7 @@ function LOGGING.popLogLevel() {
   local -i _rescode;
   local -i _newLen;
 
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
+  LOGGING.getLogLevelStackVariableName;
   local -n _logLevelStack=${RESULT};
   local -i _len=${#_logLevelStack[@]};
 
@@ -1536,8 +1818,8 @@ function LOGGING.popLogLevel() {
 # use: LOGGING.pushLog "Operation in progress";
 function LOGGING.pushLog() {
   checkNotEmpty message "$*" 1;
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_STACK;
+
+  LOGGING.getLogStackVariableName;
   local -n _logStack=${RESULT};
   _logStack[${#_logStack[@]}]="$*";
 }
@@ -1549,8 +1831,7 @@ function LOGGING.pushLog() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.pushLogCategory "sending-data";
 function LOGGING.pushLogCategory() {
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
+  LOGGING.getLogCategoryStackVariableName;
   local -n _logCategoryStack=${RESULT};
   _logCategoryStack[${#_logCategoryStack[@]}]="$*";
 }
@@ -1567,17 +1848,6 @@ function LOGGING.pushLogLevel() {
   DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
   local -n _logLevelStack=${RESULT};
   _logLevelStack[${#_logLevelStack[@]}]="$*";
-}
-
-# fun: LOGGING.retrieveCategoryPositionInLogPrefix
-# api: private
-# txt: Retrieves the position of the category in the log prefix tokens array.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the category position.
-# use: LOGGING.retrieveCategoryPositionInLogPrefix; echo "category -> ${RESULT}";
-function LOGGING.retrieveCategoryPositionInLogPrefix() {
-  LOGGING.getModuleName;
-  DW.getGlobalInt "${RESULT}" LOG_PREFIX_CATEGORY_POSITION;
 }
 
 # fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|IN_PROGRESS defaultColor
@@ -1620,17 +1890,6 @@ function LOGGING.retrieveKeywordColor() {
   export RESULT="${_result}";
 }
 
-# fun: LOGGING.retrieveLevelPositionInLogPrefix
-# api: private
-# txt: Retrieves the position of the log level in the log prefix tokens array.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the level position.
-# use: LOGGING.retrieveLevelPositionInLogPrefix; echo "level -> ${RESULT}";
-function LOGGING.retrieveLevelPositionInLogPrefix() {
-  LOGGING.getModuleName;
-  DW.getGlobalInt "${RESULT}" LOG_PREFIX_LEVEL_POSITION;
-}
-
 # fun: LOGGING.retrieveLogNamespace
 # api: private
 # txt: Retrieves the log namespace.
@@ -1638,11 +1897,9 @@ function LOGGING.retrieveLevelPositionInLogPrefix() {
 # txt: The variable RESULT contains the log namespace.
 # use: LOGGING.retrieveLogNamespace; echo "namespace: ${RESULT}";
 function LOGGING.retrieveLogNamespace() {
-  LOGGING.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" LOG_CATEGORY_NAMESPACE;
+  getLogCategoryNamespace;
   local _namespace="${RESULT}";
-  DW.getGlobalString "${_moduleName}" LOG_CATEGORY;
+  getLogCategory;
   local _category="${RESULT}";
   DW.getScriptName;
   local _scriptName="${RESULT}";
@@ -1695,7 +1952,7 @@ function LOGGING.processLogOutcomeColors() {
   done
   IFS="${_oldIFS}";
 
-  LOGGING.retrieveOutcomeTextPositionInLogOutcome;
+  LOGGING.getOutcomeTextPositionInLogOutcome;
   _outcomeTextPosition=${RESULT};
   _logOutcomeColors[${_outcomeTextPosition}]="${_keywordColor}";
 }
@@ -1729,7 +1986,7 @@ function LOGGING.processLogOutcomeTokens() {
   done
   IFS="${_oldIFS}";
 
-  LOGGING.retrieveOutcomeTextPositionInLogOutcome;
+  LOGGING.getOutcomeTextPositionInLogOutcome;
   _outcomeTextPosition=${RESULT};
   _logOutcomeTokens[${_outcomeTextPosition}]="${_text}";
 }
@@ -1752,21 +2009,44 @@ function LOGGING.retrieveLogPrefix() {
   export RESULT="${_result}";
 }
 
-# fun: LOGGING.retrieveLogPrefixToken TRACE|DEBUG|INFO|WARN|ERROR
+# fun: LOGGING.retrieveLogPrefixLevelToken TRACE|DEBUG|INFO|WARN|ERROR
 # api: private
 # txt: Retrieves the log prefix token, depending on the given log level.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
 # txt: Returns 0/TRUE if the token is defined; 1/FALSE otherwise.
 # txt: if the function returns 0/TRUE, The variable RESULT contains the log prefix token.
-# use: if LOGGING.retrieveLogPrefixToken TRACE; then echo "Log prefix token: ${RESULT}"; fi
-function LOGGING.retrieveLogPrefixToken() {
+# use: if LOGGING.retrieveLogPrefixLevelToken TRACE; then echo "Log prefix token: ${RESULT}"; fi
+function LOGGING.retrieveLogPrefixLevelToken() {
   local _level="${1}";
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1;
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1;
-  local -i _rescode;
-  LOGGING.getModuleName;
-  DW.getGlobalString "${RESULT}" "${_level}_LOG_PREFIX_TOKEN";
-  _rescode=$?;
+
+  local _result;
+  local -i _rescode=${TRUE};
+
+  case ${_level} in
+    "TRACE") LOGGING.getTraceLogPrefixToken;
+             _result="${RESULT}";
+             ;;
+    "DEBUG") LOGGING.getDebugLogPrefixToken;
+             _result="${RESULT}";
+             ;;
+    "INFO") LOGGING.getInfoLogPrefixToken;
+            _result="${RESULT}";
+            ;;
+    "WARN") LOGGING.getWarnLogPrefixToken;
+             _result="${RESULT}";
+             ;;
+    "ERROR") LOGGING.getErrorLogPrefixToken;
+             _result="${RESULT}";
+             ;;
+    *) _rescode=${FALSE};
+       ;;
+  esac;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }
@@ -1781,11 +2061,12 @@ function LOGGING.retrieveLogPrefixToken() {
 function LOGGING.processLogPrefixTokens() {
   local _category="${1}";
   checkNotEmpty category "${_category}" 1;
+
   local _level="${2:-INFO}";
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 2;
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 2;
 
-  LOGGING.retrieveLogPrefixToken "${_level}";
+  LOGGING.retrieveLogPrefixLevelToken "${_level}";
   _level="${RESULT}";
   local result=();
   local _aux="";
@@ -1811,15 +2092,40 @@ function LOGGING.processLogPrefixTokens() {
 
   LOGGING.retrieveLogTimestamp;
   _timestamp="${RESULT}";
-  LOGGING.retrieveTimestampPositionInLogPrefix;
+  LOGGING.getTimestampPositionInLogPrefix;
   _timestampPosition=${RESULT};
   _logPrefixTokens[${_timestampPosition}]="${_timestamp}";
-  LOGGING.retrieveCategoryPositionInLogPrefix;
+  LOGGING.getCategoryPositionInLogPrefix;
   _categoryPosition=${RESULT};
   _logPrefixTokens[${_categoryPosition}]="${_category}";
-  LOGGING.retrieveLevelPositionInLogPrefix;
+  LOGGING.getLevelPositionInLogPrefix;
   _levelPosition=${RESULT};
   _logPrefixTokens[${_levelPosition}]="${_level}";
+}
+
+# fun: getLogTimestampFormat
+# api: public
+# txt: Retrieves the timestamp format used for logging.
+# txt: Use setLogTimestampFormat to modify the timestamp format.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.getLogTimestampFormat; echo "The log timestamp format is ${RESULT}";
+function getLogTimestampFormat() {
+  LOGGING.getModuleName;
+  DW.getGlobalString "${RESULT}" LOG_TIMESTAMP_FORMAT;
+}
+
+# fun: setLogTimestampFormat
+# api: public
+# txt: Retrieves the timestamp format used for logging.
+# txt: Use setLogTimestampFormat to modify the timestamp format.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.getLogTimestampFormat; echo "The log timestamp format is ${RESULT}";
+function setLogTimestampFormat() {
+  local _format="${1}";
+  checkNotEmpty format "${_format}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalString "${RESULT}" LOG_TIMESTAMP_FORMAT "${_format}";
 }
 
 # fun: LOGGING.retrieveLogTimestamp
@@ -1830,31 +2136,108 @@ function LOGGING.processLogPrefixTokens() {
 # txt: The variable RESULT contains the timestamp.
 # use: LOGGING.retrieveLogTimestamp; echo "The log timestamp is ${RESULT}";
 function LOGGING.retrieveLogTimestamp() {
-  LOGGING.getModuleName;
-  DW.getGlobalString "${RESULT}" LOG_TIMESTAMP_FORMAT;
+  getLogTimestampFormat;
   export RESULT="$(date "${RESULT}")";
 }
 
-# fun: LOGGING.retrieveOutcomeTextPositionInLogOutcome
+# fun: LOGGING.getOutcomeTextPositionInLogOutcome
 # api: private
 # txt: Retrieves the position of the outcome token in the log outcome colors array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the outcome text position.
-# use: LOGGING.retrieveOutcomeTextPositionInLogOutcome; echo "outcome text -> ${RESULT}";
-function LOGGING.retrieveOutcomeTextPositionInLogOutcome() {
+# use: LOGGING.getOutcomeTextPositionInLogOutcome; echo "outcome text -> ${RESULT}";
+function LOGGING.getOutcomeTextPositionInLogOutcome() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_OUTCOME_TEXT_POSITION;
 }
 
-# fun: LOGGING.retrieveTimestampPositionInLogPrefix
+# fun: setOutcomeTextPositionInLogOutcome position
+# api: public
+# txt: Specifies the position of the outcome token in the log outcome colors array.
+# opt: position: The position of the outcome token.
+# txt: Returns 0/TRUE always.
+# use: setOutcomeTextPositionInLogOutcome 1;
+function setOutcomeTextPositionInLogOutcome() {
+  local -i _position="${1}";
+  checkNotEmpty position "${_position}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalInt "${RESULT}" LOG_OUTCOME_TEXT_POSITION ${_position};
+}
+
+# fun: LOGGING.getTimestampPositionInLogPrefix
 # api: private
 # txt: Retrieves the position of the timestamp in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the timestamp position.
-# use: LOGGING.retrieveTimestampPositionInLogPrefix; echo "timestamp -> ${RESULT}";
-function LOGGING.retrieveTimestampPositionInLogPrefix() {
+# use: LOGGING.getTimestampPositionInLogPrefix; echo "timestamp -> ${RESULT}";
+function LOGGING.getTimestampPositionInLogPrefix() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_TIMESTAMP_POSITION;
+}
+
+# fun: setTimestampPositionInLogPrefix position
+# api: public
+# txt: Specifies the position of the timestamp token in the log prefix colors array.
+# opt: position: The position of the timestamp token.
+# txt: Returns 0/TRUE always.
+# use: setTimestampPositionInLogPrefix 1;
+function setTimestampPositionInLogPrefix() {
+  local -i _position="${1}";
+  checkNotEmpty position "${_position}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalInt "${RESULT}" LOG_PREFIX_TIMESTAMP_POSITION ${_position};
+}
+
+# fun: LOGGING.getCategoryPositionInLogPrefix
+# api: private
+# txt: Retrieves the position of the category in the log prefix tokens array.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the category position.
+# use: LOGGING.getCategoryPositionInLogPrefix; echo "category -> ${RESULT}";
+function LOGGING.getCategoryPositionInLogPrefix() {
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_PREFIX_CATEGORY_POSITION;
+}
+
+# fun: setCategoryPositionInLogPrefix position
+# api: public
+# txt: Specifies the position of the category token in the log prefix colors array.
+# opt: position: The position of the category token.
+# txt: Returns 0/TRUE always.
+# use: setCategoryPositionInLogPrefix 1;
+function setCategoryPositionInLogPrefix() {
+  local -i _position="${1}";
+  checkNotEmpty position "${_position}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalInt "${RESULT}" LOG_PREFIX_CATEGORY_POSITION ${_position};
+}
+
+# fun: LOGGING.getLevelPositionInLogPrefix
+# api: private
+# txt: Retrieves the position of the level in the log prefix tokens array.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the level position.
+# use: LOGGING.getLevelPositionInLogPrefix; echo "level -> ${RESULT}";
+function LOGGING.getLevelPositionInLogPrefix() {
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_PREFIX_LEVEL_POSITION;
+}
+
+# fun: setLevelPositionInLogPrefix position
+# api: public
+# txt: Specifies the position of the level token in the log prefix colors array.
+# opt: position: The position of the level token.
+# txt: Returns 0/TRUE always.
+# use: setLevelPositionInLogPrefix 1;
+function setLevelPositionInLogPrefix() {
+  local -i _position="${1}";
+  checkNotEmpty position "${_position}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalInt "${RESULT}" LOG_PREFIX_LEVEL_POSITION ${_position};
 }
 
 # fun: LOGGING.setLastLog message?
@@ -2084,8 +2467,7 @@ function setInfoEnabled() {
 function setLogCategory() {
   local _category="${1}";
 
-  LOGGING.getModuleName;
-  DW.setGlobalString "${RESULT}" LOG_CATEGORY "${_category}";
+  LOGGING.pushLogCategory "${_category}";
 }
 
 # fun: setLogCategoryNamespace namespace
@@ -2211,6 +2593,16 @@ function LOGGING.logToFilesAnEmptyLine() {
   return ${TRUE};
 }
 
+# fun: applyThemeIfPresent
+# api: public
+# txt: Applies a theme if present.
+# txt: Returns 0/TRUE if a theme is applied; 1/FALSE otherwise.
+# use: if applyThemeIfPresent; then echo "Theme applied"; fi
+function applyThemeIfPresent() {
+  getModulePath;
+  sourceFileIfExists "${RESULT}/../../themes/current.dwt";
+}
+
 # State
 # env: SUCCESS: Indicates the operation has succeeded.
 declare -igx SUCCESS=0;
@@ -2284,64 +2676,77 @@ function LOGGING.resetState() {
   DW.declareGlobalInt "${_moduleName}" LOG_INFO ${TRUE};
   # env: LOG_QUIET: Whether to disable logging messages.
   DW.declareGlobalInt "${_moduleName}" LOG_QUIET ${FALSE};
-  # env: LOG_OUTCOME_TOKENS: The tokens used for log outcomes.
-  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_TOKENS;
-  # env: LOG_OUTCOME_COLORS: The colors used for log outcomes.
-  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_COLORS;
-  # env: DEFAULT_TERM_WIDTH: The default term width.
-  DW.declareGlobalInt "${_moduleName}" DEFAULT_TERM_WIDTH;
   # env: LOG_LINE_OPEN: Whether the current log line is open.
   DW.declareGlobalInt "${_moduleName}" LOG_LINE_OPEN ${FALSE};
   # env: LAST_LOG: The last log message.
   DW.declareGlobalString "${_moduleName}" LAST_LOG;
   # env: LAST_LOG_LEVEL: The last log level.
   DW.declareGlobalInt "${_moduleName}" LAST_LOG_LEVEL;
-  # env: NESTED_TASK_IN_PROGRESS: The symbols used to represent nested tasks in progress.
-  DW.declareGlobalString "${_moduleName}" NESTED_TASK_IN_PROGRESS "....";
-  # env: LOG_TIMESTAMP_FORMAT: The date format.
-  DW.declareGlobalString "${_moduleName}" LOG_TIMESTAMP_FORMAT "+%Y/%m/%d %H:%M:%S";
-  # env: LOG_OUTCOME_SEPARATOR: The separator used when printing log outcomes.
-  DW.declareGlobalString "${_moduleName}" LOG_OUTCOME_SEPARATOR " ";
-  # env: LOG_NESTED_INDENTATION: The indentation used for nested logs.
-  DW.declareGlobalString "${_moduleName}" LOG_NESTED_INDENTATION "  ";
 
-  # env: DEFAULT_LOG_PREFIX_COLOR: The default color used for log prefixes.
-  DW.declareGlobalString "${_moduleName}" DEFAULT_LOG_PREFIX_COLOR GRAY;
-  # env: DEFAULT_LOG_OUTCOME_COLOR: The default color used for outcomes.
-  DW.declareGlobalString "${_moduleName}" DEFAULT_LOG_OUTCOME_COLOR GRAY;
-  # env: DEFAULT_LOG_RESUMING_TASK_COLOR: The default color used when resuming tasks.
-  DW.declareGlobalString "${_moduleName}" DEFAULT_LOG_RESUMING_TASK_COLOR GRAY;
-
-  # env: LOG_PFEFIX_COLORS: The colors used in log prefixes.
-  DW.declareGlobalArray "${_moduleName}" LOG_PREFIX_COLORS BLUE CYAN YELLOW MAGENTA YELLOW RED BLUE;
-
-  # env: LOG_PREFIX_TOKENS: The tokens used in log prefixes.
-  DW.declareGlobalArray "${_moduleName}" LOG_PREFIX_TOKENS "[" "timestamp" "<" "category" ">" "logLevel" "]";
-
-  # env: LOG_PREFIX_TIMESTAMP_POSITION: The position of the timestamp in LOG_PREFIX_TOKENS.
-  DW.declareGlobalInt "${_moduleName}" LOG_PREFIX_TIMESTAMP_POSITION 1;
-  # env: LOG_PREFIX_CATEGORY_POSITION: The position of the category in LOG_PREFIX_TOKENS.
-  DW.declareGlobalInt "${_moduleName}" LOG_PREFIX_CATEGORY_POSITION 3;
-  # env: LOG_PREFIX_LEVEL_POSITION: The position of the level in LOG_PREFIX_TOKENS.
-  DW.declareGlobalInt "${_moduleName}" LOG_PREFIX_LEVEL_POSITION 5;
-
-  # env: INFO_LOG_PREFIX_TOKEN: The symbol used to represent INFO level.
-  DW.declareGlobalString "${_moduleName}" INFO_LOG_PREFIX_TOKEN ".";
-  # env: DEBUG_LOG_PREFIX_TOKEN: The symbol used to represent DEBUG level.
-  DW.declareGlobalString "${_moduleName}" DEBUG_LOG_PREFIX_TOKEN "o";
-  # env: TRACE_LOG_PREFIX_TOKEN: The symbol used to represent TRACE level.
-  DW.declareGlobalString "${_moduleName}" TRACE_LOG_PREFIX_TOKEN "O";
-
-  # env: LOG_OUTCOME_COLORS: The colors used when printing the operation outcome.
-  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_COLORS CYAN WHITE CYAN;
-
-  # env: LOG_OUTCOME_TOKENS: The tokens used when printing the operation outcome.
-  DW.declareGlobalArray "${_moduleName}" LOG_OUTCOME_TOKENS "[" "done" "]";
-
-  # env: LOG_OUTCOME_TEXT_POSITION: The position of the text in LOG_OUTCOME_TOKENS.
-  DW.declareGlobalInt "${_moduleName}" LOG_OUTCOME_TEXT_POSITION 1;
+  # env: DEFAULT_TERM_WIDTH: The default term width.
+  DW.declareGlobalInt "${_moduleName}" DEFAULT_TERM_WIDTH;
 
   # env: LOG_FILES: The files to write logging to.
   DW.declareGlobalArray "${_moduleName}" LOG_FILES;
+
+  # env: NESTED_TASK_IN_PROGRESS_MARKER: The symbols used to represent nested tasks in progress.
+  setNestedTaskInProgressMarker "....";
+
+  # env: LOG_TIMESTAMP_FORMAT: The date format.
+  setLogTimestampFormat "+%Y/%m/%d %H:%M:%S";
+
+  # env: LOG_OUTCOME_SEPARATOR: The separator used when printing log outcomes.
+  setLogOutcomeSeparator " ";
+
+  # env: LOG_NESTED_INDENTATION: The indentation used for nested logs.
+  setLogNestedIndentation "  ";
+
+  # env: DEFAULT_LOG_PREFIX_COLOR: The default color used for log prefixes.
+  setDefaultLogPrefixColor GRAY;
+
+  # env: DEFAULT_LOG_OUTCOME_COLOR: The default color used for outcomes.
+  setDefaultLogOutcomeColor GRAY;
+
+  # env: DEFAULT_LOG_RESUMING_TASK_COLOR: The default color used when resuming tasks.
+  setDefaultLogResumingTaskColor GRAY;
+
+  # env: LOG_PFEFIX_COLORS: The colors used in log prefixes.
+  setLogPrefixColors BLUE CYAN YELLOW MAGENTA YELLOW RED BLUE;
+
+  # env: LOG_PREFIX_TOKENS: The tokens used in log prefixes.
+  setLogPrefixTokens "[" "timestamp" "<" "category" ">" "logLevel" "]";
+
+  # env: LOG_PREFIX_TIMESTAMP_POSITION: The position of the timestamp in LOG_PREFIX_TOKENS.
+  setTimestampPositionInLogPrefix 1;
+
+  # env: LOG_PREFIX_CATEGORY_POSITION: The position of the category in LOG_PREFIX_TOKENS.
+  setCategoryPositionInLogPrefix 3;
+
+  # env: LOG_PREFIX_LEVEL_POSITION: The position of the level in LOG_PREFIX_TOKENS.
+  setLevelPositionInLogPrefix 5;
+
+  # env: ERROR_LOG_PREFIX_TOKEN: The symbol used to represent ERROR level.
+  setErrorLogPrefixToken "X";
+
+  # env: WARN_LOG_PREFIX_TOKEN: The symbol used to represent WARN level.
+  setWarnLogPrefixToken "x";
+
+  # env: INFO_LOG_PREFIX_TOKEN: The symbol used to represent INFO level.
+  setInfoLogPrefixToken ".";
+
+  # env: DEBUG_LOG_PREFIX_TOKEN: The symbol used to represent DEBUG level.
+  setDebugLogPrefixToken "o";
+
+  # env: TRACE_LOG_PREFIX_TOKEN: The symbol used to represent TRACE level.
+  setTraceLogPrefixToken "O";
+
+  # env: LOG_OUTCOME_COLORS: The colors used when printing the operation outcome.
+  setLogOutcomeColors CYAN WHITE CYAN;
+
+  # env: LOG_OUTCOME_TOKENS: The tokens used when printing the operation outcome.
+  setLogOutcomeTokens "[" "done" "]";
+
+  # env: LOG_OUTCOME_TEXT_POSITION: The position of the text in LOG_OUTCOME_TOKENS.
+  setOutcomeTextPositionInLogOutcome 1;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -31,7 +31,7 @@ function retrieveIface() {
   local -i _rescode=${FALSE};
 
   if retrieveIfaces; then
-    _result="$(echo "${RESULT}" | awk -F' ' '{print $1;}')";
+    _result="$(echo "${RESULT}" | awk -F' ' '{print $1;}' | head -n 1)";
     _rescode=$?;
   fi
 

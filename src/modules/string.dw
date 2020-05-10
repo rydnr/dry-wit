@@ -133,7 +133,7 @@ function normalizeUppercase() {
 # api: public
 # txt: Removes the prefix of given string.
 # opt: text: The string to process.
-# opt: prefix: The prefix to remove.
+# opt: prefix: The prefix to remove. It must not include the '%' character.
 # txt: Returns 0/TRUE if the prefix was removed; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the string without the prefix.
 # use: if removePrefix "${_text}" "--*"; then echo "${_text} -> ${RESULT}"; fi
@@ -146,7 +146,7 @@ function removePrefix() {
   local -i _rescode;
   local _result;
 
-  _result="$(sed -e "s/^${_prefix}//" <<< ${_text})";
+  _result="$(sed -e "s%^${_prefix}%%" <<< ${_text})";
   _rescode=$?;
   if isTrue ${_rescode}; then
     # double-check
@@ -405,7 +405,7 @@ function startsAndEndsWith() {
 # opt: delimiter: The delimiter.
 # txt: Returns 0/TRUE if the delimiter was actually surrounding the text; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE; the variable RESULT contains the text without the delimiters.
-# use: if removeSurrounding "${var}" '"'; then echo "Trimmed var: ${RESULT}"; fi
+# use: if removeSurrounding "${var}" '"'; then echo "Resulting var: ${RESULT}"; fi
 function removeSurrounding() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
@@ -414,14 +414,12 @@ function removeSurrounding() {
   local _result;
   local -i _rescode=${FALSE};
 
-  if startsAndEndsWith "${_text}" "${_delimiter}"; then
-    if removePrefix "${_text}" "${_delimiter}"; then
-      _result="${RESULT}";
-      _rescode=${TRUE};
-      if isNotEmpty "${_result}"; then
-        if removeSuffix "${_result}" "${_delimiter}"; then
-          _result="${RESULT}";
-        fi
+  if removePrefix "${_text}" "${_delimiter}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+    if isNotEmpty "${_result}"; then
+      if removeSuffix "${_result}" "${_delimiter}"; then
+        _result="${RESULT}";
       fi
     fi
   fi
@@ -431,6 +429,26 @@ function removeSurrounding() {
   fi
 
   return ${_rescode};
+}
+
+# fun: trim text
+# api: public
+# txt: Removes any blank spaces at the start and at the end of given text.
+# opt: text: The text.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the trimmed text.
+# use: trim "${var}" '"'; echo "Trimmed var: ${RESULT}";
+function trim() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+#  export RESULT="$(echo "${_text}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')";
+
+  local _leftTrimmed="${_text#"${_text%%[![:space:]]*}"}";
+  local _result="${_leftTrimmed%"${_leftTrimmed##*[![:space:]]}"}";
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # fun: keyValueSplit text
@@ -692,7 +710,7 @@ function camelCaseToSnakeCase() {
 # opt: text: The text to convert.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the text in camel case.
-# use: snakeCaseToCamelCase "output_file"; echo "output_filer -> ${RESULT}";
+# use: snakeCaseToCamelCase "output_file"; echo "output_file -> ${RESULT}";
 function snakeCaseToCamelCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
@@ -700,6 +718,27 @@ function snakeCaseToCamelCase() {
   local -i _rescode=${TRUE};
   snakeCaseToPascalCase "${_text}";
   uncapitalize "${RESULT}";
+
+  return ${_rescode};
+}
+
+# fun: toCamelCase text
+# api: public
+# txt: Converts given text to camel case.
+# opt: text: The text to convert.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the text in camel case.
+# use: toCamelCase "output_file"; echo "output_file -> ${RESULT}";
+function toCamelCase() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode=${TRUE};
+  local _result="$(echo "${_text}" | awk 'function toCamel(s) { camel = ""; split(s, words, /-|[^a-zA-Z0-9]/); for (i = 1; i in words; i++) {camel = camel toupper(substr(words[i], 1, 1)) tolower(substr(words[i], 2))}; return camel} NF { printf "%s\n", toCamel($0)}')";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }

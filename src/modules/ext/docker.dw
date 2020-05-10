@@ -13,8 +13,10 @@
 function connectDockerContainerToNetwork() {
   local _container="${1}";
   checkNotEmpty container "${_container}" 1;
+
   local _network="${2}";
   checkNotEmpty network "${_network}" 2;
+
   local -i _rescode;
   local _output;
 
@@ -31,14 +33,17 @@ function connectDockerContainerToNetwork() {
       export RESULT="${_output}";
       _rescode=${TRUE};
     else
-      _output="${RESULT}";
+      _output="${ERROR}";
       logDebugResult FAILURE "failed";
-      export RESULT="${_output}";
       _rescode=${FALSE};
     fi
   else
-    _output="${RESULT}";
+    _output="${ERROR}";
     logDebugResult FAILURE "false";
+  fi
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -51,6 +56,7 @@ function connectDockerContainerToNetwork() {
 # opt: container: The container name.
 # opt: containerFolder: The target location.
 # txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some error information.
 # use: if copyToDockerContainer "my-file" "container" "/tmp"; then echo "my-file copied to container:/tmp successfully"; fi
 function copyToDockerContainer() {
   local _file="${1}";
@@ -66,7 +72,7 @@ function copyToDockerContainer() {
   _rescode=$?;
 
   if isFalse ${_rescode}; then
-    export RESULT="${_output}";
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -77,12 +83,12 @@ function copyToDockerContainer() {
 # txt: Creates a Docker network.
 # opt: network: The network name.
 # txt: Returns 0/TRUE if the network was created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some information about the error.
 # use: if createDockerNetwork bridge; then echo "bridge network created"; fi
 function createDockerNetwork() {
   local _network="${1}";
   checkNotEmpty network "${_network}" 1;
   local -i _rescode;
-  local _output;
 
   if ! dockerNetworkExists ${_network}; then
     if dockerCommand network create ${_network}; then
@@ -103,6 +109,7 @@ function createDockerNetwork() {
 # opt: command: The Docker command.
 # opt: args: The command arguments (if any).
 # txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some information about the error.
 # use: if dockerCommand create -v /config --name config busybox; then echo "config container created successfully"; fi
 function dockerCommand() {
   local _args="${@}";
@@ -112,8 +119,9 @@ function dockerCommand() {
 
   _output="$(docker ${_args} 2>&1)"
   _rescode=$?;
+
   if isFalse ${_rescode}; then
-    export RESULT="${_output}";
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -133,8 +141,13 @@ function dockerContainerExists() {
   local -i _rescode;
 
   _result="$(docker ps -a --no-trunc --filter name=^/${_name}$ -q)";
-  if isEmpty "${_result}"; then
+  _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_result}";
+  elif isEmpty "${_result}"; then
     _rescode=${FALSE};
+    export ERROR="docker ps -a --no-trunc --filter name=^/${_name}$ -q returned nothing";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -148,6 +161,7 @@ function dockerContainerExists() {
 # txt: Checks if given network exists.
 # opt: network: The network name.
 # txt: Returns 0/TRUE if the network exists; 0/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some information about the error.
 # use: if dockerNetworkExists "bridge"; then echo "'bridge' network already exists"; fi
 function dockerNetworkExists() {
   local _name="${1}";
@@ -155,8 +169,12 @@ function dockerNetworkExists() {
   local _result;
   local -i _rescode;
 
-  docker network inspect ${_name} > /dev/null 2>&1;
+  local _output=$(docker network inspect ${_name} 2>&1);
   _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
 
   return ${_rescode};
 }
@@ -166,6 +184,7 @@ function dockerNetworkExists() {
 # txt: Checks if a container is running.
 # opt: container: the container name.
 # txt: Returns 0/TRUE if the container is running; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some error information.
 # use: if isDockerContainerRunning mysql; then echo "mysql is running"; fi
 function isDockerContainerRunning() {
   local _containerName="${1}";
@@ -179,7 +198,7 @@ function isDockerContainerRunning() {
   if [[ "${_status}" == "true" ]]; then
     _rescode=${TRUE};
   else
-    export RESULT="${_status}";
+    export ERROR="${_status}";
     _rescode=${FALSE};
   fi
 
@@ -196,7 +215,6 @@ function removeDockerNetwork() {
   local _network="${1}";
   checkNotEmpty network "${_network}" 1;
   local -i _rescode;
-  local _output;
 
   if dockerNetworkExists ${_network}; then
     if dockerCommand network rm ${_network}; then
@@ -217,6 +235,7 @@ function removeDockerNetwork() {
 # opt: container: The container name.
 # txt: Returns 0/TRUE if the container status could be obtained; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the status.
+# txt: If the function returns 1/FALSE, the variable ERROR contains error information.
 # use: if retrieveDockerContainerStatus mysql; then echo "mysql's status is ${RESULT}"; fi
 function retrieveDockerContainerStatus() {
   local _containerName="${1}";
@@ -225,10 +244,14 @@ function retrieveDockerContainerStatus() {
   local -i _rescode;
 
   ## Note: docker is a requirement of the caller script, not dry-wit.
-  _result="$(docker inspect ${_containerName} -f {{json .State.Status}})";
+  _result="$(docker inspect ${_containerName} -f {{json .State.Status}} 2>&1)";
   _rescode=$?;
 
-  export RESULT="${_result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
 
   return ${_rescode};
 }

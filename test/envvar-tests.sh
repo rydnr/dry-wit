@@ -101,6 +101,13 @@ function extractValueInPair_works_test() {
   fi
 }
 
+function overrideEnvVar_works_test() {
+  defineEnvVar OVERRIDE_ENVVAR_TEST OPTIONAL "test envvar" "not overridden";
+  Assert.areEqual "${OVERRIDE_ENVVAR_TEST}" "not overridden" "OVERRIDE_ENVVAR is not defined correctly";
+  overrideEnvVar OVERRIDE_ENVVAR_TEST "overridden";
+  Assert.areEqual "${OVERRIDE_ENVVAR_TEST}" "overridden" "OVERRIDE_ENVVAR is not overridden correctly";
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
 
 setScriptDescription "Runs all tests implemented for envvar.dw";

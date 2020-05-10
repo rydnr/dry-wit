@@ -40,8 +40,10 @@ function echoColorizedText() {
          fi
          ;;
     esac
+    echoColorizedTextWithColor -n "${_color}" "${_text}";
+  else
+    echo -n "${_text}";
   fi
-  echoColorizedTextWithColor -n "${_color}" "${_text}";
 }
 
 # fun: echoColorizedTextWithColor [-n]? colorName text
