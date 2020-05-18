@@ -1,0 +1,278 @@
+# mod: mongodb
+# api: public
+# txt: MongoDB module.
+
+DW.import process;
+
+# fun: enableMongodbCrAuthentication
+# api: public
+# txt: Enables MONGODB-CR authentication.
+# txt: Returns 0/TRUE if MONGODB-CR gets enabled successfully; 1/FALSE otherwise.
+# use: if enableMongodbCrAuthentication; then echo "MONGODB-CR enabled successfully"; fi
+function enableMongodbCrAuthentication() {
+  local -i _rescode;
+
+  mongo admin --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }"
+  _rescode=$?;
+
+   return ${_rescode};
+}
+
+# fun: addMongodbRootUser user password
+# api: public
+# txt: Adds the root user.
+# opt: user: The user.
+# opt: password: The password.
+# txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains error information.
+# use: if addMongodbRootUser "admin" "secret"; then echo "User admin created successfully"; fi
+function addMongoDbRootUser() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _password="${2}";
+  checkNotEmpty password "${_password}" 2;
+  local -i _rescode;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+use ${_adminDatabase}
+db.createUser(
+  {
+    user: "${_user}",
+    pwd: "${_password}",
+    roles: [
+      { role: "userAdmin", db: "admin" },
+      { role: "userAdminAnyDatabase", db: "admin" }
+    ]
+  }
+)
+EOF
+  local _output="$(cat "${_tmpFile}" | mongo 2>&1)";
+  _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: addMongoDbUser user password database root rootPassword authenticationDatabase
+# api: public
+# txt: Adds a new user.
+# opt: user: The user.
+# opt: password: The password.
+# opt: database: The database.
+# opt: root: The root user.
+# opt: rootPassword: The root password.
+# opt: authenticationDatabase: The authentication database.
+# txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
+# use: if addMongoDbUser "my-user" "secret" "my-db" "root" "s3cr3t" "admin"; then echo "User admin created successfully"; fi
+function addMongoDbUser() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _password="${2}";
+  checkNotEmpty password "${_password}" 2;
+  local _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _root="${4}";
+  checkNotEmpty root "${_root}" 4;
+  local _rootPassword="${5}";
+  checkNotEmpty rootPassword "${_rootPassword}" 5;
+  local _authDb="${6}";
+  checkNotEmpty authenticationDb "${_authDb}" 6;
+
+  local -i _rescode;
+
+#  mongo --eval "db.getSiblingDB('${_database}').createUser(user:'${_user}', pwd:'${_password}', roles:[{role:'${_role}', db:'${_database}'}])";
+  mongo ${_database} -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --eval "db.createUser({user: '${_user}', pwd: '${_password}', roles:['dbOwner']});";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: restoreMongoDbBackup file
+# api: public
+# txt: Restores from backup.
+# opt: file: The file to restore from.
+# txt: Returns 0/TRUE if the restore process succeeds; 1/FALSE otherwise.
+# use: if restoreMongoDbBackup "/tmp/dump.gz"; then echo "Backup /tmp/dump.gz restored successfully"; fi
+function restoreMongoDbBackup() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+
+  local -i _rescode;
+
+  mongoimport "${_file}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: isMongodRunning
+# api: public
+# txt: Checks whether mongod is running.
+# txt: Returns 0/TRUE if it's running; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE; the variable RESULT contains the mongod pid.
+# use: if ! isMongodRunning; then echo "mongod is not running"; fi
+function isMongodRunning() {
+  isRunning $(which mongod);
+}
+
+# fun: killMongod
+# api: public
+# txt: Kills the current mongod process.
+# txt: Returns 0/TRUE if the process is killed; 1/FALSE otherwise.
+# use: if killMongod; then echo "mongod process killed successfully"; fi
+function killMongod() {
+  local _pids;
+
+  logInfo -n "Killing mongod process";
+  if isMongodRunning; then
+    _pids="${RESULT}";
+    echo ${_pids} | xargs kill
+    if isTrue $?; then
+      logInfoResult SUCCESS "done";
+    else
+      logInfoResult FAILURE "failed";
+    fi
+  else
+    logInfoResult SUCCESS "not running";
+  fi
+}
+
+# fun: mongoDump output host? user? pass? authenticationDatabase? authenticationMechanism?
+# api: public
+# txt: Performs a dump (gzipped, using the MongoDB archive format).
+# opt: output: The output file.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: user: The user name. Optional.
+# opt: password: The password. Optional.
+# opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
+# opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA1.
+# txt: Returns 0/TRUE if the dump gets created successfully; 1/FALSE otherwise.
+# use: if mongoDump /tmp/dump-today.gz localhost root secret; then echo "dump succeeded"; fi
+function mongoDump() {
+  local _output="${1}";
+  checkNotEmpty output "${_output}" 1;
+  local _host="${2:-localhost}";
+  local _user="${3}";
+  local _pass="${4}";
+  local _authDb="${5:-admin}";
+  local _authMechanism="${6:-SCRAM-SHA1}";
+
+  local -i _rescode;
+
+  if isEmpty "${_user}"; then
+    mongodump --gzip --archive="${_output}" -h ${_host} > /dev/null 2>&1;
+    _rescode=$?;
+  else
+    mongodump --gzip --archive="${_output}" -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authDb} --authenticationMechanism=${_authMechanism} > /dev/null 2>&1
+    _rescode=$?;
+  fi
+
+  return ${_rescode}
+}
+
+# fun: startMongodWithAuthenticationDisabled user group permissionsFolder configFile
+# api: public
+# txt: Starts mongod with authentication enabled, using given user and group (and ensuring its permissions match the owners of given permissionsFolder parameter).
+# opt: user: The owner of the process.
+# opt: group: The group of the process.
+# opt: permissionsFolder: The folder used to get the permissions from (the user and group will be adapted to match the folder's).
+# opt: configFile: The mongod config file.
+# txt: Returns 0/TRUE if the process could be started; 1/FALSE otherwise.
+# use: if startMongodbWithAuthenticationDisabled mongo mongo /var/lib/mongodb /etc/mongod.conf; then echo "mongod started"; fi
+function startMongodWithAuthenticationDisabled() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _group="${2}";
+  checkNotEmpty group "${_group}" 2;
+  local _permissionsFolder="${3}";
+  checkNotEmpty permissionsFolder "${_permissionsFolder}" 3;
+  local _configFile="${4}";
+  checkNotEmpty configFile "${_configFile}" 4;
+
+  checkReq run-as.sh;
+  checkReq mongod;
+
+  resolveVerbosity;
+  local _verbosity="${RESULT}";
+
+  chmod a+x "${_permissionsFolder}";
+
+  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" & disown;
+  local -i _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: startMongodWithAuthenticationEnabled user group permissionsFolder configFile authMechanism
+# api: public
+# txt: Starts mongod with authentication enabled, using given user and group (and ensuring its permissions match the owners of given permissionsFolder parameter).
+# opt: user: The owner of the process.
+# opt: group: The group of the process.
+# opt: permissionsFolder: The folder used to get the permissions from (the user and group will be adapted to match the folder's).
+# opt: configFile: The mongod config file.
+# opt: authMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the process could be started; 1/FALSE otherwise.
+# use: if startMongodbWithAuthenticationEnabled mongo mongo /var/lib/mongodb /etc/mongod.conf SCRAM-SHA-256; then echo "mongod started"; fi
+function startMongodWithAuthenticationEnabled() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _group="${2}";
+  checkNotEmpty group "${_group}" 2;
+  local _permissionsFolder="${3}";
+  checkNotEmpty permissionsFolder "${_permissionsFolder}" 3;
+  local _configFile="${4}";
+  checkNotEmpty configFile "${_configFile}" 4;
+  local _authMechanism="${5}";
+  checkNotEmpty authMechanism "${_authMechanism}" 5;
+
+  checkReq run-as.sh;
+  checkReq mongod;
+
+  resolveVerbosity;
+  local _verbosity="${RESULT}";
+
+  chmod a+x "${_permissionsFolder}";
+
+  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authMechanism} & disown;
+  local -i _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: waitUntilMongodIsRunning timeout checkInterval
+# api: public
+# txt: Waits until mongod is running.
+# opt: timeout: The maximum number of seconds to wait.
+# opt: checkInterval: How often to check.
+# txt: Returns 0/TRUE if mongod is running; 1/FALSE if it didn't start after the timeout expired.
+# use: if waitUntilMongodIsRunning 60 5; then echo "Mongod is running"; fi
+function waitUntilMongodIsRunning() {
+  local -i _timeout=${1};
+  checkNumber timeout "${_timeout}" 1;
+  local -i _checkInterval=${2};
+  checkNumber checkInterval "${_checkInterval}" 2;
+
+  local -i _rescode=${TRUE};
+  local -i _attempts=0;
+
+  while ! isMongodRunning; do
+    add ${_attempts} 1;
+    _attempts=${RESULT};
+    multiply ${_attempts} ${_checkInterval};
+    local -i _currentWait=${RESULT};
+    if isLessThan ${_timeout} ${_currentWait}; then
+      _rescode=${FALSE};
+      break;
+    fi
+    sleep ${_checkInterval};
+  done
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

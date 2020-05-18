@@ -174,11 +174,9 @@ function generatePEM() {
 # opt: keyFile: The key file to update.
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
 # use: if changeSslKeyPermissions /etc/ssl/certs/private.pem; then echo "permissions updated"; fi
-function updateSslKeyPermissions() {
+function changeSslKeyPermissions() {
   local _keyFile="${1}";
   checkNotEmpty keyFile "${_keyFile}" 1;
-  local _output;
-  local -i _rescode;
 
   changeFilePermissions "${_keyFile}" "0700";
 }
@@ -198,8 +196,6 @@ function changeSslKeyOwnership() {
   checkNotEmpty user "${_user}" 2;
   local _group="${3}";
   checkNotEmpty group "${_group}" 3;
-  local _output;
-  local -i _rescode;
 
   changeOwnerOfFile "${_keyFile}" "${_user}" "${_group}";
 }
