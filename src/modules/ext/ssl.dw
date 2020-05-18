@@ -168,30 +168,30 @@ function generatePEM() {
   return ${_rescode};
 }
 
-# fun: updateSslKeyPermissions keyFile
+# fun: changeSslKeyPermissions keyFile
 # api: public
 # txt: Changes the permissions of given SSL key.
 # opt: keyFile: The key file to update.
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
-# use: if updateSslKeyPer
+# use: if changeSslKeyPermissions /etc/ssl/certs/private.pem; then echo "permissions updated"; fi
 function updateSslKeyPermissions() {
   local _keyFile="${1}";
   checkNotEmpty keyFile "${_keyFile}" 1;
   local _output;
   local -i _rescode;
 
-  updateFilePermissions "${_keyFile}" "0700";
+  changeFilePermissions "${_keyFile}" "0700";
 }
 
-# fun: updateSslKeyOwnership keyFile user group
+# fun: changeSslKeyOwnership keyFile user group
 # api: public
 # txt: Changes the ownership of given SSL key.
 # opt: keyFile: The key file to update.
 # opt: user: The user.
 # opt: group: The group.
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
-# use: if updateSslKeyOwnership /tmp/my-file root root; then echo "/tmp/my-file updated"; fi
-function updateSslKeyOwnership() {
+# use: if changeSslKeyOwnership /tmp/my-file root root; then echo "/tmp/my-file updated"; fi
+function changeSslKeyOwnership() {
   local _keyFile="${1}";
   checkNotEmpty keyFile "${_keyFile}" 1;
   local _user="${2}";

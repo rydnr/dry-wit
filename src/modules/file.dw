@@ -53,6 +53,34 @@ function createTempFile() {
   return ${_rescode};
 }
 
+# fun: folderAllowsExec folder
+# api: public
+# txt: Checks if given folder allows executing files.
+# opt: folder: The folder to check.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if folderAllowsExec /tmp; then echo "/tmp does not allow executing files"; fi
+function folderAllowsExec() {
+  local _folder="${1}";
+  checkNotEmpty folder "${_folder}" 1;
+
+  local -i _rescode;
+
+  local _file="${_folder}/.check.sh.$$";
+
+  cat <<EOF > "${_file}"
+#!/bin/bash
+
+echo -n "";
+EOF
+  chmod +x "${_file}";
+  "${_file}" 2> /dev/null;
+  _rescode=$?;
+
+  rm -f "${_file}";
+
+  return ${_rescode};
+}
+
 # fun: createTempFileNoCleanup
 # api: public
 # txt: Creates a new temporary file, without managing its cleanup.
@@ -60,23 +88,37 @@ function createTempFile() {
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
 # use: if createTempFileNoCleanup; then echo "Temp file: ${RESULT}"; fi
 function createTempFileNoCleanup() {
-  local -i _rescode;
+  local -i _rescode=${FALSE};
   local _result;
-  DW.getScriptName;
-  local _scriptName="${RESULT}";
+  local -i _execAllowed=${FALSE};
 
-  local _prefix="$(echo \"${_scriptName}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
   local _dirname="$(dirname '${_scriptName}')";
-  if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
+  if areEqual "${_dirname#\.\.}" "${_dirname}"; then
     _dirname="$PWD/${_dirname#\.}";
   else
     _dirname="$PWD/../${_dirname#\.\.}";
   fi
-  FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
-  _rescode=$?;
 
-  if isFalse ${_rescode} ; then
-    FILE.mktempFile "${PWD}" ".${_prefix}.XXXXXXXXXX";
+  if folderAllowsExec "${_dirname}"; then
+    _execAllowed=${TRUE};
+  else
+    _dirname="$(dirname $(mktemp -u))";
+    if folderAllowsExec "${_dirname}"; then
+      _execAllowed=${TRUE};
+    else
+      _dirname="${PWD}";
+    fi
+  fi
+
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+  local _prefix="$(echo \"${_scriptName}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
+
+  if isTrue ${_execAllowed}; then
+    FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
+    _rescode=$?;
+  else
+    FILE.mktempFile ".${_prefix}.XXXXXXXXXX";
     _rescode=$?;
   fi
 
@@ -877,20 +919,36 @@ function replaceVariablesInFile() {
   return ${_rescode};
 }
 
-# fun: updateFilePermissions file permissions
+# fun: changeFilePermissions file permissions
 # api: public
 # txt: Changes the permissions of given file.
 # opt: file: The file to update.
 # opt: permissions: The permissions.
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
-# use: if updateFilePermissions /tmp/my-file 0700; then echo "Permissions changed"; fi
-function updateFilePermissions() {
+# use: if changeFilePermissions /tmp/my-file 0700; then echo "Permissions changed"; fi
+function changeFilePermissions() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
   local _permissions="${2}";
   checkNotEmpty permissions "${_permissions}" 2;
 
   chmod ${_permissions} ${_file} > /dev/null 2>&1;
+}
+
+# fun: changeFolderPermissionsRecursively folder permissions
+# api: public
+# txt: Changes the permissions of given folder, recursively.
+# opt: folder: The folder to update.
+# opt: permissions: The permissions.
+# txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
+# use: if changeFolderPermissionsRecursively /tmp/ 0700; then echo "Permissions changed"; fi
+function changeFolderPermissionsRecursively() {
+  local _folder="${1}";
+  checkNotEmpty folder "${_folder}" 1;
+  local _permissions="${2}";
+  checkNotEmpty permissions "${_permissions}" 2;
+
+  chmod -R ${_permissions} ${_folder} > /dev/null 2>&1;
 }
 
 # fun: changeOwnerOfFile file user group? ownership?
@@ -917,13 +975,12 @@ function changeOwnerOfFile() {
   chown "${_ownership}" "${_file}" > /dev/null 2>&1;
 }
 
-# fun: changeOwnerOfFolderRecursively dir user group? ownership?
+# fun: changeOwnerOfFolderRecursively dir user group?
 # api: public
 # txt: Changes the ownership of given folder and its contents.
 # opt: dir: The folder to update.
 # opt: user: The user.
 # opt: group: The group. Optional.
-# opt: ownership: The ownership. Optional.
 # txt: Returns 0/TRUE if the owner information was updated; 1/FALSE otherwise.
 # use: if changeOwnerOfFolderRecursively /tmp root wheel; then echo "Ownership changed"; fi
 function changeOwnerOfFolderRecursively() {
