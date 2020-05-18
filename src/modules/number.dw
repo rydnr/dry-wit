@@ -224,4 +224,116 @@ function lastDigit() {
 
   return ${_rescode};
 }
+
+# fun: add first second
+# api: public
+# txt: Adds given numbers.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the numbers could be added; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the sum.
+# use: if add 3 9; then echo "3+9=${RESULT}"; fi
+function add() {
+  local first="${1}";
+  checkNumber first "${first}" 1;
+  local second="${2}";
+  checkNumber second "${second}" 2;
+
+  local -i _rescode=${FALSE};
+
+  let _result=$((first+second));
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: subtract first second
+# api: public
+# txt: Substracts the second number from the first one.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the subtraction was possible; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the subtraction.
+# use: if subtract 9 3; then echo "9-3=${RESULT}"; fi
+function subtract() {
+  local first="${1}";
+  checkNumber first "${first}" 1;
+  local second="${2}";
+  checkNumber second "${second}" 2;
+
+  local -i _rescode=${FALSE};
+
+  let _result=$((first-second));
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: multiply first second
+# api: public
+# txt: Multiplies given numbers.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the numbers could be multiplied; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the product.
+# use: if multiply 3 9; then echo "3*9=${RESULT}"; fi
+function multiply() {
+  local first="${1}";
+  checkNumber first "${first}" 1;
+  local second="${2}";
+  checkNumber second "${second}" 2;
+
+  local -i _rescode=${FALSE};
+
+  let _result=$((first*second));
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: divide first second
+# api: public
+# txt: Multiplies given numbers.
+# opt: first: The first number.
+# opt: second: The second number.
+# txt: Returns 0/TRUE if the numbers could be divided; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the division.
+# use: if divide 9 3; then echo "9/3=${RESULT}"; fi
+function divide() {
+  local first="${1}";
+  checkNumber first "${first}" 1;
+  local second="${2}";
+  checkNumber second "${second}" 2;
+
+  local -i _rescode=${FALSE};
+
+  let _result=$((first/second));
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT=${_result};
+  else
+    export RESULT="";
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -131,5 +131,57 @@ function toOrdinal_works_test() {
   IFS="${_oldIFS}";
 }
 
+function multiply_works_test() {
+  local -i _first=3;
+  local -i _second=5;
+
+  multiply ${_first} ${_second};
+  local -i _rescode=$?;
+  local _result=${RESULT};
+
+  Assert.isTrue ${_rescode} "multiply ${_first} ${_second} failed (non-zero code)";
+  Assert.isNotEmpty "${_result}" "multiply ${_first} ${_second} failed (returned an empty string)";
+  Assert.areEqual 15 "${_result}" "multiply ${_first} ${_second} failed (${_result})";
+}
+
+function divide_works_test() {
+  local -i _first=15;
+  local -i _second=5;
+
+  divide ${_first} ${_second};
+  local -i _rescode=$?;
+  local -i _result=${RESULT};
+
+  Assert.isTrue ${_rescode} "divide ${_first} ${_second} failed (non-zero code))";
+  Assert.isNotEmpty "${_result}" "divide ${_first} ${_second} failed (returned an empty string)";
+  Assert.areEqual 3 "${_result}" "divide ${_first} ${_second} failed (${_result})";
+}
+
+function add_works_test() {
+  local -i _first=15;
+  local -i _second=5;
+
+  add ${_first} ${_second} 2> /dev/null;
+  local -i _rescode=$?;
+  local _result=${RESULT};
+
+  Assert.isTrue ${_rescode} "add ${_first} ${_second} failed (non-zero-code)";
+  Assert.isNotEmpty "${_result}" "add ${_first} ${_second} failed (returned an empty string)";
+  Assert.areEqual 20 "${_result}" "add ${_first} ${_second} failed (${_result})";
+}
+
+function subtract_works_test() {
+  local -i _first=15;
+  local -i _second=5;
+
+  subtract ${_first} ${_second};
+  local -i _rescode=$?;
+  local -i _result=${RESULT};
+
+  Assert.isTrue ${_rescode} "subtract ${_first} ${_second} (non-zero code)";
+  Assert.isNotEmpty "${_result}" "subtract ${_first} ${_second} failed (returned an empty string)";
+  Assert.areEqual 10 "${_result}" "subtract ${_first} ${_second} failed (${_result})";
+}
+
 setScriptDescription "Runs all tests implemented for number.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
