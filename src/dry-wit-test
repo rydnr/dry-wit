@@ -812,12 +812,16 @@ function Assert.isEmpty() {
 function Assert.isNotEmpty() {
   local _value="${1}";
   local _message="${2}";
+
+  if isEmpty "${_message}"; then
+    _message="${1}";
+  fi
   checkNotEmpty message "${_message}" 2;
 
-  if isNotEmpty "${_value}"; then
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
-  else
+  if isEmpty "${_value}"; then
     DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(value is empty)";
+  else
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
   fi
 }
 
