@@ -100,23 +100,21 @@ function runCommandAsUserAndGroup() {
   createTempFile;
   local _runme="${RESULT}";
 
-  createTempFile;
-  _runme="${RESULT}";
-
-  cat << EOF > "${_runme}"
+  cat << EOF > "${_runme}";
 #!/bin/bash
 
-${_exports}
-declare -x HOME="$(eval echo ~${_user})"
-cd ${_folder}
-${_line}
+${_exports};
+declare -x HOME="$(eval echo ~${_user})";
+cd ${_folder};
+${_line};
 EOF
-  chmod a+r "${_runme}"
-  chmod a+x "${_runme}"
+  chmod a+r "${_runme}";
+  chown ${_user}:${_group} "${_runme}";
+  chmod a+x "${_runme}";
 
   logDebug "Running ${_command} ${_args} as ${_user}:${_group}";
-  chown ${_user}:${_group} "${_runme}"
-  exec 2>&1
+  chown ${_user}:${_group} "${_runme}";
+  exec 2>&1;
   chpst -u ${_user}:${_group} "${_runme}";
   rescode=$?;
 

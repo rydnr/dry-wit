@@ -73,12 +73,18 @@ function cleanup() {
     IFS="${DWIFS}";
     for _i in ${_cleanupFiles[@]}; do
       IFS="${_oldIFS}";
-      rm -rf ${_i} > /dev/null 2>&1;
+      rm -rf "${_i}" > /dev/null 2>&1;
       if isTrue $?; then
-        _deleted="${_deleted} ${_i}";
+        if isNotEmpty "${_deleted}"; then
+          _deleted="${_deleted} ";
+        fi
+        _deleted="${_deleted}${_i}";
         _deletedCount=$((_deletedCount + 1));
       else
-        _notDeleted="${_notDeleted} ${_i}";
+        if isNotEmpty "${_notDeleted}"; then
+          _notDeleted="${_notDeleted} ";
+        fi
+        _notDeleted="${_notDeleted}${_i}";
         _notDeletedCount=$((_notDeletedCount + 1));
       fi
     done

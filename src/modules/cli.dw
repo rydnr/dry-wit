@@ -509,14 +509,18 @@ function checkInput() {
       _flagCount=$((_flagCount+1));
       shift;
 
-      CLI.checkFlag "${_flag}" $@;
-      _shifts=$?;
-      IFS="${DWIFS}";
-      for _i in $(seq 1 ${_shifts}); do
-        IFS="${_oldIFS}";
-        shift;
-      done
-      _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
+      if areEqual "${_flag}" "--"; then
+        break;
+      else
+        CLI.checkFlag "${_flag}" $@;
+        _shifts=$?;
+        IFS="${DWIFS}";
+        for _i in $(seq 1 ${_shifts}); do
+          IFS="${_oldIFS}";
+          shift;
+        done
+        _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
+      fi
     fi
   done
   IFS="${_oldIFS}";
@@ -560,14 +564,18 @@ function parseInput() {
     _aux1=$((_aux1+1));
     _providedFlags[${#_providedFlags[@]}]="${_flag}";
 
-    CLI.parseFlag "${_flag}" "${@}";
-    _shifts=$?;
-    IFS="${DWIFS}";
-    for _i in $(seq 1 ${_shifts}); do
-      IFS="${_oldIFS}";
-      shift;
-      _aux2=$((_aux2+1));
-    done
+    if areEqual "${_flag}" "--"; then
+      break;
+    else
+      CLI.parseFlag "${_flag}" "${@}";
+      _shifts=$?;
+      IFS="${DWIFS}";
+      for _i in $(seq 1 ${_shifts}); do
+        IFS="${_oldIFS}";
+        shift;
+        _aux2=$((_aux2+1));
+      done
+    fi
   done
   IFS="${_oldIFS}";
 
@@ -927,7 +935,7 @@ function CLI.checkCommandLineFlag() {
   fi
 
   if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
-    _argument="${@}";
+    _argument="${1}";
     toUpper "${_longName}";
     _longNameInUpperCase="${RESULT}";
     if isTrue ${_mandatory} && isEmpty "${_argument}"; then
