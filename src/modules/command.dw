@@ -95,7 +95,6 @@ function runCommandAsUserAndGroup() {
 
   checkReq chpst;
 
-  local -i rescode;
   local _line="${_command//$'\n'/ } ${_args//$'\n'/ }";
   createTempFile;
   local _runme="${RESULT}";
@@ -118,9 +117,9 @@ EOF
   chown ${_user}:${_group} "${_runme}";
   exec 2>&1;
   chpst -u ${_user}:${_group} "${_runme}";
-  rescode=$?;
+  local -i _rescode=$?;
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: runCommandLongOutput command
