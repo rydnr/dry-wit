@@ -18,11 +18,12 @@ function enableMongodbCrAuthentication() {
    return ${_rescode};
 }
 
-# fun: addMongodbRootUser user password
+# fun: addMongodbRootUser user password authenticationDatabase?
 # api: public
 # txt: Adds the root user.
 # opt: user: The user.
 # opt: password: The password.
+# opt: authenticationDatabase: The authentication database. Optional. Defaults to "admin".
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
 # use: if addMongodbRootUser "admin" "secret"; then echo "User admin created successfully"; fi
@@ -31,20 +32,25 @@ function addMongoDbRootUser() {
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
   checkNotEmpty password "${_password}" 2;
+  local _authDb="${3}";
+  if isEmpty "${_authDb}"; then
+    _authDb="admin";
+  fi
+
   local -i _rescode;
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-use ${_adminDatabase}
+use ${_authDb}
 db.createUser(
   {
     user: "${_user}",
     pwd: "${_password}",
     roles: [
-      { role: "userAdmin", db: "admin" },
-      { role: "userAdminAnyDatabase", db: "admin" }
+      { role: "userAdmin", db: "${_authDb}" },
+      { role: "userAdminAnyDatabase", db: "${_authDb}" }
     ]
   }
 )
@@ -59,17 +65,19 @@ EOF
   return ${_rescode};
 }
 
-# fun: addMongoDbUser user password database root rootPassword authenticationDatabase
+# fun: addMongoDbUser user password database root rootPassword authenticationDatabase role+
 # api: public
 # txt: Adds a new user.
 # opt: user: The user.
 # opt: password: The password.
-# opt: database: The database.
+# opt: database: The user database.
 # opt: root: The root user.
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
+# opt: role: The role to assign to given database.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
-# use: if addMongoDbUser "my-user" "secret" "my-db" "root" "s3cr3t" "admin"; then echo "User admin created successfully"; fi
+# txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
+# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "dbOwner"; then echo "User admin created successfully"; fi
 function addMongoDbUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
@@ -82,13 +90,31 @@ function addMongoDbUser() {
   local _rootPassword="${5}";
   checkNotEmpty rootPassword "${_rootPassword}" 5;
   local _authDb="${6}";
-  checkNotEmpty authenticationDb "${_authDb}" 6;
-
+  checkNotEmpty authenticationDatabase "${_authDb}" 6;
+  local _roleSpec="${@}";
+  checkNotEmpty role "${_roleSpec}" 7;
   local -i _rescode;
 
-#  mongo --eval "db.getSiblingDB('${_database}').createUser(user:'${_user}', pwd:'${_password}', roles:[{role:'${_role}', db:'${_database}'}])";
-  mongo ${_database} -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --eval "db.createUser({user: '${_user}', pwd: '${_password}', roles:['dbOwner']});";
+  local _oldIFS="${IFS}";
+  local _role;
+  local _roles;
+
+  IFS="${DWIFS}";
+  for _role in ${_roleSpec}; do
+    IFS="${_oldIFS}";
+    if isNotEmpty "${_roles}"; then
+      _roles="${_roles}, ";
+    fi
+    _roles="{ role: '${_role}', db: '${_database}' }";
+  done;
+  IFS="${_oldIFS}";
+
+  local _output="$(mongo ${_database} -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --eval "db.createUser({user: '${_user}', pwd: '${_password}', roles:[ ${_roles} ]});")";
   _rescode=$?;
+
+  if isFalse "${_rescode}"; then
+    export ERROR="${_output}";
+  fi
 
   return ${_rescode};
 }
@@ -184,7 +210,7 @@ function mongoDump() {
 # opt: permissionsFolder: The folder used to get the permissions from (the user and group will be adapted to match the folder's).
 # opt: configFile: The mongod config file.
 # txt: Returns 0/TRUE if the process could be started; 1/FALSE otherwise.
-# use: if startMongodbWithAuthenticationDisabled mongo mongo /var/lib/mongodb /etc/mongod.conf; then echo "mongod started"; fi
+# use: startMongodbWithAuthenticationDisabled mongo mongo /var/lib/mongodb /etc/mongod.conf & disown;
 function startMongodWithAuthenticationDisabled() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
@@ -203,7 +229,7 @@ function startMongodWithAuthenticationDisabled() {
 
   chmod a+x "${_permissionsFolder}";
 
-  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" & disown;
+  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}";
   local -i _rescode=$?;
 
   return ${_rescode};
@@ -218,7 +244,7 @@ function startMongodWithAuthenticationDisabled() {
 # opt: configFile: The mongod config file.
 # opt: authMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if the process could be started; 1/FALSE otherwise.
-# use: if startMongodbWithAuthenticationEnabled mongo mongo /var/lib/mongodb /etc/mongod.conf SCRAM-SHA-256; then echo "mongod started"; fi
+# use: startMongodbWithAuthenticationEnabled mongo mongo /var/lib/mongodb /etc/mongod.conf SCRAM-SHA-256 & disown;
 function startMongodWithAuthenticationEnabled() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
@@ -239,7 +265,7 @@ function startMongodWithAuthenticationEnabled() {
 
   chmod a+x "${_permissionsFolder}";
 
-  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authMechanism} & disown;
+  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authMechanism};
   local -i _rescode=$?;
 
   return ${_rescode};
