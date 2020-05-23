@@ -179,28 +179,31 @@ function buildColor() {
 
 # fun: allowsColors
 # api: public
-# txt: Checks whether the terminal allows colors or not.
+# txt: Checks whether the terminal allows colors or not. If the variable DW_DISABLE_ANSI_COLORS is non-empty, colors are disabled.
 # txt: Returns 0/TRUE if the terminal supports colors; 1/FALSE otherwise.
 # use: if allowsColors; then ...; fi
 function allowsColors() {
   local -i _rescode;
 
-  $(tput colors > /dev/null 2>&1);
-  if isTrue $?; then
-    _colors=$(tput colors);
-    if [ ${_colors} -ge 8 ]; then
-      env | grep -e '^_=' | grep env > /dev/null 2>&1;
-      if isTrue $?; then
-        _rescode=${TRUE};
+  if isEmpty "${DW_DISABLE_ANSI_COLORS}"; then
+    local _colors="$(tput colors 2>&1)";
+    if isTrue $?; then
+      if isGreaterOrEqualTo "${_colors}" 8; then
+        env | grep -e '^_=' | grep env > /dev/null 2>&1;
+        if isTrue $?; then
+          _rescode=${TRUE};
+        else
+          _rescode=${FALSE};
+        fi
       else
         _rescode=${FALSE};
       fi
     else
       _rescode=${FALSE};
-    fi
+    fi;
   else
     _rescode=${FALSE};
-  fi;
+  fi
 
   return ${_rescode};
 }
@@ -310,4 +313,7 @@ function COLOR.resetState() {
   setInProgressColor BLUE;
   setNoColor GRAY;
 }
+
+# env: DW_DISABLE_ANSI_COLORS: Whether to disable ANSI colors completely.
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
