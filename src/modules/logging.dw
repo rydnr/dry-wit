@@ -2137,7 +2137,11 @@ function setLogTimestampFormat() {
 # use: LOGGING.retrieveLogTimestamp; echo "The log timestamp is ${RESULT}";
 function LOGGING.retrieveLogTimestamp() {
   getLogTimestampFormat;
-  export RESULT="$(date "${RESULT}")";
+  local _format="${RESULT}";
+  if isEmpty "${_format}"; then
+    _format="+%Y/%m/%d %H:%M:%S";
+  fi
+  export RESULT="$(date "${_format}")";
 }
 
 # fun: LOGGING.getOutcomeTextPositionInLogOutcome
@@ -2600,7 +2604,11 @@ function LOGGING.logToFilesAnEmptyLine() {
 # use: if applyThemeIfPresent; then echo "Theme applied"; fi
 function applyThemeIfPresent() {
   getModulePath;
-  sourceFileIfExists "${RESULT}/../../themes/current.dwt";
+  if fileExists "${RESULT}/../../themes/current.dwt"; then
+    sourceFileIfExists "${RESULT}/../../themes/current.dwt";
+  else
+    sourceFileIfExists "${RESULT}/../../themes/default.dwt";
+  fi
 }
 
 # State
