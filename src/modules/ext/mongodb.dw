@@ -60,7 +60,7 @@ db.createUser(
     user: "${_user}",
     pwd: "${_password}",
     roles: [
-      { role: "superRoot" }
+      { role: "superRoot", db: "${_authDb}" }
     ]
   }
 )
@@ -75,13 +75,14 @@ EOF
   return ${_rescode};
 }
 
-# fun: addMongodbBackupRole roleName root rootPassword authenticationDatabase?
+# fun: addMongodbBackupRole roleName root rootPassword authenticationDatabase? authenticationMechanism?
 # api: public
 # txt: Adds a backup role (includes both "backup" and "restore").
 # opt: roleName: The role name. It must not match any of the built-in roles.
 # opt: root: The root user.
 # opt: rootPassword: The root password.
-# opt: authenticationDatabase: The authentication database. Optional. Defaults to "admin".
+# opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
+# opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256
 # txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
 # use: if addMongodbBackupRole "backupRestore" root "s3cr3t"; then echo "Role backupRestore created successfully"; fi
@@ -107,7 +108,7 @@ db.createRole(
     role: "${_roleName}",
     privileges: [
     ],
-    roles: [ "backup", "restore" ]
+    roles: [ { role: "backup", db: "${_authDb}" },{ role: "restore", db: "${_authDb}" ]
   }
 )
 EOF
@@ -121,7 +122,7 @@ EOF
   return ${_rescode};
 }
 
-# fun: addMongoDbUser user password database root rootPassword authenticationDatabase role+
+# fun: addMongoDbUser user password database root rootPassword authenticationDatabase authenticationMechanism roleSpec+
 # api: public
 # txt: Adds a new user.
 # opt: user: The user.
@@ -130,25 +131,35 @@ EOF
 # opt: root: The root user.
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
-# opt: role: The role to assign to given database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: roleSpec: The space-separated list of role names.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
-# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "dbOwner"; then echo "User admin created successfully"; fi
+# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "dbOwner backup"; then echo "User admin created successfully"; fi
 function addMongoDbUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
-  local _password="${2}";
+  shift;
+  local _password="${1}";
   checkNotEmpty password "${_password}" 2;
-  local _database="${3}";
+  shift;
+  local _database="${1}";
   checkNotEmpty database "${_database}" 3;
-  local _root="${4}";
+  shift;
+  local _root="${1}";
   checkNotEmpty root "${_root}" 4;
-  local _rootPassword="${5}";
+  shift;
+  local _rootPassword="${1}";
   checkNotEmpty rootPassword "${_rootPassword}" 5;
-  local _authDb="${6}";
+  shift;
+  local _authDb="${1}";
   checkNotEmpty authenticationDatabase "${_authDb}" 6;
+  shift;
+  local _authMechanism="${7}";
+  checkNotEmpty authenticationMechanism "${_authMechanism}" 7;
+  shift;
   local _roleSpec="${@}";
-  checkNotEmpty role "${_roleSpec}" 7;
+  checkNotEmpty roleSpec "${_roleSpec}" 7;
   local -i _rescode;
 
   local _oldIFS="${IFS}";
@@ -161,34 +172,29 @@ function addMongoDbUser() {
     if isNotEmpty "${_roles}"; then
       _roles="${_roles}, ";
     fi
-    _roles="{ role: '${_role}', db: '${_database}' }";
+    _roles="{ role: '${_role}', db: '${_authDb}' }";
   done;
   IFS="${_oldIFS}";
 
-  local _output="$(mongo ${_database} -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --eval "db.createUser({user: '${_user}', pwd: '${_password}', roles:[ ${_roles} ]});")";
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+use ${_authDb}
+db.createUser(
+  {
+    user: "${_user}",
+    pwd: "${_password}",
+    roles: [ ${_roles} ]
+  }
+)
+EOF
+  local _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
   _rescode=$?;
 
   if isFalse "${_rescode}"; then
     export ERROR="${_output}";
   fi
-
-  return ${_rescode};
-}
-
-# fun: restoreMongoDbBackup file
-# api: public
-# txt: Restores from backup.
-# opt: file: The file to restore from.
-# txt: Returns 0/TRUE if the restore process succeeds; 1/FALSE otherwise.
-# use: if restoreMongoDbBackup "/tmp/dump.gz"; then echo "Backup /tmp/dump.gz restored successfully"; fi
-function restoreMongoDbBackup() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-
-  local -i _rescode;
-
-  mongoimport "${_file}";
-  _rescode=$?;
 
   return ${_rescode};
 }
@@ -211,11 +217,14 @@ function isMongodRunning() {
 function killMongod() {
   local _pids;
 
+  local -i _rescode=${TRUE};
+
   logInfo -n "Killing mongod process";
   if isMongodRunning; then
     _pids="${RESULT}";
-    echo ${_pids} | xargs kill
-    if isTrue $?; then
+    echo ${_pids} | xargs kill;
+    _rescode=$?;
+    if isTrue ${_rescode}; then
       logInfoResult SUCCESS "done";
     else
       logInfoResult FAILURE "failed";
@@ -223,9 +232,11 @@ function killMongod() {
   else
     logInfoResult SUCCESS "not running";
   fi
+
+  return ${_rescode};
 }
 
-# fun: mongoDump output host? user? pass? authenticationDatabase? authenticationMechanism?
+# fun: mongoDump output host? user? pass? authenticationDatabase? authenticationMechanism? database?
 # api: public
 # txt: Performs a dump (gzipped, using the MongoDB archive format).
 # opt: output: The output file.
@@ -233,7 +244,8 @@ function killMongod() {
 # opt: user: The user name. Optional.
 # opt: password: The password. Optional.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
-# opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA1.
+# opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256.
+# opt: database: The database to export. Optional.
 # txt: Returns 0/TRUE if the dump gets created successfully; 1/FALSE otherwise.
 # use: if mongoDump /tmp/dump-today.gz localhost root secret; then echo "dump succeeded"; fi
 function mongoDump() {
@@ -243,19 +255,66 @@ function mongoDump() {
   local _user="${3}";
   local _pass="${4}";
   local _authDb="${5:-admin}";
-  local _authMechanism="${6:-SCRAM-SHA1}";
+  local _authMechanism="${6:-SCRAM-SHA-256}";
+  local _database="${7}";
+
+  if isNotEmpty "${_database}"; then
+    _database="-d ${_database}";
+  fi
 
   local -i _rescode;
 
   if isEmpty "${_user}"; then
-    mongodump --gzip --archive="${_output}" -h ${_host} > /dev/null 2>&1;
+    mongodump --gzip --archive="${_output}" -h ${_host} ${_database} > /dev/null 2>&1;
     _rescode=$?;
   else
-    mongodump --gzip --archive="${_output}" -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authDb} --authenticationMechanism=${_authMechanism} > /dev/null 2>&1
+    mongodump --gzip --archive="${_output}" -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authDb} --authenticationMechanism=${_authMechanism} ${_database} > /dev/null 2>&1
     _rescode=$?;
   fi
 
-  return ${_rescode}
+  return ${_rescode};
+}
+
+# fun: mongoRestore file host? user? pass? authenticationDatabase? authenticationMechanism? database?
+# api: public
+# txt: Restores from backup.
+# opt: file: The file to restore from.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: user: The user name. Optional.
+# opt: password: The password. Optional.
+# opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
+# opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256.
+# opt: database: The database to export. Optional.
+# txt: Returns 0/TRUE if the restore process succeeds; 1/FALSE otherwise.
+# use: if mongoRestore "/tmp/dump.gz"; then echo "Backup /tmp/dump.gz restored successfully"; fi
+function mongoRestore() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+
+  local -i _rescode;
+
+  local _host="${2:-localhost}";
+  local _user="${3}";
+  local _pass="${4}";
+  local _authDb="${5:-admin}";
+  local _authMechanism="${6:-SCRAM-SHA-256}";
+  local _database="${7}";
+
+  if isNotEmpty "${_database}"; then
+    _database="-d ${_database}";
+  fi
+
+  local -i _rescode;
+
+  if isEmpty "${_user}"; then
+    mongoimport -h ${_host} ${_database} "${_file}" > /dev/null 2>&1;
+    _rescode=$?;
+  else
+    mongoimport -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authDb} --authenticationMechanism=${_authMechanism} ${_database} "${_file}" > /dev/null 2>&1
+    _rescode=$?;
+  fi
+
+  return ${_rescode};
 }
 
 # fun: startMongodWithAuthenticationDisabled user group permissionsFolder configFile
