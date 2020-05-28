@@ -739,22 +739,23 @@ function DW.import() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
 
-  local _modulePath;
-
-  if findModule "${_module}"; then
-    _modulePath="${RESULT}";
-  elif downloadModule "${_module}"; then
-    _modulePath="${RESULT}";
-  else
-    echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?"
-    exit 1;
-  fi
-
   BOOTSTRAP.getImportedModulesVariableName;
   local -n _importedModules=${RESULT};
 
   if    BOOTSTRAP.isEmpty "${_importedModules[@]}" \
-      || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[@]}"; then
+     || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[@]}"; then
+
+    local _modulePath;
+
+    if findModule "${_module}"; then
+      _modulePath="${RESULT}";
+    elif downloadModule "${_module}"; then
+      _modulePath="${RESULT}";
+    else
+      echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?"
+      exit 1;
+    fi
+
     BOOTSTRAP.logTrace -n "Loading ${_modulePath}";
     source "${_modulePath}";
     BOOTSTRAP.logTraceResult SUCCESS "done";
