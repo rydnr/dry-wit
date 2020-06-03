@@ -1,0 +1,118 @@
+# mod: step
+# api: public
+# txt: Some simple functions to help with step-by-step scripts.
+
+# fun: STEP.getModuleName
+# api: private
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: STEP.getModuleName; echo "Module: ${RESULT}";
+function STEP.getModuleName() {
+  export RESULT="STEP";
+  return ${TRUE};
+}
+
+# fun: isStepAlreadyDone label
+# api: public
+# txt: Checks if given step is already done.
+# opt: label: The step label.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if isStepAlreadyDone SAMPLE_STEP; then echo "SAMPLE_STEP already done"; fi
+function isStepAlreadyDone() {
+  local _label="${1}";
+  checkNotEmpty label "${_label}" 1;
+  local -i _rescode=${FALSE};
+
+  STEP.buildStepFilename "${_label}";
+  local _fileName="${RESULT}";
+
+  if fileExists "${_fileName}"; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: markStepAsAlreadyDone label
+# api: public
+# txt: Annotanes given step is already done.
+# opt: label: The step label.
+# txt: Returns 0/TRUE always.
+# use: markStepAlreadyDone SAMPLE_STEP;
+function markStepAsAlreadyDone() {
+  local _label="${1}";
+  checkNotEmpty label "${_label}" 1;
+  local -i _rescode=${FALSE};
+
+  STEP.buildStepFilename "${_label}";
+  local _fileName="${RESULT}";
+
+  touch "${_fileName}" > /dev/null 2>&1;
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: STEP.buildStepFilename label
+# api: private
+# txt: Builds the filename used to mark if a step is already done.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the filename.
+# use: STEP.buildStepFilename ADD_USER;
+function STEP.buildStepFilename() {
+  local _label="${1}";
+  checkNotEmpty label "${_label}" 1;
+
+  getStepStatusFolder;
+  local _folder="${RESULT}";
+
+  DW.getScriptName;
+  local _scriptName="$(basename ${RESULT})";
+
+  normalize "${_label}";
+  local _result="${_folder}/.${_scriptName}-${RESULT}.done";
+
+  export RESULT="${_result}";
+}
+
+# fun: setStepStatusFolder folder
+# api: public
+# txt: Specifies the step status folder (where the marked files are created).
+# txt: Returns 0/TRUE always.
+# use: setStepStatusFolder /tmp;
+function setStepStatusFolder() {
+  local _folder="${1}";
+  checkNotEmpty folder "${_folder}" 1;
+
+  STEP.getModuleName;
+  local _moduleName="${RESULT}";
+
+  # env: STATUS_FOLDER: The defined environment variables.
+  DW.declareGlobalString "${_moduleName}" STATUS_FOLDER "${_folder}";
+}
+
+# fun: getStepStatusFolder
+# api: public
+# txt: Retrieves the step status folder (where the marked files are created).
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the step status folder.
+# use: getStepStatusFolder; echo "Step status folder: ${RESULT}";
+function getStepStatusFolder() {
+  STEP.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalString "${_moduleName}" STATUS_FOLDER;
+}
+
+# fun: STEP.resetState
+# api: private
+# txt: Resets the state of the module.
+# use: STEP.resetState
+function STEP.resetState() {
+  DW.getScriptName;
+  local _scriptPath="$(dirname ${RESULT})";
+
+  setStepStatusFolder "${_scriptPath}";
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

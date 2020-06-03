@@ -224,7 +224,7 @@ function DW.declareGlobalVariable() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _varType="${3}";
   BOOTSTRAP.checkNotEmpty varType "${_varType}" 3;
-  local _initialValue="${4}";
+  local _initialValue="${4:-}";
   shift;
   shift;
   shift;
@@ -303,7 +303,7 @@ function DW.buildGlobalVariableName() {
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local -i _rescode;
+  local -i _rescode=${TRUE};
 
   BOOTSTRAP.toUpper "${_module}";
   local _moduleUpcased="${RESULT}";
@@ -677,7 +677,6 @@ function downloadModule() {
   curl -s "${_moduleUrl}/${_module}.dw" > "${_modulePath}/${_module}.dw";
   _rescode=$?;
   if [[ ${_rescode} -eq ${TRUE} ]]; then
-    BOOTSTRAP.logDebugResult SUCCESS "done";
     export RESULT="${_modulePath}/${_module}.dw";
   else
     rm -f "${_modulePath}/${_module}.dw";
@@ -708,6 +707,18 @@ function BOOTSTRAP.getBootstrapModulesVariableName() {
   DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
 }
 
+# fun: BOOTSTRAP.getEssentialModulesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the essential modules.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable with the essential modules.
+# use: BOOTSTRAP.getEssentialModulesVariableName; local -n essentialModules=${RESULT};
+function BOOTSTRAP.getEssentialModulesVariableName() {
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" ESSENTIAL_MODULES;
+}
+
 # fun: BOOTSTRAP.bootstrap
 # txt: Bootstraps dry-wit.
 # txt: Returns always 0/TRUE.
@@ -716,6 +727,15 @@ function BOOTSTRAP.bootstrap() {
   local _module;
   local _modulePath;
   local _oldIFS="${IFS}";
+
+  BOOTSTRAP.getEssentialModulesVariableName;
+  local -n _essentialModules=${RESULT};
+
+  IFS=${DWIFS};
+  for _module in ${_essentialModules[@]}; do
+    IFS="${_oldIFS}";
+    DW.import "${_module}";
+  done;
   IFS="${_oldIFS}";
 
   BOOTSTRAP.getBootstrapModulesVariableName;
@@ -725,7 +745,7 @@ function BOOTSTRAP.bootstrap() {
   for _module in ${_bootstrapModules[@]}; do
     IFS="${_oldIFS}";
     DW.import "${_module}";
-  done
+  done;
   IFS="${_oldIFS}";
 }
 
@@ -1025,16 +1045,21 @@ function BOOTSTRAP.resetState() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
 
+  # env: __DRYWIT_ESSENTIAL_MODULES: The essential modules.
+  DW.declareGlobalArray "${_moduleName}" ESSENTIAL_MODULES;
+  DW.getGlobalVariableName "${_moduleName}" ESSENTIAL_MODULES;
+  local -n _essentialModules=${RESULT};
+  _essentialModules[${#_essentialModules[@]}]=check;
+  _essentialModules[${#_essentialModules[@]}]=stdlib;
+  _essentialModules[${#_essentialModules[@]}]=number;
+  _essentialModules[${#_essentialModules[@]}]=string;
+  _essentialModules[${#_essentialModules[@]}]=array;
+  _essentialModules[${#_essentialModules[@]}]=envvar;
+
   # env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
   DW.declareGlobalArray "${_moduleName}" BOOTSTRAP_MODULES;
   DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
   local -n _bootstrapModules=${RESULT};
-  _bootstrapModules[${#_bootstrapModules[@]}]=check;
-  _bootstrapModules[${#_bootstrapModules[@]}]=stdlib;
-  _bootstrapModules[${#_bootstrapModules[@]}]=number;
-  _bootstrapModules[${#_bootstrapModules[@]}]=string;
-  _bootstrapModules[${#_bootstrapModules[@]}]=array;
-  _bootstrapModules[${#_bootstrapModules[@]}]=envvar;
   _bootstrapModules[${#_bootstrapModules[@]}]=color;
   _bootstrapModules[${#_bootstrapModules[@]}]=constant;
   _bootstrapModules[${#_bootstrapModules[@]}]=logging;
@@ -1067,8 +1092,8 @@ function BOOTSTRAP.resetState() {
 set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
 #set -o xtrace   # trace what gets executed
 
-if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
-  return;
+if [ ! -z ${SKIP_LOADING_DRY_WIT+x} ]; then
+  exit 0;
 fi
 
 if [ -z ${DW_SCRIPT_INDEX+x} ]; then

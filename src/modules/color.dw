@@ -185,24 +185,31 @@ function buildColor() {
 function allowsColors() {
   local -i _rescode;
 
-  if isEmpty "${DW_DISABLE_ANSI_COLORS}"; then
-    local _colors="$(tput colors 2>&1)";
-    if isTrue $?; then
-      if isGreaterOrEqualTo "${_colors}" 8; then
-        env | grep -e '^_=' | grep env > /dev/null 2>&1;
-        if isTrue $?; then
-          _rescode=${TRUE};
+  local _cachedResult="${_DW_ALLOWS_COLORS}";
+
+  if isEmpty "${_cachedResult}"; then
+    if isEmpty "${DW_DISABLE_ANSI_COLORS}"; then
+      local _colors="$(tput colors 2>&1)";
+      if isTrue $?; then
+        if isGreaterOrEqualTo "${_colors}" 8; then
+          env | grep -e '^_=' | grep env > /dev/null 2>&1;
+          if isTrue $?; then
+            _rescode=${TRUE};
+          else
+            _rescode=${FALSE};
+          fi
         else
           _rescode=${FALSE};
         fi
       else
         _rescode=${FALSE};
-      fi
+      fi;
     else
       _rescode=${FALSE};
-    fi;
+    fi
+    export _DW_ALLOWS_COLORS=${_rescode};
   else
-    _rescode=${FALSE};
+    _rescode=${_cachedResult};
   fi
 
   return ${_rescode};
@@ -287,28 +294,30 @@ function resetColor() {
 # txt: Returns 0/TRUE always.
 # use: COLOR.resetState
 function COLOR.resetState() {
-  buildColor VOID 0 0;
-  buildColor BLACK 30 0;
-  buildColor RED 31 41;
-  buildColor GREEN 32 42;
-  buildColor YELLOW 33 43;
-  buildColor BLUE 34 44;
-  buildColor MAGENTA 35 45;
-  buildColor CYAN 36 46;
-  buildColor GRAY 37 47;
-  buildColor BRIGHT_BLACK 90 100;
-  buildColor BRIGHT_RED 91 101;
-  buildColor BRIGHT_GREEN 92 102;
-  buildColor BRIGHT_YELLOW 93 103;
-  buildColor BRIGHT_BLUE 94 104;
-  buildColor BRIGHT_MAGENTA 95 105;
-  buildColor BRIGHT_CYAN 96 106;
-  buildColor WHITE 97 107;
+  if allowsColors; then
+    buildColor VOID 0 0;
+    buildColor BLACK 30 0;
+    buildColor RED 31 41;
+    buildColor GREEN 32 42;
+    buildColor YELLOW 33 43;
+    buildColor BLUE 34 44;
+    buildColor MAGENTA 35 45;
+    buildColor CYAN 36 46;
+    buildColor GRAY 37 47;
+    buildColor BRIGHT_BLACK 90 100;
+    buildColor BRIGHT_RED 91 101;
+    buildColor BRIGHT_GREEN 92 102;
+    buildColor BRIGHT_YELLOW 93 103;
+    buildColor BRIGHT_BLUE 94 104;
+    buildColor BRIGHT_MAGENTA 95 105;
+    buildColor BRIGHT_CYAN 96 106;
+    buildColor WHITE 97 107;
 
-  setSuccessColor GREEN;
-  setFailureColor RED;
-  setInProgressColor BLUE;
-  setNoColor GRAY;
+    setSuccessColor GREEN;
+    setFailureColor RED;
+    setInProgressColor BLUE;
+    setNoColor GRAY;
+  fi
 }
 
 # env: DW_DISABLE_ANSI_COLORS: Whether to disable ANSI colors completely.
