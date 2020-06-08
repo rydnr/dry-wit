@@ -143,6 +143,68 @@ EOF
   return ${_rescode};
 }
 
+# fun: addMongoDbRole roleName root rootPassword authenticationDatabase authenticationMechanism privilegeSpec? roleSpec?
+# api: public
+# txt: Adds a role.
+# opt: roleName: The role name. It must not match any of the built-in roles.
+# opt: targetDatabase: The target database.
+# opt: root: The root user.
+# opt: rootPassword: The root password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: privilegeSpec: The privilege spec.
+# opt: roleSpec: the role spec.
+# txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains error information.
+# use: if addMongoDbRole "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256 "[ { db: 'core', collection: 'eventSourcingEvent'}, actions: ['find'] } ]" '[]'; then echo "Role created successfully"; fi
+function addMongoDbRole() {
+  local _roleName="${1}";
+  checkNotEmpty roleName "${_roleName}" 1;
+  local _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _root="${3}";
+  checkNotEmpty root "${_root}" 3;
+  local _rootPassword="${4}";
+  checkNotEmpty rootPassword "${_rootPassword}" 4;
+  local _authDb="${5}";
+  checkNotEmpty authenticationDatabase "${_authDb}" 5;
+  local _authMechanism="${6}";
+  checkNotEmpty authenticationDatabase "${_authDb}" 6;
+  local _privilegeSpec="${7}";
+  checkNotEmpty privilegeSpec "${_privilegeSpec}" 7;
+  local _roleSpec="${8}";
+  checkNotEmpty roleSpec "${_roleSpec}" 8;
+  local -i _rescode;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+use ${_authDb}
+db.createRole(
+  {
+    role: "${_roleName}",
+    privileges: ${_privilegeSpec},
+    roles: ${_roleSpec}
+  }
+)
+EOF
+  local _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}" 2>&1)";
+  # _rescode=$?; # not reliable for some reason.
+
+  if contains "${_output}" "uncaught exception"; then
+    _rescode=${FALSE};
+    export ERROR="${_output}";
+  else
+    export RESULT="${_output}";
+    _rescode=${TRUE};
+  fi
+
+  cat ${_tmpFile};
+
+  return ${_rescode};
+}
+
 # fun: addMongoDbUser user password database root rootPassword authenticationDatabase authenticationMechanism roleSpec+
 # api: public
 # txt: Adds a new user.
@@ -156,7 +218,7 @@ EOF
 # opt: roleSpec: The space-separated list of role names.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
-# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "dbOwner backup"; then echo "User admin created successfully"; fi
+# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }""; then echo "User admin created successfully"; fi
 function addMongoDbUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
@@ -180,33 +242,19 @@ function addMongoDbUser() {
   checkNotEmpty authenticationMechanism "${_authMechanism}" 7;
   shift;
   local _roleSpec="${@}";
-  checkNotEmpty roleSpec "${_roleSpec}" 7;
+  checkNotEmpty roleSpec "${_roleSpec}" 8;
   local -i _rescode;
-
-  local _oldIFS="${IFS}";
-  local _role;
-  local _roles;
-
-  IFS="${DWIFS}";
-  for _role in ${_roleSpec}; do
-    IFS="${_oldIFS}";
-    if isNotEmpty "${_roles}"; then
-      _roles="${_roles}, ";
-    fi
-    _roles="{ role: '${_role}', db: '${_authDb}' }";
-  done;
-  IFS="${_oldIFS}";
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-use ${_authDb}
+use ${_database}
 db.createUser(
   {
     user: "${_user}",
     pwd: "${_password}",
-    roles: [ ${_roles} ]
+    roles: ${_roleSpec}
   }
 )
 EOF
@@ -217,8 +265,11 @@ EOF
     _rescode=${FALSE};
     export ERROR="${_output}";
   else
+    export RESULT="${_output}";
     _rescode=${TRUE};
   fi
+
+  cat ${_tmpFile};
 
   return ${_rescode};
 }
@@ -287,6 +338,7 @@ function disableMongoDbFreeMonitoring() {
     _rescode=${FALSE};
     export ERROR="${_output}";
   else
+    export RESULT="${_output}";
     _rescode=${TRUE};
   fi
 
