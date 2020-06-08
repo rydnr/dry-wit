@@ -1844,8 +1844,7 @@ function LOGGING.pushLogCategory() {
 # use: LOGGING.pushLogLevel INFO
 function LOGGING.pushLogLevel() {
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${1}" 1;
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
+  LOGGING.getLogLevelStackVariableName;
   local -n _logLevelStack=${RESULT};
   _logLevelStack[${#_logLevelStack[@]}]="$*";
 }
