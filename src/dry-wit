@@ -496,7 +496,7 @@ function BOOTSTRAP.logDebug() {
   local -i _position=1;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTrace is loaded.
+  ## logDebug is loaded.
   if BOOTSTRAP.isFunctionDefined "logDebug"; then
     logDebug $@;
   elif BOOTSTRAP.isDebugEnabled; then
@@ -553,7 +553,7 @@ function BOOTSTRAP.logDebugResult() {
   BOOTSTRAP.checkNotEmpty outcomeMessage "${_outcomeMessage}" 2;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTraceResult is loaded.
+  ## logDebugResult is loaded.
   if BOOTSTRAP.isFunctionDefined "logDebugResult"; then
     logDebugResult ${_outcome} "${_outcomeMessage}";
   fi
@@ -784,11 +784,9 @@ function DW.import() {
     local _normalizedModule="${RESULT}";
     if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.resetState"; then
       ${_normalizedModule}.resetState;
-      BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
     if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.defaultState"; then
       ${_normalizedModule}.defaultState;
-      BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
 
     _importedModules[${#_importedModules[@]}]="${_module}";
