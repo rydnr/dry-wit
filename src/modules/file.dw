@@ -791,12 +791,14 @@ function sourceFileIfExists() {
   checkNotEmpty file "${_file}" 1;
   local -i _rescode=${FALSE};
 
-  logTrace -n "Reading ${_file}";
   if fileExists "${_file}"; then
+    local _filePath="$(realpath "${_file}")";
+    logTrace -n "Reading ${_filePath}";
     _rescode=${TRUE};
-    source "${_file}";
+    source "${_filePath}";
     logTraceResult SUCCESS "done";
   else
+    logTrace -n "Reading ${_file}";
     logTraceResult SUCCESS "not found";
   fi
 

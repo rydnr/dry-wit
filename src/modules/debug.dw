@@ -114,7 +114,7 @@ function isDebugEchoEnabled() {
 # use: setDebugEchoEnabled TRUE;
 function setDebugEchoEnabled() {
   local _flag="${1}";
-  checkNotEmpty bool "${_flag}" 1;
+  checkBoolean bool "${_flag}" 1;
 
   DEBUG.getModuleName;
   local _moduleName="${RESULT}";
@@ -219,7 +219,7 @@ function DEBUG.defaultState() {
     _scriptName="drywit";
   fi
   setDebugLogFile "${TEMP:-/tmp}/$(basename ${_scriptName})-debug.$(date '+%Y%m%d%H%M%S').log";
-  setDebugEchoEnabled FALSE;
+  setDebugEchoEnabled ${FALSE};
 }
 
 # fun: debugDuration command*

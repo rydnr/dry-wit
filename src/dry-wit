@@ -907,11 +907,11 @@ function DW.init() {
   if [ "$1" == "" ]; then
     _scriptName="${0}";
     _scriptPath="${0}";
-    _scriptFolder="$(dirname "${0}")";
+    _scriptFolder="$(dirname "${0}" 2>&1)";
   else
     _scriptName="${1}";
     _scriptPath="${1}";
-    _scriptFolder="$(dirname "${1}")";
+    _scriptFolder="$(dirname "${1}" 2>&1)";
     shift;
   fi
   if [ "${_scriptFolder}" == "." ]; then
@@ -1058,16 +1058,16 @@ function BOOTSTRAP.resetState() {
   DW.declareGlobalArray "${_moduleName}" BOOTSTRAP_MODULES;
   DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
   local -n _bootstrapModules=${RESULT};
-  _bootstrapModules[${#_bootstrapModules[@]}]=color;
   _bootstrapModules[${#_bootstrapModules[@]}]=constant;
+  _bootstrapModules[${#_bootstrapModules[@]}]=color;
+  _bootstrapModules[${#_bootstrapModules[@]}]=debug;
+  _bootstrapModules[${#_bootstrapModules[@]}]=echo;
   _bootstrapModules[${#_bootstrapModules[@]}]=logging;
   _bootstrapModules[${#_bootstrapModules[@]}]=error;
   _bootstrapModules[${#_bootstrapModules[@]}]=file;
   _bootstrapModules[${#_bootstrapModules[@]}]=dw-plumbing;
   _bootstrapModules[${#_bootstrapModules[@]}]=term;
-  _bootstrapModules[${#_bootstrapModules[@]}]=echo;
   _bootstrapModules[${#_bootstrapModules[@]}]=cli;
-  _bootstrapModules[${#_bootstrapModules[@]}]=debug;
   _bootstrapModules[${#_bootstrapModules[@]}]=package;
 
   # env: IMPORTED_MODULES: The modules eventually imported in the bootstrap process.

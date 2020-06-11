@@ -807,11 +807,13 @@ function Assert.isEmpty() {
 # txt: Asserts given value is not empty.
 # opt: value: The value.
 # opt: message: The error message.
-# txt: Returns 0/TRUE always.
+# txt: Returns 0/TRUE if the assert passed; 1/FALSE otherwise.
 # use: Assert.isNotEmpty "${testValue}" "testValue is empty";
 function Assert.isNotEmpty() {
   local _value="${1}";
   local _message="${2}";
+
+  local -i _rescode=${FALSE};
 
   if isEmpty "${_message}"; then
     _message="${1}";
@@ -822,7 +824,10 @@ function Assert.isNotEmpty() {
     DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(value is empty)";
   else
     DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    _rescode=${TRUE};
   fi
+
+  return ${_rescode};
 }
 
 # fun: Assert.functionExists functionName message
@@ -880,16 +885,23 @@ function Assert.pass() {
 # use: Assert.contains "sample text" "sample" "'sample text' does not contain 'sample'";
 function Assert.contains() {
   local _text="${1}";
-  checkNotEmpty text "${_text}" 1;
   local _substring="${2}";
-  checkNotEmpty substring "${_substring}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if contains "${_text}" "${_substring}"; then
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  if Assert.isNotEmpty "${_text}" "Empty text passed to Assert.contains"; then
+    checkNotEmpty substring "${_substring}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if contains "${_text}" "${_substring}"; then
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    else
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_substring}')";
+    fi
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_substring}')";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' is empty)";
   fi
 }
 
@@ -903,16 +915,24 @@ function Assert.contains() {
 # use: Assert.doesNotContain "sample text" "sample" "'sample text' does not contain 'sample'";
 function Assert.doesNotContain() {
   local _text="${1}";
-  checkNotEmpty text "${_text}" 1;
   local _substring="${2}";
-  checkNotEmpty substring "${_substring}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if contains "${_text}" "${_substring}"; then
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_substring}')";
+  if Assert.isNotEmpty "${_text}" "Empty text passed to Assert.doesNotContain"; then
+    checkNotEmpty text "${_text}" 1;
+    checkNotEmpty substring "${_substring}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if contains "${_text}" "${_substring}"; then
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_substring}')";
+    else
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    fi
   else
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' is empty)";
   fi
 }
 
@@ -926,16 +946,23 @@ function Assert.doesNotContain() {
 # use: Assert.fileContains "/tmp/debug.log" "TESTING" "/tmp/debug.log doesn't contain TESTING";
 function Assert.fileContains() {
   local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
   local _text="${2}";
-  checkNotEmpty text "${_text}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if grep -q "${_text}" "${_file}" 2> /dev/null; then
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  if Assert.isNotEmpty "${_file}" "Empty file provided to Assert.fileContains"; then
+    checkNotEmpty text "${_text}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if grep -q "${_text}" "${_file}" 2> /dev/null; then
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    else
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    fi
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_file}' is empty)";
   fi
 }
 
@@ -949,16 +976,24 @@ function Assert.fileContains() {
 # use: Assert.fileDoesNotContain "/tmp/debug.log" "TESTING" "/tmp/debug.log contains TESTING";
 function Assert.fileDoesNotContain() {
   local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
   local _text="${2}";
-  checkNotEmpty text "${_text}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if grep -q "${_text}" "${_file}" 2> /dev/null; then
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+  if Assert.isNotEmpty "${_file}"; then
+    checkNotEmpty file "${_file}" 1;
+    checkNotEmpty text "${_text}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if grep -q "${_text}" "${_file}" 2> /dev/null; then
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    else
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    fi
   else
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_file}' is empty)";
   fi
 }
 
@@ -1079,6 +1114,7 @@ function humanReadableTest() {
 
   removeSuffix "${_test}" "_test";
   replaceAll "${RESULT}" "_" " ";
+  capitalize "${RESULT}";
 
   return ${TRUE};
 }
