@@ -20,18 +20,16 @@ function TERM.getModuleName() {
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
 # use: if getTermWidth; then echo "term width -> ${RESULT}"; fi
 function getTermWidth() {
-  local _result;
   local -i _rescode;
-  local _term;
 
   TERM.retrieveTermWidthFromEnvVar;
   _rescode=$?;
-  if ! isTrue ${_rescode}; then
+  if isFalse ${_rescode}; then
     retrieveTERM;
-    _term="${RESULT}";
+    local _term="${RESULT}";
     getTermWidthForTerm "${_term}";
     _rescode=$?;
-    if ! isTrue ${_rescode}; then
+    if isFalse ${_rescode}; then
       export RESULT="";
     fi
   fi
@@ -60,7 +58,7 @@ function getTermWidthForTerm() {
   fi
 
   if    isEmpty ${_result} \
-     || [ $((_result)) -le 0 ]; then
+     || isLessOrEqualTo  ${_result} 0; then
 
     if isNotEmpty "${_term}"; then
 
@@ -72,14 +70,18 @@ function getTermWidthForTerm() {
     fi
   fi
 
-  if    isEmpty ${_result} \
-    || [ $((_result)) -le 0 ]; then
+  if   isEmpty ${_result} \
+    || isLessOrEqualTo  ${_result} 0; then
     TERM.getModuleName;
     DW.getGlobalInt "${RESULT}" DEFAULT_TERM_WIDTH;
     _result=${RESULT};
   fi
 
-  if isTrue ${_rescode}; then
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+if isTrue ${_rescode}; then
     export RESULT=${_result};
   fi
 

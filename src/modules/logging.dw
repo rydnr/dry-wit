@@ -107,8 +107,10 @@ function LOGGING.isValidAsLogCategory() {
                ;;
     logInfo | logInfoResult) _rescode=${FALSE};
                              ;;
-    logDebug | logDebugResult) _rescode=${FALSE};
-                               ;;
+    logDebug | logDebugResult | logDebugFromStdin) _rescode=${FALSE};
+                                                   ;;
+    runCommandLongOutput) _rescode=${FALSE};
+                          ;;
   esac
 
   return ${_rescode};
@@ -2997,9 +2999,6 @@ function LOGGING.resetState() {
 
   # env: LAST_LOG_LEVEL: The last log level.
   DW.declareGlobalInt "${_moduleName}" LAST_LOG_LEVEL;
-
-  # env: DEFAULT_TERM_WIDTH: The default term width.
-  DW.declareGlobalInt "${_moduleName}" DEFAULT_TERM_WIDTH;
 
   # env: LOG_FILES: The files to write logging to.
   DW.declareGlobalArray "${_moduleName}" LOG_FILES;
