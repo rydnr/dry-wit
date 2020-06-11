@@ -62,16 +62,22 @@ setLogNestedIndentation "";
 setDefaultLogPrefixColor WHITE;
 
 # The ordered list of prefix tokens.
-setLogPrefixTokens "[" "timestamp" "<" "category" ">" "logLevel" "]";
+setLogPrefixTokens "[" "timestamp" "<" "namespace" "|" "category" ">" "logLevel" "]";
 
 # The ordered list of colors for log prefixes (see prefix tokens above).
-setLogPrefixColors BRIGHT_RED BRIGHT_YELLOW BRIGHT_CYAN BRIGHT_RED BRIGHT_MAGENTA BRIGHT_YELLOW BRIGHT_BLUE;
+setLogPrefixColors BRIGHT_RED BRIGHT_YELLOW BRIGHT_CYAN BRIGHT_YELLOW BRIGHT_CYAN BRIGHT_RED BRIGHT_MAGENTA BRIGHT_YELLOW BRIGHT_BLUE;
 
 # The position of the timestamp token in the log prefix list.
 setTimestampPositionInLogPrefix 1;
 
+# The position of the namespace token in the log prefix list.
+setNamespacePositionInLogPrefix 3;
+
 # The position of the category token in the log prefix list.
-setCategoryPositionInLogPrefix 3;
+setCategoryPositionInLogPrefix 5;
+
+# The position of the level token in the log prefix list.
+setLevelPositionInLogPrefix 7;
 
 # The token to use for "logLevel" in case of an error message.
 setErrorLogPrefixToken "X";
@@ -87,7 +93,4 @@ setDebugLogPrefixToken "o";
 
 # The token to use for "logLevel" in case of a trace message.
 setTraceLogPrefixToken "O";
-
-# The position of the level token in the log prefix list.
-setLevelPositionInLogPrefix 5;
 
