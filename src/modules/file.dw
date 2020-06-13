@@ -23,7 +23,7 @@ function addFileToCleanup() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
 
-  getCleanupFilesVariableName;
+  FILE.getCleanupFilesVariableName;
   local -n _cleanupFiles=${RESULT};
 
   _cleanupFiles[${#_cleanupFiles[@]}]="${_file}";
@@ -1000,13 +1000,13 @@ function changeOwnerOfFolderRecursively() {
   chown -R "${_ownership}" "${_dir}" > /dev/null 2>&1;
 }
 
-# fun: getCleanupFilesVariableName
+# fun: FILE.getCleanupFilesVariableName
 # api: public
 # txt: Retrieves the variable name containing the files to clean up.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the variable name.
-# use: getCleanupFilesVariableName; local -n cleanupFiles=${RESULT};
-function getCleanupFilesVariableName() {
+# use: FILE.getCleanupFilesVariableName; local -n cleanupFiles=${RESULT};
+function FILE.getCleanupFilesVariableName() {
   FILE.getModuleName;
   local _moduleName="${RESULT}";
   DW.getGlobalVariableName "${_moduleName}" CLEANUP_FILES;

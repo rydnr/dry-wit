@@ -62,10 +62,10 @@ function cleanup() {
   local _oldIFS="${IFS}";
   local _i;
 
-  getCleanupFilesVariableName;
+  FILE.getCleanupFilesVariableName;
   local -n _cleanupFiles=${RESULT};
 
-  if [ "${#_cleanupFiles}" != "0" ]; then
+  if isGreaterThan ${#_cleanupFiles[@]} 0; then
     setLogCategory "post-process";
 
     logTrace -n "Cleaning up temporary files";
