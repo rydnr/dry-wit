@@ -1,0 +1,28 @@
+# mod: ubuntu
+# api: public
+# txt: Ubuntu-specific functions.
+
+# fun: retrieveVersion package
+# api: public
+# txt: Retrieves the version of given package.
+# opt: package: The package.
+# txt: Returns 0/TRUE if the version could be retrieved; 1/FALSE otherwise.
+# txt: If the function succeeds, the variable RESULT contains the version.
+# use: if retrieveVersion wget; then
+# use:   echo "Version: ${RESULT}";
+# use: fi
+function retrieveVersion() {
+  local _package="${1}";
+  checkNotEmpty package "${_package}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _result="$(dpkg -p ${_package} 2> /dev/null | grep -e '^Version: ' | cut -d' ' -f2)";
+  if isNotEmpty "${_result}"; then
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

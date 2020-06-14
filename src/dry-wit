@@ -157,8 +157,7 @@ function DW.getGlobalString() {
   local _result;
 
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
-    local _aux="${RESULT}";
-    local -n _result="${RESULT}";
+    _result="${RESULT}";
     _rescode=${TRUE};
   fi
 
@@ -228,10 +227,9 @@ function DW.declareGlobalVariable() {
   shift;
   shift;
   shift;
-  local -i _rescode;
 
   DW.getGlobalVariableName "${_module}" "${_varName}";
-  _rescode=$?;
+  local -i _rescode=$?;
   local _aux="${RESULT}";
 
   if [ ${_rescode} -eq ${TRUE} ]; then
@@ -282,10 +280,9 @@ function DW.getGlobalVariableName() {
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local -i _rescode;
 
   DW.buildGlobalVariableName "${_module}" "${_varName}";
-  _rescode=$?;
+  local -i _rescode=$?;
 
   return ${_rescode};
 }
@@ -303,7 +300,6 @@ function DW.buildGlobalVariableName() {
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local -i _rescode=${TRUE};
 
   BOOTSTRAP.toUpper "${_module}";
   local _moduleUpcased="${RESULT}";
@@ -315,7 +311,7 @@ function DW.buildGlobalVariableName() {
 
   export RESULT="${_result}";
 
-  return ${_rescode};
+  return ${TRUE};
 }
 
 # fun: DW.getScriptName
@@ -401,8 +397,8 @@ function BOOTSTRAP.checkNotEmpty() {
   if [ -z "${_name}" ]; then
     BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
-  local _value="${2}";
 
+  local _value="${2}";
   if [ -z "${_value}" ]; then
     BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
@@ -486,14 +482,15 @@ function BOOTSTRAP.isTraceEnabled() {
 # use: BOOTSTRAP.logDebug "Processing file ${file}";
 function BOOTSTRAP.logDebug() {
   local _message="${1}";
+  local -i _newline=0;
+  local -i _position=1;
+
   if [ "${_message}" == "-n" ]; then
     _newline=1;
     _message="${2}";
     _position=2;
   fi
   BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
-  local -i _newline=0;
-  local -i _position=1;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logDebug is loaded.
@@ -517,14 +514,15 @@ function BOOTSTRAP.logDebug() {
 # use: BOOTSTRAP.logTrace "Processing file ${file}";
 function BOOTSTRAP.logTrace() {
   local _message="${1}";
+  local -i _newline=0;
+  local -i _position=1;
+
   if [ "${_message}" == "-n" ]; then
     _newline=1;
     _message="${2}";
     _position=2;
   fi
   BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
-  local -i _newline=0;
-  local -i _position=1;
 
   ## Needed since this function is used in bootstrapping, and could be loaded before
   ## logTrace is loaded.
@@ -587,10 +585,9 @@ function BOOTSTRAP.logTraceResult() {
 function BOOTSTRAP.isFunctionDefined() {
   local _function="${1}";
   BOOTSTRAP.checkNotEmpty name "${_function}" 1;
-  local -i _rescode;
 
   type "${_function}" 2> /dev/null | grep -q 'function';
-  _rescode=$?;
+  local -i _rescode=$?;
 
   return ${_rescode};
 }
@@ -609,7 +606,7 @@ function BOOTSTRAP.arrayContains() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  BOOTSTRAP.checkNotEmpty "item" "${_item}" 1;
+  BOOTSTRAP.checkNotEmpty item "${_item}" 1;
 
   IFS="${DWIFS}";
   for _aux in ${_array}; do
@@ -682,14 +679,14 @@ function downloadModule() {
     rm -f "${_modulePath}/${_module}.dw";
     curl -s "${_moduleUrl}/ext/${_module}.dw" > "${_modulePath}/ext/${_module}.dw";
     _rescode=$?;
-  fi
 
-  if [[ ${_rescode} -eq ${TRUE} ]]; then
-    BOOTSTRAP.logDebugResult SUCCESS "done";
-    export RESULT="${_modulePath}/ext/${_module}.dw";
-  else
-    rm -f "${_modulePath}/ext/${_module}.dw";
-    BOOTSTRAP.logDebugResult FAILURE "failed";
+    if [[ ${_rescode} -eq ${TRUE} ]]; then
+      BOOTSTRAP.logDebugResult SUCCESS "done";
+      export RESULT="${_modulePath}/ext/${_module}.dw";
+    else
+      rm -f "${_modulePath}/ext/${_module}.dw";
+      BOOTSTRAP.logDebugResult FAILURE "failed";
+    fi
   fi
 
   return ${_rescode};
@@ -932,7 +929,7 @@ function DW.isTest() {
 
   if [[ -n ${_scriptName} ]]; then
     if    BOOTSTRAP.endsWith "${_scriptName}" "-tests.sh" \
-        || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
+       || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
       source $(which dry-wit-test) "${_scriptName}" $@;
     fi
   fi
@@ -1043,6 +1040,7 @@ function BOOTSTRAP.resetState() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
 
+  echo "Resetting BOOTSTRAP state";
   # env: __DRYWIT_ESSENTIAL_MODULES: The essential modules.
   DW.declareGlobalArray "${_moduleName}" ESSENTIAL_MODULES;
   DW.getGlobalVariableName "${_moduleName}" ESSENTIAL_MODULES;

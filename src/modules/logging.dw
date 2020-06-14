@@ -9,7 +9,8 @@
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
-# use: LOGGING.getModuleName; echo "Module: ${RESULT}";
+# use: LOGGING.getModuleName;
+# use: echo "Module: ${RESULT}";
 function LOGGING.getModuleName() {
   export RESULT="LOGGING";
   return ${TRUE};
@@ -20,7 +21,7 @@ function LOGGING.getModuleName() {
 # txt: Retrieves the current log level.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the current log level.
-# use: LOGGING.retrieveCurrentLogLevel
+# use: LOGGING.retrieveCurrentLogLevel;
 # use: echo "log level: ${RESULT}";
 function LOGGING.retrieveCurrentLogLevel() {
   export RESULT="INFO";
@@ -48,13 +49,13 @@ function LOGGING.retrieveCurrentLogCategory() {
 # use: echo "Category: ${RESULT}";
 function LOGGING.buildDefaultLogCategory() {
   local _result;
-  local -i _index;
 
   local -i _maxIndex=$((${#FUNCNAME[@]} - 1));
   local -i _upperLimit=$((_maxIndex - 1));
 
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
+  local -i _index;
   for _index in $(seq 1 ${_upperLimit}); do
     IFS="${_oldIFS}";
     local _functionName="${FUNCNAME[${_index}]}";
@@ -121,7 +122,9 @@ function LOGGING.isValidAsLogCategory() {
 # txt: Checks whether given tag is defined.
 # opt: tag: The tag to check.
 # txt: 0/TRUE if the tag is defined; 1/FALSE otherwise.
-# use: definedTag SUCCESS
+# use: if definedTag SUCCESS; then
+# use:   ...;
+# use: fi
 function definedTag() {
   local _tag="${1}";
   checkNotEmpty tag "${_tag}" 1;
@@ -162,7 +165,7 @@ function enableQuietMode() {
 # opt: text: The text of the keyword.
 # txt: Returns SUCCESS, FAILURE, or UNDEFINED.
 # use: findOutKeyword "done";
-#      local -i keyword=$?;
+# use: local -i keyword=$?;
 function findOutKeyword() {
   local _value="${1}";
   checkNotEmpty text "${_value}" 1;
@@ -194,7 +197,7 @@ function findOutKeyword() {
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains "SUCCESS", "FAILURE", or "UNDEFINED".
 # use: LOGGING.keywordLabelFromCode ${SUCCESS};
-#      echo "label: ${RESULT}";
+# use: echo "label: ${RESULT}";
 function LOGGING.keywordLabelFromCode() {
   local _code="${1}";
   checkNotEmpty code "${_code}" 1;
@@ -219,7 +222,8 @@ function LOGGING.keywordLabelFromCode() {
 # txt: Retrieves the log category.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log category.
-# use: getLogCategory; echo "Log category: ${RESULT}";
+# use: getLogCategory;
+# use: echo "Log category: ${RESULT}";
 function getLogCategory() {
   LOGGING.peekLogCategory;
 }
@@ -230,7 +234,7 @@ function getLogCategory() {
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log namespace.
 # use: getLogNamespace;
-#      echo "log namespace: ${RESULT}"
+# use: echo "log namespace: ${RESULT}"
 function getLogNamespace() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" LOG_NAMESPACE;
@@ -241,7 +245,8 @@ function getLogNamespace() {
 # txt: Retrieves the LOG_DEBUG value.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the value of LOG_DEBUG.
-# use: LOGGING.getLogDebug; local logDebug=${RESULT};
+# use: LOGGING.getLogDebug;
+# use: local logDebug=${RESULT};
 function LOGGING.getLogDebug() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_DEBUG;
@@ -251,7 +256,9 @@ function LOGGING.getLogDebug() {
 # api: public
 # txt: Checks whether the debug level is enabled.
 # txt: Returns 0/TRUE if debug is allowed; 1/FALSE otherwise.
-# use: isDebugEnabled;
+# use: if isDebugEnabled; then
+# use:   ...;
+# use: fi
 function isDebugEnabled() {
   local -i _rescode=${FALSE};
 
@@ -268,7 +275,8 @@ function isDebugEnabled() {
 # txt: Retrieves the name of the variable containing the success keywords.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the variable containing the success keywords.
-# use: LOGGING.getSuccessKeywordsVariableName; local -n successKeywords=${RESULT}
+# use: LOGGING.getSuccessKeywordsVariableName;
+# use: local -n successKeywords=${RESULT}
 function LOGGING.getSuccessKeywordsVariableName() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" SUCCESS_KEYWORDS;
@@ -279,7 +287,8 @@ function LOGGING.getSuccessKeywordsVariableName() {
 # txt: Retrieves the name of the variable containing the failure keywords.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the variable containing the failure keywords.
-# use: LOGGING.getFailureKeywordsVariableName; local -n failureKeywords=${RESULT}
+# use: LOGGING.getFailureKeywordsVariableName;
+# use: local -n failureKeywords=${RESULT}
 function LOGGING.getFailureKeywordsVariableName() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" FAILURE_KEYWORDS;
@@ -290,7 +299,8 @@ function LOGGING.getFailureKeywordsVariableName() {
 # txt: Retrieves the name of the variable containing the built-in success keywords.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the variable containing the built-in success keywords.
-# use: LOGGING.getBuiltinSuccessKeywordsVariableName; local -n builtinSuccessKeywords=${RESULT}
+# use: LOGGING.getBuiltinSuccessKeywordsVariableName;
+# use: local -n builtinSuccessKeywords=${RESULT};
 function LOGGING.getBuiltinSuccessKeywordsVariableName() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" BUILTIN_SUCCESS_KEYWORDS;
@@ -301,7 +311,8 @@ function LOGGING.getBuiltinSuccessKeywordsVariableName() {
 # txt: Retrieves the name of the variable containing the built-in failure keywords.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the variable containing the built-in failure keywords.
-# use: LOGGING.getBuiltinFailureKeywordsVariableName; local -n builtinFailureKeywords=${RESULT}
+# use: LOGGING.getBuiltinFailureKeywordsVariableName;
+# use: local -n builtinFailureKeywords=${RESULT}
 function LOGGING.getBuiltinFailureKeywordsVariableName() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" BUILTIN_FAILURE_KEYWORDS;
@@ -312,19 +323,21 @@ function LOGGING.getBuiltinFailureKeywordsVariableName() {
 # txt: Checks whether given keyword represents a failure.
 # opt: keyword: The keyword.
 # txt: Returns 0/TRUE if the keyword is considered a failure; 1/FALSE otherwise.
-# use: if isFailureKeyword "${keyword}"; then logInfoResult SUCCESS "done"; fi
+# use: if isFailureKeyword "${keyword}"; then
+# use: logInfoResult SUCCESS "done";
+# use: fi
 function isFailureKeyword() {
   local _keyword="${1}";
   checkNotEmpty keyword "${_keyword}" 1;
 
   local -i _rescode=${FALSE};
-  local _i;
-  local _oldIFS="${IFS}";
 
   LOGGING.getFailureKeywordsVariableName;
   local -n _failureKeywords=${RESULT};
 
-  IFS=$' \t\n';
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  local _i;
   for _i in ${_failureKeywords[@]}; do
     IFS="${_oldIFS}";
     if    areEqual "${_i}" "${1}" \
@@ -360,7 +373,8 @@ function isFailureKeyword() {
 # txt: Retrieves the LOG_INFO value.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the value of LOG_INFO.
-# use: LOGGING.getLogInfo; local logInfo=${RESULT};
+# use: LOGGING.getLogInfo;
+# use: local logInfo=${RESULT};
 function LOGGING.getLogInfo() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_INFO;
@@ -370,7 +384,9 @@ function LOGGING.getLogInfo() {
 # api: public
 # txt: Checks whether the "info" level is enabled.
 # txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
-# use: if isInfoEnabled; then ...; fi
+# use: if isInfoEnabled; then
+# use:   ...;
+# use: fi
 function isInfoEnabled() {
   local -i _rescode;
 
@@ -388,7 +404,9 @@ function isInfoEnabled() {
 # api: public
 # txt: Checks whether the enabled log level is lower than "info".
 # txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
-# use: if isLowerThanInfoEnabled; then ...; fi
+# use: if isLowerThanInfoEnabled; then
+# use:   ...;
+# use: fi
 function isLowerThanInfoEnabled() {
   if isDebugEnabled || isTraceEnabled; then
     return ${TRUE};
@@ -402,7 +420,8 @@ function isLowerThanInfoEnabled() {
 # txt: Retrieves the LOG_QUIET value.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the value of LOG_QUIET.
-# use: LOGGING.getLogQuiet; local logQuiet=${RESULT};
+# use: LOGGING.getLogQuiet;
+# use: local logQuiet=${RESULT};
 function LOGGING.getLogQuiet() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_QUIET;
@@ -412,12 +431,12 @@ function LOGGING.getLogQuiet() {
 # api: public
 # txt: Retrieves whether the quiet mode is on or off.
 # txt: Returns 0/TRUE if the mode is enabled; 1/FALSE otherwise.
-# use: if isQuietMode; then ...; fi
+# use: if isQuietMode; then
+# use:   ...;
+# use: fi
 function isQuietMode() {
-  local -i _rescode;
-
   LOGGING.getLogQuiet;
-  _rescode=${RESULT};
+  local -i _rescode=${RESULT};
 
   return ${_rescode};
 }
@@ -427,20 +446,24 @@ function isQuietMode() {
 # txt: Checks whether given keyword represents a success.
 # opt: keyword: The keyword.
 # txt: Returns 0/TRUE if the keyword is considered a success; 1/FALSE otherwise.
-# use: if isSuccessKeyword "${keyword}"; then logInfoResult SUCCESS "done"; fi
+# use: if isSuccessKeyword "${keyword}"; then
+# use:   logInfoResult SUCCESS "done";
+# use: fi
 function isSuccessKeyword() {
   local _keyword="${1}";
   checkNotEmpty keyword "${_keyword}" 1;
+
   local -i _rescode=${FALSE};
-  local _i;
-  local _oldIFS="${IFS}";
 
   LOGGING.getSuccessKeywordsVariableName;
   local -n _successKeywords="${RESULT}";
 
   if    isNotEmpty "${_successKeywords}" \
      && isNotEmpty "${_successKeywords[@]}"; then
+
+    local _oldIFS="${IFS}";
     IFS="${DWIFS}";
+    local _i;
     for _i in ${_successKeywords[@]}; do
       IFS="${_oldIFS}";
       if    areEqual "${_i}" "${_keyword}" \
@@ -486,26 +509,29 @@ function logResult() {
   local _outcome="${1}";
   shift;
   local _message="${@}";
+
   if isEmpty "${_message}"; then
     _message="${_outcome}";
   fi
 
   findOutKeyword "${_outcome}";
   local -i _outcomeCode=$?;
+
   LOGGING.keywordLabelFromCode ${_outcomeCode};
   local _outcomeLabel="${RESULT}";
+
   LOGGING.checkSuccessOrFailure "${_outcomeLabel}" 1;
   checkNotEmpty message "${_message}" 2;
   LOGGING.logStuffResult "${_outcomeLabel}" "${_message}";
 }
-
 
 # fun: LOGGING.getLogTrace
 # api: private
 # txt: Retrieves the LOG_TRACE value.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the value of LOG_TRACE.
-# use: LOGGING.getLogTrace; local logTrace=${RESULT};
+# use: LOGGING.getLogTrace;
+# use: local logTrace=${RESULT};
 function LOGGING.getLogTrace() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_TRACE;
@@ -515,7 +541,9 @@ function LOGGING.getLogTrace() {
 # api: public
 # txt: Checks whether trace is enabled.
 # txt: Returns 0/TRUE if trace is enabled; 1/FALSE otherwise.
-# use: isTraceEnabled;
+# use: if isTraceEnabled; then
+# use:   ...;
+# use: fi
 function isTraceEnabled() {
   local -i _rescode=${FALSE};
 
@@ -627,9 +655,10 @@ function logDebugResult() {
 function logFile() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
-  local line;
-  cat "${_file}" | while IFS='' read -r line; do
-    LOGGING.logStuff INFO "${line}";
+
+  local _line;
+  cat "${_file}" | while IFS='' read -r _line; do
+    LOGGING.logStuff INFO "${_line}";
   done
 }
 
@@ -788,7 +817,8 @@ function setDebugLogPrefixToken() {
 # txt: Retrieves the log prefix token for the TRACE log level.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log outcome separator.
-# use: LOGGING.getTraceLogPrefixToken; local logPrefixToken="${RESULT}";
+# use: LOGGING.getTraceLogPrefixToken;
+# use: local logPrefixToken="${RESULT}";
 function LOGGING.getTraceLogPrefixToken() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" TRACE_LOG_PREFIX_TOKEN;
@@ -835,12 +865,15 @@ function LOGGING.alignRight() {
       local _oldIFS="${IFS}";
       IFS="${DWIFS}";
       local -i _index=0;
+      local _separatorSpace="";
       while isGreaterThan $((${_offset}-${_index}+1)) 0; do
         IFS="${_oldIFS}";
         _index=$((${_index}+1));
-        echo -n "${_logOutcomeSeparator}";
+        _separatorSpace="${_separatorSpace}${_logOutcomeSeparator}";
       done
       IFS="${_oldIFS}";
+      debugEcho "separatorSpace: '${_separatorSpace}' (${#_separatorSpace})";
+      echo -n "${_separatorSpace}";
     fi
   fi
 }
@@ -864,20 +897,19 @@ function LOGGING.alignRightForWidth() {
   checkNumber termWidth "${_termWidth}" 3;
 
   local _logMessage;
-  local _oldIFS="${IFS}";
 
   LOGGING.processLogOutcomeTokens "${_outcome}";
   LOGGING.getLogOutcomeTokensVariableName;
   local -n _logOutcomeTokens=${RESULT};
 
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
   local _token;
-  IFS=$' \t\n';
-  for _token in "${_logOutcomeTokens[@]}"; do
+  for _token in ${_logOutcomeTokens[@]}; do
     _logMessage="${_logMessage}${_token}";
   done
   IFS="${_oldIFS}";
-
-  local -i _index=0;
+  debugEcho "In LOGGING.alignRightForWidth '${_logLineMessage}' '${_outcome}' ${_termWidth}. logMessage: '${_logMessage}'";
 
   local -i _result=$((${_termWidth}-${#_logLineMessage}%${_termWidth}-${#_logMessage}-1));
 
@@ -908,12 +940,11 @@ function LOGGING.closeLogLine() {
 # txt: Retrieves the name of the variable containing the log prefix tokens.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the name of the variable containing the log prefix tokens.
-# use: LOGGING.getLogPrefixTokensVariableName; local -n logPrefixTokens=${RESULT};
+# use: LOGGING.getLogPrefixTokensVariableName;
+# use: local -n logPrefixTokens=${RESULT};
 function LOGGING.getLogPrefixTokensVariableName() {
   LOGGING.getModuleName;
-  local _moduleName="${RESULT}";
-
-  DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_TOKENS;
+  DW.getGlobalVariableName "${RESULT}" LOG_PREFIX_TOKENS;
 }
 
 # fun: setLogPrefixTokens tokens+
@@ -935,12 +966,11 @@ function setLogPrefixTokens() {
 # txt: Retrieves the name of the variable containing the log prefix colors.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the name of the variable containing the log prefix colors.
-# use: LOGGING.getLogPrefixColorsVariableName; local -n logPrefixColors=${RESULT};
+# use: LOGGING.getLogPrefixColorsVariableName;
+# use: local -n logPrefixColors=${RESULT};
 function LOGGING.getLogPrefixColorsVariableName() {
   LOGGING.getModuleName;
-  local _moduleName="${RESULT}";
-
-  DW.getGlobalVariableName "${_moduleName}" LOG_PREFIX_COLORS;
+  DW.getGlobalVariableName "${RESULT}" LOG_PREFIX_COLORS;
 }
 
 # fun: setLogPrefixColors colors+
@@ -962,7 +992,8 @@ function setLogPrefixColors() {
 # txt: Retrieves the name of the variable containing the log outcome colors.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the variable name containing the log outcome colors.
-# use: LOGGING.getLogOutcomeColorsVariableName; local -n outcomeColors=${RESULT};
+# use: LOGGING.getLogOutcomeColorsVariableName;
+# use: local -n outcomeColors=${RESULT};
 function LOGGING.getLogOutcomeColorsVariableName() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_COLORS;
@@ -1001,11 +1032,11 @@ function LOGGING.buildLogPrefix() {
   LOGGING.getLogPrefixColorsVariableName;
   local -n _logPrefixColors="${RESULT}";
 
+  local -i _len=$((${#_logPrefixTokens[@]} - 1));
+
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
-  local _aux;
   local -i _i;
-  local -i _len=$((${#_logPrefixTokens[@]} - 1));
   for _i in $(seq 0 ${_len}); do
     IFS="${_oldIFS}";
     local _token="${_logPrefixTokens[${_i}]}";
@@ -1031,7 +1062,7 @@ function LOGGING.buildLogPrefix() {
 # api: private
 # txt: Prints the log prefix, for color and non-color terminals.
 # txt: Returns 0/TRUE always.
-# use: LOGGING.echoLogPrefix
+# use: LOGGING.echoLogPrefix;
 function LOGGING.echoLogPrefix() {
   allowsColors;
   local -i _allowsColors=$?;
@@ -1048,7 +1079,7 @@ function LOGGING.echoLogPrefix() {
 # opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
 # opt: text: The outcome text.
 # txt: Returns 0/TRUE always.
-# use: LOGGING.echoLogOutcome SUCCESS "sample"
+# use: LOGGING.echoLogOutcome SUCCESS "sample";
 function LOGGING.echoLogOutcome() {
   local _keyword="${1}";
   checkNotEmpty keyword "${_keyword}" 1;
@@ -1067,9 +1098,10 @@ function LOGGING.echoLogOutcome() {
   LOGGING.peekLog;
   local _inProgressMessage="${RESULT}";
 
-  LOGGING.buildLogPrefix ${_allowsColors};
+  LOGGING.buildLogPrefix ${FALSE};
   local _logPrefix="${RESULT}";
 
+  debugEcho "LOGGING.alignRight '${_logPrefix}${_inProgressMessage}' '${_text}'";
   LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}";
 
   LOGGING.getLogOutcomeTokensVariableName;
@@ -1078,10 +1110,11 @@ function LOGGING.echoLogOutcome() {
   LOGGING.getLogOutcomeColorsVariableName;
   local -n _logOutcomeColors=${RESULT};
 
-  local -i _i;
   local -i _len=$((${#_logOutcomeTokens[@]} - 1));
+
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
+  local -i _i;
   for _i in $(seq 0 ${_len}); do
     IFS="${_oldIFS}";
     local _token="${_logOutcomeTokens[${_i}]}";
@@ -1106,7 +1139,8 @@ function LOGGING.echoLogOutcome() {
 # txt: Retrieves the indentation used when logging nested tasks.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the nested indentation.
-# use: getLogNestedIndentation; echo "indentation: ${RESULT}";
+# use: getLogNestedIndentation;
+# use: echo "indentation: ${RESULT}";
 function getLogNestedIndentation() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_NESTED_INDENTATION;
@@ -1145,21 +1179,21 @@ function LOGGING.echoLogOutcomeNested() {
   local _text="${@}";
   checkNotEmpty text "${_text}" 3;
 
-  local _inProgressMessage;
-  local _alreadyInProgressMessage;
-  local _alreadyInProgressCategory;
-  local _indentation;
-  local -i _i;
   LOGGING.popLog;
-  _inProgressMessage="${RESULT}";
+  local _inProgressMessage="${RESULT}";
+
   LOGGING.echoLogOutcome "${_keyword}" "${_text}";
+
   LOGGING.numberOfNestedInProgressTasks;
-  _nestedTasks=$?;
+  local _nestedTasks=$?;
   getLogNestedIndentation;
   local -n _logNestedIndentation=${RESULT};
 
+  local _indentation="";
+
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
+  local -i _i;
   for _i in $(seq 1 ${_nestedTasks}); do
     IFS="${_oldIFS}";
     _indentation="${_indentation}${_logNestedIndentation}";
@@ -1174,7 +1208,8 @@ function LOGGING.echoLogOutcomeNested() {
 # txt: Retrieves the last log message.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the last log message.
-# use: LOGGING.getLastLog; echo "Last log: ${RESULT}";
+# use: LOGGING.getLastLog;
+# use: echo "Last log: ${RESULT}";
 function LOGGING.getLastLog() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" LAST_LOG;
@@ -1184,12 +1219,16 @@ function LOGGING.getLastLog() {
 # api: public
 # txt: Checks whether the log line is currently opened.
 # txt: Returns 0/TRUE if it's open; 1/FALSE otherwise.
-# use: if isLogLineOpen; then ...; fi
+# use: if isLogLineOpen; then
+# use:   ...;
+# use: fi
 function isLogLineOpen() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_LINE_OPEN;
   local _open=${RESULT};
+
   local -i _rescode=${FALSE};
+
   if isTrue ${_open}; then
     _rescode=${TRUE};
   fi
@@ -1226,7 +1265,8 @@ function LOGGING.logCompleted() {
 # txt: Retrieves the default color used when logging a resuming task.
 # txt: Returns 0/TRUE always.
 # txt: The RESULT variable contains the text.
-# use: getDefaultLogResumingTaskColor; echo "Default log resuming task color: ${RESULT}";
+# use: getDefaultLogResumingTaskColor;
+# use: echo "Default log resuming task color: ${RESULT}";
 function getDefaultLogResumingTaskColor() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" DEFAULT_LOG_RESUMING_TASK_COLOR;
@@ -1261,13 +1301,11 @@ function LOGGING.logCompletedNested() {
   local _message="$@";
   checkNotEmpty outcome "${_message}" 3;
 
-  local _nestedTask;
-  local _nestedTaskCategory;
   local _logPrefix;
   LOGGING.echoLogOutcome "${_keyword}" "${_message}";
   echo;
   LOGGING.popLog;
-  _nestedTask="${RESULT}";
+  local _nestedTask="${RESULT}";
   LOGGING.echoLogPrefix;
   getDefaultLogResumingTaskColor;
   local _defaultLogResumingTaskColor="${RESULT}";
@@ -1457,7 +1495,7 @@ function LOGGING.logInProgressNested() {
 
   LOGGING.echoLogPrefix;
   LOGGING.peekLog;
-  _actualMessage="${RESULT}";
+  local _actualMessage="${RESULT}";
   getDefaultLogPrefixColor;
   local _defaultLogPrefixColor="${RESULT}";
   LOGGING.setLastLogLevel "${_level}";
@@ -1703,7 +1741,8 @@ function LOGGING.setLastLogLevel() {
 # txt: Retrieves the level of the last logged message.
 # txt: Returns 0/TRUE always.
 # txt: RESULT contains the log level.
-# use: getLastLogLevel; echo "Last log level: ${RESULT}";
+# use: getLastLogLevel;
+# use: echo "Last log level: ${RESULT}";
 function getLastLogLevel() {
   local _result;
   LOGGING.getModuleName;
@@ -1728,9 +1767,8 @@ function LOGGING.logStuffResult() {
   shift;
   checkNotEmpty "text" "${@}" 2;
 
-  local -i _nestedTasks;
   LOGGING.numberOfNestedInProgressTasks;
-  _nestedTasks=$?;
+  local -i _nestedTasks=$?;
   if isZero ${_nestedTasks}; then
     exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}";
   fi
@@ -1752,14 +1790,13 @@ function LOGGING.getLogStackVariableName() {
 # api: private
 # txt: Retrieves the number of "in-progress" tasks pending.
 # txt: Returns such count.
-# use: LOGGING.numberOfNestedInProgressTasks; local count=$?;
+# use: LOGGING.numberOfNestedInProgressTasks;
+# use: local count=$?;
 function LOGGING.numberOfNestedInProgressTasks() {
-  local -i _rescode;
-
   LOGGING.getLogStackVariableName;
   local -n _logStack=${RESULT};
 
-  _rescode=${#_logStack[@]};
+  local -i _rescode=${#_logStack[@]};
 
   return ${_rescode};
 }
@@ -1789,7 +1826,7 @@ function LOGGING.peekLog() {
 
   local -i _len=${#_logStack[@]};
   local -i _newLen;
-  if [ ${_len} -gt 0 ]; then
+  if isGreaterThan ${_len} 0; then
     _newLen=$((${_len} - 1));
     _result="${_logStack[${_newLen}]}";
     _rescode=$?;
@@ -1834,6 +1871,7 @@ function LOGGING.getLogPrefixCategorySeparator() {
 # txt: Retrieves the log category stack variable name.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.getLogCategoryStackVariableName;
+# use: local -n logCategoryStack=${RESULT};
 function LOGGING.getLogCategoryStackVariableName() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
@@ -1844,7 +1882,9 @@ function LOGGING.getLogCategoryStackVariableName() {
 # txt: Peeks given category from the log category stack.
 # txt: Returns 0/TRUE if the stack contained at least the returned item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the category.
-# use: if LOGGING.peekLogCategory; then echo "Last log category: ${RESULT}"; fi
+# use: if LOGGING.peekLogCategory; then
+# use:   echo "Last log category: ${RESULT}";
+# use: fi
 function LOGGING.peekLogCategory() {
   local -i _rescode;
   local _result;
@@ -1853,10 +1893,9 @@ function LOGGING.peekLogCategory() {
   local -n _logCategoryStack=${RESULT};
 
   local -i _len=${#_logCategoryStack[@]};
-  local -i _newLen;
 
-  if [ ${_len} -gt 0 ]; then
-    _newLen=$((${_len} - 1));
+  if isGreaterThan ${_len} 0; then
+    local -i _newLen=$((${_len} - 1));
     _result="${_logCategoryStack[${_newLen}]}";
     _rescode=$?;
   else
@@ -1885,6 +1924,7 @@ function LOGGING.peekLogCategory() {
 # txt: Retrieves the log level stack variable name.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.getLogLevelStackVariableName;
+# use: local -n logLevelStack=${RESULT};
 function LOGGING.getLogLevelStackVariableName() {
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_LEVEL_STACK;
@@ -1895,7 +1935,9 @@ function LOGGING.getLogLevelStackVariableName() {
 # txt: Peeks given level from the log level stack.
 # txt: Returns 0/TRUE if the stack contained at least the returned item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the level.
-# use: if LOGGING.peekLogLevel; then echo "Last log level: ${RESULT}"; fi
+# use: if LOGGING.peekLogLevel; then
+# use:   echo "Last log level: ${RESULT}";
+# use: fi
 function LOGGING.peekLogLevel() {
   local -i _rescode;
   local _result="";
@@ -1904,10 +1946,9 @@ function LOGGING.peekLogLevel() {
   local -n _logLevelStack=${RESULT};
 
   local -i _len=${#_logLevelStack[@]};
-  local -i _newLen;
 
   if [ ${_len} -gt 0 ]; then
-    _newLen=$((${_len} - 1));
+    local -i _newLen=$((${_len} - 1));
     _result="${_logLevelStack[${_newLen}]}";
     _rescode=$?;
   else
@@ -1926,7 +1967,9 @@ function LOGGING.peekLogLevel() {
 # txt: Pops given message from the log stack.
 # txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the popped message.
-# use: if LOGGING.popLog; then echo "Last log: ${RESULT}"; fi
+# use: if LOGGING.popLog; then
+# use:   echo "Last log: ${RESULT}";
+# use: fi
 function LOGGING.popLog() {
   local -i _rescode;
   local _result="";
@@ -1935,10 +1978,9 @@ function LOGGING.popLog() {
   local -n _logStack=${RESULT};
 
   local -i _len=${#_logStack[@]};
-  local -i _newLen;
 
   if [ ${_len} -gt 0 ]; then
-    _newLen=$((${_len} - 1));
+    local -i _newLen=$((${_len} - 1));
     _result="${_logStack[${_newLen}]}";
     LOGGING.setLastLog "${_result}";
     eval "unset _logStack[${_newLen}]";
@@ -1959,7 +2001,9 @@ function LOGGING.popLog() {
 # txt: Pops given category from the log category stack.
 # txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the popped category.
-# use: if LOGGING.popLogCategory; then echo "Last log category: ${RESULT}"; fi
+# use: if LOGGING.popLogCategory; then
+# use:   echo "Last log category: ${RESULT}";
+# use: fi
 function LOGGING.popLogCategory() {
   local -i _rescode;
 
@@ -1969,10 +2013,9 @@ function LOGGING.popLogCategory() {
   local _before="${_logCategoryStack[@]}";
 
   local -i _len=${#_logCategoryStack[@]};
-  local -i _newLen;
 
   if isGreaterThan ${_len} 0; then
-    _newLen=$((${_len} - 1));
+    local -i _newLen=$((${_len} - 1));
     export RESULT="${_logCategoryStack[${_newLen}]}";
     eval "unset _logCategoryStack[${_newLen}]";
     _rescode=$?;
@@ -1993,7 +2036,9 @@ function LOGGING.popLogCategory() {
 # api: private
 # txt: Checks if the log category stack is empty.
 # txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
-# use: LOGGING.isLogCategoryStackEmpty;
+# use: if LOGGING.isLogCategoryStackEmpty; then
+# use:   ...;
+# use: fi
 function LOGGING.isLogCategoryStackEmpty() {
   local -i _rescode;
 
@@ -2017,17 +2062,18 @@ function LOGGING.isLogCategoryStackEmpty() {
 # txt: Pops given level from the log level stack.
 # txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the popped level.
-# use: if LOGGING.popLogLevel; then echo "Last log level: ${RESULT}"; fi
+# use: if LOGGING.popLogLevel; then
+# use:   echo "Last log level: ${RESULT}";
+# use: fi
 function LOGGING.popLogLevel() {
   local -i _rescode;
-  local -i _newLen;
 
   LOGGING.getLogLevelStackVariableName;
   local -n _logLevelStack=${RESULT};
   local -i _len=${#_logLevelStack[@]};
 
-  if [ ${_len} -gt 0 ]; then
-    _newLen=$((${_len} - 1));
+  if isGreaterThan ${_len} 0; then
+    local -i _newLen=$((${_len} - 1));
     export RESULT="${_logLevelStack[${_newLen}]}";
     eval "unset _logLevelStack[${_newLen}]";
     _rescode=$?;
@@ -2080,7 +2126,7 @@ function LOGGING.pushLogCategory() {
 # txt: Pushes given level to the log level stack.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The level to push.
 # txt: Returns 0/TRUE always.
-# use: LOGGING.pushLogLevel INFO
+# use: LOGGING.pushLogLevel INFO;
 function LOGGING.pushLogLevel() {
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${1}" 1;
   LOGGING.getLogLevelStackVariableName;
@@ -2095,7 +2141,8 @@ function LOGGING.pushLogLevel() {
 # opt: defaultColor: The default color. Optional.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the associated color.
-# use: LOGGING.retrieveKeywordColor SUCCESS GREEN; echo "Color -> ${RESULT}";
+# use: LOGGING.retrieveKeywordColor SUCCESS GREEN;
+# use: echo "Color -> ${RESULT}";
 function LOGGING.retrieveKeywordColor() {
   local _keyword="${1}";
   checkNotEmpty keyword "${_keyword}" 1;
@@ -2133,7 +2180,8 @@ function LOGGING.retrieveKeywordColor() {
 # txt: Retrieves the log namespace.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the log namespace.
-# use: LOGGING.retrieveLogNamespace; echo "namespace: ${RESULT}";
+# use: LOGGING.retrieveLogNamespace;
+# use: echo "namespace: ${RESULT}";
 function LOGGING.retrieveLogNamespace() {
   getLogNamespace;
   local _namespace="${RESULT}";
@@ -2164,20 +2212,17 @@ function LOGGING.processLogOutcomeColors() {
   local _keyword="${1}";
   checkNotEmpty "SUCCESS|FAILURE|IN_PROGRESS" "${_keyword}" 1;
   LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 1;
-  local result=();
-  local _aux="";
+
   LOGGING.retrieveKeywordColor "${_keyword}";
   local _keywordColor="${RESULT}";
-  local -i _i;
-  local -i _len;
-  local -i _outcomeTextPosition;
 
   LOGGING.getLogOutcomeColorsVariableName;
   local -n _logOutcomeColors=${RESULT};
-  _len=$((${#_logOutcomeColors[@]} - 1));
+  local -i _len=$((${#_logOutcomeColors[@]} - 1));
 
   local _oldIFS="${IFS}";
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
+  local -i _i;
   for _i in $(seq 0 ${_len}); do
     IFS="${_oldIFS}";
     _logOutcomeColors[${_i}]="${_logOutcomeColors[${_i}]}";
@@ -2185,7 +2230,7 @@ function LOGGING.processLogOutcomeColors() {
   IFS="${_oldIFS}";
 
   LOGGING.getOutcomeTextPositionInLogOutcome;
-  _outcomeTextPosition=${RESULT};
+  local -i _outcomeTextPosition=${RESULT};
   _logOutcomeColors[${_outcomeTextPosition}]="${_keywordColor}";
 }
 
@@ -2199,27 +2244,21 @@ function LOGGING.processLogOutcomeTokens() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local result=();
-  local _aux="";
-  local _timestamp;
-  local -i _i;
-  local -i _len;
-  local -i _outcomeTextPosition;
-
   LOGGING.getModuleName;
   DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_TOKENS;
   local -n _logOutcomeTokens=${RESULT};
-  _len=$((${#_logOutcomeTokens[@]} - 1));
+  local -i _len=$((${#_logOutcomeTokens[@]} - 1));
 
   local _oldIFS="${IFS}";
-  IFS=$' \t\n';
+  IFS="${DWIFFS}";
+  local -i _i;
   for _i in $(seq 0 ${_len}); do
     _logOutcomeTokens[${_i}]="${_logOutcomeTokens[${_i}]}";
   done
   IFS="${_oldIFS}";
 
   LOGGING.getOutcomeTextPositionInLogOutcome;
-  _outcomeTextPosition=${RESULT};
+  local -i _outcomeTextPosition=${RESULT};
   _logOutcomeTokens[${_outcomeTextPosition}]="${_text}";
 }
 
@@ -2287,6 +2326,7 @@ function LOGGING.buildLogCategoryPrefix() {
   local _i _maxIndex=$((${_len} - 1));
 
   IFS="${DWIFS}";
+  local -i _i;
   for _i in $(seq 0 ${_maxIndex}); do
     IFS="${_oldIFS}";
     local _category="${_logCategories[${_i}]}";
@@ -2359,7 +2399,6 @@ function LOGGING.processLogPrefixTokensWithValues() {
   local -i _lastIndex=$((${#_logPrefixTokens[@]} - 1));
 
   local _oldIFS="${IFS}";
-  #  IFS=$' \t\n';
   IFS="${DWIFS}";
   local -i _i;
   for _i in $(seq 0 ${_lastIndex}); do
@@ -2369,19 +2408,19 @@ function LOGGING.processLogPrefixTokensWithValues() {
   IFS="${_oldIFS}";
 
   LOGGING.getTimestampPositionInLogPrefix;
-  local _timestampPosition=${RESULT};
+  local -i _timestampPosition=${RESULT};
   _logPrefixTokens[${_timestampPosition}]="${_timestamp}";
 
   LOGGING.getNamespacePositionInLogPrefix;
-  local _namespacePosition=${RESULT};
+  local -i _namespacePosition=${RESULT};
   _logPrefixTokens[${_namespacePosition}]="${_namespace}";
 
   LOGGING.getCategoryPositionInLogPrefix;
-  local _categoryPosition=${RESULT};
+  local -i _categoryPosition=${RESULT};
   _logPrefixTokens[${_categoryPosition}]="${_categoryPrefix}";
 
   LOGGING.getLevelPositionInLogPrefix;
-  local _levelPosition=${RESULT};
+  local -i _levelPosition=${RESULT};
   _logPrefixTokens[${_levelPosition}]="${_levelPrefix}";
 }
 
@@ -2390,7 +2429,8 @@ function LOGGING.processLogPrefixTokensWithValues() {
 # txt: Retrieves the timestamp format used for logging.
 # txt: Use setLogTimestampFormat to modify the timestamp format.
 # txt: Returns 0/TRUE always.
-# use: LOGGING.getLogTimestampFormat; echo "The log timestamp format is ${RESULT}";
+# use: LOGGING.getLogTimestampFormat;
+# use: echo "The log timestamp format is ${RESULT}";
 function getLogTimestampFormat() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" LOG_TIMESTAMP_FORMAT;
@@ -2401,7 +2441,8 @@ function getLogTimestampFormat() {
 # txt: Retrieves the timestamp format used for logging.
 # txt: Use setLogTimestampFormat to modify the timestamp format.
 # txt: Returns 0/TRUE always.
-# use: LOGGING.getLogTimestampFormat; echo "The log timestamp format is ${RESULT}";
+# use: LOGGING.getLogTimestampFormat;
+# use: echo "The log timestamp format is ${RESULT}";
 function setLogTimestampFormat() {
   local _format="${1}";
   checkNotEmpty format "${_format}" 1;
@@ -2416,7 +2457,8 @@ function setLogTimestampFormat() {
 # txt: Override LOG_TIMESTAMP to modify the timestamp format.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the timestamp.
-# use: LOGGING.retrieveLogTimestamp; echo "The log timestamp is ${RESULT}";
+# use: LOGGING.retrieveLogTimestamp;
+# use: echo "The log timestamp is ${RESULT}";
 function LOGGING.retrieveLogTimestamp() {
   getLogTimestampFormat;
   local _format="${RESULT}";
@@ -2431,7 +2473,8 @@ function LOGGING.retrieveLogTimestamp() {
 # txt: Retrieves the position of the outcome token in the log outcome colors array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the outcome text position.
-# use: LOGGING.getOutcomeTextPositionInLogOutcome; echo "outcome text -> ${RESULT}";
+# use: LOGGING.getOutcomeTextPositionInLogOutcome;
+# use: echo "outcome text -> ${RESULT}";
 function LOGGING.getOutcomeTextPositionInLogOutcome() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_OUTCOME_TEXT_POSITION;
@@ -2456,7 +2499,8 @@ function setOutcomeTextPositionInLogOutcome() {
 # txt: Retrieves the position of the timestamp in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the timestamp position.
-# use: LOGGING.getTimestampPositionInLogPrefix; echo "timestamp -> ${RESULT}";
+# use: LOGGING.getTimestampPositionInLogPrefix;
+# use: echo "timestamp -> ${RESULT}";
 function LOGGING.getTimestampPositionInLogPrefix() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_TIMESTAMP_POSITION;
@@ -2481,7 +2525,8 @@ function setTimestampPositionInLogPrefix() {
 # txt: Retrieves the position of the namespace in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the namespace position.
-# use: LOGGING.getNamespacePositionInLogPrefix; echo "namespace -> ${RESULT}";
+# use: LOGGING.getNamespacePositionInLogPrefix;
+# use: echo "namespace -> ${RESULT}";
 function LOGGING.getNamespacePositionInLogPrefix() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_NAMESPACE_POSITION;
@@ -2506,7 +2551,8 @@ function setNamespacePositionInLogPrefix() {
 # txt: Retrieves the position of the category in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the category position.
-# use: LOGGING.getCategoryPositionInLogPrefix; echo "category -> ${RESULT}";
+# use: LOGGING.getCategoryPositionInLogPrefix;
+# use: echo "category -> ${RESULT}";
 function LOGGING.getCategoryPositionInLogPrefix() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_CATEGORY_POSITION;
@@ -2531,7 +2577,8 @@ function setCategoryPositionInLogPrefix() {
 # txt: Retrieves the position of the level in the log prefix tokens array.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the level position.
-# use: LOGGING.getLevelPositionInLogPrefix; echo "level -> ${RESULT}";
+# use: LOGGING.getLevelPositionInLogPrefix;
+# use: echo "level -> ${RESULT}";
 function LOGGING.getLevelPositionInLogPrefix() {
   LOGGING.getModuleName;
   DW.getGlobalInt "${RESULT}" LOG_PREFIX_LEVEL_POSITION;
@@ -2562,12 +2609,13 @@ function LOGGING.setLastLog() {
   DW.setGlobalString "${RESULT}" LAST_LOG "${@}";
 }
 
-# fun: getLastLog
-# api: public
+# fun: LOGGING.getLastLog
+# api: private
 # txt: Retrieves the last log message.
 # txt: Returns 0/TRUE always.
 # txt: RESULT contains the last log.
-# use: getLastLog; echo "Last log: ${RESULT}";
+# use: LOGGING.getLastLog;
+# use: echo "Last log: ${RESULT}";
 function LOGGING.getLastLog() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" LAST_LOG;
@@ -2810,7 +2858,9 @@ function setTraceEnabled() {
 # txt: Appends all logging to given file.
 # opt: file: The file.
 # txt: Returns 0/TRUE if the file exists and is readable; 1/FALSE otherwise.
-# use: if logToFile "/tmp/logging"; then echo "Logging in /tmp/logging"; fi
+# use: if logToFile "/tmp/logging"; then
+# use:   echo "Logging in /tmp/logging";
+# use: fi
 function logToFile() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
@@ -2893,13 +2943,16 @@ function LOGGING.logToFilesAnEmptyLine() {
 # api: public
 # txt: Applies a theme if present.
 # txt: Returns 0/TRUE if a theme is applied; 1/FALSE otherwise.
-# use: if applyThemeIfPresent; then echo "Theme applied"; fi
+# use: if applyThemeIfPresent; then
+# use:   echo "Theme applied";
+# use: fi
 function applyThemeIfPresent() {
   getModulePath;
-  if fileExists "${RESULT}/../../themes/current.dwt"; then
-    sourceFileIfExists "${RESULT}/../../themes/current.dwt";
+  local _modulePath="${RESULT}";
+  if fileExists "${_modulePath}/../../themes/current.dwt"; then
+    sourceFileIfExists "${_modulePath}/../../themes/current.dwt";
   else
-    sourceFileIfExists "${RESULT}/../../themes/default.dwt";
+    sourceFileIfExists "${_modulePath}/../../themes/default.dwt";
   fi
 }
 

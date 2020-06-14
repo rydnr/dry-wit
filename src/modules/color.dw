@@ -21,8 +21,7 @@ function COLOR.getModuleName() {
 # use: getSuccessColor; echo "success color: ${RESULT}";
 function getSuccessColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" SUCCESS_COLOR;
+  DW.getGlobalString "${RESULT}" SUCCESS_COLOR;
 }
 
 # fun: setSuccessColor color
@@ -36,8 +35,7 @@ function setSuccessColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" SUCCESS_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" SUCCESS_COLOR "${_color}";
 }
 
 # fun: getFailureColor
@@ -48,8 +46,7 @@ function setSuccessColor() {
 # use: getFailureColor; echo "failure color: ${RESULT}";
 function getFailureColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" FAILURE_COLOR;
+  DW.getGlobalString "${RESULT}" FAILURE_COLOR;
 }
 
 # fun: setFailureColor color
@@ -63,8 +60,7 @@ function setFailureColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" FAILURE_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" FAILURE_COLOR "${_color}";
 }
 
 # fun: getInProgressColor
@@ -75,8 +71,7 @@ function setFailureColor() {
 # use: getInProgressColor; echo "In-progress color: ${RESULT}";
 function getInProgressColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" IN_PROGRESS_COLOR;
+  DW.getGlobalString "${RESULT}" IN_PROGRESS_COLOR;
 }
 
 # fun: setInProgressColor color
@@ -90,8 +85,7 @@ function setInProgressColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" IN_PROGRESS_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" IN_PROGRESS_COLOR "${_color}";
 }
 
 # fun: getNoColor
@@ -102,8 +96,7 @@ function setInProgressColor() {
 # use: getNoColor; echo "No color: ${RESULT}";
 function getNoColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" NO_COLOR;
+  DW.getGlobalString "${RESULT}" NO_COLOR;
 }
 
 # fun: getNoColorVariableName
@@ -127,8 +120,7 @@ function setNoColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" NO_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" NO_COLOR "${_color}";
 }
 
 # fun: buildColor name foreground background
@@ -186,9 +178,16 @@ function allowsColors() {
   local _cachedResult="${_DW_ALLOWS_COLORS}";
 
   if isEmpty "${_cachedResult}"; then
-    if isEmpty "${DW_DISABLE_ANSI_COLORS}"; then
+    local -i _disableColors=${FALSE};
+    if isNotEmpty "${NO_COLOR}"; then
+      _disableColors=${TRUE};
+    elif   isNotEmpty "${USECOLOR}" \
+        && areEqual "${USECOLOR}" "no"; then
+      _disableColors=${TRUE};
+    fi
+    if isFalse ${_disableColors}; then
       local _colors="$(tput colors 2>&1)";
-      if isTrue $?; then
+      if isNotEmpty "${_colors}"; then
         if isGreaterOrEqualTo "${_colors}" 8; then
           env | grep -e '^_=' | grep env > /dev/null 2>&1;
           if isTrue $?; then
@@ -318,6 +317,7 @@ function COLOR.resetState() {
   fi
 }
 
-# env: DW_DISABLE_ANSI_COLORS: Whether to disable ANSI colors completely.
+# env: NO_COLOR: Whether to disable ANSI colors completely.
+# env: USECOLOR: If set to 'no', disables ANSI colors completely.
 
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

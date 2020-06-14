@@ -7,7 +7,9 @@
 # txt: Retrieves the first character of given text.
 # opt: text: The input text.
 # txt: Returns 0/TRUE if the text is not empty; 1/FALSE otherwise.
-# use: if firstCharacter "my-test"; then echo "first character: ${RESULT}"; fi
+# use: if firstCharacter "my-test"; then
+# use:   echo "first character: ${RESULT}";
+# use: fi
 function firstCharacter() {
   local _input="${1}";
   checkNotEmpty text "${_input}" 1;
@@ -31,7 +33,9 @@ function firstCharacter() {
 # txt: Retrieves the last character of given text.
 # opt: text: The input text.
 # txt: Returns 0/TRUE if the text is not empty; 1/FALSE otherwise.
-# use: if lastCharacter "my-test"; then echo "last character: ${RESULT}"; fi
+# use: if lastCharacter "my-test"; then
+# use: echo "last character: ${RESULT}";
+# use: fi
 function lastCharacter() {
   local _input="${1}";
   checkNotEmpty text "${_input}" 1;
@@ -57,7 +61,9 @@ function lastCharacter() {
 # opt: text: The text.
 # opt: substring: The substring to check.
 # txt: Returns 0/TRUE if the text contains the substring; 1/FALSE otherwise.
-# use: if contains "${text}" "b"; then echo "${text} contains b"; fi
+# use: if contains "${text}" "b"; then
+# use:   echo "${text} contains b";
+# use: fi
 function contains() {
   local _container="${1}";
   checkNotEmpty text "${_container}" 1;
@@ -81,7 +87,9 @@ function contains() {
 # opt: text: The text.
 # opt: substring: The substring to check.
 # txt: Returns 0/TRUE if the text ends with the substring; 1/FALSE otherwise.
-# use: if endsWith "${text}" "c"; then echo "${text} ends with c"; fi
+# use: if endsWith "${text}" "c"; then
+# use:   echo "${text} ends with c";
+# use: fi
 function endsWith() {
   local _container="${1}";
   checkNotEmpty text "${_container}" 1;
@@ -110,8 +118,10 @@ function normalize() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g');
-  export RESULT="${result}";
+  local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g');
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # fun: normalizeUppercase string
@@ -125,8 +135,8 @@ function normalizeUppercase() {
   local _text="${1}";
   checkNotEmpty string "${_text}" 1;
 
-  local result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
-  export RESULT="${result}";
+  local _result=$(echo "${_text}" | tr -c '[[:alnum:]]' '_' | sed 's/_*$//g' | awk '{print toupper($0);}');
+  export RESULT="${_result}";
 }
 
 # fun: removePrefix text prefix
@@ -136,18 +146,17 @@ function normalizeUppercase() {
 # opt: prefix: The prefix to remove. It must not include the '%' character.
 # txt: Returns 0/TRUE if the prefix was removed; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the string without the prefix.
-# use: if removePrefix "${_text}" "--*"; then echo "${_text} -> ${RESULT}"; fi
+# use: if removePrefix "${_text}" "--*"; then
+# use:   echo "${_text} -> ${RESULT}";
+# use: fi
 function removePrefix() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
   local _prefix="${2}";
   checkNotEmpty prefix "${_prefix}" 2;
 
-  local -i _rescode;
-  local _result;
-
-  _result="$(sed -e "s%^${_prefix}%%" <<< ${_text})";
-  _rescode=$?;
+  local _result="$(sed -e "s%^${_prefix}%%" <<< ${_text})";
+  local -i _rescode=$?;
   if isTrue ${_rescode}; then
     # double-check
     if areNotEqual "${_text}" "${_result}"; then
@@ -167,7 +176,9 @@ function removePrefix() {
 # opt: suffix: The suffix to remove.
 # txt: Returns 0/TRUE if the suffix was removed; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the string without the suffix.
-# use: if removeSuffix "${_text}" "-*"; then echo "${_text} -> ${RESULT}"; fi
+# use: if removeSuffix "${_text}" "-*"; then
+# use:   echo "${_text} -> ${RESULT}";
+# use: fi
 function removeSuffix() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
@@ -181,15 +192,14 @@ function removeSuffix() {
     _rescode=${FALSE};
   else
     _result="$(echo "${_text}" | sed -e "s~${_suffix}$~~")";
+    areNotEqual "${_text}" "${_result}";
     _rescode=$?;
   fi
+
   if isTrue ${_rescode}; then
-    # double-check
-    if areNotEqual "${_text}" "${_result}"; then
-      export RESULT="${_result}";
-    else
-      _rescode=${FALSE};
-    fi
+    export RESULT="${_result}";
+  else
+    export RESULT="";
   fi
 
   return ${_rescode};
@@ -215,9 +225,11 @@ function replaceNLeftmostTokens() {
   local _separator="$4";
   checkNotEmpty separator "${_separator}" 4;
 
-  local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
+  local _result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
 
-  export RESULT="${result}";
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # fun: replaceNRightmostTokens text newToken n separator
@@ -240,8 +252,10 @@ function replaceNRightmostTokens() {
   local _separator="$4";
   checkNotEmpty separator "${_separator}" 4;
 
-  local result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
-  export RESULT="${result}";
+  local _result=$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g");
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # fun: startsWith text substring
@@ -250,7 +264,9 @@ function replaceNRightmostTokens() {
 # opt: text: The text.
 # opt: substring: The substring to check.
 # txt: Returns 0/TRUE if the text starts with the substring; 1/FALSE otherwise.
-# use: if startsWith "${text}" "a"; then echo "${text} starts with a"; fi
+# use: if startsWith "${text}" "a"; then
+# use:   echo "${text} starts with a";
+# use: fi
 function startsWith() {
   local _container="${1}";
   checkNotEmpty text "${_container}" 1;
@@ -275,14 +291,16 @@ function startsWith() {
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the converted string.
 # use: local _text="ABC";
-#      toLower "${_text}";
-#      local _lowerCase="${RESULT}";
+# use: toLower "${_text}";
+# use: local _lowerCase="${RESULT}";
 function toLower() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local result=$(echo "${_text}" | awk '{print tolower($0);}');
-  export RESULT="${result}";
+  local _result=$(echo "${_text}" | awk '{print tolower($0);}');
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # fun: toUpper text
@@ -292,15 +310,17 @@ function toLower() {
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the string in upper case.
 # use: local _text="abc";
-#      toUpper "${_text}";
-#      local _upcased="${RESULT}";
+# use: toUpper "${_text}";
+# use: local _upcased="${RESULT}";
 function toUpper() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local result=$(echo "${_text}" | awk '{print toupper($0);}');
+  local _result=$(echo "${_text}" | awk '{print toupper($0);}');
 
-  export RESULT="${result}";
+  export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # fun: replaceAll text old replacement
@@ -310,7 +330,9 @@ function toUpper() {
 # opt: old: The string to replace.
 # opt: replacement: The replacement.
 # txt: Returns 0/TRUE if anything was replaced; 1/FALSE otherwise.
-# use: if replaceAll "a b c" " " ","; then ...; fi
+# use: if replaceAll "a b c" " " ","; then
+# use:   ...;
+# use: fi
 function replaceAll() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
@@ -318,13 +340,14 @@ function replaceAll() {
   checkNotEmpty old "${_old}" 2;
   local _replacement="${3}";
   checkNotEmpty replacement "${_replacement}" 3;
-  local _result;
+
   local -i _rescode;
 
-  _result="${_text//${_old}/${_replacement}}";
+  local _result="${_text//${_old}/${_replacement}}";
 
   if areEqual "${_text}" "${_result}"; then
     _rescode=${FALSE};
+    export RESULT="";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -340,7 +363,9 @@ function replaceAll() {
 # opt: separator: The separator.
 # opt: arrayName: The destination array.
 # txt: Returns 0/TRUE if the text could be splitted; 1/FALSE otherwise.
-# use: if split "${csvVariable}" "," arr; then "Splitted: ${arr[@]}"; fi
+# use: if split "${csvVariable}" "," arr; then
+# use:   echo "Splitted: ${arr[@]}";
+# use: fi
 function split() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
@@ -350,29 +375,32 @@ function split() {
   checkNotEmpty arrayName "${_arrayName}" 3;
   local -n _split=${_arrayName};
   local -i _rescode=${FALSE};
-  local _oldIFS="${IFS}";
-  local _aux;
   local -i _i=0;
-  local -i _j;
   local -i _k;
 
-  while IFS="${_separator}" read -ra _aux; do
+  local _oldIFS="${IFS}";
+
+  local _aux;
+  IFS="${_separator}";
+  while read -ra _aux; do
+    IFS="${DWIFS}";
     for _k in $(seq 0 ${#_aux[@]}); do
+      IFS="${_oldIFS}";
       if ! isEmpty "${_aux[${_k}]}"; then
         _split[${_i}]=${_aux[${_k}]};
         ((_i++));
       fi
     done
+    IFS="${_oldIFS}";
     _rescode=${TRUE};
   done <<< "${_text}"
 
+  local -i _j;
+  IFS="${DWIFS}";
   for _j in $(seq ${#_split[@]} ${_i}); do
+    IFS="${_oldIFS}";
     unset _split[${_j}];
   done
-
-  if isTrue ${_rescode}; then
-    export RESULT="split";
-  fi
 
   return ${_rescode};
 }
@@ -383,12 +411,15 @@ function split() {
 # opt: text: The text.
 # opt: delimiter: The delimiter.
 # txt: Returns 0/TRUE if the text starts and ends with given delimiter; 1/FALSE otherwise.
-# use: if startsAndEndsWith "${line}" '|'; then echo "Org table format"; fi
+# use: if startsAndEndsWith "${line}" '|'; then
+# use:   echo "Org table format";
+# use: fi
 function startsAndEndsWith() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
   local _delimiter="${2}";
   checkNotEmpty delimiter "${_delimiter}" 2;
+
   local -i _rescode=${FALSE};
 
   if startsWith "${_text}" "${_delimiter}" && endsWith "${_text}" "${_delimiter}"; then
@@ -405,12 +436,15 @@ function startsAndEndsWith() {
 # opt: delimiter: The delimiter.
 # txt: Returns 0/TRUE if the delimiter was actually surrounding the text; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE; the variable RESULT contains the text without the delimiters.
-# use: if removeSurrounding "${var}" '"'; then echo "Resulting var: ${RESULT}"; fi
+# use: if removeSurrounding "${var}" '"'; then
+# use:   echo "Resulting var: ${RESULT}";
+# use: fi
 function removeSurrounding() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
   local _delimiter="${2}";
   checkNotEmpty delimiter "${_delimiter}" 2;
+
   local _result;
   local -i _rescode=${FALSE};
 
@@ -437,7 +471,8 @@ function removeSurrounding() {
 # opt: text: The text.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the trimmed text.
-# use: trim "${var}" '"'; echo "Trimmed var: ${RESULT}";
+# use: trim "${var}" '"';
+# use: echo "Trimmed var: ${RESULT}";
 function trim() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
@@ -457,16 +492,16 @@ function trim() {
 # opt: text: The text.
 # txt: Returns 0/TRUE if the text was splitted successfuly; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the splitted pairs.
-# use: if keyValueSplit "${vars}"; then IFS='\n' for var in ${vars}; do echo "var: ${var}"; fi
+# use: if keyValueSplit "${vars}"; then
+# use:   IFS='\n' for var in ${vars}; do
+# use:     echo "var: ${var}";
+# use:   done;
+# use:  fi
 function keyValueSplit() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
-  local -i _rescode;
-  local _result;
-  local _oldIFS="${IFS}";
 
-
-  _result="$(echo -e "${_text}" | awk -F'=' '\
+  local _result="$(echo -e "${_text}" | awk -F'=' '\
 function printKey(text,     value, len) {
   len=split(text, value, " ");
   if (len > 1) {
@@ -493,7 +528,9 @@ function printValue(text,   value, len, a) {
   #             print;
   #     }
 
-  export RESULT="${_result}";
+  isNotEmpty "${_result}";
+  local -i _rescode=$?;
+
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
@@ -509,7 +546,9 @@ function printValue(text,   value, len, a) {
 # opt: index: The 0-based index of the item to extract.
 # txt: Returns 0/TRUE if the item was extracted; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the requested item.
-# use: if splitAndExtract "2019-09-01" "-" 0; then echo "Year: ${RESULT}"; fi
+# use: if splitAndExtract "2019-09-01" "-" 0; then
+# use:   echo "Year: ${RESULT}";
+# use: fi
 function splitAndExtract() {
   local _input="${1}";
   checkNotEmpty input "${_input}" 1;
@@ -540,7 +579,9 @@ function splitAndExtract() {
 # opt: value: The value.
 # txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
-# use: if sha512 "myText"; then echo "SHA-512: ${RESULT}"; fi
+# use: if sha512 "myText"; then
+# use:   echo "SHA-512: ${RESULT}";
+# use: fi
 function sha512() {
   local _value="${1}";
   checkNotEmpty value "${_value}" 1;
@@ -553,7 +594,9 @@ function sha512() {
 # opt: value: The value.
 # txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
-# use: if sha384 "myText"; then echo "SHA-384: ${RESULT}"; fi
+# use: if sha384 "myText"; then
+# use:   echo "SHA-384: ${RESULT}";
+# use: fi
 function sha384() {
   local _value="${1}";
   checkNotEmpty value "${_value}" 1;
@@ -566,7 +609,9 @@ function sha384() {
 # opt: value: The value.
 # txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
-# use: if sha256 "myText"; then echo "SHA-256: ${RESULT}"; fi
+# use: if sha256 "myText"; then
+# use:   echo "SHA-256: ${RESULT}";
+# use: fi
 function sha256() {
   local _value="${1}";
   checkNotEmpty value "${_value}" 1;
@@ -579,7 +624,9 @@ function sha256() {
 # opt: value: The value.
 # txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
-# use: if sha224 "myText"; then echo "SHA-224: ${RESULT}"; fi
+# use: if sha224 "myText"; then
+# use:   echo "SHA-224: ${RESULT}";
+# use: fi
 function sha224() {
   local _value="${1}";
   checkNotEmpty value "${_value}" 1;
@@ -592,7 +639,9 @@ function sha224() {
 # opt: value: The value.
 # txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
-# use: if sha1 "myText"; then echo "SHA-1: ${RESULT}"; fi
+# use: if sha1 "myText"; then
+# use:   echo "SHA-1: ${RESULT}";
+# use: fi
 function sha1() {
   local _value="${1}";
   checkNotEmpty value "${_value}" 1;
@@ -605,7 +654,9 @@ function sha1() {
 # opt: value: The value.
 # txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
-# use: if sha "myText"; then echo "SHA: ${RESULT}"; fi
+# use: if sha "myText"; then echo
+# use: "SHA: ${RESULT}";
+# use: fi
 function sha() {
   local _value="${1}";
   checkNotEmpty value "${_value}" 1;
@@ -619,19 +670,18 @@ function sha() {
 # opt: value: The value.
 # txt: Returns 0/TRUE if the hash was calculated; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the hash value.
-# use: if hash sha512 "myText"; then echo "SHA-512: ${RESULT}"; fi
+# use: if hash sha512 "myText"; then
+# use:   echo "SHA-512: ${RESULT}";
+# use: fi
 function hash() {
   local _hash="${1}";
   checkNotEmpty hash "${_hash}" 1;
   local _value="${2}";
   checkNotEmpty value "${_value}" 2;
-  local -i _rescode;
-  local _result="$(echo -n "${_value}" | ${_hash}sum 2> /dev/null | cut -f1 -d" ")";
-  _rescode=$?;
 
-  if isEmpty "${_result}"; then
-    _rescode=${FALSE};
-  fi
+  local _result="$(echo -n "${_value}" | ${_hash}sum 2> /dev/null | cut -f1 -d" ")";
+  isNotEmpty "${_result}";
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
@@ -647,20 +697,20 @@ function hash() {
 # opt: string: The string.
 # txt: Returns 0/${TRUE} if the input is valid; 1/${FALSE} otherwise.
 # txt: If the function returns 0/${TRUE}, the variable RESULT contains the number of occurrences.
-# use: if countMatchesOfCharsInString 'ab' 'abcaba'; then echo "Occurrences: ${RESULT} (should be 5)" ; fi
+# use: if countMatchesOfCharsInString 'ab' 'abcaba'; then
+# use:   echo "Occurrences: ${RESULT} (should be 5)";
+# use: fi
 function countMatchesOfCharsInString() {
   local _chars="${1}";
   checkNotEmpty chars "${_chars}" 1;
   local _string="${2}";
   checkNotEmpty string "${_string}" 2;
-  local -i _rescode;
-  local _result;
 
   local _aux="${_string//[^${_chars}]}";
-  _rescode=$?;
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
-    _result="${#_aux}";
+    local _result="${#_aux}";
     export RESULT="${_result}";
   fi
 
@@ -673,17 +723,16 @@ function countMatchesOfCharsInString() {
 # opt: text: The text to convert.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the text in Pascal case.
-# use: camelCaseToPascalCase "baseFolder"; echo "baseFolder -> ${RESULT}";
+# use: camelCaseToPascalCase "baseFolder";
+# use: echo "baseFolder -> ${RESULT}";
 function camelCaseToPascalCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
-
   camelCaseToSnakeCase "${_text}";
   snakeCaseToPascalCase "${RESULT}";
 
-  return ${_rescode};
+  return ${TRUE};
 }
 
 # fun: camelCaseToSnakeCase text
@@ -692,16 +741,15 @@ function camelCaseToPascalCase() {
 # opt: text: The text to convert.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the text in snake case.
-# use: camelCaseToSnakeCase "baseFolder"; echo "baseFolder -> ${RESULT}";
+# use: camelCaseToSnakeCase "baseFolder";
+# use: echo "baseFolder -> ${RESULT}";
 function camelCaseToSnakeCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
   local _result="$(sed -r 's/([a-z0-9])([A-Z])/\1_\L\2/g' <<< "${_text}")";
   uncapitalize "${_result}";
-
-  return ${_rescode};
+  return $?;
 }
 
 # fun: snakeCaseToCamelCase text
@@ -710,16 +758,15 @@ function camelCaseToSnakeCase() {
 # opt: text: The text to convert.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the text in camel case.
-# use: snakeCaseToCamelCase "output_file"; echo "output_file -> ${RESULT}";
+# use: snakeCaseToCamelCase "output_file";
+# use: echo "output_file -> ${RESULT}";
 function snakeCaseToCamelCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
   snakeCaseToPascalCase "${_text}";
   uncapitalize "${RESULT}";
-
-  return ${_rescode};
+  return $?;
 }
 
 # fun: toCamelCase text
@@ -728,14 +775,16 @@ function snakeCaseToCamelCase() {
 # opt: text: The text to convert.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the text in camel case.
-# use: toCamelCase "output_file"; echo "output_file -> ${RESULT}";
+# use: toCamelCase "output_file";
+# use: echo "output_file -> ${RESULT}";
 function toCamelCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
   local _result="$(echo "${_text}" | awk 'function toCamel(s) { camel = ""; split(s, words, /-|[^a-zA-Z0-9]/); for (i = 1; i in words; i++) {camel = camel toupper(substr(words[i], 1, 1)) tolower(substr(words[i], 2))}; return camel} NF { printf "%s\n", toCamel($0)}')";
-  _rescode=$?;
+  isEmpty "${_result}";
+  local -i _rescode=$?;
+
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
@@ -749,14 +798,19 @@ function toCamelCase() {
 # opt: text: The text to convert.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the text in Pascal case.
-# use: snakeCaseToPascalCase "output_file"; echo "output_filer -> ${RESULT}";
+# use: snakeCaseToPascalCase "output_file";
+# use: echo "output_filer -> ${RESULT}";
 function snakeCaseToPascalCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
   local _result="$(sed -r 's/(^|_)([a-z])/\U\2/g' <<< "${_text}")";
-  export RESULT="${_result}";
+  isEmpty "${_result}";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }
@@ -767,12 +821,12 @@ function snakeCaseToPascalCase() {
 # opt: text: The text to uncapitalize.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the uncapitalized text.
-# use: uncapitalize "MyText"; echo "uncapitalized: ${RESULT}";
+# use: uncapitalize "MyText";
+# use: echo "uncapitalized: ${RESULT}";
 function uncapitalize() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
   tailText "${_text}";
   local _tail="${RESULT}";
 
@@ -784,7 +838,7 @@ function uncapitalize() {
 
   export RESULT="${_result}";
 
-  return ${_rescode};
+  return ${TRUE};
 }
 
 # fun: capitalize text
@@ -793,12 +847,12 @@ function uncapitalize() {
 # opt: text: The text to capitalize.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the capitalized text.
-# use: capitalize "MyText"; echo "capitalized: ${RESULT}";
+# use: capitalize "MyText";
+# use: echo "capitalized: ${RESULT}";
 function capitalize() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
   tailText "${_text}";
   local _tail="${RESULT}";
 
@@ -810,7 +864,7 @@ function capitalize() {
 
   export RESULT="${_result}";
 
-  return ${_rescode};
+  return ${TRUE};
 }
 
 # fun: tailText text
@@ -819,17 +873,16 @@ function capitalize() {
 # opt: text: The text.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the original text after removing the first character.
-# use: tailText "aText"; echo "${RESULT}";
+# use: tailText "aText";
+# use: echo "${RESULT}";
 function tailText() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local -i _rescode=${TRUE};
   local _result="$(cut -c2- <<< ${_text})";
-
   export RESULT="${_result}";
 
-  return ${_rescode};
+  return ${TRUE};
 }
 
 # fun: stringLength text
@@ -838,7 +891,8 @@ function tailText() {
 # opt: text: The text.
 # txt: Returns 0/${TRUE} always.
 # txt: The variable RESULT contains the string length.
-# use: stringLength "abc"; echo "length: ${RESULT}";
+# use: stringLength "abc";
+# use: echo "length: ${RESULT}";
 function stringLength() {
   local _text="${@}";
   checkNotEmpty text "${_text}" 1;

@@ -19,13 +19,15 @@ function echoColorizedText() {
     getNoColor;
     _defaultColor="${RESULT}";
   fi
-  local _color="";
 
   if allowsColors; then
+
+    local _color;
+
     getSuccessColor;
-    _successColor="${RESULT}";
+    local _successColor="${RESULT}";
     getFailureColor;
-    _failureColor="${RESULT}";
+    local _failureColor="${RESULT}";
     case ${_keyword} in
       ${SUCCESS}) _color="${_successColor}";
                   ;;

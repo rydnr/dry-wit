@@ -33,8 +33,7 @@ function addError() {
   if isErrorUndefined "${_normalizedLabel}"; then
     appendErrorMessage "${_normalizedLabel}";
     ERROR.getModuleName;
-    local _moduleName="${RESULT}";
-    DW.setGlobalString "${_moduleName}" "${_normalizedLabel}" "${_message}";
+    DW.setGlobalString "${RESULT}" "${_normalizedLabel}" "${_message}";
   fi
 }
 
@@ -82,7 +81,6 @@ function exitWithErrorCode() {
   local _label="${1}";
   checkNotEmpty label "${_label}" 1;
   shift;
-  local -i _rescode;
 
   if isLogLineOpen; then
     getLastLogLevel;
@@ -91,7 +89,7 @@ function exitWithErrorCode() {
   fi
 
   printErrorMessage "${_label}" "$@";
-  _rescode=$?;
+  local -i _rescode=$?;
   cleanup;
 
   exit ${_rescode};
@@ -103,11 +101,12 @@ function exitWithErrorCode() {
 # opt: label: The error label.
 # txt: 0/TRUE if the error is defined; 1/FALSE otherwise.
 # use: if isErrorDefined INVALID_NAME; then
-#        echo "INVALID_NAME already defined";
-#      fi
+# use:   echo "INVALID_NAME already defined";
+# use: fi
 function isErrorDefined() {
   local _label="${1}";
   checkNotEmpty label "${_label}" 1;
+
   local -i _rescode;
 
   ERROR.getErrorMessagesVariableName;
@@ -127,11 +126,12 @@ function isErrorDefined() {
 # opt: label: The error label.
 # txt: Returns 0/TRUE if the error is undefined; 1/FALSE otherwise.
 # use: if isErrorUndefined INVALID_NAME; then
-#        addError INVALID_NAME "The name is not valid";
-#      fi
+# use:   addError INVALID_NAME "The name is not valid";
+# use: fi
 function isErrorUndefined() {
   local _label="${1}";
   checkNotEmpty label "${_label}" 1;
+
   local -i _rescode;
 
   if isErrorDefined "${_label}"; then
@@ -148,28 +148,31 @@ function isErrorUndefined() {
 # txt: Prints the error message for given label.
 # opt: label: The error label.
 # txt: Returns 0/TRUE if the error is found and gets printed; 1/FALSE otherwise.
-# use: if printErrorMessage INVALID_OPTION; then ...; fi
+# use: if printErrorMessage INVALID_OPTION; then
+# use:   ...;
+# use: fi
 function printErrorMessage() {
   local _label="${1}";
   checkNotEmpty label "${_label}" 1;
   shift;
+
   local -i _rescode=${TRUE};
+
   local _message;
-  local _error;
-  local -i _interruption=${TRUE};
-  local _error;
-  local _oldIFS="${IFS}";
 
   #  set +o nounset  # allow unset variables
 
   ERROR.getBuiltInErrorsVariableName;
   local -n _builtinErrors=${RESULT};
+
+  local _oldIFS="${IFS}";
   IFS="${DWIFS}";
-  for _error in ${_builtinErrors[@]}; do
+  local _builtinError;
+  for _builtinError in ${_builtinErrors[@]}; do
     IFS="${_oldIFS}";
     _rescode=$((_rescode+1));
-    if areEqual "${_error}" "${_label}"; then
-      _message="${_error}";
+    if areEqual "${_builtinError}" "${_label}"; then
+      _message="${_builtinError}";
       break;
     fi;
   done
@@ -184,11 +187,12 @@ function printErrorMessage() {
     # IFS issue
     #    rescode=${TRUE};
     IFS="${DWIFS}";
-    for _error in ${_errorMessages[@]}; do
+    local _errorMessage;
+    for _errorMessage in ${_errorMessages[@]}; do
       IFS="${_oldIFS}";
       _rescode=$((_rescode+1));
-      if areEqual "${_error}" "${_label}"; then
-        _message="${_error}";
+      if areEqual "${_errorMessage}" "${_label}"; then
+        _message="${_errorMessage}";
         break;
       fi;
     done
@@ -200,8 +204,7 @@ function printErrorMessage() {
     _rescode=-1;
   else
     ERROR.getModuleName;
-    local _moduleName="${RESULT}";
-    DW.getGlobalString "${_moduleName}" "${_label}";
+    DW.getGlobalString "${RESULT}" "${_label}";
     _error="${RESULT}";
   fi
 
@@ -217,11 +220,11 @@ EOF
     fi
   fi
 
-  local -i _callStackIndex;
   local -i _mainFound=${FALSE};
   local _callStack="";
 
   IFS="${DWIFS}";
+  local -i _callStackIndex;
   for _callStackIndex in $(seq 3 ${#FUNCNAME[@]}); do
     IFS="${_oldIFS}";
     if isNotEmpty "${FUNCNAME[${_callStackIndex}]}"; then
@@ -262,9 +265,6 @@ EOF
 # txt: Returns 0/TRUE always.
 # use: printExitValues;
 function printExitValues() {
-  local -i i=0;
-  local -i j=0;
-  local _oldIFS="${IFS}";
 
   if isTraceEnabled; then
     cat <<EOF
@@ -277,20 +277,24 @@ EOF
     ERROR.getModuleName;
     local _moduleName="${RESULT}";
 
+    local _oldIFS="${IFS}";
+
     if [ ${#_builtinErrors[@]} -gt 0 ]; then
       IFS=$"${DWIFS}";
-      for ((i = 0; i < ${#_builtinErrors[@]}; i++)); do
-        DW.getGlobalString "${_moduleName}" "${_builtinErrors[$i]}";
-        echo "  $((i+1)): ${RESULT}.";
+      local _i;
+      for ((_i = 0; _i < ${#_builtinErrors[@]}; _i++)); do
+        DW.getGlobalString "${_moduleName}" "${_builtinErrors[${_i}]}";
+        echo "  $((_i+1)): ${RESULT}.";
       done
     fi
     ERROR.getErrorMessagesVariableName;
     local -n _errorMessages=${RESULT};
     if [ ${#_errorMessages[@]} -gt 0 ]; then
       IFS=$"${DWIFS}";
-      for ((j = 0; j < ${#_errorMessages[@]}; j++)); do
-        DW.getGlobalString "${_moduleName}" "${_errorMessages[$j]}";
-        echo "  $((j+i+1)): ${RESULT}.";
+      local _j;
+      for ((_j = 0; _j < ${#_errorMessages[@]}; _j++)); do
+        DW.getGlobalString "${_moduleName}" "${_errorMessages[${_j}]}";
+        echo "  $((_j+_i+1)): ${RESULT}.";
       done
     fi
     IFS="${_oldIFS}";
@@ -311,22 +315,22 @@ function ERROR.printError() {
 # api: private
 # txt: Returns the name of variable containing the built-in errors.
 # txt: Returns 0/TRUE always.
-# use: ERROR.getBuiltInErrorsVariableName; local -n builtinErrors=${RESULT};
+# use: ERROR.getBuiltInErrorsVariableName;
+# use: local -n builtinErrors=${RESULT};
 function ERROR.getBuiltInErrorsVariableName() {
   ERROR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" BUILTIN_ERRORS;
+  DW.getGlobalVariableName "${RESULT}" BUILTIN_ERRORS;
 }
 
 # fun: ERROR.getErrorMessagesVariableName
 # api: private
 # txt: Returns the name of variable containing the error messages.
 # txt: Returns 0/TRUE always.
-# use: ERROR.getErrorMessagesVariableName; local -n errorMessages=${RESULT};
+# use: ERROR.getErrorMessagesVariableName;
+# use: local -n errorMessages=${RESULT};
 function ERROR.getErrorMessagesVariableName() {
   ERROR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" ERROR_MESSAGES;
+  DW.getGlobalVariableName "${RESULT}" ERROR_MESSAGES;
 }
 
 # fun: ERROR.appendBuiltInError error
@@ -365,8 +369,7 @@ function ERROR.addBuiltInError() {
 
   ERROR.appendBuiltInError "${_upcasedErrorName}";
   ERROR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" "${_upcasedErrorName}" "${_message}";
+  DW.declareGlobalString "${RESULT}" "${_upcasedErrorName}" "${_message}";
 }
 
 # fun: ERROR.defineBuiltInErrorMessages

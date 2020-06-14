@@ -10,7 +10,9 @@
 # opt: command: The command to run.
 # txt: Returns the result code of the command.
 # txt: If the function returns 0/TRUE; then the variable RESULT contains the output of the command.
-# use: if remoteSshCommand user ssh.example.com "who"; then echo "Remote logged users: ${RESULT}"; fi
+# use: if remoteSshCommand user ssh.example.com "who"; then
+# use:   echo "Remote logged users: ${RESULT}";
+# use: fi
 function remoteSshCommand() {
   local _user="$1";
   checkNotEmpty user "${_user}" 1;
@@ -18,13 +20,19 @@ function remoteSshCommand() {
   checkNotEmpty server "${_server}" 2;
   local _command="$*";
   checkNotEmpty command "${_command}" 3;
-  local _result;
-  local -i _rescode=${TRUE};
 
-  _result=$(ssh ${_user}@${_server} "${_command}" 2> /dev/null);
-  _rescode=$?;
+  local _result="$(ssh ${_user}@${_server} "${_command}" 2>&1)";
+  local -i _rescode;
+  if contains "${_result}" "ssh: "; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
   fi
 
   return ${_rescode};
@@ -39,7 +47,9 @@ function remoteSshCommand() {
 # opt: previousPipe: The pipe to read from, which is piped to the remote command.
 # txt: Returns the result code of the remote command.
 # txt: If the function returns 0/TRUE; then the variable RESULT contains the output of the command.
-# use: if remoteSshCommandPipe user ssh.example.com "tar -cvfz - /www" "cat > www.tar.gz"
+# use: if remoteSshCommandPipe user ssh.example.com "tar -cvfz - /www" "cat > www.tar.gz"; then
+# use:   ...
+# use: fi
 function remoteSshCommandPipe() {
   local _user="$1";
   checkNotEmpty user "${_user}" 1;
@@ -52,16 +62,23 @@ function remoteSshCommandPipe() {
   shift;
   local _previousPipe="$@";
   checkNotEmpty previousPipe "${_previousPipe}" 4;
-  local _result;
-  local -i _rescode=${TRUE};
-  local line;
+  local _line;
 
 #  echo "_previousPipe=${_previousPipe}";
 #  echo "_command=${_command}";
-  _result=$(${_previousPipe} | while IFS='' read -r line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
+  local _result=$(${_previousPipe} | while IFS='' read -r _line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
+  local _result;
+  local -i _rescode=${TRUE};
+  if contains "${_result}" "ssh: "; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
   rescode=$?;
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
   fi
 
   return ${_rescode};

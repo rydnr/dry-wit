@@ -8,26 +8,26 @@
 # opt: command: The command to run.
 # txt: Returns the result of the command.
 # txt: The output is stored in the variable RESULT. If it's expected to be longer use 'runCommandLongOutput' instead.
-# use: if runCommand "nmap -Pn"; then ...; fi
+# use: if runCommand "nmap -Pn"; then
+# use:   ...;
+# use: fi
 function runCommand() {
   local _command="$(echo $@ | sed 's_\n_ _g')";
   checkNotEmpty command "${_command}" 1;
-  local result;
-  local -i resultCode;
 
   getLogCategory;
   local _previousLogCategory="${RESULT}";
   setLogCategory "${_previousLogCategory}:($1)";
 
   logDebug "${_command}";
-  result=$($@ 2>&1);
-  resultCode=$?;
+  local result=$($@ 2>&1);
+  local -i _rescode=$?;
 
   export RESULT="${result}";
 
   setLogCategory "${_previousLogCategory}";
 
-  return ${resultCode};
+  return ${_rescode};
 }
 
 # fun: runCommandAsUidGid uid gid folder command+
@@ -39,8 +39,8 @@ function runCommand() {
 # opt: command: the command.
 # txt: Returns the result of the command.
 # use: if runCommandAsUidGid 1000 100 /tmp "ls -ltrhia"; then
-#        echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
-#      fi
+# use:   echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
+# use: fi
 function runCommandAsUidGid() {
   local _uid="${1}";
   checkNotEmpty uid "${_uid}" 1;
@@ -50,18 +50,16 @@ function runCommandAsUidGid() {
   checkNotEmpty folder "${_folder}" 3;
   local _command="${4}";
   checkNotEmpty command "${_command}" 4;
-  shift
-  shift
-  shift
-  shift
-  local _user;
-  local _group;
+  shift;
+  shift;
+  shift;
+  shift;
 
   DW.import user;
   retrieveUserFromUid "${_uid}";
-  _user="${RESULT}";
+  local _user="${RESULT}";
   retrieveGroupFromGid "${_gid}";
-  _group="${RESULT}";
+  local _group="${RESULT}";
 
   runCommandAsUserAndGroup "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
 }
@@ -75,8 +73,8 @@ function runCommandAsUidGid() {
 # opt: command: the command.
 # txt: Returns the result of the command.
 # use: if runCommandAsUserAndGroup root root /tmp "ls -ltrhia"; then
-#        echo "ls -ltrhia run successfully as root/root, on /tmp";
-#      fi
+# use:   echo "ls -ltrhia run successfully as root/root, on /tmp";
+# use: fi
 function runCommandAsUserAndGroup() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
@@ -86,10 +84,10 @@ function runCommandAsUserAndGroup() {
   checkNotEmpty folder "${_folder}" 3;
   local _command="${4}";
   checkNotEmpty command "${_command}" 4;
-  shift
-  shift
-  shift
-  shift
+  shift;
+  shift;
+  shift;
+  shift;
   local _args="${@}";
   local _exports="$(export)";
 

@@ -8,17 +8,20 @@
 # opt: filePath: The path of the executable.
 # txt: Returns 0/${TRUE} if the process is running; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the pid of the process.
-# use: if isRunning /bin/bash; then echo "bash pid: ${RESULT}"; fi
+# use: if isRunning /bin/bash; then
+# use:   echo "bash pid: ${RESULT}";
+# use: fi
 function isRunning() {
   local _filePath="${1}";
   checkNotEmpty filePath "${_filePath}" 1;
+
   local _result=$(pidof $(which ${_filePath}));
   local -i _rescode=$?;
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi

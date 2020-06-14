@@ -7,7 +7,8 @@
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
-# use: TERM.getModuleName; echo "Module: ${RESULT}";
+# use: TERM.getModuleName;
+# use: echo "Module: ${RESULT}";
 function TERM.getModuleName() {
   export RESULT="TERM";
   return ${TRUE};
@@ -18,7 +19,9 @@ function TERM.getModuleName() {
 # txt: Retrieves the width of the term.
 # txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
-# use: if getTermWidth; then echo "term width -> ${RESULT}"; fi
+# use: if getTermWidth; then
+# use:   echo "term width -> ${RESULT}";
+# use: fi
 function getTermWidth() {
   local -i _rescode;
 
@@ -43,15 +46,17 @@ function getTermWidth() {
 # opt: term: the TERM value.
 # txt: Returns 0/TRUE if the term width was retrieved; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the term width.
-# use: if getTermWidthForTerm "${TERM}"; then ...; fi
+# use: if getTermWidthForTerm "${TERM}"; then
+# use:   ...;
+# use: fi
 function getTermWidthForTerm() {
   local _term="${1}";
   checkNotEmpty term "${_term}" 1;
-  local -i _rescode;
+
   local _result;
 
   $(tput cols &> /dev/null > /dev/null 2>&1);
-  _rescode=$?;
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     _result=$(tput cols);
@@ -94,7 +99,7 @@ if isTrue ${_rescode}; then
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the TERM variable.
 # use: retrieveTERM;
-#      echo "TERM -> ${RESULT}";
+# use: echo "TERM -> ${RESULT}";
 function retrieveTERM() {
   local _result="${TERM}";
 
@@ -118,7 +123,9 @@ function retrieveTERM() {
 # txt: Retrieves the column width, from an environment variable.
 # txt: Returns 0/TRUE if the term width is specified via an environment variable; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the column width.
-# use: if retrieveTermWidthFromEnvVar; then width=${RESULT}; fi
+# use: if retrieveTermWidthFromEnvVar; then
+# use:   local width=${RESULT};
+# use: fi
 function TERM.retrieveTermWidthFromEnvVar() {
   local -i _rescode=${FALSE};
 

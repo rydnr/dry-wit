@@ -19,7 +19,7 @@ function DEBUG.getModuleName() {
 # opt: arrayName: The name of the array.
 # txt: Returns 0/TRUE always.
 # use: A=( "1" "2" "3" );
-#      debugArray "${A}"
+# use: debugArray "${A}"
 function debugArray() {
   checkNotEmpty arrayName "${1}" 1;
   flattenArray "${1}" " + ";
@@ -32,7 +32,7 @@ function debugArray() {
 # opt: arrayName: The name of the associative array.
 # txt: Returns 0/TRUE always.
 # use: A=( [foo]=bar [other key]="other value" );
-#      debugArray "${A}"
+# use: debugArray "${A}"
 function debugAssociativeArray() {
   local _associativeArrayName="${1}";
   checkNotEmpty arrayName "${_associativeArrayName}" 1;
@@ -83,6 +83,7 @@ function debugEcho() {
 function debugVariable() {
   local _name="${1}";
   checkNotEmpty varName "${_name}" 1;
+
   shift;
   local _value="${@}";
 
@@ -96,12 +97,9 @@ function debugVariable() {
 # txt: Returns  0/TRUE if it's enabled; 1/FALSE otherwise.
 # use: if isDebugEchoEnabled; then ...; fi
 function isDebugEchoEnabled() {
-  local -i _rescode;
-
   DEBUG.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalInt "${_moduleName}" ECHO_ENABLED;
-  _rescode=${RESULT};
+  DW.getGlobalInt "${RESULT}" ECHO_ENABLED;
+  local -i _rescode=${RESULT};
 
   return ${_rescode};
 }
@@ -201,8 +199,7 @@ function printApiCall() {
 # use: DEBUG.getDebugLogFile; echo "log file -> ${RESULT}";
 function DEBUG.getDebugLogFile() {
   DEBUG.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" LOG_FILE;
+  DW.getGlobalString "${RESULT}" LOG_FILE;
 }
 
 # fun: DEBUG.defaultState
@@ -229,30 +226,21 @@ function DEBUG.defaultState() {
 # txt: Returns whatever the command or function does return.
 # use: debugDuration ls -l /
 function debugDuration() {
-  local _start;
-  local _end;
   local -i _rescode;
-  local _dt;
-  local -i _dd;
-  local _dt2;
-  local -i _dh;
-  local _dt3;
-  local -i _dm;
-  local _ds;
 
   if isDebugEchoEnabled; then
     checkNotEmpty commandOrFunction "$@" 1;
-    _start=$(date +%s.%N);
+    local _start=$(date +%s.%N);
     $@;
     _rescode=$?;
-    _end=$(date +%s.%N);
-    _dt=$(echo "${_end} - ${_start}" | bc);
-    _dd=$(echo "${_dt}/86400" | bc);
-    _dt2=$(echo "${_dt}-86400*${_dd}" | bc);
-    _dh=$(echo "${_dt2}/3600" | bc);
-    _dt3=$(echo "${_dt2}-3600*${_dh}" | bc);
-    _dm=$(echo "${_dt3}/60" | bc);
-    _ds=$(echo "${_dt3}-60*${_dm}" | bc);
+    local _end=$(date +%s.%N);
+    local -i _dt=$(echo "${_end} - ${_start}" | bc);
+    local -i _dd=$(echo "${_dt}/86400" | bc);
+    local -i _dt2=$(echo "${_dt}-86400*${_dd}" | bc);
+    local -i _dh=$(echo "${_dt2}/3600" | bc);
+    local -i _dt3=$(echo "${_dt2}-3600*${_dh}" | bc);
+    local -i _dm=$(echo "${_dt3}/60" | bc);
+    local -i _ds=$(echo "${_dt3}-60*${_dm}" | bc);
 
     debugEcho "$(printf "$@ took %d:%02d:%02d:%02.4f and returned %d\n" ${_dd} ${_dh} ${_dm} ${_ds} ${_rescode})";
   else

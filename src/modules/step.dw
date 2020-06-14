@@ -7,7 +7,8 @@
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
-# use: STEP.getModuleName; echo "Module: ${RESULT}";
+# use: STEP.getModuleName;
+# use: echo "Module: ${RESULT}";
 function STEP.getModuleName() {
   export RESULT="STEP";
   return ${TRUE};
@@ -18,7 +19,9 @@ function STEP.getModuleName() {
 # txt: Checks if given step is already done.
 # opt: label: The step label.
 # txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
-# use: if isStepAlreadyDone SAMPLE_STEP; then echo "SAMPLE_STEP already done"; fi
+# use: if isStepAlreadyDone SAMPLE_STEP; then
+# use:   echo "SAMPLE_STEP already done";
+# use: fi
 function isStepAlreadyDone() {
   local _label="${1}";
   checkNotEmpty label "${_label}" 1;
@@ -86,10 +89,8 @@ function setStepStatusFolder() {
   checkNotEmpty folder "${_folder}" 1;
 
   STEP.getModuleName;
-  local _moduleName="${RESULT}";
-
   # env: STATUS_FOLDER: The defined environment variables.
-  DW.declareGlobalString "${_moduleName}" STATUS_FOLDER "${_folder}";
+  DW.declareGlobalString "${RESULT}" STATUS_FOLDER "${_folder}";
 }
 
 # fun: getStepStatusFolder
@@ -97,12 +98,11 @@ function setStepStatusFolder() {
 # txt: Retrieves the step status folder (where the marked files are created).
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the step status folder.
-# use: getStepStatusFolder; echo "Step status folder: ${RESULT}";
+# use: getStepStatusFolder;
+# use: echo "Step status folder: ${RESULT}";
 function getStepStatusFolder() {
   STEP.getModuleName;
-  local _moduleName="${RESULT}";
-
-  DW.getGlobalString "${_moduleName}" STATUS_FOLDER;
+  DW.getGlobalString "${RESULT}" STATUS_FOLDER;
 }
 
 # fun: STEP.resetState

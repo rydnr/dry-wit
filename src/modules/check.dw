@@ -119,7 +119,8 @@ function CHECK.checkOneOf() {
   local _caller="${FUNCNAME[((_callStackOffset+1))]}";
   local _parentCaller="${FUNCNAME[((_callStackOffset+2))]}";
 
-  IFS=$' \t\n';
+  IFS="${DWIFS}";
+  local _validValue;
   for _validValue in ${_validValues}; do
     IFS="${_oldIFS}";
     if areEqual "${_value}" "${_validValue}"; then

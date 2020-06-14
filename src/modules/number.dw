@@ -7,14 +7,16 @@
 # txt: Checks whether given value is a number
 # opt: input: The input.
 # txt: Returns 0/TRUE if the input is a number; 1/FALSE otherwise.
-# use: if isNumber "${value}"; then echo "${value} is a number"; fi
+# use: if isNumber "${value}"; then
+# use:   echo "${value} is a number";
+# use: fi
 function isNumber() {
   local _input="${1}";
   checkNotEmpty input "${_input}" 1;
-  local -i _value;
+
   local -i _rescode;
 
-  _value=$(expr "${_input}" + 0 2>/dev/null);
+  local -i _value=$(expr "${_input}" + 0 2>/dev/null);
 
   if areEqual "${_value}" "${_input}"; then
     _rescode=${TRUE};
@@ -31,12 +33,15 @@ function isNumber() {
 # opt: dividend: The dividend.
 # opt: divisor: The divisor.
 # txt: Returns 0/TRUE unless any operation is not numeric; 1/FALSE otherwise.
-# use: if mod ${value} 100; then echo "${value} mod 100 -> ${RESULT}"; fi
+# use: if mod ${value} 100; then
+# use:   echo "${value} mod 100 -> ${RESULT}";
+# use: fi
 function mod() {
   local _dividend="${1}";
   checkNotEmpty dividend "${_dividend}" 1;
   local _divisor="${2}";
   checkNotEmpty divisor "${_divisor}" 2;
+
   local -i _rescode;
   local _result;
 
@@ -47,7 +52,9 @@ function mod() {
     _rescode=${FALSE};
   fi
 
-  export RESULT="${_result}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }
@@ -58,7 +65,9 @@ function mod() {
 # opt: first: The first number.
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the first number is greater than the second; 1/FALSE if is less or equal than the second; 255 if any of them is not a number.
-# use: if isGreaterThan ${value} 0; then echo "${value} is positive"; fi
+# use: if isGreaterThan ${value} 0; then
+# use:   echo "${value} is positive";
+# use: fi
 function isGreaterThan() {
   local _first="${1}";
   checkNotEmpty first "${_first}" 1;
@@ -85,7 +94,9 @@ function isGreaterThan() {
 # opt: first: The first number.
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the first number is equal to or greater than the second; 1/FALSE if is less than the second; 255 if any of them is not a number.
-# use: if isGreaterOrEqualTo ${value} 1; then echo "${value} is positive"; fi
+# use: if isGreaterOrEqualTo ${value} 1; then
+# use:   echo "${value} is positive";
+# use: fi
 function isGreaterOrEqualTo() {
   local _first="${1}";
   checkNotEmpty first "${_first}" 1;
@@ -112,7 +123,9 @@ function isGreaterOrEqualTo() {
 # opt: first: The first number.
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the first number is less than the second; 1/FALSE if is greater or equal than the second; 255 if any of them is not a number.
-# use: if isLessThan ${value} 0; then echo "${value} is negative"; fi
+# use: if isLessThan ${value} 0; then
+# use:   echo "${value} is negative";
+# use: fi
 function isLessThan() {
   local _first="${1}";
   checkNotEmpty first "${_first}" 1;
@@ -139,7 +152,9 @@ function isLessThan() {
 # opt: first: The first number.
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the first number is less or equal to the second; 1/FALSE if is greater than the second; 255 if any of them is not a number.
-# use: if isLessOrEqualTo ${value} -1; then echo "${value} is negative"; fi
+# use: if isLessOrEqualTo ${value} -1; then
+# use:   echo "${value} is negative";
+# use: fi
 function isLessOrEqualTo() {
   local _first="${1}";
   checkNotEmpty first "${_first}" 1;
@@ -166,18 +181,19 @@ function isLessOrEqualTo() {
 # opt: input: The input number.
 # txt: Returns 0/TRUE if the number could be converted; 1/FALSE otherwise.
 # txt: The variable RESULT contains the ordinal.
-# use: if toOrdinal "${index}"; then echo "${RESULT} item"; fi
+# use: if toOrdinal "${index}"; then
+# use:   echo "${RESULT} item";
+# use: fi
 function toOrdinal() {
   local _number="${1}";
   checkNotEmpty input "${_number}" 1;
   local -i _rescode=${FALSE};
   local _result="";
-  local _lastCharacter;
 
   if isNumber "${_number}" && [ "${_number}" != "0" ]; then
 
     if lastCharacter "${_number}"; then
-      _lastCharacter="${RESULT}";
+      local _lastCharacter="${RESULT}";
       _rescode=${TRUE};
 
       case "${_lastCharacter}" in
@@ -205,13 +221,15 @@ function toOrdinal() {
 # txt: Retrieves the last digit of given number.
 # opt: number: The input number.
 # txt: Returns 0/TRUE if the input is a number; 1/FALSE otherwise.
-# use: if lastDigit "335"; then echo "Last digit: ${RESULT}"; fi
+# use: if lastDigit "335"; then
+# use:   echo "Last digit: ${RESULT}";
+# use: fi
 function lastDigit() {
   local _number="${1}";
   checkNotEmpty number "${_number}" 1;
+
   local -i _rescode=${FALSE};
   local _result="";
-  local _lastCharacter;
 
   if isNumber "${_number}" && lastCharacter "${_number}"; then
     _rescode=${TRUE};
@@ -232,17 +250,17 @@ function lastDigit() {
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the numbers could be added; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the sum.
-# use: if add 3 9; then echo "3+9=${RESULT}"; fi
+# use: if add 3 9; then
+# use:   echo "3+9=${RESULT}";
+# use: fi
 function add() {
   local first="${1}";
   checkNumber first "${first}" 1;
   local second="${2}";
   checkNumber second "${second}" 2;
 
-  local -i _rescode=${FALSE};
-
-  let _result=$((first+second));
-  _rescode=$?;
+  local -i _result=$((first+second));
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT=${_result};
@@ -260,17 +278,17 @@ function add() {
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the subtraction was possible; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the subtraction.
-# use: if subtract 9 3; then echo "9-3=${RESULT}"; fi
+# use: if subtract 9 3; then
+# use:   echo "9-3=${RESULT}";
+# use: fi
 function subtract() {
   local first="${1}";
   checkNumber first "${first}" 1;
   local second="${2}";
   checkNumber second "${second}" 2;
 
-  local -i _rescode=${FALSE};
-
-  let _result=$((first-second));
-  _rescode=$?;
+  local -i _result=$((first-second));
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT=${_result};
@@ -288,17 +306,17 @@ function subtract() {
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the numbers could be multiplied; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the product.
-# use: if multiply 3 9; then echo "3*9=${RESULT}"; fi
+# use: if multiply 3 9; then
+# use:   echo "3*9=${RESULT}";
+# use: fi
 function multiply() {
   local first="${1}";
   checkNumber first "${first}" 1;
   local second="${2}";
   checkNumber second "${second}" 2;
 
-  local -i _rescode=${FALSE};
-
-  let _result=$((first*second));
-  _rescode=$?;
+  local -i _result=$((first*second));
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT=${_result};
@@ -316,17 +334,17 @@ function multiply() {
 # opt: second: The second number.
 # txt: Returns 0/TRUE if the numbers could be divided; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the division.
-# use: if divide 9 3; then echo "9/3=${RESULT}"; fi
+# use: if divide 9 3; then
+# use:   echo "9/3=${RESULT}";
+# use: fi
 function divide() {
   local first="${1}";
   checkNumber first "${first}" 1;
   local second="${2}";
   checkNumber second "${second}" 2;
 
-  local -i _rescode=${FALSE};
-
-  let _result=$((first/second));
-  _rescode=$?;
+  local -i _result=$((first/second));
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT=${_result};
