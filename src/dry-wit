@@ -98,12 +98,12 @@ function DW.getGlobalInt() {
   local _result;
 
   if DW.getGlobalString "${_module}" "${_varName}"; then
-    if [[ "${RESULT}" -eq "" ]]; then
+    _rescode=${TRUE};
+    if [[ "${RESULT}" == "" ]]; then
       _result=${_default};
     else
       _result=${RESULT};
     fi
-    _rescode=${TRUE};
   fi
 
   if [ ${_rescode} -eq ${TRUE} ]; then
@@ -173,16 +173,15 @@ function DW.getGlobalString() {
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local -i _rescode=${FALSE};
-  local _result;
+
+  local -i _rescode;
 
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
-    local -n _result="${RESULT}";
+    local -n _result=${RESULT};
     _rescode=${TRUE};
-  fi
-
-  if [ ${_rescode} -eq ${TRUE} ]; then
     export RESULT="${_result}";
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
@@ -686,7 +685,9 @@ function BOOTSTRAP.normalize() {
 # txt: Downloads given module.
 # opt: module: The module name.
 # txt: Returns 0/TRUE if the module is downloaded; 1/FALSE otherwise.
-# use:  if downloadModule "fibonacci"; then echo "fibonacci module downloaded"; fi
+# use: if downloadModule "fibonacci"; then
+# use:   echo "fibonacci module downloaded";
+# use: fi
 function downloadModule() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -799,7 +800,7 @@ function DW.import() {
     elif downloadModule "${_module}"; then
       _modulePath="${RESULT}";
     else
-      echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?"
+      echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?";
       exit 1;
     fi
 
@@ -867,7 +868,9 @@ function findModule() {
 # opt: text: The text.
 # opt: substring: The substring to check.
 # txt: Returns 0/TRUE if the text ends with the substring; 1/FALSE otherwise.
-# use: if BOOTSTRAP.endsWith "${text}" "c"; then echo "${text} ends with c"; fi
+# use: if BOOTSTRAP.endsWith "${text}" "c"; then
+# use:   echo "${text} ends with c";
+# use: fi
 function BOOTSTRAP.endsWith() {
   local _container="${1}";
   BOOTSTRAP.checkNotEmpty text "${_container}" 1;
@@ -889,7 +892,9 @@ function BOOTSTRAP.endsWith() {
 # api: private
 # txt: Checks whether the initialization has already been done.
 # txt: Returns 0/TRUE if the initialization was done; 1/FALSE otherwise.
-# use: if DW.initialized; then echo "Initialized already"; fi
+# use: if DW.initialized; then
+# use:   echo "Initialized already";
+# use: fi
 function DW.initialized() {
   local -i _rescode;
 
@@ -906,7 +911,9 @@ function DW.initialized() {
 # api: private
 # txt: Checks whether this script is running within another dry-wit script.
 # txt: Returns 0/TRUE if this script is nested within another dry-wit; 1/FALSE otherwise.
-# use: if DW.nested; then echo "Nesting detected"; fi
+# use: if DW.nested; then
+# use:   echo "Nesting detected";
+# use: fi
 function DW.nested() {
   local -i _rescode;
 
@@ -983,7 +990,8 @@ function BOOTSTRAP.getImportedModulesVariableName() {
 # txt: Retrieves the module tag.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module tag.
-# use: BOOTSTRAP.getModuleTag; echo "module tag: ${RESULT}"
+# use: BOOTSTRAP.getModuleTag;
+# use: echo "module tag: ${RESULT}";
 function BOOTSTRAP.getModuleTag() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
@@ -1008,7 +1016,8 @@ function BOOTSTRAP.setModuleTag() {
 # txt: Retrieves the url of the modules.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module url.
-# use: BOOTSTRAP.getModuleUrl; echo "module url: ${RESULT}"
+# use: BOOTSTRAP.getModuleUrl;
+# use: echo "module url: ${RESULT}";
 function BOOTSTRAP.getModuleUrl() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
@@ -1034,7 +1043,7 @@ function BOOTSTRAP.setModuleUrl() {
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module path.
 # use: getModulePath;
-# use: echo "module path: ${RESULT}"
+# use: echo "module path: ${RESULT}";
 function getModulePath() {
   BOOTSTRAP.getModuleName;
   DW.getGlobalString "${RESULT}" MODULE_PATH;

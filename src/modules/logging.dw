@@ -1816,7 +1816,9 @@ function LOGGING.openLogLine() {
 # txt: Peeks given message from top of the log stack.
 # txt: Returns 0/TRUE if the stack contains at least the returned item; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the message.
-# use: if LOGGING.peekLog; then echo "Last log: ${RESULT}"; fi
+# use: if LOGGING.peekLog; then
+# use:   echo "Last log: ${RESULT}";
+# use: fi
 function LOGGING.peekLog() {
   local -i _rescode;
   local _result="";
@@ -2268,7 +2270,9 @@ function LOGGING.processLogOutcomeTokens() {
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
 # txt: Returns 0/TRUE if the token is defined; 1/FALSE otherwise.
 # txt: if the function returns 0/TRUE, The variable RESULT contains the log prefix token.
-# use: if LOGGING.retrieveLogPrefixLevelToken TRACE; then echo "Log prefix token: ${RESULT}"; fi
+# use: if LOGGING.retrieveLogPrefixLevelToken TRACE; then
+# use:   echo "Log prefix token: ${RESULT}";
+# use: fi
 function LOGGING.retrieveLogPrefixLevelToken() {
   local _level="${1}";
   checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1;
