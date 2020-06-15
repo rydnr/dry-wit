@@ -8,6 +8,7 @@
 # opt: userName: The user name.
 # opt: groupName: The group name.
 # txt: Returns 0/TRUE if the user gets added to the group successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some output.
 # use: if addUserToGroup guest users; then
 # use:   echo "User guest added to group users";
 # use: fi
@@ -17,8 +18,14 @@ function addUserToGroup() {
   local _group="${2}";
   checkNotEmpty groupName "${_group}" 2;
 
-  gpasswd -a ${_user} ${_group} > /dev/null;
-  local -i _rescode=$?;
+  local _result="$(gpasswd -a ${_user} ${_group} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }
@@ -37,21 +44,23 @@ function createGroup() {
   checkNotEmpty groupName "${_groupName}" 1;
   local _gid="${2}";
 
-  local -i _rescode;
-
   logDebug -n "Creating group ${_groupName}";
 
+  local _result;
+
   if isEmpty "${_gid}"; then
-    groupadd "${_groupName}";
-    _rescode=$?;
+    _result="$(groupadd "${_groupName}" 2> /dev/null || echo "$$.ERROR.$$")";
   else
-    groupadd -g "${_gid}" "${_groupName}";
-    _rescode=$?;
+    _result="$(groupadd -g "${_gid}" "${_groupName}" 2> /dev/null || echo "$$.ERROR.$$")";
   fi
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-  else
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "failed";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "done";
   fi
 
   return ${_rescode};
@@ -71,12 +80,15 @@ function createUser() {
 
   logDebug -n "Creating user ${_userName}";
 
-  useradd -M -N -l "${_userName}";
-  local -i _rescode=$?;
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-  else
+  local _result="$(useradd -M -N -l "${_userName}" 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "failed";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "done";
   fi
 
   return ${_rescode};
@@ -96,12 +108,15 @@ function deleteGroup() {
 
   logDebug -n "Deleting group ${_groupName}";
 
-  groupdel "${_groupName}";
-  local -i _rescode=$?;
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-  else
+  local _result="$(groupdel "${_groupName}" 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "failed";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "done";
   fi
 
   return ${_rescode};
@@ -121,12 +136,15 @@ function deleteUser() {
 
   logDebug -n "Deleting user ${_userName}";
 
-  userdel "${_userName}";
-  local -i _rescode=$?;
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-  else
+  local _result="$(userdel "${_userName}" 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "failed";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "done";
   fi
 
   return ${_rescode};
@@ -146,13 +164,15 @@ function gidAlreadyExists() {
 
 
   logDebug -n "Checking if gid ${_gid} already exists";
-  getent group ${_gid} > /dev/null;
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "true";
-  else
+  local _result="$(getent group ${_gid} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "false";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "true";
   fi
 
   return ${_rescode};
@@ -171,13 +191,15 @@ function groupAlreadyExists() {
   checkNotEmpty group "${_group}" 1;
 
   logDebug -n "Checking if group ${_group} already exists";
-  getent group ${_group} > /dev/null;
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "true";
-  else
+  local _result="$(getent group ${_group} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "false";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "true";
   fi
 
   return ${_rescode};
@@ -199,11 +221,12 @@ function resolveCommandForUser() {
   local _command="${2}";
   checkNotEmpty command "${_command}" 2;
 
-  local _result="$(su - ${_user} -c "which ${_command}" 2> /dev/null || echo "ERROR")";
-  areEqual "${_result}" "ERROR";
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
+  local _result="$(su - ${_user} -c "which ${_command}" 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
     export RESULT="${_result}";
   fi
 
@@ -223,14 +246,15 @@ function retrieveGidFromGroup() {
   checkNotEmpty group "${_group}" 1;
 
   logDebug -n "Retrieving gid of group ${_group}";
-  local _result="$(getent group ${_group} | cut -d':' -f3 || echo "ERROR")";
-  areEqual "${_result}" "ERROR";
-  local -i _rescode=$?;
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "${_result}";
-    export RESULT="${_result}";
-  else
+  local _result="$(getent group ${_group} 2> /dev/null | cut -d':' -f3 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "failed";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "${_result}";
   fi
 
   return ${_rescode};
@@ -249,11 +273,12 @@ function retrieveGroupFromGid() {
   local _gid="${1}";
   checkNotEmpty gid "${_gid}" 1;
 
-  local _result="$(getent group ${_gid} | cut -d':' -f1 || echo "ERROR")";
-  areEqual "${_result}" "ERROR";
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
+  local _result="$(getent group ${_gid} 2> /dev/null | cut -d':' -f1 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
     export RESULT="${_result}";
   fi
 
@@ -273,11 +298,12 @@ function retrieveOwnerGid() {
   local _file="${1}"
   checkNotEmpty path "${_file}" 1;
 
-  local _result="$(stat -c '%g' "${_file}" || echo "ERROR")";
-  areEqual "${_result}" "ERROR";
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
+  local _result="$(stat -c '%g' "${_file}" 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
     export RESULT="${_result}";
   fi
 
@@ -297,11 +323,12 @@ function retrieveOwnerUid() {
   local _file="${1}"
   checkNotEmpty path "${_file}" 1;
 
-  local _result="$(stat -c '%u' "${_file}" || echo "ERROR")";
-  areEqual "${_result}" "ERROR";
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
+  local _result="$(stat -c '%u' "${_file}" 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
     export RESULT="${_result}";
   fi
 
@@ -323,9 +350,14 @@ function retrieveUidFromUser() {
 
   logDebug -n "Retrieving uid of user ${_user}";
 
-  local _result="$(getent passwd ${_user} | cut -d':' -f3 || echo "ERROR")";
-  areEqual "${_result}" "ERROR";
-  local -i _rescode=$?;
+  local _result="$(getent passwd ${_user} 2> /dev/null | cut -d':' -f3 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
 
   if isTrue ${_rescode}; then
     logDebugResult SUCCESS "${_result}";
@@ -350,11 +382,12 @@ function retrieveUserFromUid() {
   local _uid="${1}";
   checkNotEmpty uid "${_uid}" 1;
 
-  local _result="$(getent passwd ${_uid} | cut -d':' -f1 || echo "ERROR")";
-  areEqual "${_result}" "ERROR";
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
+  local _result="$(getent passwd ${_uid} 2> /dev/null | cut -d':' -f1 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
     export RESULT="${_result}";
   fi
 
@@ -374,13 +407,13 @@ function uidAlreadyExists() {
   checkNotEmpty uid "${_uid}" 1;
 
   logDebug -n "Checking if uid ${_uid} is already used";
-  getent passwd ${_uid} > /dev/null 2>&1;
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "true";
+  local _result="$(getent passwd ${_uid} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
   else
-    logDebugResult FAILURE "false";
+    _rescode=${TRUE};
+    export RESULT="${_result}";
   fi
 
   return ${rescode};
@@ -402,14 +435,15 @@ function updateGroupGid() {
   checkNotEmpty gid "${_gid}" 2;
 
   logDebug -n "Changing ${_group}'s gid to ${_gid}";
-  groupmod -g ${_gid} ${_group} > /dev/null 2>&1
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-  else
+  local _result="$(groupmod -g ${_gid} ${_group} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "failed";
-    groupmod -g ${_gid} ${_group} > /dev/null 2>&1
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "done";
   fi
 
   return ${_rescode};
@@ -431,14 +465,15 @@ function updateUserGid() {
   checkNotEmpty gid "${_gid}" 2;
 
   logDebug -n "Changing ${_user}'s primary group to ${_gid}";
-  usermod -g ${_gid} ${_user} > /dev/null 2>&1
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-  else
+  local _result="$(usermod -g ${_gid} ${_user} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "unneeded";
-    usermod -g ${_gid} ${_user} > /dev/null 2>&1
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "done";
   fi
 
   return ${_rescode};
@@ -460,14 +495,15 @@ function updateUserUid() {
   checkNotEmpty uid "${_uid}" 2;
 
   logDebug -n "Changing ${_user}'s uid to ${_uid}";
-  usermod -u ${_uid} ${_user} > /dev/null 2>&1
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-  else
+  local _result="$(usermod -u ${_uid} ${_user} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "failed";
-    usermod -u ${_uid} ${_user} > /dev/null 2>&1
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "done";
   fi
 
   return ${_rescode};
@@ -486,13 +522,15 @@ function userAlreadyExists() {
   checkNotEmpty user "${_user}" 1;
 
   logDebug -n "Checking if user ${_user} is already used";
-  getent passwd ${_user} > /dev/null 2>&1;
-  local -i _rescode=$?;
-
-  if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "true";
-  else
+  local _result="$(getent passwd ${_user} 2> /dev/null || echo "$$.ERROR.$$")";
+  local -i _rescode;
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
     logDebugResult FAILURE "false";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+    logDebugResult SUCCESS "true";
   fi
 
   return ${_rescode};

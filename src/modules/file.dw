@@ -897,7 +897,9 @@ function uncompress() {
 # opt: output: The output file.
 # opt: variables+: name=value pairs.
 # txt: Returns 0/TRUE if the file was processed successfully; 1/FALSE otherwise.
-# use: if replaceVariablesInFile "my.template" "my" "name=John" "age=23"; fi
+# use: if replaceVariablesInFile "my.template" "output" "name=John" "age=23"; then
+# use:   ...
+# use: fi
 function replaceVariablesInFile() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
@@ -908,7 +910,7 @@ function replaceVariablesInFile() {
   local _variables="${@}";
   checkNotEmpty variables "${_variables}" 3;
 
-  local -i _rescode;
+  local -i _rescode=${TRUE};
 
   local _env;
   local _envsubstDecl;

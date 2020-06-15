@@ -155,9 +155,7 @@ function setDebugLogFile() {
 #    echo "old log file: ${_logFile}, new log file: ${_file}";
     if [[ "${_file}" != "${_logFile}" ]]; then
       DEBUG.getModuleName;
-      local _moduleName="${RESULT}";
-      DW.setGlobalString "${_moduleName}" LOG_FILE "${_file}";
-      DEBUG.getDebugLogFile;
+      DW.setGlobalString "${RESULT}" LOG_FILE "${_file}";
     fi
   fi
 
