@@ -232,13 +232,13 @@ function debugDuration() {
     $@;
     _rescode=$?;
     local _end=$(date +%s.%N);
-    local -i _dt=$(echo "${_end} - ${_start}" | bc);
+    local _dt=$(echo "${_end} - ${_start}" | bc);
     local -i _dd=$(echo "${_dt}/86400" | bc);
-    local -i _dt2=$(echo "${_dt}-86400*${_dd}" | bc);
+    local _dt2=$(echo "${_dt}-86400*${_dd}" | bc);
     local -i _dh=$(echo "${_dt2}/3600" | bc);
-    local -i _dt3=$(echo "${_dt2}-3600*${_dh}" | bc);
+    local _dt3=$(echo "${_dt2}-3600*${_dh}" | bc);
     local -i _dm=$(echo "${_dt3}/60" | bc);
-    local -i _ds=$(echo "${_dt3}-60*${_dm}" | bc);
+    local _ds=$(echo "${_dt3}-60*${_dm}" | bc);
 
     debugEcho "$(printf "$@ took %d:%02d:%02d:%02.4f and returned %d\n" ${_dd} ${_dh} ${_dm} ${_ds} ${_rescode})";
   else

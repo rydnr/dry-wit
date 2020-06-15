@@ -379,18 +379,20 @@ function flagEnabled() {
   local _flagVar="${1}";
   checkNotEmpty flagName "${_flagVar}" 1;
 
-  local -i rescode;
+  local -i _rescode;
 
   evalVar "${_flagVar}";
   local _flagVal="${RESULT}";
+
   if    areEqual "${_flagVal}" "${TRUE}" \
-     || areEqual "${_flagVal}" "TRUE"; then
-    rescode=${TRUE};
+     || areEqual "${_flagVal}" "TRUE" \
+     || isTrue "${_flagVal}"; then
+    _rescode=${TRUE};
   else
-    rescode=${FALSE};
+    _rescode=${FALSE};
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: removeCommandLineFlag shortOrLongName

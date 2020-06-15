@@ -171,8 +171,8 @@ function evalVar() {
 
   local -i rescode;
 
-  local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null)";
-  if isEmpty "${_result}"; then
+  local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null || echo "$$.ERROR.$$")";
+  if areEqual "${_result}" "$$.ERROR.$$"; then
     rescode=${TRUE};
     export RESULT="${_result}";
   else
