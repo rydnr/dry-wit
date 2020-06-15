@@ -24,7 +24,8 @@
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
-# use: BOOTSTRAP.getModuleName; echo "Module: ${RESULT}";
+# use: BOOTSTRAP.getModuleName;
+# use: echo "Module: ${RESULT}";
 function BOOTSTRAP.getModuleName() {
   export RESULT="BOOTSTRAP";
   return ${TRUE};
@@ -38,7 +39,9 @@ function BOOTSTRAP.getModuleName() {
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE if it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then echo "ONE_THOUSAND variable name: ${RESULT}"; fi
+# use: if DW.declareGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then
+# use:   echo "ONE_THOUSAND variable name: ${RESULT}";
+# use: fi
 function DW.declareGlobalInt() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -56,7 +59,9 @@ function DW.declareGlobalInt() {
 # opt: varName: The name of the variable.
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable was previously declared; 1/FALSE if it doesn't exist already.
-# use: if DW.setGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then echo "ONE_THOUSAND variable now is ${RESULT}"; fi
+# use: if DW.setGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then
+# use:   echo "ONE_THOUSAND variable now is ${RESULT}";
+# use: fi
 function DW.setGlobalInt() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -76,19 +81,28 @@ function DW.setGlobalInt() {
 # txt: Retrieves the value of a global integer variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
 # opt: varName: The name of the variable.
+# opt: default: The default value if the variable is not defined. Optional.
 # txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the variable value.
-# use: if DW.getGlobalInt "LOGGING" "ONE_THOUSAND"; then echo "ONE_THOUSAND=${RESULT}"; fi
+# use: if DW.getGlobalInt "LOGGING" "ONE_THOUSAND"; then
+# use:   echo "ONE_THOUSAND=${RESULT}";
+# use: fi
 function DW.getGlobalInt() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
+  local _default="${3:-${FALSE}}";
+
   local -i _rescode=${FALSE};
   local _result;
 
   if DW.getGlobalString "${_module}" "${_varName}"; then
-    _result="${RESULT}";
+    if [[ "${RESULT}" -eq "" ]]; then
+      _result=${_default};
+    else
+      _result=${RESULT};
+    fi
     _rescode=${TRUE};
   fi
 
@@ -107,7 +121,9 @@ function DW.getGlobalInt() {
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalString "LOGGING" "MY_STRING" "test"; then echo "MY_STRING variable: ${RESULT}"; fi
+# use: if DW.declareGlobalString "LOGGING" "MY_STRING" "test"; then
+# use:   echo "MY_STRING variable: ${RESULT}";
+# use: fi
 function DW.declareGlobalString() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -125,7 +141,9 @@ function DW.declareGlobalString() {
 # opt: varName: The name of the variable.
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable was previously declared; 1/FALSE if it doesn't exist already.
-# use: if DW.setGlobalString "LOGGING" "MY_STRING" "text"; then echo "MY_STRING variable now is ${RESULT}"; fi
+# use: if DW.setGlobalString "LOGGING" "MY_STRING" "text"; then
+# use:   echo "MY_STRING variable now is ${RESULT}";
+# use: fi
 function DW.setGlobalString() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -147,7 +165,9 @@ function DW.setGlobalString() {
 # opt: varName: The name of the variable.
 # txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the variable value.
-# use: if DW.getGlobalString "LOGGING" "MY_STRING"; then echo "MY_STRING=${RESULT}"; fi
+# use: if DW.getGlobalString "LOGGING" "MY_STRING"; then
+# use:   echo "MY_STRING=${RESULT}";
+# use: fi
 function DW.getGlobalString() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -157,7 +177,7 @@ function DW.getGlobalString() {
   local _result;
 
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
-    _result="${RESULT}";
+    local -n _result="${RESULT}";
     _rescode=${TRUE};
   fi
 
@@ -176,7 +196,9 @@ function DW.getGlobalString() {
 # opt: values*: The initial values. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalArray "LOGGING" "MY_LIST" "a" "b" "c"; then echo "MY_LIST variable: ${RESULT}"; fi
+# use: if DW.declareGlobalArray "LOGGING" "MY_LIST" "a" "b" "c"; then
+# use:   echo "MY_LIST variable: ${RESULT}";
+# use: fi
 function DW.declareGlobalArray() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -195,7 +217,9 @@ function DW.declareGlobalArray() {
 # opt: values: The initial values. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalMap "LOGGING" "MY_ASSOCIATIVE_ARRAY"; then local -n map=${RESULT}; fi
+# use: if DW.declareGlobalMap "LOGGING" "MY_ASSOCIATIVE_ARRAY"; then
+# use:   local -n map=${RESULT};
+# use: fi
 function DW.declareGlobalMap() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -215,7 +239,9 @@ function DW.declareGlobalMap() {
 # opt: initialValue: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalVariable "LOGGING" "MY_LIST" "array"; then echo "MY_LIST variable name: ${RESULT}"; fi
+# use: if DW.declareGlobalVariable "LOGGING" "MY_LIST" "array"; then
+# use:   echo "MY_LIST variable name: ${RESULT}";
+# use: fi
 function DW.declareGlobalVariable() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -274,7 +300,9 @@ function DW.declareGlobalVariable() {
 # opt: varName: The (logical) name of the variable.
 # txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the existing global variable.
-# use: if DW.getGlobalVariableName "LOGGING" "MY_LIST"; then local -n _var="${RESULT}"; fi
+# use: if DW.getGlobalVariableName "LOGGING" "MY_LIST"; then
+# use:   local -n _var="${RESULT}";
+# use: fi
 function DW.getGlobalVariableName() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -294,7 +322,8 @@ function DW.getGlobalVariableName() {
 # opt: varName: The (logical) name of the variable.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the global variable.
-# use: DW.buildGlobalVariableName "LOGGING" "MY_LIST"; echo "variable name: ${RESULT}";
+# use: DW.buildGlobalVariableName "LOGGING" "MY_LIST";
+# use: echo "variable name: ${RESULT}";
 function DW.buildGlobalVariableName() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -319,7 +348,8 @@ function DW.buildGlobalVariableName() {
 # txt: Retrieves the name of the script.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the script.
-# use: DW.getScriptName; echo "Script name: ${RESULT}";
+# use: DW.getScriptName;
+# use: echo "Script name: ${RESULT}";
 function DW.getScriptName() {
   local -i _rescode=${FALSE};
   local _result;
@@ -347,11 +377,11 @@ function DW.getScriptName() {
 # txt: Retrieves the path of the script.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the path of the script.
-# use: DW.getScriptPath; echo "Script path: ${RESULT}";
+# use: DW.getScriptPath;
+# use: echo "Script path: ${RESULT}";
 function DW.getScriptPath() {
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" SCRIPT_PATH;
+  DW.getGlobalString "${RESULT}" SCRIPT_PATH;
 }
 
 # fun: DW.getScriptFolder
@@ -359,11 +389,11 @@ function DW.getScriptPath() {
 # txt: Retrieves the folder of the script.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the folder of the script.
-# use: DW.getScriptFolder; echo "Script folder: ${RESULT}";
+# use: DW.getScriptFolder;
+# use: echo "Script folder: ${RESULT}";
 function DW.getScriptFolder() {
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" SCRIPT_FOLDER;
+  DW.getGlobalString "${RESULT}" SCRIPT_FOLDER;
 }
 
 # fun: BOOTSTRAP.exitWithError label message
@@ -796,11 +826,11 @@ function DW.import() {
 # api: private
 # txt: Retrieves the name of the variable containing the imported modules.
 # txt: Returns 0/TRUE always.
-# use: BOOTSTRAP.getImportedModulesVariableName; local -n importedModules=${RESULT};
+# use: BOOTSTRAP.getImportedModulesVariableName;
+# use: local -n importedModules=${RESULT};
 function BOOTSTRAP.getImportedModulesVariableName() {
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" IMPORTED_MODULES;
+  DW.getGlobalVariableName "${RESULT}" IMPORTED_MODULES;
 }
 
 # fun: findModule module
@@ -808,15 +838,16 @@ function BOOTSTRAP.getImportedModulesVariableName() {
 # txt: Finds given module locally.
 # opt: module: The name of the module.
 # txt: Returns 0/TRUE if the module is found; 1/FALSE otherwise.
-# use: if findModule "fibonacci"; then DW.import fibonacci; fi
+# use: if findModule "fibonacci"; then
+# use:   DW.import fibonacci;
+# use: fi
 function findModule() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
+
   local -i _rescode=${FALSE};
 
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" MODULE_PATH;
+  getModulePath;
   local _modulePath="${RESULT}";
 
   if [[ -e "${_modulePath}/${_module}.dw" ]]; then
@@ -1002,11 +1033,11 @@ function BOOTSTRAP.setModuleUrl() {
 # txt: Retrieves the module path.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module path.
-# use: getModulePath; echo "module path: ${RESULT}"
+# use: getModulePath;
+# use: echo "module path: ${RESULT}"
 function getModulePath() {
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" MODULE_PATH;
+  DW.getGlobalString "${RESULT}" MODULE_PATH;
 }
 
 # fun: BOOTSTRAP.setModulePath path
@@ -1040,7 +1071,6 @@ function BOOTSTRAP.resetState() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
 
-  echo "Resetting BOOTSTRAP state";
   # env: __DRYWIT_ESSENTIAL_MODULES: The essential modules.
   DW.declareGlobalArray "${_moduleName}" ESSENTIAL_MODULES;
   DW.getGlobalVariableName "${_moduleName}" ESSENTIAL_MODULES;

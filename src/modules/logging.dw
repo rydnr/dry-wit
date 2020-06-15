@@ -377,7 +377,7 @@ function isFailureKeyword() {
 # use: local logInfo=${RESULT};
 function LOGGING.getLogInfo() {
   LOGGING.getModuleName;
-  DW.getGlobalInt "${RESULT}" LOG_INFO;
+  DW.getGlobalInt "${RESULT}" LOG_INFO ${TRUE};
 }
 
 # fun: isInfoEnabled
@@ -1119,9 +1119,9 @@ function LOGGING.echoLogOutcome() {
     IFS="${_oldIFS}";
     local _token="${_logOutcomeTokens[${_i}]}";
     if isTrue ${_allowsColors}; then
-      evalConstant "${_logOutcomeColors[${_i}]}";
-      local _outcomeColor="${RESULT}";
-      echoInColor -n "${_outcomeColor}" "${_token}";
+#      evalConstant "${_logOutcomeColors[${_i}]}";
+#      local _outcomeColor="${RESULT}";
+      echoInColor -n "${_logOutcomeColors[${_i}]}" "${_token}";
     else
       echo -n "${_token}";
     fi
@@ -1569,8 +1569,8 @@ function LOGGING.logInProgressNoNested() {
   LOGGING.echoLogPrefix;
 
   getDefaultLogPrefixColor;
-
   local _defaultLogPrefixColor="${RESULT}";
+
   echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}";
   LOGGING.logToFiles "${_message}";
   LOGGING.logToFilesAnEmptyLine;
@@ -2250,7 +2250,7 @@ function LOGGING.processLogOutcomeTokens() {
   local -i _len=$((${#_logOutcomeTokens[@]} - 1));
 
   local _oldIFS="${IFS}";
-  IFS="${DWIFFS}";
+  IFS="${DWIFS}";
   local -i _i;
   for _i in $(seq 0 ${_len}); do
     _logOutcomeTokens[${_i}]="${_logOutcomeTokens[${_i}]}";

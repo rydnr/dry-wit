@@ -159,7 +159,8 @@ function createTempFolder() {
 
   FILE.mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
   local -i _rescode=$?;
-  _if isTrue ${_rescode}; then
+
+  if isTrue ${_rescode}; then
     _result="${RESULT}";
   else
     FILE.mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
@@ -167,7 +168,7 @@ function createTempFolder() {
     if isTrue ${_rescode}; then
       _result="${RESULT}";
     fi
-fi
+  fi
 
   if isTrue ${_rescode}; then
     addFileToCleanup "${_result}";

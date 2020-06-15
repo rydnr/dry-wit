@@ -16,8 +16,6 @@ function evalConstant() {
 
   local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
 
-  local -i _rescode=${FALSE};
-
   if isEmpty "${_result}" ; then
     _result="${2}";
   fi
@@ -26,7 +24,12 @@ function evalConstant() {
     result="${_constant}";
   fi
 
-  if isNotEmpty "${_result}"; then
+  local -i _rescode;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+    export RESULT="";
+  else
     _rescode=${TRUE};
     export RESULT="${_result}";
   fi

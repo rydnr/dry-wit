@@ -130,7 +130,7 @@ function setNoColor() {
 # opt: foreground: The foreground value.
 # opt: background: The background value.
 # txt: Returns 0/TRUE always.
-#      Exports [COLOR]_FG, [COLOR]_BG, LIGHT_[COLOR]_FG, UNDERSCORE_[COLOR]_FG, BLINK_[COLOR]_FG and CONCEALED_[COLOR]_FG variables.
+# txt: Exports [COLOR]_FG, [COLOR]_BG, LIGHT_[COLOR]_FG, UNDERSCORE_[COLOR]_FG, BLINK_[COLOR]_FG and CONCEALED_[COLOR]_FG variables.
 # use: buildColor "GREEN" "32" "42";
 function buildColor() {
   local _color="${1}";
@@ -169,9 +169,11 @@ function buildColor() {
 
 # fun: allowsColors
 # api: public
-# txt: Checks whether the terminal allows colors or not. If the variable DW_DISABLE_ANSI_COLORS is non-empty, colors are disabled.
+# txt: Checks whether the terminal allows colors or not. If the variable DW_DISABLE_ANSI_COLORS is non-empty, or USECOLOR=no, colors are disabled.
 # txt: Returns 0/TRUE if the terminal supports colors; 1/FALSE otherwise.
-# use: if allowsColors; then ...; fi
+# use: if allowsColors; then
+# use:   ...
+# use: fi
 function allowsColors() {
   local -i _rescode;
 
@@ -224,8 +226,7 @@ function COLOR.getColorName() {
   checkNotEmpty symbol "${_symbol}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" "${_symbol}";
+  DW.getGlobalVariableName "${RESULT}" "${_symbol}";
 }
 
 # fun: getColorEscapeCode name defaultColor?
@@ -253,7 +254,7 @@ function getColorEscapeCode() {
     local _colorVariableName="${RESULT}";
      if evalConstant "${_colorVariableName}"; then
        _result="${RESULT}";
-    elif evalContant "${_defaultColorVariableName}"; then
+    elif evalConstant "${_defaultColorVariableName}"; then
       _result="${RESULT}";
     else
       exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol}";
