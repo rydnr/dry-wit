@@ -1073,4 +1073,23 @@ function FILE.resetState() {
   # env: CLEANUP_FILES: The temporary files to cleanup.
   DW.declareGlobalArray "${RESULT}" CLEANUP_FILES;
 }
+
+# fun: truncateFiles folder regex
+# api: public
+# txt: Truncates files under given folder matching given regex.
+# txt: Returns 0/TRUE if the logs get truncated; 1/FALSE otherwise.
+# use: if truncateFiles /var/log '*.log'; then
+# use:   ...
+# use: fi
+function truncateFiles() {
+  local _folder="${1}";
+  checkNotEmpty folder "${_folder}" 1;
+  local _regex="${2}";
+  checkNotEmpty regex "${_regex}" 2;
+
+  find "${_folder}" -type f -name "${_regex}" -exec bash -c 'echo > {}' \;
+  local -i _rescode=$?;
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
