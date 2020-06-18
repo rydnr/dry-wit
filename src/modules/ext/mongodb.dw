@@ -675,8 +675,6 @@ function checkMongoRoleExists() {
   local -i _rescode;
 
   local _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_authenticationDb}" --eval "db.getRole('${_role}')" 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
-
   if contains "${_output}" "uncaught exception"; then
     _rescode=${FALSE};
   else
@@ -686,4 +684,92 @@ function checkMongoRoleExists() {
   return ${_rescode};
 }
 
+# fun: createMongoDbIndex user password authDb authMechanism database collection index options
+# api: public
+# txt: Creates a MongoDB index on given collection.
+# opt: user: The user to log in.
+# opt: password: The password.
+# opt: authenticationDb: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: database: The database of the collection.
+# opt: collection: The collection.
+# opt: index: The index.
+# opt: options: The index options.
+# txt: Returns 0/TRUE if the index could be created; 1/FALSE otherwise.
+# use: if createMongoDbIndex root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }' '{ name: "myIndex" }'; then
+# use:   echo "Index created successfully";
+# use: fi
+function createMongoDbIndex() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _password="${2}";
+  checkNotEmpty password "${_password}" 2;
+  local _authenticationDb="${3}";
+  checkNotEmpty authenticationDb "${_authenticationDb}" 3;
+  local _authenticationMechanism="${4}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
+  local _database="${5}";
+  checkNotEmpty collection "${_database}" 5;
+  local _collection="${6}";
+  checkNotEmpty collection "${_collection}" 6;
+  local _index="${7}";
+  checkNotEmpty index "${_index}" 7;
+  local _options="${8}";
+  checkNotEmpty options "${_options}" 8;
+
+  local -i _rescode;
+
+  local _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.createIndex(${_index},${_options})" 2>&1)";
+  logInfo "${_output}";
+  if contains "${_output}" "uncaught exception"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: checkMongoDbIndexExists user password authDb authMechanism database collection index
+# api: public
+# txt: Checks a MongoDB index exists on given collection.
+# opt: user: The user to log in.
+# opt: password: The password.
+# opt: authenticationDb: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: database: The database.
+# opt: collection: The collection.
+# opt: index: The index.
+# txt: Returns 0/TRUE if the index exists; 1/FALSE otherwise.
+# use: if checkMongoDbIndexExists root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }'; then
+# use:   echo "Index exists";
+# use: fi
+function checkMongoDbIndexExists() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _password="${2}";
+  checkNotEmpty password "${_password}" 2;
+  local _authenticationDb="${3}";
+  checkNotEmpty authenticationDb "${_authenticationDb}" 3;
+  local _authenticationMechanism="${4}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
+  local _database="${5}";
+  checkNotEmpty database "${_database}" 5;
+  local _collection="${6}";
+  checkNotEmpty collection "${_collection}" 6;
+  local _index="${7}";
+  checkNotEmpty index "${_index}" 7;
+
+  local -i _rescode;
+
+  local _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "var indexes = db.getCollection('${_collection}').getIndexes(); var exists = false; for (var i=0; i < indexes.length; i++) { if (indexes[i].name == '${_index}') { exists = true; break; } }; print(exists);" 2>&1)";
+  logInfo "${_output}";
+  if contains "${_output}" "true"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
