@@ -1,0 +1,505 @@
+# mod: rabbitmq
+# api: public
+# txt: Functions useful when bootstrapping RabbitMQ servers.
+# txt: You might be interested in importing rabbitmq-cli as well, to inject processing of the required environment variables above.
+
+DW.import rabbitmq;
+
+# fun: rabbitmqMigrate
+# api: public
+# txt: Migrates the RabbitMQ instance.
+# txt: Important: This function delegates the migration logic to an external function "rabbitmq_patch".
+# use: rabbitmqMigrate;
+function rabbitmqMigrate() {
+  local -i _running=${FALSE};
+
+  if RABBITMQBOOTSTRAP.inForceMode; then
+    logDebug -n "Skipping bootstrap checks";
+    logDebugResult SUCCESS "done";
+  else
+    logDebug -n "Ensuring we can take exclusive control of the instance";
+    if RABBITMQBOOTSTRAP.acquireBootstrapLock; then
+      logDebugResult SUCCESS "ok";
+    else
+      logDebugResult FAILURE "failed";
+      exitWithErrorCode CANNOT_ACQUIRE_LOCK;
+    fi
+  fi
+
+  logDebug -n "Checking if RabbitMQ is running";
+  if isRabbitmqRunning; then
+    logDebugResult SUCCESS "running";
+  else
+    logDebugResult FAILURE "stopped";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast RABBITMQ_NOT_RUNNING;
+  fi
+
+  logDebug -n "Retrieving rabbitmqadmin, if needed"
+  if RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeeded http://127.0.0.1:15672/cli/rabbitmqadmin /usr/local/bin/rabbitmqadmin; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_RETRIEVE_RABBITMQADMIN;
+  fi
+
+  logDebug -n "Patching rabbitmqadmin, if needed"
+  if RABBITMQBOOTSTRAP.fixRabbitmqadminIfNeeded /usr/local/bin/rabbitmqadmin; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_FIX_RABBITMQADMIN;
+  fi
+
+  logDebug -n "Enabling plugin management, if needed";
+  if ensureRabbitmqManagementIsEnabled "${RABBITMQ_NODENAME}"; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT;
+  fi
+  exit 1;
+
+
+  if RABBITMQBOOTSTRAP.guestUserExists; then
+    RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist;
+  fi
+
+  logDebug -n "Configuring ${ADMIN_USER} user tags";
+  if setAdminUserTags "${ADMIN_USER}" "${ADMIN_PASSWORD}"; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_ADMIN_USER_TAGS;
+  fi
+
+  logDebug -n "Configuring ${ADMIN_USER} user permissions";
+  if setAdminUserPermissions; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_ADMIN_USER_PERMISSIONS;
+  fi
+
+  if RABBITMQBOOTSTRAP.guestUserExists; then
+    RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist;
+  fi
+
+  logDebug -n "Configuring ${MONITORING_USER} tags";
+  if setMonitoringUserTags "${ADMIN_USER}" "${ADMIN_PASSWORD}"; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_MONITORING_USER_TAGS;
+  fi
+
+  logDebug -n "Configuring ${MONITORING_USER} permissions";
+  if setMonitoringUserPermissions; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_MONITORING_USER_PERMISSIONS;
+  fi
+
+  RABBITMQBOOTSTRAP.deleteGuestUserIfItExists;
+
+  # Hook
+  if isFunctionPresent "declare_virtual_hosts"; then
+    logDebug -n "Declaring the virtual hosts";
+    if declare_virtual_hosts; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_DECLARE_THE_VIRTUAL_HOSTS;
+    fi
+  fi
+
+  # Hook
+  if isFunctionPresent "declare_alternate_exchanges"; then
+    logDebug -n "Declaring the alternate exchanges";
+    if declare_alternate_exchanges; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES;
+    fi
+  fi
+
+  # Hook
+  if isFunctionPresent "rabbitmq_patch"; then
+    logDebug -n "Patching RabbitMQ";
+    if rabbitmq_patch; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_PATCH_THE_RABBITMQ_INSTANCE;
+    fi
+  fi
+
+  if ! RABBITMQBOOTSTRAP.inForceMode; then
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+  fi
+}
+
+# fun: RABBITMQBOOTSTRAP.guestUserExists
+# api: private
+# txt: Checks whether the guest user exists.
+# txt: Returns 0/TRUE if the guest user exists; 1/FALSE otherwise. It can also exit if access to RabbitMQ fails.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if RABBITMQBOOTSTRAP.guestUserExists; then
+# use:   echo "Guest user exists";
+# use: fi
+function RABBITMQBOOTSTRAP.guestUserExists() {
+  userAlreadyExists guest "${RABBITMQ_NODENAME}";
+}
+
+# fun: RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist
+# api: private
+# txt: Adds the admin user, if it is not created already.
+# txt: Returns 0/TRUE always, but it can exit if the admin user doesn't already exist and could not be created.
+# use: RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist;
+function RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist() {
+  if ! userAlreadyExists "${ADMIN_USER}" "${RABBITMQ_NODENAME}"; then
+    logDebug -n "Adding ${ADMIN_USER} user";
+    if addUser ${ADMIN_USER} "${ADMIN_PASSWORD}" "${RABBITMQ_NODENAME}"; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ADD_ADMIN_USER;
+    fi
+  fi
+}
+
+# fun: RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist
+# api: private
+# txt: Adds the monitoring user, if it is not created already.
+# txt: Returns 0/TRUE always, but it can exit if the monitoring user doesn't already exist and could not be created.
+# use: RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist;
+function RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist() {
+  if ! userAlreadyExists "${MONITORING_USER}" "${RABBITMQ_NODENAME}"; then
+    logDebug -n "Adding ${MONITORING_USER} user";
+    if addUser ${MONITORING_USER} "${MONITORING_PASSWORD}" "${RABBITMQ_NODENAME}"; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ADD_MONITORING_USER;
+    fi
+  fi
+}
+
+# fun: RABBITMQBOOTSTRAP.deleteGuestUserIfItExists
+# api: private
+# txt: Deletes the guest user if it exists.
+# txt: Returns 0/TRUE if the user didn't exist, or gets deleted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if RABBITMQBOOTSTRAP.deleteGuestUserIfItExists; then
+# use:   echo "User guest deleted";
+# use: fi
+function RABBITMQBOOTSTRAP.deleteGuestUserIfItExists() {
+  if RABBITMQBOOTSTRAP.guestUserExists; then
+    logDebug -n "Deleting the guest user";
+    if deleteUser guest "${RABBITMQ_NODENAME}"; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+    fi
+  fi
+}
+
+# fun: RABBITMQBOOTSTRAP.acquireBootstrapLock
+# api: private
+# txt: Checks whether there's a concurrent bootstrap process.
+# txt: Returns 0/TRUE if a concurrent bootstrap process has not yet finished; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.acquireBootstrapLock; then ...; fi
+function RABBITMQBOOTSTRAP.acquireBootstrapLock() {
+  local -i _rescode;
+
+  if fileExists "${LOCK_FILE}"; then
+    _rescode=${FALSE};
+  else
+    touch ${LOCK_FILE};
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: RABBITMQBOOTSTRAP.alreadyBootstrapped
+# api: private
+# txt: Checks whether the RabbitMQ instance is already bootstrapped.
+# txt: Returns 0/TRUE if the bootstrap has already done in the past; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.alreadyBootstrapped; then echo "Instance already bootstrapped"; fi
+function RABBITMQBOOTSTRAP.alreadyBootstrapped() {
+  fileExists "${BOOTSTRAPPED_FILE}";
+}
+
+# fun: RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast errorLabel
+# api: private
+# opt: errorLabel: The error label.
+# txt: Exits with an error code if FAIL_FAST flag is active; otherwise returns 0/TRUE.
+# use: RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ACQUIRE_LOCK
+function RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast() {
+  local _label="${1}";
+  checkNotEmpty errorLabel "${_label}" 1;
+  shift;
+  if RABBITMQBOOTSTRAP.inFailFastMode; then
+    exitWithErrorCode "${_label}" $@;
+  fi
+}
+
+# fun: RABBITMQBOOTSTRAP.fixRabbitmqadmin file
+# api: private
+# txt: Fixes rabbitmqadmin script.
+# opt: file: The rabbitmqadmin location.
+# txt: Returns 0/TRUE if the script was fixed; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.fixRabbitmqadmin /usr/sbin/rabbitmqadmin; then
+# use:   echo "/usr/sbin/rabbitmqadmin fixed";
+# use: fi
+function RABBITMQBOOTSTRAP.fixRabbitmqadminIfNeeded() {
+  local _rabbitmqadmin="${1}";
+  checkNotEmpty file "${_rabbitmqadmin}" 1;
+  local -i _rescode;
+
+  chmod a+x "${_rabbitmqadmin}";
+
+  head -n 1 "${_rabbitmqadmin}" | grep '#!/usr/bin/env python3';
+  local -i _alreadyPatched=$?;
+
+  if isFalse ${_alreadyPatched}; then
+    sed -i 's|#!/usr/bin/env python|#!/usr/bin/env python3|g' "${_rabbitmqadmin}";
+    _rescode=$?;
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: RABBITMQBOOTSTRAP.inFailFastMode
+# api: private
+# txt: Checks whether FAIL_FAST mode is active.
+# txt: Returns 0/TRUE if the script is running in fail-fast mode; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.inFailFastMode; then
+# use:   echo "Running in fail-fast mode";
+# use: fi
+function RABBITMQBOOTSTRAP.inFailFastMode() {
+  flagEnabled FAIL_FAST;
+}
+
+# fun: RABBITMQBOOTSTRAP.inForceMode
+# api: private
+# txt: Checks whether FORCE mode is active.
+# txt: Returns 0/TRUE if the script is running in forcing mode; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.inForceMode; then
+# use:   echo "Running in force mode";
+# use: fi
+function RABBITMQBOOTSTRAP.inForceMode() {
+  flagEnabled FORCE;
+}
+
+# fun: RABBITMQBOOTSTRAP.releaseBootstrapLock
+# api: private
+# txt: Releases the bootstrap lock.
+# txt: Returns 0/TRUE if the lock can be released; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.releaseBootstrapLock; then
+# use:   echo "Error: Could not release bootstrap lock";
+# use: fi
+function RABBITMQBOOTSTRAP.releaseBootstrapLock() {
+  local -i _rescode;
+
+  if ! RABBITMQBOOTSTRAP.inForceMode; then
+    if fileExists "${LOCK_FILE}"; then
+      _rescode=${TRUE};
+      rm -f "${LOCK_FILE}";
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast
+# api: private
+# txt: Releases the lock file if FAIL_FAST flag is active.
+# use: RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
+function RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast() {
+  if RABBITMQBOOTSTRAP.inFailFastMode; then
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+  fi
+}
+
+# fun: RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeede url outputFile
+# api: private
+# txt: Retrieves the rabbitmqadmin script, if needed.
+# opt: url: The url of RabbitMQ CLI interface.
+# opt: outputFile: The output file.
+# txt: Returns 0/TRUE if the script was retrieved successfully or was already retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeeded http://127.0.0.1:15672/cli/rabbitmqadmin /tmp/rabbitmqadmin; then
+# use:   echo "rabbitmqadmin available";
+# use: fi
+function RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeeded() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+  local _output="${2}";
+  checkNotEmpty outputFile "${_output}" 2;
+  local -i _rescode;
+  local _log;
+
+  _log="$(wget -O "${_output}" "${_url}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    export OUTPUT="${_log}";
+  else
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: setAdminUserTags (accessUser accessPassword)?
+# api: public
+# txt: Sets the correct tags for the admin user.
+# opt: accessUser: The username used to connect. Optional.
+# opt: accessPassword: The password used to connect. Optional.
+# txt: Returns 0/TRUE if the tags are set successfully; 1/FALSE otherwise.
+# use: if setAdminUserTags; then
+# use:   echo "admin tags set successfully";
+# use: fi
+function setAdminUserTags() {
+  local _accessUser="${1}";
+  local _accessPassword="${2}";
+
+  local _oldIFS="${IFS}";
+  local _tag;
+  IFS="${DWIFS}";
+  for _tag in ${ADMIN_TAGS}; do
+    IFS="${_oldIFS}";
+    addTagToUser "${ADMIN_USER}" "${_tag}" "${RABBITMQ_NODENAME}" "${_accessUser}" "${_accessPassword}";
+  done;
+  IFS="${_oldIFS}";}
+
+
+# fun: setAdminUserPermissions
+# api: public
+# txt: Sets the admin user permissions.
+# txt: Returns 0/TRUE if the permissions are set successfully; 1/FALSE otherwise.
+# use: if setAdminUserPermissions; then
+# use:   echo "admin user permissions set successfully";
+# use: fi
+function setAdminUserPermissions() {
+  setPermissions / "${ADMIN_USER}" "${ADMIN_CONFIGURE_PERMISSIONS}" "${ADMIN_WRITE_PERMISSIONS}" "${ADMIN_READ_PERMISSIONS}" "${RABBITMQ_NODENAME}";
+}
+
+# fun: setMonitoringUserTags (accessUser accessPassword)?
+# api: public
+# txt: Sets the correct tags for the monitoring user.
+# opt: accessUser: The username used to connect. Optional.
+# opt: accessPassword: The password used to connect. Optional.
+# txt: Returns 0/TRUE if the tags are set successfully; 1/FALSE otherwise.
+# use: if setMonitoringUserTags; then
+# use:   echo "monitoring user tag set successfully";
+# use: fi
+function setMonitoringUserTags() {
+  local _accessUser="${1}";
+  local _accessPassword="${2}";
+
+  local _oldIFS="${IFS}";
+  local _tag;
+  IFS="${DWIFS}";
+  for _tag in ${MONITORING_TAGS}; do
+    IFS="${_oldIFS}";
+    addTagToUser "${MONITORING_USER}" "${_tag}" "${RABBITMQ_NODENAME}" "${_accessUser}" "${_accessPassword}";
+  done;
+  IFS="${_oldIFS}";
+}
+
+# fun: setMonitoringUserPermissions
+# api: public
+# txt: Sets the monitoring user permissions.
+# opt: user: The username used to connect.
+# opt: password: The password used to connect.
+# txt: Returns 0/TRUE if the permissions are set successfully; 1/FALSE otherwise.
+# use: if setMonitoringUserPermissions; then
+# use:   echo "monitoring user permissions set successfully";
+# use: fi
+function setMonitoringUserPermissions() {
+  setPermissions / "${MONITORING_USER}" "${MONITORING_CONFIGURE_PERMISSIONS}" "${MONITORING_WRITE_PERMISSIONS}" "${MONITORING_READ_PERMISSIONS}" "${RABBITMQ_NODENAME}";
+}
+
+# dependencies
+addError CHMOD_NOT_AVAILABLE "chmod is not available";
+checkReq chmod CHMOD_NOT_AVAILABLE;
+addError RABBITMQCTL_NOT_AVAILABLE "rabbitmqctl is not available";
+checkReq rabbitmqctl RABBITMQCTL_NOT_AVAILABLE;
+
+# errors
+addError LOCK_FILE_ENV_VAR_IS_MANDATORY "LOCK_FILE environment variable is mandatory";
+addError CANNOT_ACQUIRE_LOCK "Cannot acquire lock";
+addError RABBITMQ_NOT_RUNNING "RabbitMQ is not running";
+addError CANNOT_RETRIEVE_RABBITMQADMIN "Cannot retrieve rabbitmqadmin";
+addError CANNOT_FIX_RABBITMQADMIN "Cannot patch rabbitmqadmin";
+addError CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT "Cannot enable plugin management";
+addError CANNOT_ADD_ADMIN_USER "Cannot add ${ADMIN_USER} user";
+addError CANNOT_SET_THE_ADMIN_USER_TAGS "Cannot set the ${ADMIN_USER} tags";
+addError CANNOT_SET_THE_ADMIN_USER_PERMISSIONS "Cannot set the ${ADMIN_USER} permissions";
+addError CANNOT_ADD_MONITORING_USER "Cannot add ${MONITORING_USER} user";
+addError CANNOT_SET_THE_MONITORING_USER_TAGS "Cannot set the ${MONITORING_USER} tags";
+addError CANNOT_SET_THE_MONITORING_USER_PERMISSIONS "Cannot set the ${MONITORING_USER} permissions";
+addError CANNOT_DECLARE_THE_VIRTUAL_HOSTS "Cannot declare the virtual hosts";
+addError CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES "Cannot declare the alternate exchanges";
+
+# command-line flags
+addCommandLineFlag failFast "f" "Whether to fail as soon as any step in the bootstrap process fails." OPTIONAL NO_ARGUMENT;
+addCommandLineFlag force "F" "Forces the bootstrap process, regardless of whether it's been done already or it's currently in progress" OPTIONAL NO_ARGUMENT;
+
+# environment variables
+
+# env: RABBITMQ_NODENAME: The name of the RabbitMQ node.
+defineEnvVar RABBITMQ_NODENAME MANDATORY "The name of the RabbitMQ node";
+# env: LOCK_FILE: The file indicating if the bootstrap is running.
+defineEnvVar LOCK_FILE MANDATORY "The file indicating if the bootstrap is running";
+# env: ADMIN_PASSWORD: The password for the admin user.
+defineEnvVar ADMIN_PASSWORD MANDATORY "The password for the admin user";
+# env: MONITORING_PASSWORD: The password for the monitoring user.
+defineEnvVar MONITORING_PASSWORD MANDATORY "The password for the monitoring user";
+
+# env: ADMIN_USER: The name of the admin user.
+defineEnvVar ADMIN_USER MANDATORY "The name of the admin user" admin;
+# env: ADMIN_PASSWORD: The password of the 'admin' user.
+# env: ADMIN_TAGS: The tags of the admin user.
+defineEnvVar ADMIN_TAGS MANDATORY "The tags of the admin user" "administrator";
+# env: ADMIN_CONFIGURE_PERMISSIONS: The configure permissions for the Admin user.
+defineEnvVar ADMIN_CONFIGURE_PERMISSIONS MANDATORY "The configure permissions for the Admin user" ".*";
+# env: ADMIN_WRITE_PERMISSIONS: The write permissions for the Admin user.
+defineEnvVar ADMIN_WRITE_PERMISSIONS MANDATORY "The write permissions for the Admin user" ".*";
+# env: ADMIN_READ_PERMISSIONS: The read permissions for the Admin user.
+defineEnvVar ADMIN_READ_PERMISSIONS MANDATORY "The read permissions for the Admin user" ".*";
+
+# env: MONITORING_USER: The name of the monitoring user.
+defineEnvVar MONITORING_USER MANDATORY "The name of the monitoring user" monitoring;
+# env: MONITORING_TAGS: The tags of the monitoring user.
+defineEnvVar MONITORING_TAGS MANDATORY "The tags of the monitoring user" "monitoring";
+# env: MONITORING_CONFIGURE_PERMISSIONS: The configure permissions for the Monitoring user.
+defineEnvVar MONITORING_CONFIGURE_PERMISSIONS MANDATORY "The configure permissions for the Monitoring user" ".*";
+# env: MONITORING_WRITE_PERMISSIONS: The write permissions for the Monitoring user.
+defineEnvVar MONITORING_WRITE_PERMISSIONS MANDATORY "The write permissions for the Monitoring user" ".*";
+# env: MONITORING_READ_PERMISSIONS: The read permissions for the Monitoring user.
+defineEnvVar MONITORING_READ_PERMISSIONS MANDATORY "The read permissions for the Monitoring user" ".*";
+
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
