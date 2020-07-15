@@ -3,254 +3,6 @@
 # txt: Functions useful when bootstrapping RabbitMQ servers.
 # txt: You might be interested in importing rabbitmq-cli as well, to inject processing of the required environment variables above.
 
-# fun: addUser user password nodename
-# api: public
-# txt: Adds a new RabbitMQ user.
-# opt: user: The username.
-# opt: password: The password.
-# opt: nodename: The node name.
-# txt: Returns 0/TRUE if the user was added; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
-# use: if addUser "admin" "secret" 'rabbit@server'; then
-# use:   echo "User admin added successfully";
-# use: fi
-function addUser() {
-  local _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _password="${2}";
-  checkNotEmpty password "${_password}" 2;
-  local _nodename="${3}";
-  checkNotEmpty nodename "${_nodename}" 3;
-  local -i _rescode;
-  local _log;
-
-  logTrace -n "Adding ${_user}";
-  _log="$(rabbitmqctl -n "${_nodename}" add_user ${_user} "${_password}" 2>&1)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "done";
-    export OUTPUT="${_log}";
-  else
-    logTraceResult FAILURE "failed";
-    export ERROR="${_log}";
-  fi
-
-  return ${_rescode};
-}
-
-# fun: addVhost virtualHost nodename
-# api: public
-# txt: Declares a virtual host.
-# opt: virtualHost: The virtual host.
-# opt: nodename: The node name.
-# txt: Returns 0/TRUE if the virtual host gets created successfully; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
-# use: if ! addVhost "/" 'rabbit@server'; then
-# use:   echo "Could not add vhost /";
-# use: fi
-function addVhost() {
-  local _vhost="${1}";
-  checkNotEmpty virtualHost "${_vhost}" 1;
-  local _nodename="${2}";
-  checkNotEmpty nodename "${_nodename}" 2;
-  local -i _rescode;
-  local _log;
-
-  logTrace -n "Adding virtual host ${_vhost}";
-
-  _log="$(rabbitmqctl -n "${_nodename}" add_vhost "${_vhost}" 2>&1)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "done";
-    export OUTPUT="${_log}";
-  else
-    logTraceResult FAILURE "failed";
-    export ERROR="${_log}";
-  fi
-
-  return ${_rescode};
-}
-
-# fun: declareBdbinding source destinationType destination routingKey nodename
-# api: public
-# txt: Declares a binding.
-# opt: source: The source.
-# opt: destinationType: The destination type.
-# opt: destination: The destination.
-# opt: routingKey: The routing key.
-# opt: nodename: The node name.
-# txt: Returns 0/TRUE if the binding gets created successfully; 1/FALSE othervise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
-# use: if declareBinding "my-exchange" "queue" "my-queue" "#" 'rabbit@server'; then
-# use:   echo "binding created successfully";
-# use: fi
-function declareBinding() {
-  local _source="${1}";
-  checkNotEmpty source "${_source}" 1;
-  local _destinationType="${2}";
-  checkNotEmpty destinationType "${_destinationType}" 2;
-  local _destination="${3}";
-  checkNotEmpty destination "${_destination}" 3;
-  local _routingKey="${4}";
-  checkNotEmpty routingKey "${_routingKey}" 4;
-  local _nodename="${5}";
-  checkNotEmpty nodename "${_nodename}" 5;
-  local -i _rescode;
-  local _log;
-
-  logTrace -n "Declaring binding: source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey}";
-  _log="$(rabbitmqadmin -N "${_nodename}"  -u admin -p ${ADMIN_PASSWORD} declare binding source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey} 2>&1)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "done";
-    export OUTPUT="${_log}";
-  else
-    logTraceResult FAILURE "failed";
-    export ERROR="${_log}";
-  fi
-
-  return ${_rescode};
-}
-
-# fun: declareExchange name type nodename durable internal args*
-# api: public
-# txt: Declares an exchange.
-# opt: name: The exchange name.
-# opt: type: The exchange type.
-# opt: nodename: The node name.
-# opt: durable: Whether the exchange is durable. Optional.
-# opt: internal: Whether the exchange is internal. Optional.
-# opt: args: Additional arguments. Optional.
-# txt: Returns 0/TRUE if the exchange gets created successfully; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
-# use: if declareExchange "ex" "topic" 'rabbit@server'; then
-# use:   echo "ex exchange created successfully";
-# use: fi
-function declareExchange() {
-  local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
-  local _type="${2}";
-  checkNotEmpty type "${_type}" 2;
-  local _nodename="${3}";
-  checkNotEmpty nodename "${_nodename}" 3;
-  local _durable;
-  local _internal;
-  local _extra;
-  local -i _rescode;
-  local _log;
-  shift;
-  shift;
-  shift;
-  _durable="${1}";
-
-  if ! isEmpty "${_durable}"; then
-    shift;
-    _internal="${1}";
-    if ! isEmpty "${_internal}"; then
-      shift;
-      _extra="${@}";
-    fi
-  fi
-  local -i _rescode;
-
-  if ! isEmpty "${_durable}"; then
-    _durable="durable=${_durable}";
-  fi
-
-  if ! isEmpty "${_internal}"; then
-    _internal="internal=${_internal}";
-  fi
-
-  logTrace -n "Declaring exchange name=${_name} type=${_type} ${_durable} ${_internal} ${_extra}";
-  _log="$(rabbitmqadmin -N "${_nodename}"  -u admin -p ${ADMIN_PASSWORD} declare exchange name=${_name} type=${_type} ${_durable} ${_internal} ${_extra} > 2>&1)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "done";
-    export OUTPUT="${_log}";
-  else
-    logTraceResult FAILURE "failed";
-    export ERROR="${_log}";
-  fi
-
-  return ${_rescode};
-}
-
-# fun: declareQueue name durable nodename (accessUser accessPassword)?
-# api: public
-# txt: Declares a queue.
-# opt: name: The queue name.
-# opt: durable: Whether it's durable or not.
-# opt: nodename: The node name.
-# opt: accessUser: The access user. Optional.
-# opt: accessPassword: The access password. Optional.
-# txt: Returns 0/TRUE if the queue is created successfully; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
-# use: if declareQueue "my-queue" "true" 'rabbit@server' 'admin' 'secret'; then
-# use:   echo "Queue my-queue created successfully";
-# use: fi
-function declareQueue() {
-  local _name="${1}";
-  checkNotEmpty name "${_name}" 1;
-  local _durable="${2}";
-  checkNotEmpty durable "${_durable}" 2;
-  local _nodename="${3}";
-  checkNotEmpty nodename "${_nodename}" 3;
-  local _accessUser="${4}";
-  local _accessPassword="${5}";
-  local -i _rescode;
-  local _log;
-
-  local _loginPart;
-  if isNotEmpty "${_accessUser}"; then
-    _loginPart="-u \"${_accessUser}\" -p \"${_accessPassword}\"";
-  fi
-
-  logTrace -n "Declaring queue name=${_name} durable=${_durable}";
-  _log="$(rabbitmqadmin -N "${_nodename}" ${_loginPart} declare queue name=${_name} durable=${_durable} 2>&1)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "done";
-    export OUTPUT="${_log}";
-  else
-    logTraceResult FAILURE "failed";
-    export ERROR="${_log}";
-  fi
-
-  return ${_rescode};
-}
-
-# fun: deleteUser user nodename
-# api: public
-# txt: Deletes an user.
-# opt: user: The user.
-# opt: nodename: The node name.
-# txt: Returns 0/TRUE if the user gets deleted successfully; 1/FALSE otherwise.
-# use: if deleteUser "guest" 'rabbit@server'; then
-# use:   echo "guest user deleted successfully";
-# use: fi
-function deleteUser() {
-  local _name="${1}";
-  checkNotEmpty user "${_name}" 1;
-  local _nodename="${2}";
-  checkNotEmpty nodename "${_nodename}" 2;
-  local -i _rescode;
-  local _log;
-
-  logTrace -n "Deleting user ${_name}";
-
-  _log="$(rabbitmqctl -n ${_nodename} delete_user ${_name} 2>&1)";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "done";
-    export OUTPUT="${_log}";
-  else
-    logTraceResult FAILURE "failed";
-    export ERROR="${_log}";
-  fi
-
-  return ${_rescode};
-}
-
 # fun: enableRabbitmqManagement nodename
 # api: dry-wti
 # txt: Enables the plugin-management mode.
@@ -327,6 +79,398 @@ function isRabbitmqRunning() {
 
   return ${_rescode};
 }
+
+# fun: addVhost virtualHost nodename
+# api: public
+# txt: Declares a virtual host.
+# opt: virtualHost: The virtual host.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the virtual host gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if ! addVhost "/" 'rabbit@server'; then
+# use:   echo "Could not add vhost /";
+# use: fi
+function addVhost() {
+  local _vhost="${1}";
+  checkNotEmpty virtualHost "${_vhost}" 1;
+  local _nodename="${2}";
+  checkNotEmpty nodename "${_nodename}" 2;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Adding virtual host ${_vhost}";
+
+  _log="$(rabbitmqctl -n "${_nodename}" add_vhost "${_vhost}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "failed";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: addUser user password nodename
+# api: public
+# txt: Adds a new RabbitMQ user.
+# opt: user: The username.
+# opt: password: The password.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the user was added; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if addUser "admin" "secret" 'rabbit@server'; then
+# use:   echo "User admin added successfully";
+# use: fi
+function addUser() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _password="${2}";
+  checkNotEmpty password "${_password}" 2;
+  local _nodename="${3}";
+  checkNotEmpty nodename "${_nodename}" 3;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Adding ${_user}";
+  _log="$(rabbitmqctl -n "${_nodename}" add_user ${_user} "${_password}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "failed";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: userAlreadyExists user nodename
+# api: public
+# txt: Checks if given user already exists.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the user exists; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if userAlreadyExists admin 'rabbit@server'; then
+# use:   echo "User admin already exists";
+# use: fi
+function userAlreadyExists() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _nodename="${2}";
+  checkNotEmpty nodename "${_nodename}" 2;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Checking if ${_user} already exists";
+  _log="$(rabbitmqctl -n "${_nodename}" list_users 2>&1 | grep --color=none -e "^${_user}\s.*")";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteUser user nodename
+# api: public
+# txt: Deletes an user.
+# opt: user: The user.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the user gets deleted successfully; 1/FALSE otherwise.
+# use: if deleteUser "guest" 'rabbit@server'; then
+# use:   echo "guest user deleted successfully";
+# use: fi
+function deleteUser() {
+  local _name="${1}";
+  checkNotEmpty user "${_name}" 1;
+  local _nodename="${2}";
+  checkNotEmpty nodename "${_nodename}" 2;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Deleting user ${_name}";
+
+  _log="$(rabbitmqctl -n ${_nodename} delete_user ${_name} 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "failed";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: declareExchange name type nodename accessUser accessPassword durable? internal? args*
+# api: public
+# txt: Declares an exchange.
+# opt: name: The exchange name.
+# opt: type: The exchange type.
+# opt: nodename: The node name.
+# opt: accessUser: The access user.
+# opt: accessPassword: The access password.
+# opt: durable: Whether the exchange is durable. Optional.
+# opt: internal: Whether the exchange is internal. Optional.
+# opt: args: Additional arguments. Optional.
+# txt: Returns 0/TRUE if the exchange gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if declareExchange "ex" "topic" 'rabbit@server' admin 'secret'; then
+# use:   echo "ex exchange created successfully";
+# use: fi
+function declareExchange() {
+  local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
+  local _type="${2}";
+  checkNotEmpty type "${_type}" 2;
+  local _nodename="${3}";
+  checkNotEmpty nodename "${_nodename}" 3;
+  local _accessUser="${4}";
+  checkNotEmpty accessUser "${_accessUser}" 4;
+  local _accessPassword="${5}";
+  checkNotEmpty accessPassword "${_accessPassword}" 5;
+  local _durable;
+  local _internal;
+  local _extra;
+  local -i _rescode;
+  local _log;
+  shift;
+  shift;
+  shift;
+  shift;
+  shift;
+  _durable="${1}";
+
+  if isNotEmpty "${_durable}"; then
+    shift;
+    _internal="${1}";
+    if isNotEmpty "${_internal}"; then
+      shift;
+      _extra="${@}";
+    fi
+  fi
+  local -i _rescode;
+
+  if isNotEmpty "${_durable}"; then
+    _durable="durable=${_durable}";
+  fi
+
+  if isNotEmpty "${_internal}"; then
+    _internal="internal=${_internal}";
+  fi
+
+  logTrace -n "Declaring exchange name=${_name} type=${_type} ${_durable} ${_internal} ${_extra}";
+  _log="$(rabbitmqadmin -N "${_nodename}"  -u ${_accessUser} -p "${_accessPassword}" declare exchange name=${_name} type=${_type} ${_durable} ${_internal} ${_extra} 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "failed";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+
+# fun: exchangeAlreadyExists exchangeName exchangeType nodename
+# api: public
+# txt: Checks if given exchange already exists.
+# opt: exchangeName: The exchange name.
+# opt: exchangeType: The exchange type.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the exchange exists, and it's the same type; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if exchangeAlreadyExists exch fanout 'rabbit@server'; then
+# use:   echo "Exchange exch already exists";
+# use: fi
+function exchangeAlreadyExists() {
+  local _exchangeName="${1}";
+  checkNotEmpty exchangeName "${_exchangeName}" 1;
+  local _exchangeType="${2}";
+  checkNotEmpty exchangeType "${_exchangeType}" 2;
+  local _nodename="${3}";
+  checkNotEmpty nodename "${_nodename}" 3;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Checking if ${_exchangeName} exchange already exists";
+  _log="$(rabbitmqctl -n "${_nodename}" list_exchanges 2>&1 | grep --color=none -e "^${_exchangeName}\s\+${_exchangeType}\s*$")";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteExchange exchangeName nodename accessUser accessPasword
+# api: public
+# txt: Deletes given exchange.
+# opt: exchangeName: The exchange name.
+# opt: nodename: The node name.
+# opt: accessUser: The access user.
+# opt: accessPassword: The access password.
+# txt: Returns 0/TRUE if the exchange gets deleted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if deleteExchange exch 'rabbit@server' admin 'secret'; then
+# use:   echo "Exchange exch deleted";
+# use: fi
+function deleteExchange() {
+  local _exchangeName="${1}";
+  checkNotEmpty exchangeName "${_exchangeName}" 1;
+  local _nodename="${2}";
+  checkNotEmpty nodename "${_nodename}" 2;
+  local _accessUser="${3}";
+  checkNotEmpty accessUser "${_accessUser}" 3;
+  local _accessPassword="${4}";
+  checkNotEmpty accessPassword "${_accessPassword}" 4;
+
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Deleting ${_exchange} exchange";
+  _log="$(rabbitmqadmin -u "${_exchangeName}" -p "${_accessPassword}" -N "${_nodename}" delete exchange name="${_exchangeName}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: declareQueue name durable nodename accessUser accessPassword
+# api: public
+# txt: Declares a queue.
+# opt: name: The queue name.
+# opt: durable: Whether it's durable or not.
+# opt: nodename: The node name.
+# opt: accessUser: The access user.
+# opt: accessPassword: The access password.
+# txt: Returns 0/TRUE if the queue is created successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if declareQueue "my-queue" "true" 'rabbit@server' 'admin' 'secret'; then
+# use:   echo "Queue my-queue created successfully";
+# use: fi
+function declareQueue() {
+  local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
+  local _durable="${2}";
+  checkNotEmpty durable "${_durable}" 2;
+  local _nodename="${3}";
+  checkNotEmpty nodename "${_nodename}" 3;
+  local _accessUser="${4}";
+  checkNotEmpty accessUser "${_accessUser}" 4;
+  local _accessPassword="${5}";
+  checkNotEmpty accessPassword "${_accessPassword}" 5;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Declaring queue name=${_name} durable=${_durable} as user ${_accessUser} (${_accessPassword})";
+  _log="$(rabbitmqadmin -N "${_nodename}" -u ${_accessUser} -p "${_accessPassword}" declare queue name=${_name} durable=${_durable} 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "failed";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+
+# fun: queueAlreadyExists queueName nodename
+# api: public
+# txt: Checks if given queue already exists.
+# opt: queueName: The queue name.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the queue exists; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if queueAlreadyExists q1 'rabbit@server'; then
+# use:   echo "Queue q1 already exists";
+# use: fi
+function queueAlreadyExists() {
+  local _queueName="${1}";
+  checkNotEmpty queueName "${_queueName}" 1;
+  local _nodename="${2}";
+  checkNotEmpty nodename "${_nodename}" 2;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Checking if ${_queueName} queue already exists";
+  _log="$(rabbitmqctl -n "${_nodename}" list_queues 2>&1 | grep --color=none -e "^${_queueName}\s*$")";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteQueue queueName nodename accessUser accessPasword
+# api: public
+# txt: Deletes given queue.
+# opt: queueName: The queue name.
+# opt: nodename: The node name.
+# opt: accessUser: The access user.
+# opt: accessPassword: The access password.
+# txt: Returns 0/TRUE if the queue gets deleted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if deleteQueue q1 'rabbit@server' admin 'secret'; then
+# use:   echo "Queue q1 deleted";
+# use: fi
+function deleteQueue() {
+  local _queueName="${1}";
+  checkNotEmpty queueName "${_queueName}" 1;
+  local _nodename="${2}";
+  checkNotEmpty nodename "${_nodename}" 2;
+  local _accessUser="${3}";
+  checkNotEmpty accessUser "${_accessUser}" 3;
+  local _accessPassword="${4}";
+  checkNotEmpty accessPassword "${_accessPassword}" 4;
+
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Deleting ${_queue} queue";
+  _log="$(rabbitmqadmin -u "${_accessName}" -p "${_accessPassword}" -N "${_nodename}" delete queue name="${_queueName}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: setPermissions virtualHost user configurePermissions writePermissions readPermissions nodename
 # api: public
 # txt: Sets RabbitMQ permissions.
@@ -412,6 +556,239 @@ function setPolicy() {
   return ${_rescode};
 }
 
+# fun: policyAlreadyExists virtualHost name match body objectType nodename
+# api: public
+# txt: Checks if given policy already exists.
+# opt: virtualHost: The virtual host.
+# opt: name: The policy name.
+# opt: match: The match.
+# opt: body: The body.
+# opt: objectType: The object type.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the policy exists, and it's the same type; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if policyAlreadyExists / "my-dlx" "^my-ex" '{"dead-letter-exchange":"my-dlx"}' "queues" 'rabbit@server'; then
+# use:   echo "Policy exch already exists";
+# use: fi
+function policyAlreadyExists() {
+  local _virtualHost="${1}";
+  checkNotEmpty virtualHost "${_virtualHost}" 1
+  local _name="${2}";
+  checkNotEmpty name "${_name}" 2;
+  local _match="${3}";
+  checkNotEmpty match "${_match}" 3;
+  local _body="${4}";
+  checkNotEmpty body "${_body}" 4;
+  local _objectType="${5}";
+  checkNotEmpty type "${_objectType}" 5;
+  local _nodename="${6}";
+  checkNotEmpty nodename "${_nodename}" 6;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Checking if ${_name} ${_objectType} ${_match} ${_body} policy already exists";
+  _log="$(rabbitmqctl -n "${_nodename}" list_policies 2>&1 | grep --color=none -e "^${_virtualHost}\s+${_name}\s\+${_objectType}\s\+${_match}\s\+${_body}\s\+.*$")";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deletePolicy policyName nodename accessUser accessPasword
+# api: public
+# txt: Deletes given policy.
+# opt: policyName: The policy name.
+# opt: nodename: The node name.
+# opt: accessUser: The access user.
+# opt: accessPassword: The access password.
+# txt: Returns 0/TRUE if the policy gets deleted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if deletePolicy exch-dlx 'rabbit@server' admin 'secret'; then
+# use:   echo "Policy exch deleted";
+# use: fi
+function deletePolicy() {
+  local _policyName="${1}";
+  checkNotEmpty policyName "${_policyName}" 1;
+  local _nodename="${2}";
+  checkNotEmpty nodename "${_nodename}" 2;
+  local _accessUser="${3}";
+  checkNotEmpty accessUser "${_accessUser}" 3;
+  local _accessPassword="${4}";
+  checkNotEmpty accessPassword "${_accessPassword}" 4;
+
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Checking if ${_user} already exists";
+  _log="$(rabbitmqadmin -u "${_policyName}" -p "${_accessPassword}" -N "${_nodename}" delete policy name="${_policyName}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+
+# fun: declareBinding source destinationType destination routingKey nodename
+# api: public
+# txt: Declares a binding.
+# opt: source: The source.
+# opt: destinationType: The destination type.
+# opt: destination: The destination.
+# opt: routingKey: The routing key.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the binding gets created successfully; 1/FALSE othervise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if declareBinding "my-exchange" "queue" "my-queue" "#" 'rabbit@server'; then
+# use:   echo "binding created successfully";
+# use: fi
+function declareBinding() {
+  local _source="${1}";
+  checkNotEmpty source "${_source}" 1;
+  local _destinationType="${2}";
+  checkNotEmpty destinationType "${_destinationType}" 2;
+  local _destination="${3}";
+  checkNotEmpty destination "${_destination}" 3;
+  local _routingKey="${4}";
+  checkNotEmpty routingKey "${_routingKey}" 4;
+  local _nodename="${5}";
+  checkNotEmpty nodename "${_nodename}" 5;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Declaring binding: source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey}";
+  _log="$(rabbitmqadmin -N "${_nodename}"  -u admin -p ${ADMIN_PASSWORD} declare binding source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey} 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "done";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "failed";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: bindingAlreadyExists source destinationType destination routingKey nodename (accessUser accessPassword)?
+# api: public
+# txt: Checks if given binding already exists.
+# opt: source: The source.
+# opt: destination: The destination.
+# opt: destinationType: The destination type.
+# opt: routingKey: The routing key.
+# opt: nodename: The node name.
+# opt: accessUser: The user with rights to check bindings. Optional.
+# opt: accessPassword: The password of accessUser. Optional.
+# txt: Returns 0/TRUE if the binding exists, and it's the same type; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if bindingAlreadyExists exch queue q1 '#' 'rabbit@server' admin 'secret'; then
+# use:   echo "Binding exch->q1 already exists";
+# use: fi
+function bindingAlreadyExists() {
+  local _source="${1}";
+  checkNotEmpty source "${_source}" 1;
+  local _destinationType="${2}";
+  checkNotEmpty destinationType "${_destinationType}" 2;
+  local _destination="${3}";
+  checkNotEmpty destination "${_destination}" 3;
+  local _routingKey="${4}";
+  checkNotEmpty routingKey "${_routingKey}" 4;
+  local _nodename="${5}";
+  checkNotEmpty nodename "${_nodename}" 5;
+  local _accessUser="${6}";
+  checkNotEmpty accessUser "${_accessUser}" 6;
+  local _accessPassword="${7}";
+  checkNotEmpty accessPassword "${_accessPassword}" 7;
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Checking if binding (${_source} -> (${_routingKey}) -> ${_destination} (${_destinationType}) already exists";
+  if isEmpty "${_accessUser}"; then
+    _log="$(rabbitmqadmin -f raw_json -N "${_nodename}" list bindings | jq '.[] | select(.source == "${_source}") | select(.destination_type == "${_destinationType}") | select(.destination == "${_destination}") | select(.routing_key == "${_routingKey}")')";
+    if isEmpty "${_log}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+    fi
+  else
+    _log="$(rabbitmqadmin -f raw_json -N "${_nodename}" -u ${_accessUser} -p "${_accessPassword}" list bindings | jq '.[] | select(.source == "${_source}") | select(.destination_type == "${_destinationType}") | select(.destination == "${_destination}") | select(.routing_key == "${_routingKey}")')";
+    if isEmpty "${_log}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+    fi
+  fi
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteBinding source destinationType destination routingKey nodename (accessUser accessPassword)?
+# api: public
+# txt: Deletes given binding.
+# opt: source: The source.
+# opt: destination: The destination.
+# opt: destinationType: The destination type.
+# opt: routingKey: The routing key.
+# opt: nodename: The node name.
+# opt: accessUser: The user with rights to check bindings. Optional.
+# opt: accessPassword: The password of accessUser. Optional.
+# txt: Returns 0/TRUE if the binding exists, and it's the same type; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if deleteBinding exch queue q1 '#' 'rabbit@server' admin 'secret'; then
+# use:   echo "Binding exch->q1 deleted";
+# use: fi
+function deleteBinding() {
+  local _source="${1}";
+  checkNotEmpty source "${_source}" 1;
+  local _destinationType="${2}";
+  checkNotEmpty destinationType "${_destinationType}" 2;
+  local _destination="${3}";
+  checkNotEmpty destination "${_destination}" 3;
+  local _routingKey="${4}";
+  checkNotEmpty routingKey "${_routingKey}" 4;
+  local _nodename="${5}";
+  checkNotEmpty nodename "${_nodename}" 5;
+  local _accessUser="${6}";
+  checkNotEmpty accessUser "${_accessUser}" 6;
+  local _accessPassword="${7}";
+  checkNotEmpty accessPassword "${_accessPassword}" 7;
+
+  local -i _rescode;
+  local _log;
+
+  logTrace -n "Deleting binding (${_source} -> (${_routingKey}) -> ${_destination} (${_destinationType}) already exists";
+  _log="$(rabbitmqadmin -u "${_bindingName}" -p "${_accessPassword}" -N "${_nodename}" delete binding source="${_source}" destination_type="${_destinationType}" destination="${_destination}" properties_key="${_propertiesKey}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "exists";
+    export OUTPUT="${_log}";
+  else
+    logTraceResult FAILURE "doesn't exist";
+    export ERROR="${_log}";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: setUserTags nodename user tags+
 # api: public
 # txt: Sets user tags.
@@ -475,10 +852,19 @@ function getUserTags() {
 
   if isEmpty "${_accessUser}"; then
     _log="$(rabbitmqadmin -f raw_json -N "${_nodename}" list users | jq '.[] | select(.name == "${_user}") | .tags' | sed 's ^"  g' | sed 's "$  g')";
+    if isEmpty "${_log}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+    fi
   else
     _log="$(rabbitmqadmin -f raw_json -N "${_nodename}" -u "${_accessUser}" -p "${_accessPassword}" list users | jq '.[] | select(.name == "${_user}") | .tags' | sed 's ^"  g' | sed 's "$  g')";
+    if isEmpty "${_log}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+    fi
   fi
-  _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_log}";
@@ -527,39 +913,12 @@ function addTagToUser() {
     fi
     setUserTags "${_nodename}" "${_user}" "${_tags}${_tag}";
     _rescode=$?;
-  fi
-
-  return ${_rescode};
-}
-
-# fun: userAlreadyExists user nodename
-# api: public
-# txt: Checks if given user already exists.
-# opt: nodename: The node name.
-# txt: Returns 0/TRUE if the user exists; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
-# use: if userAlreadyExists admin 'rabbit@server'; then
-# use:   echo "User admin already exists";
-# use: fi
-function userAlreadyExists() {
-  local _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _nodename="${2}";
-  checkNotEmpty nodename "${_nodename}" 2;
-  local -i _rescode;
-  local _log;
-
-  logTrace -n "Checking if ${_user} already exists";
-  _log="$(rabbitmqctl -n "${_nodename}" list_users 2>&1 | grep --color=none -e "^${_user}\s.*")";
-  _rescode=$?;
-  if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "exists";
-    export OUTPUT="${_log}";
   else
-    logTraceResult FAILURE "doesn't exist";
-    export ERROR="${_log}";
+    setUserTags "${_nodename}" "${_user}" "${_tags}${_tag}";
+    _rescode=$?;
   fi
 
   return ${_rescode};
 }
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

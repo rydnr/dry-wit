@@ -13,17 +13,12 @@ DW.import rabbitmq;
 function rabbitmqMigrate() {
   local -i _running=${FALSE};
 
-  if RABBITMQBOOTSTRAP.inForceMode; then
-    logDebug -n "Skipping bootstrap checks";
-    logDebugResult SUCCESS "done";
+  logDebug -n "Ensuring we can take exclusive control of the instance";
+  if RABBITMQBOOTSTRAP.acquireBootstrapLock; then
+    logDebugResult SUCCESS "ok";
   else
-    logDebug -n "Ensuring we can take exclusive control of the instance";
-    if RABBITMQBOOTSTRAP.acquireBootstrapLock; then
-      logDebugResult SUCCESS "ok";
-    else
-      logDebugResult FAILURE "failed";
-      exitWithErrorCode CANNOT_ACQUIRE_LOCK;
-    fi
+    logDebugResult FAILURE "failed";
+    exitWithErrorCode CANNOT_ACQUIRE_LOCK;
   fi
 
   logDebug -n "Checking if RabbitMQ is running";
@@ -31,8 +26,8 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "running";
   else
     logDebugResult FAILURE "stopped";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast RABBITMQ_NOT_RUNNING;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode RABBITMQ_NOT_RUNNING;
   fi
 
   logDebug -n "Retrieving rabbitmqadmin, if needed"
@@ -40,8 +35,8 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_RETRIEVE_RABBITMQADMIN;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode CANNOT_RETRIEVE_RABBITMQADMIN;
   fi
 
   logDebug -n "Patching rabbitmqadmin, if needed"
@@ -49,8 +44,8 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_FIX_RABBITMQADMIN;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode CANNOT_FIX_RABBITMQADMIN;
   fi
 
   logDebug -n "Enabling plugin management, if needed";
@@ -58,23 +53,21 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT;
   fi
-  exit 1;
-
 
   if RABBITMQBOOTSTRAP.guestUserExists; then
     RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist;
   fi
 
   logDebug -n "Configuring ${ADMIN_USER} user tags";
-  if setAdminUserTags "${ADMIN_USER}" "${ADMIN_PASSWORD}"; then
+  if setAdminUserTags; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_ADMIN_USER_TAGS;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode CANNOT_SET_THE_ADMIN_USER_TAGS;
   fi
 
   logDebug -n "Configuring ${ADMIN_USER} user permissions";
@@ -82,8 +75,8 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_ADMIN_USER_PERMISSIONS;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode CANNOT_SET_THE_ADMIN_USER_PERMISSIONS;
   fi
 
   if RABBITMQBOOTSTRAP.guestUserExists; then
@@ -95,8 +88,8 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_MONITORING_USER_TAGS;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_TAGS;
   fi
 
   logDebug -n "Configuring ${MONITORING_USER} permissions";
@@ -104,8 +97,8 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
-    RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-    RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_SET_THE_MONITORING_USER_PERMISSIONS;
+    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+    exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_PERMISSIONS;
   fi
 
   RABBITMQBOOTSTRAP.deleteGuestUserIfItExists;
@@ -117,8 +110,8 @@ function rabbitmqMigrate() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
-      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_DECLARE_THE_VIRTUAL_HOSTS;
+      RABBITMQBOOTSTRAP.releaseBootstrapLock;
+      exitWithErrorCode CANNOT_DECLARE_THE_VIRTUAL_HOSTS;
     fi
   fi
 
@@ -129,8 +122,8 @@ function rabbitmqMigrate() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
-      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES;
+      RABBITMQBOOTSTRAP.releaseBootstrapLock;
+      exitWithErrorCode CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES;
     fi
   fi
 
@@ -141,14 +134,24 @@ function rabbitmqMigrate() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
-      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_PATCH_THE_RABBITMQ_INSTANCE;
+      RABBITMQBOOTSTRAP.releaseBootstrapLock;
+      exitWithErrorCode CANNOT_PATCH_THE_RABBITMQ_INSTANCE;
     fi
   fi
 
-  if ! RABBITMQBOOTSTRAP.inForceMode; then
-    RABBITMQBOOTSTRAP.releaseBootstrapLock;
+  # Hook
+  if isFunctionPresent "enable_changesets"; then
+    logDebug -n "Enabling changesets";
+    if enable_changesets; then
+      logDebugResult SUCCESS "done";
+    else
+      logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.releaseBootstrapLock;
+      exitWithErrorCode CANNOT_ENABLE_CHANGESETS;
+    fi
   fi
+
+  RABBITMQBOOTSTRAP.releaseBootstrapLock;
 }
 
 # fun: RABBITMQBOOTSTRAP.guestUserExists
@@ -175,8 +178,9 @@ function RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
-      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ADD_ADMIN_USER;
+      logInfo "${ERROR}";
+      RABBITMQBOOTSTRAP.releaseBootstrapLock;
+      exitWithErrorCode CANNOT_ADD_ADMIN_USER;
     fi
   fi
 }
@@ -193,8 +197,8 @@ function RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
-      RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-      RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ADD_MONITORING_USER;
+      RABBITMQBOOTSTRAP.releaseBootstrapLock;
+      exitWithErrorCode CANNOT_ADD_MONITORING_USER;
     fi
   fi
 }
@@ -236,29 +240,6 @@ function RABBITMQBOOTSTRAP.acquireBootstrapLock() {
   return ${_rescode};
 }
 
-# fun: RABBITMQBOOTSTRAP.alreadyBootstrapped
-# api: private
-# txt: Checks whether the RabbitMQ instance is already bootstrapped.
-# txt: Returns 0/TRUE if the bootstrap has already done in the past; 1/FALSE otherwise.
-# use: if RABBITMQBOOTSTRAP.alreadyBootstrapped; then echo "Instance already bootstrapped"; fi
-function RABBITMQBOOTSTRAP.alreadyBootstrapped() {
-  fileExists "${BOOTSTRAPPED_FILE}";
-}
-
-# fun: RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast errorLabel
-# api: private
-# opt: errorLabel: The error label.
-# txt: Exits with an error code if FAIL_FAST flag is active; otherwise returns 0/TRUE.
-# use: RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast CANNOT_ACQUIRE_LOCK
-function RABBITMQBOOTSTRAP.exitWithErrorCodeIfFailFast() {
-  local _label="${1}";
-  checkNotEmpty errorLabel "${_label}" 1;
-  shift;
-  if RABBITMQBOOTSTRAP.inFailFastMode; then
-    exitWithErrorCode "${_label}" $@;
-  fi
-}
-
 # fun: RABBITMQBOOTSTRAP.fixRabbitmqadmin file
 # api: private
 # txt: Fixes rabbitmqadmin script.
@@ -287,28 +268,6 @@ function RABBITMQBOOTSTRAP.fixRabbitmqadminIfNeeded() {
   return ${_rescode};
 }
 
-# fun: RABBITMQBOOTSTRAP.inFailFastMode
-# api: private
-# txt: Checks whether FAIL_FAST mode is active.
-# txt: Returns 0/TRUE if the script is running in fail-fast mode; 1/FALSE otherwise.
-# use: if RABBITMQBOOTSTRAP.inFailFastMode; then
-# use:   echo "Running in fail-fast mode";
-# use: fi
-function RABBITMQBOOTSTRAP.inFailFastMode() {
-  flagEnabled FAIL_FAST;
-}
-
-# fun: RABBITMQBOOTSTRAP.inForceMode
-# api: private
-# txt: Checks whether FORCE mode is active.
-# txt: Returns 0/TRUE if the script is running in forcing mode; 1/FALSE otherwise.
-# use: if RABBITMQBOOTSTRAP.inForceMode; then
-# use:   echo "Running in force mode";
-# use: fi
-function RABBITMQBOOTSTRAP.inForceMode() {
-  flagEnabled FORCE;
-}
-
 # fun: RABBITMQBOOTSTRAP.releaseBootstrapLock
 # api: private
 # txt: Releases the bootstrap lock.
@@ -319,31 +278,17 @@ function RABBITMQBOOTSTRAP.inForceMode() {
 function RABBITMQBOOTSTRAP.releaseBootstrapLock() {
   local -i _rescode;
 
-  if ! RABBITMQBOOTSTRAP.inForceMode; then
-    if fileExists "${LOCK_FILE}"; then
-      _rescode=${TRUE};
-      rm -f "${LOCK_FILE}";
-    else
-      _rescode=${FALSE};
-    fi
-  else
+  if fileExists "${LOCK_FILE}"; then
     _rescode=${TRUE};
+    rm -f "${LOCK_FILE}";
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
 }
 
-# fun: RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast
-# api: private
-# txt: Releases the lock file if FAIL_FAST flag is active.
-# use: RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast;
-function RABBITMQBOOTSTRAP.releaseBootstrapLockIfFailFast() {
-  if RABBITMQBOOTSTRAP.inFailFastMode; then
-    RABBITMQBOOTSTRAP.releaseBootstrapLock;
-  fi
-}
-
-# fun: RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeede url outputFile
+# fun: RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeeded url outputFile
 # api: private
 # txt: Retrieves the rabbitmqadmin script, if needed.
 # opt: url: The url of RabbitMQ CLI interface.
@@ -392,8 +337,8 @@ function setAdminUserTags() {
     IFS="${_oldIFS}";
     addTagToUser "${ADMIN_USER}" "${_tag}" "${RABBITMQ_NODENAME}" "${_accessUser}" "${_accessPassword}";
   done;
-  IFS="${_oldIFS}";}
-
+  IFS="${_oldIFS}";
+}
 
 # fun: setAdminUserPermissions
 # api: public
@@ -463,10 +408,7 @@ addError CANNOT_SET_THE_MONITORING_USER_TAGS "Cannot set the ${MONITORING_USER} 
 addError CANNOT_SET_THE_MONITORING_USER_PERMISSIONS "Cannot set the ${MONITORING_USER} permissions";
 addError CANNOT_DECLARE_THE_VIRTUAL_HOSTS "Cannot declare the virtual hosts";
 addError CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES "Cannot declare the alternate exchanges";
-
-# command-line flags
-addCommandLineFlag failFast "f" "Whether to fail as soon as any step in the bootstrap process fails." OPTIONAL NO_ARGUMENT;
-addCommandLineFlag force "F" "Forces the bootstrap process, regardless of whether it's been done already or it's currently in progress" OPTIONAL NO_ARGUMENT;
+addError CANNOT_ENABLE_CHANGESETS "Cannot enable the changesets";
 
 # environment variables
 
