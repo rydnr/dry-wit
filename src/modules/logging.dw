@@ -106,10 +106,12 @@ function LOGGING.isValidAsLogCategory() {
   case ${_functionName} in
     logResult) _rescode=${FALSE};
                ;;
-    logInfo | logInfoResult) _rescode=${FALSE};
-                             ;;
-    logDebug | logDebugResult | logDebugFromStdin) _rescode=${FALSE};
-                                                   ;;
+    logInfo | logInfoResult | logInfoFromStdin | BOOTSTRAP.logInfo) _rescode=${FALSE};
+                                                                    ;;
+    logDebug | logDebugResult | logDebugFromStdin | BOOTSTRAP.logDebug) _rescode=${FALSE};
+                                                                        ;;
+    logTrace | logTraceResult | logTraceFromStdin | BOOTSTRAP.logTrace) _rescode=${FALSE};
+                                                                        ;;
     runCommandLongOutput) _rescode=${FALSE};
                           ;;
   esac
