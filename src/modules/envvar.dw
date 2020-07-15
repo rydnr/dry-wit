@@ -936,6 +936,27 @@ function ENVVAR.checkMandatoryOrOptional() {
   CHECK.checkOneOf 1 "MANDATORY|OPTIONAL" "${_value}" "MANDATORY OPTIONAL" "${_index}";
 }
 
+# fun: isVariableDefinedInFile file varName
+# api: public
+# txt: Checks if a variable is defined in given file.
+# opt: file: The file.
+# opt: varName: The name of the variable.
+# txt: Returns 0/TRUE if the variable is defined; 1/FALSE otherwise.
+# use: if isVariableDeclaredInFile /tmp/my-script.sh RUN_COMMAND; then
+# use:   echo "RUN_COMMAND is defined in /tmp/my-script.sh";
+# use: fi
+function isVariableDefinedInFile() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local _varName="${2}";
+  checkNotEmpty varName "${_varName}" 2;
+
+  grep -q -e "^\s*defineEnvVar ${_varName} " "${_file}";
+  local -i _rescode=$?;
+
+  return ${_rescode};
+}
+
 # fun: ENVVAR.resetState
 # api: private
 # txt: Resets the state of the module.
@@ -957,26 +978,5 @@ function ENVVAR.resetState() {
   DW.declareGlobalMap "${_moduleName}" ENVIRONMENT_VARIABLES_DESCRIPTIONS;
   # env: ENVIRONMENT_VARIABLES_COMMANDS: The commands associated to the environment variables.
   DW.declareGlobalMap "${_moduleName}" ENVIRONMENT_VARIABLES_COMMANDS;
-}
-
-# fun: variableDefinedInFile file varName
-# api: public
-# txt: Checks if a variable is defined in given file.
-# opt: file: The file.
-# opt: varName: The name of the variable.
-# txt: Returns 0/TRUE if the variable is defined; 1/FALSE otherwise.
-# use: if variableDeclaredInFile /tmp/my-script.sh RUN_COMMAND; then
-# use:   echo "RUN_COMMAND is defined in /tmp/my-script.sh";
-# use: fi
-function variableDefinedInFile() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  local _varName="${2}";
-  checkNotEmpty varName "${_varName}" 2;
-
-  grep -q -e "^\s*defineEnvVar ${_varName} " "${_file}";
-  local -i _rescode=$?;
-
-  return ${_rescode};
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
