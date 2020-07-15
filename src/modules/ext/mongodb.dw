@@ -8,18 +8,19 @@ DW.import process;
 # api: public
 # txt: Enables MONGODB-CR authentication.
 # txt: Returns 0/TRUE if MONGODB-CR gets enabled successfully; 1/FALSE otherwise.
-# use: if enableMongodbCrAuthentication; then echo "MONGODB-CR enabled successfully"; fi
+# use: if enableMongodbCrAuthentication; then
+# use:   echo "MONGODB-CR enabled successfully";
+# use: fi
 function enableMongodbCrAuthentication() {
-  local -i _rescode;
+  local _output;
 
-  local _output="$(mongo admin --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }")";
-  # _rescode=$?; # not reliable for some reason.
+  _output="$(mongo admin --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }")";
+  local -i _rescode=$?;
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-    export ERROR="${_output}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
   else
-    _rescode=${TRUE};
+    export ERROR="${_output}";
   fi
 
    return ${_rescode};
@@ -33,7 +34,9 @@ function enableMongodbCrAuthentication() {
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to "admin".
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
-# use: if addMongodbRootUser "admin" "secret"; then echo "User admin created successfully"; fi
+# use: if addMongodbRootUser "admin" "secret"; then
+# use:   echo "User admin created successfully";
+# use: fi
 function addMongoDbRootUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
@@ -43,8 +46,6 @@ function addMongoDbRootUser() {
   if isEmpty "${_authDb}"; then
     _authDb="admin";
   fi
-
-  local -i _rescode;
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -72,14 +73,14 @@ db.createUser(
   }
 )
 EOF
-  local _output="$(cat "${_tmpFile}" | mongo 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
+  local _output;
+  _output="$(cat "${_tmpFile}" | mongo 2>&1)";
+  local -i _rescode=$?; # not reliable for some reason.
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-    export ERROR="${_output}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
   else
-    _rescode=${TRUE};
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -96,7 +97,9 @@ EOF
 # opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256
 # txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
-# use: if addMongoDbBackupRole "backupRestore" myDb root "s3cr3t"; then echo "Role backupRestore created successfully"; fi
+# use: if addMongoDbBackupRole "backupRestore" myDb root "s3cr3t"; then
+# use:   echo "Role backupRestore created successfully";
+# use: fi
 function addMongoDbBackupRole() {
   local _roleName="${1}";
   checkNotEmpty roleName "${_roleName}" 1;
@@ -110,8 +113,6 @@ function addMongoDbBackupRole() {
   checkNotEmpty authenticationDatabase "${_authDb}" 5;
   local _authMechanism="${6}";
   checkNotEmpty authenticationDatabase "${_authDb}" 6;
-
-  local -i _rescode;
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -130,14 +131,62 @@ db.createRole(
   }
 )
 EOF
-  local _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}" 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
+  local _output;
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}" 2>&1)";
+  local -i _rescode=$?;
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-    export ERROR="${_output}";
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
   else
-    _rescode=${TRUE};
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: mongoDbRoleAlreadyExists roleName root rootPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Checks if giwen role already exists.
+# opt: roleName: The role name.
+# opt: targetDatabase: The target database.
+# opt: root: The root user.
+# opt: rootPassword: The root password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the role exists already; 1/FALSE otherwise.
+# use: if mongoDbRoleAlreadyExists "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256; then
+# use:   echo "Role already exists";
+# use: i
+function mongoDbRoleAlreadyExists() {
+  local _roleName="${1}";
+  checkNotEmpty roleName "${_roleName}" 1;
+  local _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _root="${3}";
+  checkNotEmpty root "${_root}" 3;
+  local _rootPassword="${4}";
+  checkNotEmpty rootPassword "${_rootPassword}" 4;
+  local _authDb="${5}";
+  checkNotEmpty authenticationDatabase "${_authDb}" 5;
+  local _authMechanism="${6}";
+  checkNotEmpty authMechanism "${_authMechanism}" 6;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+use ${_database}
+db.getRole("${_roleName}")
+EOF
+
+  local _output;
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}"  --quiet | grep -v -e '^switched to db ' | jq '.role' | sed 's ^"  g' | sed 's "$  g' | grep --color=none -e '${_roleName}' 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -156,7 +205,9 @@ EOF
 # opt: roleSpec: the role spec.
 # txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
-# use: if addMongoDbRole "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256 "[ { db: 'core', collection: 'eventSourcingEvent'}, actions: ['find'] } ]" '[]'; then echo "Role created successfully"; fi
+# use: if addMongoDbRole "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256 "[ { db: 'core', collection: 'eventSourcingEvent'}, actions: ['find'] } ]" '[]'; then
+# use:   echo "Role created successfully";
+# use: i
 function addMongoDbRole() {
   local _roleName="${1}";
   checkNotEmpty roleName "${_roleName}" 1;
@@ -169,18 +220,17 @@ function addMongoDbRole() {
   local _authDb="${5}";
   checkNotEmpty authenticationDatabase "${_authDb}" 5;
   local _authMechanism="${6}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 6;
+  checkNotEmpty authMechanism "${_authMechanism}" 6;
   local _privilegeSpec="${7}";
   checkNotEmpty privilegeSpec "${_privilegeSpec}" 7;
   local _roleSpec="${8}";
   checkNotEmpty roleSpec "${_roleSpec}" 8;
-  local -i _rescode;
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-use ${_authDb}
+use ${_database}
 db.createRole(
   {
     role: "${_roleName}",
@@ -189,18 +239,15 @@ db.createRole(
   }
 )
 EOF
-  local _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}" 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
+  local _output;
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}" 2>&1)";
+  local -i _rescode=$?;
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-    export ERROR="${_output}";
-  else
+  if isTrue ${_rescode}; then
     export RESULT="${_output}";
-    _rescode=${TRUE};
+  else
+    export ERROR="${_output}";
   fi
-
-  cat ${_tmpFile};
 
   return ${_rescode};
 }
@@ -218,7 +265,9 @@ EOF
 # opt: roleSpec: The space-separated list of role names.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
-# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }""; then echo "User admin created successfully"; fi
+# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }""; then
+# use:   echo "User admin created successfully";
+# use: fi
 function addMongoDbUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
@@ -243,7 +292,6 @@ function addMongoDbUser() {
   shift;
   local _roleSpec="${@}";
   checkNotEmpty roleSpec "${_roleSpec}" 8;
-  local -i _rescode;
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -258,18 +306,51 @@ db.createUser(
   }
 )
 EOF
-  local _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
+  local _output;
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
+  local -i _rescode=$?;
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-    export ERROR="${_output}";
-  else
+  if isTrue ${_rescode}; then
     export RESULT="${_output}";
-    _rescode=${TRUE};
+  else
+    export ERROR="${_output}";
   fi
 
-  cat ${_tmpFile};
+  return ${_rescode};
+}
+
+# fun: mongoDbFreeMonitoringAlreadyEnabled root rootPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Checks if free monitoring on the instance is already enabled.
+# opt: root: The root user.
+# opt: rootPassword: The root password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the free monitoring is enabled; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the monitoring url; else, the variable ERROR contains some error information.
+# use: if mongoDbFreeMonitoringAlreadyEnabled "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
+# use:   echo "Free monitoring enabled";
+# use: fi
+function mongoDbFreeMonitoringAlreadyEnabled() {
+  local _root="${1}";
+  checkNotEmpty root "${_root}" 1;
+  local _rootPassword="${2}";
+  checkNotEmpty rootPassword "${_rootPassword}" 2;
+  local _authDb="${3}";
+  checkNotEmpty authenticationDatabase "${_authDb}" 3;
+  local _authMechanism="${4}";
+  checkNotEmpty authenticationMechanism "${_authMechanism}" 4;
+  local _output;
+
+  _output="$(echo "db.getFreeMonitoringStatus()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    _result="$(echo "${_output}" | grep '"url"' | awk '{print $3;}' | cut -d'"' -f 2)";
+    export RESULT="${_result}";
+  else
+    export ERROR="${_output}";
+  fi
 
   return ${_rescode};
 }
@@ -283,7 +364,9 @@ EOF
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if the free monitoring gets enabled; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the monitoring url; else, the variable ERROR contains some error information.
-# use: if enableMongoDbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then echo "Free monitoring enabled"; fi
+# use: if enableMongoDbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
+# use:   echo "Free monitoring enabled";
+# use: fi
 function enableMongoDbFreeMonitoring() {
   local _root="${1}";
   checkNotEmpty root "${_root}" 1;
@@ -293,18 +376,16 @@ function enableMongoDbFreeMonitoring() {
   checkNotEmpty authenticationDatabase "${_authDb}" 3;
   local _authMechanism="${4}";
   checkNotEmpty authenticationMechanism "${_authMechanism}" 4;
-  local -i _rescode;
+  local _output;
 
-  local _output="$(echo "db.enableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
+  _output="$(echo "db.enableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  local -i _rescode=$?;
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-    export ERROR="${_output}";
-  else
-    _rescode=${TRUE};
+  if isTrue ${_rescode}; then
     _result="$(echo "${_output}" | grep '"url"' | awk '{print $3;}' | cut -d'"' -f 2)";
     export RESULT="${_result}";
+  else
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -329,17 +410,15 @@ function disableMongoDbFreeMonitoring() {
   checkNotEmpty authenticationDatabase "${_authDb}" 3;
   local _authMechanism="${4}";
   checkNotEmpty authenticationMechanism "${_authMechanism}" 4;
-  local -i _rescode;
+  local _output;
 
-  local _output="$(echo "db.disableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
+  _output="$(echo "db.disableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  local -i _rescode=$?;
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-    export ERROR="${_output}";
-  else
+  if isTrue ${_rescode}; then
     export RESULT="${_output}";
-    _rescode=${TRUE};
+  else
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -350,7 +429,9 @@ function disableMongoDbFreeMonitoring() {
 # txt: Checks whether mongod is running.
 # txt: Returns 0/TRUE if it's running; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE; the variable RESULT contains the mongod pid.
-# use: if ! isMongodRunning; then echo "mongod is not running"; fi
+# use: if ! isMongodRunning; then
+# use:   echo "mongod is not running";
+# use: fi
 function isMongodRunning() {
   isRunning $(which mongod);
 }
@@ -359,7 +440,9 @@ function isMongodRunning() {
 # api: public
 # txt: Kills the current mongod process.
 # txt: Returns 0/TRUE if the process is killed; 1/FALSE otherwise.
-# use: if killMongod; then echo "mongod process killed successfully"; fi
+# use: if killMongod; then
+# use:   echo "mongod process killed successfully";
+# use: fi
 function killMongod() {
   local _pids;
 
@@ -394,7 +477,9 @@ function killMongod() {
 # opt: authMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA1.
 # txt: Returns 0/TRUE if the dump gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR would contain some information about the error.
-# use: if mongoDump /tmp/dump-today.gz localhost root secret; then echo "dump succeeded"; fi
+# use: if mongoDump /tmp/dump-today.gz localhost root secret; then
+# use:   echo "dump succeeded";
+# use: fi
 function mongoDump() {
   local _output="${1}";
   checkNotEmpty output "${_output}" 1;
@@ -418,7 +503,9 @@ function mongoDump() {
     _rescode=$?;
   fi
 
-  if isFalse ${_rescode}; then
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
     export ERROR="${_output}";
   fi
 
@@ -436,12 +523,12 @@ function mongoDump() {
 # opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256.
 # txt: Returns 0/TRUE if the restore process succeeds; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
-# use: if mongoRestore "/tmp/dump.gz"; then echo "Backup /tmp/dump.gz restored successfully"; fi
+# use: if mongoRestore "/tmp/dump.gz"; then
+# use:   echo "Backup /tmp/dump.gz restored successfully";
+# use: fi
 function mongoRestore() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
-
-  local -i _rescode;
 
   local _host="${2:-localhost}";
   local _user="${3}";
@@ -465,7 +552,9 @@ function mongoRestore() {
     _rescode=$?;
   fi
 
-  if isFalse ${_rescode}; then
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
     export ERROR="${_output}";
   fi
 
@@ -547,7 +636,9 @@ function startMongodWithAuthenticationEnabled() {
 # opt: timeout: The maximum number of seconds to wait.
 # opt: checkInterval: How often to check.
 # txt: Returns 0/TRUE if mongod is running; 1/FALSE if it didn't start after the timeout expired.
-# use: if waitUntilMongodIsRunning 60 5; then echo "Mongod is running"; fi
+# use: if waitUntilMongodIsRunning 60 5; then
+# use:   echo "Mongod is running";
+# use: fi
 function waitUntilMongodIsRunning() {
   local -i _timeout=${1};
   checkNumber timeout "${_timeout}" 1;
@@ -572,46 +663,32 @@ function waitUntilMongodIsRunning() {
   return ${_rescode};
 }
 
-# fun: checkMongodIsRunning
+# fun: isMongodRunning
 # api: public
 # txt: Checks mongod is not running.
 # txt: Returns 0/TRUE if mongod is running; 1/FALSE otherwise.
-# use: if checkMongodIsRunning; then echo "mongod is not running"; fi
-function checkMongodIsRunning() {
+# use: if isMongodRunning; then
+# use:   echo "mongod is not running";
+# use: fi
+function isMongodRunning() {
   DW.import process;
 
   isRunning $(which mongod);
 }
 
-# fun: checkMongodIsRunningWithNoAuthentication
+# fun: isMongodRunningWithNoAuthentication
 # api: public
 # txt: Checks mongod is running with no authentication.
 # txt: Returns 0/TRUE if mongod is running with no authentication enabled; 1/FALSE otherwise.
-# use: if checkMongodIsRunningWithNoAuthentication; then echo "Mongod is not running, or it's running with auth enabled"; fi
-function checkMongodIsRunningWithNoAuthentication() {
+# use: if isMongodRunningWithNoAuthentication; then
+# use:   echo "Mongod is not running, or it's running with auth enabled";
+# use: fi
+function isMongodRunningWithNoAuthentication() {
   local -i _rescode=${FALSE};
 
   if checkMongodIsRunning; then
     ps -ef | grep --color=none $(which mongod) | grep --color=none -v " --auth " | grep -v grep > /dev/null 2>&1;
     _rescode=$?;
-  fi
-
-  return ${_rescode};
-}
-
-# fun: checkMongodIsNotRunning
-# api: public
-# txt: Checks mongod is not running.
-# txt: Returns 0/TRUE if mongod is not running; 1/FALSE otherwise.
-# use: if checkMongodIsNotRunning; then echo "mongod is not running"; fi
-function checkMongodIsNotRunning() {
-  local -i _rescode;
-
-  checkMongodIsRunning;
-  if isTrue $?; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
   fi
 
   return ${_rescode};
@@ -636,49 +713,15 @@ function checkMongoUserCanLogIn() {
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "{_authenticationMechanism}" 4;
 
-  local -i _rescode;
+  local _output;
 
-  local _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" 2>&1)";
-  # _rescode=$?; # not reliable for some reason.
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" 2>&1)";
+  local -i _rescode=$?;
 
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
   else
-    _rescode=${TRUE};
-  fi
-
-  return ${_rescode};
-}
-
-# fun: checkMongoRoleExists role user password authenticationDb authenticationMechanism
-# api: public
-# txt: Checks given MongoDB role exists.
-# opt: role: The role.
-# opt: user: The user name.
-# opt: password: The password.
-# opt: authenticationDb: The authentication database.
-# opt: authenticationMechanism: The authentication mechanism.
-# txt: Returns 0/TRUE if given role exists; 1/FALSE otherwise.
-# use: if checkMongoRoleExists backup root secret admin SCRAM-SHA-256; then echo "backup role does not exist"; fi
-function checkMongoRoleExists() {
-  local _role="${1}";
-  checkNotEmpty role "${_role}" 1;
-  local _user="${2}";
-  checkNotEmpty user "${_user}" 2;
-  local _password="${3}";
-  checkNotEmpty password "${_password}" 3;
-  local _authenticationDb="${4}";
-  checkNotEmpty authenticationDb "${_authenticationDb}" 4;
-  local _authenticationMechanism="${5}";
-  checkNotEmpty authenticationMechanism "{_authenticationMechanism}" 5;
-
-  local -i _rescode;
-
-  local _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_authenticationDb}" --eval "db.getRole('${_role}')" 2>&1)";
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -717,20 +760,19 @@ function createMongoDbIndex() {
   local _options="${8}";
   checkNotEmpty options "${_options}" 8;
 
-  local -i _rescode;
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.createIndex(${_index},${_options})" 2>&1)";
+  local -i _rescode=$?;
 
-  local _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.createIndex(${_index},${_options})" 2>&1)";
-  logInfo "${_output}";
-  if contains "${_output}" "uncaught exception"; then
-    _rescode=${FALSE};
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
   else
-    _rescode=${TRUE};
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
 }
 
-# fun: checkMongoDbIndexExists user password authDb authMechanism database collection index
+# fun: mongoDbIndexAlreadyExists user password authDb authMechanism database collection index
 # api: public
 # txt: Checks a MongoDB index exists on given collection.
 # opt: user: The user to log in.
@@ -741,10 +783,10 @@ function createMongoDbIndex() {
 # opt: collection: The collection.
 # opt: index: The index.
 # txt: Returns 0/TRUE if the index exists; 1/FALSE otherwise.
-# use: if checkMongoDbIndexExists root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }'; then
+# use: if mongoDbIndexAlreadyExists root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }'; then
 # use:   echo "Index exists";
 # use: fi
-function checkMongoDbIndexExists() {
+function mongoDbIndexAlreadyExists() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
@@ -760,14 +802,15 @@ function checkMongoDbIndexExists() {
   local _index="${7}";
   checkNotEmpty index "${_index}" 7;
 
-  local -i _rescode;
+  local _output;
 
-  local _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "var indexes = db.getCollection('${_collection}').getIndexes(); var exists = false; for (var i=0; i < indexes.length; i++) { if (indexes[i].name == '${_index}') { exists = true; break; } }; print(exists);" 2>&1)";
-  logInfo "${_output}";
-  if contains "${_output}" "true"; then
-    _rescode=${TRUE};
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "var indexes = db.getCollection('${_collection}').getIndexes(); var exists = false; for (var i=0; i < indexes.length; i++) { if (indexes[i].name == '${_index}') { exists = true; break; } }; print(exists);" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
   else
-    _rescode=${FALSE};
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
