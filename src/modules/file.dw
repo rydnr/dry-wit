@@ -1063,17 +1063,6 @@ function FILE.getCleanupFilesVariableName() {
   DW.getGlobalVariableName "${RESULT}" CLEANUP_FILES;
 }
 
-# fun: FILE.resetState
-# api: private
-# txt: Resets the state of the module.
-# txt: Returns 0/TRUE always.
-# use: FILE.resetState;
-function FILE.resetState() {
-  FILE.getModuleName;
-  # env: CLEANUP_FILES: The temporary files to cleanup.
-  DW.declareGlobalArray "${RESULT}" CLEANUP_FILES;
-}
-
 # fun: truncateFiles folder regex
 # api: public
 # txt: Truncates files under given folder matching given regex.
@@ -1091,5 +1080,45 @@ function truncateFiles() {
   local -i _rescode=$?;
 
   return ${_rescode};
+}
+
+# fun: fileContains file text
+# api: public
+# txt: Checks whether a file contains given text.
+# opt: file: The file.
+# opt: text: The text.
+# txt: Returns 0/TRUE if the file contains given text; 1/FALSE otherwise.
+# use: if fileContains /etc/passwd ${USER}; then
+# use:   echo "${USER} in /etc/passwd";
+# use: fi
+function fileContains() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local _text="${2}";
+  checkNotEmpty text "${_text}" 2;
+
+  local _output;
+  _output="$(grep --color=none "${_text}" "${_file}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+
+}
+
+# fun: FILE.resetState
+# api: private
+# txt: Resets the state of the module.
+# txt: Returns 0/TRUE always.
+# use: FILE.resetState;
+function FILE.resetState() {
+  FILE.getModuleName;
+  # env: CLEANUP_FILES: The temporary files to cleanup.
+  DW.declareGlobalArray "${RESULT}" CLEANUP_FILES;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
