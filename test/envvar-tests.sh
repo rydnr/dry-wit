@@ -108,6 +108,21 @@ function overrideEnvVar_works_test() {
   Assert.areEqual "${OVERRIDE_ENVVAR_TEST}" "overridden" "OVERRIDE_ENVVAR is not overridden correctly";
 }
 
+function variableDefinedInFile_works_test() {
+  createTempFile;
+  local _file="${RESULT}";
+  cat <<EOF > "${_file}"
+defineEnvVar MYVAR MANDATORY "The MYVAR description" "myValue";
+EOF
+
+  variableDefinedInFile "${_file}" MYVAR;
+  local -i _result=$?;
+  Assert.isTrue ${_result} "variableDefinedInFile [file] MYVAR failed";
+  variableDefinedInFile "${_file}" MYOTHERVAR;
+  _result=$?;
+  Assert.isFalse ${_result} "variableDefinedInFile [file] MYOTHERVAR passed and should not pass";
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
 
 setScriptDescription "Runs all tests implemented for envvar.dw";
