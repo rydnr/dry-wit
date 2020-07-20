@@ -1114,6 +1114,10 @@ function LOGGING.echoLogOutcome() {
 
   local -i _len=$((${#_logOutcomeTokens[@]} - 1));
 
+  if isFalse ${_allowsColors}; then
+    echo -n "...";
+  fi
+
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local -i _i;
