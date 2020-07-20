@@ -154,8 +154,9 @@ function createTempFolder() {
   fi
 
   if isEmpty "${_prefix}"; then
-    _prefix="$(echo ${_scriptName} | awk -F"/" '{print $NF;}')";
+    _prefix="${_scriptName}";
   fi
+  _prefix="$(echo "${_prefix}" | awk -F"/" '{print $NF;}')";
 
   FILE.mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
   local -i _rescode=$?;

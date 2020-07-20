@@ -28,4 +28,18 @@ function isRunning() {
 
   return ${_rescode};
 }
+
+# fun: halt seconds?
+# api: public
+# txt: Halts the process (keeps it paused forever).
+# opt: seconds: The amount of seconds to sleep, periodically. Optional.
+# txt: Doesn't return.
+# use: halt;
+function halt() {
+  local _seconds="${1:-100}";
+
+  while [[ 0 -eq 0 ]]; do
+    sleep ${_seconds};
+  done;
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
