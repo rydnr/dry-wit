@@ -91,30 +91,29 @@ function LOGGING.isValidAsLogCategory() {
   checkNotEmpty functionName "${_functionName}" 1;
 
   local -i _rescode=${TRUE};
+  local _i _skip=${FALSE};
 
-  if    startsWith "${_functionName}" "LOGGING." \
-     || startsWith "${_functionName}" "DRYWIT"; then
+  if startsWith "${_functionName}" "DRYWIT"; then
     _rescode=${FALSE};
+    _skip=${TRUE};
+  elif startsWith "${_functionName}" "LOGGING."; then
+    _skip=${TRUE};
+    if contains "${_functionName}" "_"; then
+      # some tests include LOGGING. as part of their function names.
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
   fi
 
-  if    startsWith "${_functionName}" "LOGGING." \
-     && contains "${_functionName}" "_"; then
-    # some tests include LOGGING. as part of their function names.
-    _rescode=${TRUE};
-  fi
+  if isFalse ${_skip}; then
+    LOGGING.getInvalidLogCategoriesVariableName;
+    local -n _invalidLogCategories="${RESULT}";
 
-  case ${_functionName} in
-    logResult) _rescode=${FALSE};
-               ;;
-    logInfo | logInfoResult | logInfoFromStdin | BOOTSTRAP.logInfo) _rescode=${FALSE};
-                                                                    ;;
-    logDebug | logDebugResult | logDebugFromStdin | BOOTSTRAP.logDebug) _rescode=${FALSE};
-                                                                        ;;
-    logTrace | logTraceResult | logTraceFromStdin | BOOTSTRAP.logTrace) _rescode=${FALSE};
-                                                                        ;;
-    runCommandLongOutput) _rescode=${FALSE};
-                          ;;
-  esac
+    if arrayContains "${_functionName}" ${_invalidLogCategories[@]}; then
+      _rescode=${FALSE};
+    fi
+  fi
 
   return ${_rescode};
 }
@@ -838,6 +837,48 @@ function setTraceLogPrefixToken() {
 
   LOGGING.getModuleName;
   DW.declareGlobalString "${RESULT}" TRACE_LOG_PREFIX_TOKEN "${_token}";
+}
+
+# fun: LOGGING.getInvalidLogCategoriesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the invalid log categories.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the variable containing the invalid log categories.
+# use: LOGGING.getInvalidLogCategoriesVariableName;
+# use: local -n invalidLogCategories=${RESULT}
+function LOGGING.getInvalidLogCategoriesVariableName() {
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" INVALID_LOG_CATEGORIES;
+}
+
+# fun: setInvalidLogCategories category+
+# api: public
+# txt: Specifies the invalid log categories.
+# opt: category: The invalid log categories.
+# txt: Returns 0/TRUE always.
+# use: setInvalidLogCategories myLog logInfo;
+function setInvalidLogCategories() {
+  local _firstCategory="${1}";
+  checkNotEmpty category "${_firstCategory}" 1;
+
+  LOGGING.getModuleName;
+  DW.declareGlobalArray "${RESULT}" INVALID_LOG_CATEGORIES $@;
+}
+
+# fun: addInvalidLogCategory category
+# api: public
+# txt: Adds a new invalid log category.
+# opt: category: The log category to hide in prefix tokens.
+# txt: Returns 0/TRUE always.
+# use: addInvalidLogCategory myLog;
+function addInvalidLogCategory() {
+  local _category="${1}";
+  checkNotEmpty category "${_category}" 1;
+
+  LOGGING.getInvalidLogCategoriesVariableName;
+  local -n _logCategories="${RESULT}";
+
+  _logCategories[${#_logCategories[@]}]="${_category}";
 }
 
 # fun: LOGGING.alignRight message outcome
@@ -1872,6 +1913,11 @@ function setLogPrefixCategorySeparator() {
 function LOGGING.getLogPrefixCategorySeparator() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" LOG_PREFIX_CATEGORY_SEPARATOR;
+  local _result="${RESULT}";
+  if isEmpty "${_result}"; then
+    export RESULT=":";
+  fi
+  return ${_rescode};
 }
 
 # fun: LOGGING.getLogCategoryStackVariableName
@@ -3128,6 +3174,10 @@ function LOGGING.resetState() {
 
   # env: LOG_OUTCOME_TEXT_POSITION: The position of the text in LOG_OUTCOME_TOKENS.
   setOutcomeTextPositionInLogOutcome 1;
+
+  # env: INVALID_LOG_CATEGORIES: A list of log categories to hide in log prefixes.
+  DW.declareGlobalArray "${_moduleName}" INVALID_LOG_CATEGORIES;
+  setInvalidLogCategories logResult logInfo logInfoResult logInfoFromStdin BOOTSTRAP.logInfo logDebug logDebugResult logDebugFromStdin BOOTSTRAP.logDebug logTrace logTraceResult logTraceFromStdin BOOTSTRAP.logTrace runCommandLongOutput;
 }
 DW.import debug;
 setDebugEchoEnabled ${TRUE};

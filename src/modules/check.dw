@@ -12,17 +12,21 @@
 # use: checkFunctionPresent "callback" "echo" 1;
 function checkFunctionPresent() {
   local _name="${1}";
+  local _functionName="${2}";
+  local _index="${3}";
+
   if isEmpty "${_name}"; then
     exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
-  local _functionName="${2}";
+
   if isEmpty "${_functionName}"; then
     exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
+
   if isFunctionMissing "${_functionName}"; then
     exitWithError UNACCEPTABLE_API_CALL "${_name} (parameter at position ${_index}) is a non-existent function when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
-  local _index="${3}";
+
   if isEmpty "${_index}"; then
     exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
@@ -148,12 +152,13 @@ function CHECK.checkOneOf() {
 # use: checkNumber "index" "${index}" 1 # -> throws an error if the first (1) parameter ("index") is not a number.
 function checkNumber() {
   local _name="${1}";
+  local _value="${2}";
+  local _index="${3}";
 
   if isEmpty "${_name}"; then
     exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 
-  local _value="${2}";
   if isEmpty "${_value}"; then
     exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
@@ -162,7 +167,6 @@ function checkNumber() {
     exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) must be a number when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
 
-  local _index="${3}";
   if isEmpty "${_index}"; then
     exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
@@ -178,12 +182,13 @@ function checkNumber() {
 # use: checkBoolean "index" "${index}" 1 # -> throws an error if the first (1) parameter ("index") is not either 0 or 1.
 function checkBoolean() {
   local _name="${1}";
+  local _value="${2}";
+  local _index="${3}";
 
   if isEmpty "${_name}"; then
     exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 
-  local _value="${2}";
   if isEmpty "${_value}"; then
     exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
@@ -202,7 +207,36 @@ function checkBoolean() {
     fi
   fi
 
+  if isEmpty "${_index}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+}
+
+# fun: checkFileExists paramName paramValue paramIndex
+# api: public
+# txt: Checks whether given parameter references an existing file.
+# opt: paramName: The name of the parameter.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Exits if the check fails; otherwise returns 0/TRUE.
+# use: checkFileExists file "${file}" 1 # -> throws an error if the first (1) parameter ("file") references a file that doesn't exist.
+function checkFileExists() {
+  local _name="${1}";
+  local _value="${2}";
   local _index="${3}";
+
+  if isEmpty "${_name}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
+  fi
+
+  if isEmpty "${_value}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+  fi
+
+  if ! fileExists "${_value}"; then
+    exitWithError UNACCEPTABLE_API_CALL "'${_name}' (parameter at position ${_index}) should reference an existing file when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}: ${_value} does not exist";
+  fi
+
   if isEmpty "${_index}"; then
     exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
