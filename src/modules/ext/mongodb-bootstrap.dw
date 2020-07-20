@@ -295,9 +295,9 @@ function MONGODBBOOTSTRAP.addBackupRoleIfItDoesNotExist() {
 # txt: Returns 0/TRUE always, but can exit if the user cannot be added.
 # use: MONGODBBOOTSTRAP.addBackupUserIfItDoesNotExist;
 function MONGODBBOOTSTRAP.addBackupUserIfItDoesNotExist() {
-  if ! checkMongoUserCanLogIn "${BACKUP_USER}" "${BACKUP_PASSWORD}" "${AUTHENTICATION_DB}" "${AUTHENTICATION_MECHANISM}"; then
-    logDebug -n "Adding ${BACKUP_USER} user";
-    if addMongoDbUser "${BACKUP_USER}" "${BACKUP_PASSWORD}" "${AUTHENTICATION_DB}" "${ROOT_USER}" "${ROOT_PASSWORD}" "${AUTHENTICATION_DB}" "${AUTHENTICATION_MECHANISM}" "${BACKUP_ROLE_SPEC}"; then
+  if ! checkMongoUserCanLogIn "${BACKUP_USER_NAME}" "${BACKUP_USER_PASSWORD}" "${AUTHENTICATION_DB}" "${AUTHENTICATION_MECHANISM}"; then
+    logDebug -n "Adding ${BACKUP_USER_NAME} user";
+    if addMongoDbUser "${BACKUP_USER_NAME}" "${BACKUP_USER_PASSWORD}" "${AUTHENTICATION_DB}" "${ROOT_USER}" "${ROOT_PASSWORD}" "${AUTHENTICATION_DB}" "${AUTHENTICATION_MECHANISM}" "${BACKUP_ROLE_SPEC}"; then
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
@@ -307,7 +307,7 @@ function MONGODBBOOTSTRAP.addBackupUserIfItDoesNotExist() {
     fi
   fi
 
-  if ! checkMongoUserCanLogIn "${BACKUP_USER}" "${BACKUP_PASSWORD}" "${AUTHENTICATION_DB}" "${AUTHENTICATION_MECHANISM}"; then
+  if ! checkMongoUserCanLogIn "${BACKUP_USER_NAME}" "${BACKUP_USER_PASSWORD}" "${AUTHENTICATION_DB}" "${AUTHENTICATION_MECHANISM}"; then
     logDebug "${ERROR}";
     MONGODBBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode BACKUP_USER_CANNOT_LOG_IN;
@@ -371,8 +371,8 @@ defineEnvVar ROOT_PASSWORD MANDATORY "The password of the root user";
 defineEnvVar BACKUP_ROLE OPTIONAL "The name of the MongoDB role used for backups" "backupRestore";
 # env: BACKUP_ROLE_SPEC: The role specification of the backup user. Defaults to "[ '${BACKUP_ROLE}' ]".
 defineEnvVar BACKUP_ROLE_SPEC OPTIONAL "The role specification of the backup user" "[ '${BACKUP_ROLE}' ]";
-# env: BACKUP_USER: The MongoDB root user. Defaults to "backup".
-defineEnvVar BACKUP_USER OPTIONAL "The MongoDB root user" "backup";
-# env: BACKUP_PASSWORD: The password of the backup user.
-defineEnvVar BACKUP_PASSWORD MANDATORY "The password of the root user";
+# env: BACKUP_USER_NAME: The MongoDB backup user. Defaults to "backup".
+defineEnvVar BACKUP_USER_NAME OPTIONAL "The MongoDB backup user" "backup";
+# env: BACKUP_USER_PASSWORD: The password of the backup user.
+defineEnvVar BACKUP_USER_PASSWORD MANDATORY "The password of the backup user";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
