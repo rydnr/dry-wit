@@ -21,13 +21,9 @@ function remoteSshCommand() {
   local _command="$*";
   checkNotEmpty command "${_command}" 3;
 
-  local _result="$(ssh ${_user}@${_server} "${_command}" 2>&1)";
-  local -i _rescode;
-  if contains "${_result}" "ssh: "; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
-  fi
+  local _result;
+  _result="$(ssh ${_user}@${_server} "${_command}" 2>&1)";
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
@@ -66,8 +62,8 @@ function remoteSshCommandPipe() {
 
 #  echo "_previousPipe=${_previousPipe}";
 #  echo "_command=${_command}";
-  local _result=$(${_previousPipe} | while IFS='' read -r _line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
   local _result;
+  _result=$(${_previousPipe} | while IFS='' read -r _line; do echo ${line} | ssh "${_user}@${_server}" "${_command}"; done);
   local -i _rescode=${TRUE};
   if contains "${_result}" "ssh: "; then
     _rescode=${FALSE};

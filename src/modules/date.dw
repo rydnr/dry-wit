@@ -19,12 +19,14 @@ function date2jd() {
   local _day=${3};
   checkNotEmpty day "${_day}" 3;
 
-  local _standardJd=$(( _day - 32075
-                        + 1461 * (_year + 4800 - (14 - _month)/12)/4
-                        + 367 * (_month - 2 + (14 - _month)/12*12)/12
-                        - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
+  local _standardJd;
+  _standardJd=$(( _day - 32075
+                  + 1461 * (_year + 4800 - (14 - _month)/12)/4
+                  + 367 * (_month - 2 + (14 - _month)/12*12)/12
+                  - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
 
-  local _result=$((_standardJd-2400001));
+  local _result;
+  _result=$((_standardJd-2400001));
 
   export RESULT=${_result};
 
