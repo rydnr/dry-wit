@@ -118,6 +118,11 @@ function autoremoveUbuntuPackages() {
   runCommandLongOutput /usr/bin/apt-get remove --purge -y;
   local -i _rescode=$?;
 
+  if isTrue ${_rescode}; then
+    runCommandLongOutput /usr/bin/apt-get autoremove;
+    _rescode=$?;
+  fi
+
   return ${_rescode};
 }
 
@@ -132,6 +137,22 @@ function cleanUbuntuSystem() {
 
   runCommandLongOutput /usr/bin/apt-get clean;
   local -i _rescode=$?;
+
+  # TODO: Fix automatic temporary file cleanup.
+  rm -f /.system-update.sh.??????????;
+  rm -f /.system-cleanup.sh.??????????;
+  rm -f /.pkg-install.sh.??????????;
+
+  local _oldIFS="${IFS}";
+  local _locale;
+  IFS="${DWIFS}";
+  for _locale in $(find /usr/share/i18n/locales); do
+    IFS="${_oldIFS}";
+    if arrayDoesNotContain "$(basename ${_locale})" "${PINNED_LOCALES}"; then
+      rm -f "${_locale}";
+    fi
+  done;
+  IFS="${_oldIFS}";
 
   return ${_rescode};
 }
@@ -154,5 +175,6 @@ function pinUbuntuPackage() {
   return ${_rescode};
 }
 
-
+# env: PINNED_LOCALES: The pinned locales.
+defineEnvVar PINNED_LOCALES MANDATORY "The pinned locales" "en_US es_ES es_ES@euro";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
