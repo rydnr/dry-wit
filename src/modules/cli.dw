@@ -791,16 +791,22 @@ function CLI.checkFlag() {
     if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
       _longName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      _continue=${FALSE};
+#      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
+  fi
 
+  if isTrue ${_continue}; then
     local _shortName;
     if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
       _shortName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      _continue=${FALSE};
+#      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
+  fi
 
+  if isTrue ${_continue}; then
     local _flagKey;
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
     _flagKey="${RESULT}";
@@ -809,9 +815,13 @@ function CLI.checkFlag() {
     local -n _flagKeys="${RESULT}";
 
     if arrayDoesNotContain "${_flagKey}" "${_flagKeys[@]}"; then
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      _continue=${FALSE};
+#      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
 
+  fi
+
+  if isTrue ${_continue}; then
     CLI.checkCommandLineFlag "${_flagKey}" "${_longName}" $@;
     _result=$((_result+$?));
   fi
@@ -1214,16 +1224,23 @@ function CLI.parseFlag() {
     if CLI.retrieveCommandLineFlagLongName "${_flag}"; then
       _longName="${RESULT}";
     else
-      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      _continue=${FALSE};
+#      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
+  fi
 
+  if isTrue ${_continue}; then
     local _shortName;
     if CLI.retrieveCommandLineFlagShortName "${_flag}"; then
       _shortName="${RESULT}";
     else
+      _continue=${FALSE};
       exitWithError UNKNOWN_FLAG "Unknown flag 5 ${_flag}";
     fi
 
+  fi
+
+  if isTrue ${_continue}; then
     CLI.buildCommandLineFlagKey "${_shortName}" "${_longName}";
     local _flagKey="${RESULT}";
 
@@ -1251,9 +1268,14 @@ function CLI.parseFlag() {
         declare -gx ${_upcasedLongName}="${_argument}";
       fi
     else
-      exitWithError INVALID_OPTION "Unexpected flag: '${_flag}'";
+      _continue=${FALSE};
+#      exitWithError INVALID_OPTION "Unexpected flag: '${_flag}'";
     fi
   fi
+
+#  if isFalse ${_continue}; then
+#    _result=-1;
+#  fi
 
   return ${_result};
 }
