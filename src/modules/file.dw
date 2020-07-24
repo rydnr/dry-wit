@@ -279,7 +279,7 @@ function folderExists() {
   local _folder="${1}";
   checkNotEmpty folder "${_folder}" 1;
 
-  if [[ -e ${_folder} ]]; then
+  if [[ -d ${_folder} ]]; then
     return ${TRUE};
   else
     return ${FALSE};
@@ -554,29 +554,6 @@ function findRelativePathBetweenFolders() {
   local _result="${_p}/${_pathBb}";
 
   export RESULT="${_result}";
-}
-
-# fun: folderExists folder
-# api: public
-# txt: Checks whether given folder exists.
-# opt: folder: The folder to check.
-# txt: Returns 0/TRUE if the folder exists; 1/FALSE otherwise.
-# use: if folderExists "/tmp"; then
-# use:   rm -rf /tmp/*;
-# use: fi
-function folderExists() {
-  local _folder="${1}";
-  checkNotEmpty folder "${_folder}" 1;
-
-  local -i _rescode;
-
-  if [ -d "${_folder}" ]; then
-    _rescode=${TRUE};
-  else
-    _rescode=${FALSE};
-  fi
-
-  return ${_rescode};
 }
 
 # fun: isExecutable fileOrFolder
@@ -983,6 +960,122 @@ function changeFilePermissions() {
   checkNotEmpty permissions "${_permissions}" 2;
 
   chmod ${_permissions} ${_file} > /dev/null 2>&1;
+}
+
+# fun: getOwnerOfFileOrFolder fileOrFolder
+# api: public
+# txt: Retrieves the name of the owner of given file or folder.
+# opt: fileOrFolder: The file or folder.
+# txt: Retrieves 0/TRUE if the owner could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the owner.
+# use: if getOwnerOfFileOrFolder /tmp; then
+# use:   echo "owner of /tmp: ${RESULT}";
+# use: fi
+function getOwnerOfFileOrFolder() {
+  local _fileOrFolder="${1}";
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+
+  local -i _rescode;
+
+  if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
+    local _output;
+    _output="$(ls -ld "${_fileOrFolder}" | awk '{print $4;}')";
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+      export RESULT="${_output}";
+    fi
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getOwnerIdOfFileOrFolder fileOrFolder
+# api: public
+# txt: Retrieves the id of the owner of given file or folder.
+# opt: fileOrFolder: The file or folder.
+# txt: Retrieves 0/TRUE if the owner could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the id of the owner.
+# use: if getOwnerIdOfFileOrFolder /tmp; then
+# use:   echo "owner id of /tmp: ${RESULT}";
+# use: fi
+function getOwnerIdOfFileOrFolder() {
+  local _fileOrFolder="${1}";
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+
+  local -i _rescode;
+
+  if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
+    local _output;
+    _output="$(grep -e '^$(ls -ld "${_fileOrFolder}" | awk '{print $4;}'):' /etc/passwd | cut -d':' -f 3)";
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+      export RESULT="${_output}";
+    fi
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getGroupOfFileOrFolder fileOrFolder
+# api: public
+# txt: Retrieves the name of the group of given file or folder.
+# opt: fileOrFolder: The file or folder.
+# txt: Retrieves 0/TRUE if the group could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the group.
+# use: if getGroupOfFileOrFolder /tmp; then
+# use:   echo "group of /tmp: ${RESULT}";
+# use: fi
+function getGroupOfFileOrFolder() {
+  local _fileOrFolder="${1}";
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+
+  local -i _rescode;
+
+  if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
+    local _output;
+    _output="$(ls -ld "${_fileOrFolder}" | awk '{print $5;}')";
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+      export RESULT="${_output}";
+    fi
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getGroupIdOfFileOrFolder fileOrFolder
+# api: public
+# txt: Retrieves the id of the group of given file or folder.
+# opt: fileOrFolder: The file or folder.
+# txt: Retrieves 0/TRUE if the group could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the id of the group.
+# use: if getGroupIdOfFileOrFolder /tmp; then
+# use:   echo "group id of /tmp: ${RESULT}";
+# use: fi
+function getGroupIdOfFileOrFolder() {
+  local _fileOrFolder="${1}";
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+
+  local -i _rescode;
+
+  if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
+    local _output;
+    _output="$(grep -e '^$(ls -ld "${_fileOrFolder}" | awk '{print $5;}'):' /etc/group | cut -d':' -f 3)";
+    _rescode=$?;
+    if isTrue ${_rescode}; then
+      export RESULT="${_output}";
+    fi
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 # fun: changeFolderPermissionsRecursively folder permissions
