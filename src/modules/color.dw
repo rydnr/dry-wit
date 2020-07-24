@@ -97,6 +97,10 @@ function setInProgressColor() {
 function getNoColor() {
   COLOR.getModuleName;
   DW.getGlobalString "${RESULT}" NO_COLOR;
+  local _noColor="${RESULT}";
+  if isEmpty "${_noColor}"; then
+    export RESULT=GRAY;
+  fi
 }
 
 # fun: getNoColorVariableName
@@ -252,12 +256,14 @@ function getColorEscapeCode() {
   if allowsColors; then
     COLOR.getColorName "${_colorSymbol}";
     local _colorVariableName="${RESULT}";
-     if evalConstant "${_colorVariableName}"; then
+    if    isNotEmpty "${_colorVariableName}" \
+       && evalConstant "${_colorVariableName}"; then
        _result="${RESULT}";
-    elif evalConstant "${_defaultColorVariableName}"; then
+    elif   isNotEmpty "${_defaultColorVariableName}" \
+        && evalConstant "${_defaultColorVariableName}"; then
       _result="${RESULT}";
     else
-      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol}";
+      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol} (variable: ${_colorVariableName}) (default: ${_defaultColorVariableName})";
     fi
   fi
 
@@ -282,8 +288,9 @@ function getColorEscapeCode() {
 # use: resetColor;
 function resetColor() {
   getNoColor;
-  getColorEscapeCode "${RESULT}";
-  echo -en "${RESULT}";
+  if getColorEscapeCode "${RESULT}"; then
+    echo -en "${RESULT}";
+  fi
 }
 
 # fun: COLOR.resetState

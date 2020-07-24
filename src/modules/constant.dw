@@ -2,10 +2,11 @@
 # api: public
 # txt: Functions related to constants.
 
-# fun: evalConstant constantName
+# fun: evalConstant constantName default
 # api: public
 # txt: Retrieves the value of a constant.
 # opt: constantName: The constant name.
+# opt: default: The default.
 # txt: Returns 0/TRUE if the constant could be evaluated; 1/FALSE otherwise.
 # txt: The variable RESULT contains the constant value.
 # use: OTHERVAR="works" MYVAR="OTHERVAR" evalConstant "${MYVAR}";
@@ -14,7 +15,8 @@ function evalConstant() {
   local _constant="${1}";
   checkNotEmpty constantName "${_constant}" 1;
 
-  local _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
+  local _result;
+  _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
 
   if isEmpty "${_result}" ; then
     _result="${2}";
