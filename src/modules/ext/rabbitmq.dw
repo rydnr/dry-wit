@@ -648,9 +648,11 @@ function deletePolicy() {
 # opt: destination: The destination.
 # opt: routingKey: The routing key.
 # opt: nodename: The node name.
+# opt: accessUser: The access user.
+# opt: accessPassword: The access password.
 # txt: Returns 0/TRUE if the binding gets created successfully; 1/FALSE othervise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
-# use: if declareBinding "my-exchange" "queue" "my-queue" "#" 'rabbit@server'; then
+# use: if declareBinding "my-exchange" "queue" "my-queue" "#" 'rabbit@server' admin 'secret'; then
 # use:   echo "binding created successfully";
 # use: fi
 function declareBinding() {
@@ -664,11 +666,16 @@ function declareBinding() {
   checkNotEmpty routingKey "${_routingKey}" 4;
   local _nodename="${5}";
   checkNotEmpty nodename "${_nodename}" 5;
+  local _accessUser="${6}";
+  checkNotEmpty accessUser "${_accessUser}" 6;
+  local _accessPassword="${7}";
+  checkNotEmpty accessPassword "${_accessPassword}" 7;
+
   local -i _rescode;
   local _log;
 
   logTrace -n "Declaring binding: source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey}";
-  _log="$(rabbitmqadmin -N "${_nodename}"  -u admin -p ${ADMIN_PASSWORD} declare binding source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey} 2>&1)";
+  _log="$(rabbitmqadmin -N "${_nodename}"  -u "${_accessUser}" -p "${_accessPassword}" declare binding source=${_source} destination_type=${_destinationType} destination=${_destination} routing_key=${_routingKey} 2>&1)";
   _rescode=$?;
   if isTrue ${_rescode}; then
     logTraceResult SUCCESS "done";

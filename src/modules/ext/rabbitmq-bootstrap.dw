@@ -61,7 +61,7 @@ function rabbitmqMigrate() {
     RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist;
   fi
 
-  logDebug -n "Configuring ${ADMIN_USER} user tags";
+  logDebug -n "Configuring ${ADMIN_USER_NAME} user tags";
   if setAdminUserTags; then
     logDebugResult SUCCESS "done";
   else
@@ -70,7 +70,7 @@ function rabbitmqMigrate() {
     exitWithErrorCode CANNOT_SET_THE_ADMIN_USER_TAGS;
   fi
 
-  logDebug -n "Configuring ${ADMIN_USER} user permissions";
+  logDebug -n "Configuring ${ADMIN_USER_NAME} user permissions";
   if setAdminUserPermissions; then
     logDebugResult SUCCESS "done";
   else
@@ -83,22 +83,22 @@ function rabbitmqMigrate() {
     RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist;
   fi
 
-  logDebug -n "Configuring ${MONITORING_USER} tags";
-  if setMonitoringUserTags "${ADMIN_USER}" "${ADMIN_PASSWORD}"; then
+  logDebug -n "Configuring ${MONITORING_USER_NAME} tags";
+  if setMonitoringUserTags "${ADMIN_USER_NAME}" "${ADMIN_USER_PASSWORD}"; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
-    exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_TAGS;
+    exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_NAME_TAGS;
   fi
 
-  logDebug -n "Configuring ${MONITORING_USER} permissions";
+  logDebug -n "Configuring ${MONITORING_USER_NAME} permissions";
   if setMonitoringUserPermissions; then
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
-    exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_PERMISSIONS;
+    exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_NAME_PERMISSIONS;
   fi
 
   RABBITMQBOOTSTRAP.deleteGuestUserIfItExists;
@@ -172,9 +172,9 @@ function RABBITMQBOOTSTRAP.guestUserExists() {
 # txt: Returns 0/TRUE always, but it can exit if the admin user doesn't already exist and could not be created.
 # use: RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist;
 function RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist() {
-  if ! userAlreadyExists "${ADMIN_USER}" "${RABBITMQ_NODENAME}"; then
-    logDebug -n "Adding ${ADMIN_USER} user";
-    if addUser ${ADMIN_USER} "${ADMIN_PASSWORD}" "${RABBITMQ_NODENAME}"; then
+  if ! userAlreadyExists "${ADMIN_USER_NAME}" "${RABBITMQ_NODENAME}"; then
+    logDebug -n "Adding ${ADMIN_USER_NAME} user";
+    if addUser ${ADMIN_USER_NAME} "${ADMIN_USER_PASSWORD}" "${RABBITMQ_NODENAME}"; then
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
@@ -191,9 +191,9 @@ function RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist() {
 # txt: Returns 0/TRUE always, but it can exit if the monitoring user doesn't already exist and could not be created.
 # use: RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist;
 function RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist() {
-  if ! userAlreadyExists "${MONITORING_USER}" "${RABBITMQ_NODENAME}"; then
-    logDebug -n "Adding ${MONITORING_USER} user";
-    if addUser ${MONITORING_USER} "${MONITORING_PASSWORD}" "${RABBITMQ_NODENAME}"; then
+  if ! userAlreadyExists "${MONITORING_USER_NAME}" "${RABBITMQ_NODENAME}"; then
+    logDebug -n "Adding ${MONITORING_USER_NAME} user";
+    if addUser ${MONITORING_USER_NAME} "${MONITORING_USER_PASSWORD}" "${RABBITMQ_NODENAME}"; then
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
@@ -333,9 +333,9 @@ function setAdminUserTags() {
   local _oldIFS="${IFS}";
   local _tag;
   IFS="${DWIFS}";
-  for _tag in ${ADMIN_TAGS}; do
+  for _tag in ${ADMIN_USER_TAGS}; do
     IFS="${_oldIFS}";
-    addTagToUser "${ADMIN_USER}" "${_tag}" "${RABBITMQ_NODENAME}" "${_accessUser}" "${_accessPassword}";
+    addTagToUser "${ADMIN_USER_NAME}" "${_tag}" "${RABBITMQ_NODENAME}" "${_accessUser}" "${_accessPassword}";
   done;
   IFS="${_oldIFS}";
 }
@@ -348,7 +348,7 @@ function setAdminUserTags() {
 # use:   echo "admin user permissions set successfully";
 # use: fi
 function setAdminUserPermissions() {
-  setPermissions / "${ADMIN_USER}" "${ADMIN_CONFIGURE_PERMISSIONS}" "${ADMIN_WRITE_PERMISSIONS}" "${ADMIN_READ_PERMISSIONS}" "${RABBITMQ_NODENAME}";
+  setPermissions / "${ADMIN_USER_NAME}" "${ADMIN_USER_CONFIGURE_PERMISSIONS}" "${ADMIN_USER_WRITE_PERMISSIONS}" "${ADMIN_USER_READ_PERMISSIONS}" "${RABBITMQ_NODENAME}";
 }
 
 # fun: setMonitoringUserTags (accessUser accessPassword)?
@@ -367,9 +367,9 @@ function setMonitoringUserTags() {
   local _oldIFS="${IFS}";
   local _tag;
   IFS="${DWIFS}";
-  for _tag in ${MONITORING_TAGS}; do
+  for _tag in ${MONITORING_USER_TAGS}; do
     IFS="${_oldIFS}";
-    addTagToUser "${MONITORING_USER}" "${_tag}" "${RABBITMQ_NODENAME}" "${_accessUser}" "${_accessPassword}";
+    addTagToUser "${MONITORING_USER_NAME}" "${_tag}" "${RABBITMQ_NODENAME}" "${_accessUser}" "${_accessPassword}";
   done;
   IFS="${_oldIFS}";
 }
@@ -384,7 +384,7 @@ function setMonitoringUserTags() {
 # use:   echo "monitoring user permissions set successfully";
 # use: fi
 function setMonitoringUserPermissions() {
-  setPermissions / "${MONITORING_USER}" "${MONITORING_CONFIGURE_PERMISSIONS}" "${MONITORING_WRITE_PERMISSIONS}" "${MONITORING_READ_PERMISSIONS}" "${RABBITMQ_NODENAME}";
+  setPermissions / "${MONITORING_USER_NAME}" "${MONITORING_USER_CONFIGURE_PERMISSIONS}" "${MONITORING_USER_WRITE_PERMISSIONS}" "${MONITORING_USER_READ_PERMISSIONS}" "${RABBITMQ_NODENAME}";
 }
 
 # dependencies
@@ -400,12 +400,12 @@ addError RABBITMQ_NOT_RUNNING "RabbitMQ is not running";
 addError CANNOT_RETRIEVE_RABBITMQADMIN "Cannot retrieve rabbitmqadmin";
 addError CANNOT_FIX_RABBITMQADMIN "Cannot patch rabbitmqadmin";
 addError CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT "Cannot enable plugin management";
-addError CANNOT_ADD_ADMIN_USER "Cannot add ${ADMIN_USER} user";
-addError CANNOT_SET_THE_ADMIN_USER_TAGS "Cannot set the ${ADMIN_USER} tags";
-addError CANNOT_SET_THE_ADMIN_USER_PERMISSIONS "Cannot set the ${ADMIN_USER} permissions";
-addError CANNOT_ADD_MONITORING_USER "Cannot add ${MONITORING_USER} user";
-addError CANNOT_SET_THE_MONITORING_USER_TAGS "Cannot set the ${MONITORING_USER} tags";
-addError CANNOT_SET_THE_MONITORING_USER_PERMISSIONS "Cannot set the ${MONITORING_USER} permissions";
+addError CANNOT_ADD_ADMIN_USER "Cannot add ${ADMIN_USER_NAME} user";
+addError CANNOT_SET_THE_ADMIN_USER_TAGS "Cannot set the ${ADMIN_USER_NAME} tags";
+addError CANNOT_SET_THE_ADMIN_USER_PERMISSIONS "Cannot set the ${ADMIN_USER_NAME} permissions";
+addError CANNOT_ADD_MONITORING_USER "Cannot add ${MONITORING_USER_NAME} user";
+addError CANNOT_SET_THE_MONITORING_USER_TAGS "Cannot set the ${MONITORING_USER_NAME} tags";
+addError CANNOT_SET_THE_MONITORING_USER_PERMISSIONS "Cannot set the ${MONITORING_USER_NAME} permissions";
 addError CANNOT_DECLARE_THE_VIRTUAL_HOSTS "Cannot declare the virtual hosts";
 addError CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES "Cannot declare the alternate exchanges";
 addError CANNOT_ENABLE_CHANGESETS "Cannot enable the changesets";
@@ -416,32 +416,32 @@ addError CANNOT_ENABLE_CHANGESETS "Cannot enable the changesets";
 defineEnvVar RABBITMQ_NODENAME MANDATORY "The name of the RabbitMQ node";
 # env: LOCK_FILE: The file indicating if the bootstrap is running.
 defineEnvVar LOCK_FILE MANDATORY "The file indicating if the bootstrap is running";
-# env: ADMIN_PASSWORD: The password for the admin user.
-defineEnvVar ADMIN_PASSWORD MANDATORY "The password for the admin user";
-# env: MONITORING_PASSWORD: The password for the monitoring user.
-defineEnvVar MONITORING_PASSWORD MANDATORY "The password for the monitoring user";
+# env: ADMIN_USER_PASSWORD: The password for the admin user.
+defineEnvVar ADMIN_USER_PASSWORD MANDATORY "The password for the admin user";
+# env: MONITORING_USER_PASSWORD: The password for the monitoring user.
+defineEnvVar MONITORING_USER_PASSWORD MANDATORY "The password for the monitoring user";
 
-# env: ADMIN_USER: The name of the admin user.
-defineEnvVar ADMIN_USER MANDATORY "The name of the admin user" admin;
-# env: ADMIN_PASSWORD: The password of the 'admin' user.
-# env: ADMIN_TAGS: The tags of the admin user.
-defineEnvVar ADMIN_TAGS MANDATORY "The tags of the admin user" "administrator";
-# env: ADMIN_CONFIGURE_PERMISSIONS: The configure permissions for the Admin user.
-defineEnvVar ADMIN_CONFIGURE_PERMISSIONS MANDATORY "The configure permissions for the Admin user" ".*";
-# env: ADMIN_WRITE_PERMISSIONS: The write permissions for the Admin user.
-defineEnvVar ADMIN_WRITE_PERMISSIONS MANDATORY "The write permissions for the Admin user" ".*";
-# env: ADMIN_READ_PERMISSIONS: The read permissions for the Admin user.
-defineEnvVar ADMIN_READ_PERMISSIONS MANDATORY "The read permissions for the Admin user" ".*";
+# env: ADMIN_USER_NAME: The name of the admin user.
+defineEnvVar ADMIN_USER_NAME MANDATORY "The name of the admin user" admin;
+# env: ADMIN_USER_PASSWORD: The password of the 'admin' user.
+# env: ADMIN_USER_TAGS: The tags of the admin user.
+defineEnvVar ADMIN_USER_TAGS MANDATORY "The tags of the admin user" "administrator";
+# env: ADMIN_USER_CONFIGURE_PERMISSIONS: The configure permissions for the Admin user.
+defineEnvVar ADMIN_USER_CONFIGURE_PERMISSIONS MANDATORY "The configure permissions for the Admin user" ".*";
+# env: ADMIN_USER_WRITE_PERMISSIONS: The write permissions for the Admin user.
+defineEnvVar ADMIN_USER_WRITE_PERMISSIONS MANDATORY "The write permissions for the Admin user" ".*";
+# env: ADMIN_USER_READ_PERMISSIONS: The read permissions for the Admin user.
+defineEnvVar ADMIN_USER_READ_PERMISSIONS MANDATORY "The read permissions for the Admin user" ".*";
 
-# env: MONITORING_USER: The name of the monitoring user.
-defineEnvVar MONITORING_USER MANDATORY "The name of the monitoring user" monitoring;
-# env: MONITORING_TAGS: The tags of the monitoring user.
-defineEnvVar MONITORING_TAGS MANDATORY "The tags of the monitoring user" "monitoring";
-# env: MONITORING_CONFIGURE_PERMISSIONS: The configure permissions for the Monitoring user.
-defineEnvVar MONITORING_CONFIGURE_PERMISSIONS MANDATORY "The configure permissions for the Monitoring user" ".*";
-# env: MONITORING_WRITE_PERMISSIONS: The write permissions for the Monitoring user.
-defineEnvVar MONITORING_WRITE_PERMISSIONS MANDATORY "The write permissions for the Monitoring user" ".*";
-# env: MONITORING_READ_PERMISSIONS: The read permissions for the Monitoring user.
-defineEnvVar MONITORING_READ_PERMISSIONS MANDATORY "The read permissions for the Monitoring user" ".*";
+# env: MONITORING_USER_NAME: The name of the monitoring user.
+defineEnvVar MONITORING_USER_NAME MANDATORY "The name of the monitoring user" monitoring;
+# env: MONITORING_USER_TAGS: The tags of the monitoring user.
+defineEnvVar MONITORING_USER_TAGS MANDATORY "The tags of the monitoring user" "monitoring";
+# env: MONITORING_USER_CONFIGURE_PERMISSIONS: The configure permissions for the Monitoring user.
+defineEnvVar MONITORING_USER_CONFIGURE_PERMISSIONS MANDATORY "The configure permissions for the Monitoring user" ".*";
+# env: MONITORING_USER_WRITE_PERMISSIONS: The write permissions for the Monitoring user.
+defineEnvVar MONITORING_USER_WRITE_PERMISSIONS MANDATORY "The write permissions for the Monitoring user" ".*";
+# env: MONITORING_USER_READ_PERMISSIONS: The read permissions for the Monitoring user.
+defineEnvVar MONITORING_USER_READ_PERMISSIONS MANDATORY "The read permissions for the Monitoring user" ".*";
 
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
