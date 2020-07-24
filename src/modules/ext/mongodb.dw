@@ -26,32 +26,32 @@ function enableMongodbCrAuthentication() {
    return ${_rescode};
 }
 
-# fun: addMongodbRootUser user password authenticationDatabase?
+# fun: addMongodbAdminUser user password authenticationDatabase?
 # api: public
-# txt: Adds the root user.
+# txt: Adds an admin user.
 # opt: user: The user.
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to "admin".
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
-# use: if addMongodbRootUser "admin" "secret"; then
+# use: if addMongodbAdminUser "admin" "secret"; then
 # use:   echo "User admin created successfully";
 # use: fi
-function addMongoDbRootUser() {
+function addMongoDbAdminUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
   checkNotEmpty password "${_password}" 2;
-  local _authDb="${3}";
-  if isEmpty "${_authDb}"; then
-    _authDb="admin";
+  local _authenticationDatabase="${3}";
+  if isEmpty "${_authenticationDatabase}"; then
+    _authenticationDatabase="admin";
   fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-use ${_authDb}
+use ${_authenticationDatabase}
 db.createRole(
   {
     role: "superRoot",
@@ -68,14 +68,14 @@ db.createUser(
     user: "${_user}",
     pwd: "${_password}",
     roles: [
-      { role: "superRoot", db: "${_authDb}" }
+      { role: "superRoot", db: "${_authenticationDatabase}" }
     ]
   }
 )
 EOF
   local _output;
   _output="$(cat "${_tmpFile}" | mongo 2>&1)";
-  local -i _rescode=$?; # not reliable for some reason.
+  local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
@@ -109,30 +109,30 @@ function addMongoDbBackupRole() {
   checkNotEmpty root "${_root}" 3;
   local _rootPassword="${4}";
   checkNotEmpty rootPassword "${_rootPassword}" 4;
-  local _authDb="${5}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 5;
-  local _authMechanism="${6}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 6;
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-use ${_authDb}
+use ${_authenticationDatabase}
 db.createRole(
   {
     role: "${_roleName}",
     privileges: [],
     roles: [
-      { role: "backup", db: "${_authDb}" },
-      { role: "restore", db: "${_authDb}" },
-      { role: "dbAdminAnyDatabase", db: "${_authDb}" }
+      { role: "backup", db: "${_authenticationDatabase}" },
+      { role: "restore", db: "${_authenticationDatabase}" },
+      { role: "dbAdminAnyDatabase", db: "${_authenticationDatabase}" }
     ]
   }
 )
 EOF
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -140,6 +140,8 @@ EOF
   else
     export ERROR="${_output}";
   fi
+
+  echo "${_output}";
 
   return ${_rescode};
 }
@@ -166,26 +168,19 @@ function mongoDbRoleAlreadyExists() {
   checkNotEmpty root "${_root}" 3;
   local _rootPassword="${4}";
   checkNotEmpty rootPassword "${_rootPassword}" 4;
-  local _authDb="${5}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 5;
-  local _authMechanism="${6}";
-  checkNotEmpty authMechanism "${_authMechanism}" 6;
-
-  createTempFile;
-  local _tmpFile="${RESULT}";
-
-  cat <<EOF > "${_tmpFile}"
-use ${_database}
-db.getRole("${_roleName}")
-EOF
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
 
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}"  --quiet | grep -v -e '^switched to db ' | jq '.role' | sed 's ^"  g' | sed 's "$  g' | grep --color=none -e '${_roleName}' 2>&1)";
+  _output="$(echo "db.getRole(\"${_roleName}\")" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}"  --quiet "${_authenticationDatabase}" | grep -v -e '^switched to db ' | jq '.role' | sed 's ^"  g' | sed 's "$  g' | grep --color=none -e "^${_roleName}$" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
+    _output="$(echo "db.getRole(\"${_roleName}\")" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}"  --quiet "${_authenticationDatabase}" 2>&1)";
     export ERROR="${_output}";
   fi
 
@@ -217,10 +212,10 @@ function addMongoDbRole() {
   checkNotEmpty root "${_root}" 3;
   local _rootPassword="${4}";
   checkNotEmpty rootPassword "${_rootPassword}" 4;
-  local _authDb="${5}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 5;
-  local _authMechanism="${6}";
-  checkNotEmpty authMechanism "${_authMechanism}" 6;
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authMechanism "${_authenticationMechanism}" 6;
   local _privilegeSpec="${7}";
   checkNotEmpty privilegeSpec "${_privilegeSpec}" 7;
   local _roleSpec="${8}";
@@ -240,7 +235,7 @@ db.createRole(
 )
 EOF
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authMechanism}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -284,11 +279,11 @@ function addMongoDbUser() {
   local _rootPassword="${1}";
   checkNotEmpty rootPassword "${_rootPassword}" 5;
   shift;
-  local _authDb="${1}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 6;
+  local _authenticationDatabase="${1}";
+  checkNotEmpty authenticationaDtabase "${_authenticationDatabase}" 6;
   shift;
-  local _authMechanism="${1}";
-  checkNotEmpty authenticationMechanism "${_authMechanism}" 7;
+  local _authenticationMechanism="${1}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
   shift;
   local _roleSpec="${@}";
   checkNotEmpty roleSpec "${_roleSpec}" 8;
@@ -307,7 +302,7 @@ db.createUser(
 )
 EOF
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -336,13 +331,13 @@ function mongoDbFreeMonitoringAlreadyEnabled() {
   checkNotEmpty root "${_root}" 1;
   local _rootPassword="${2}";
   checkNotEmpty rootPassword "${_rootPassword}" 2;
-  local _authDb="${3}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 3;
-  local _authMechanism="${4}";
-  checkNotEmpty authenticationMechanism "${_authMechanism}" 4;
+  local _authenticationDatabase="${3}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
+  local _authenticationMechanism="${4}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
   local _output;
 
-  _output="$(echo "db.getFreeMonitoringStatus()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  _output="$(echo "db.getFreeMonitoringStatus()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -372,13 +367,13 @@ function enableMongoDbFreeMonitoring() {
   checkNotEmpty root "${_root}" 1;
   local _rootPassword="${2}";
   checkNotEmpty rootPassword "${_rootPassword}" 2;
-  local _authDb="${3}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 3;
-  local _authMechanism="${4}";
-  checkNotEmpty authenticationMechanism "${_authMechanism}" 4;
+  local _authenticationDatabase="${3}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
+  local _authenticationMechanism="${4}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
   local _output;
 
-  _output="$(echo "db.enableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  _output="$(echo "db.enableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -406,13 +401,13 @@ function disableMongoDbFreeMonitoring() {
   checkNotEmpty root "${_root}" 1;
   local _rootPassword="${2}";
   checkNotEmpty rootPassword "${_rootPassword}" 2;
-  local _authDb="${3}";
-  checkNotEmpty authenticationDatabase "${_authDb}" 3;
-  local _authMechanism="${4}";
-  checkNotEmpty authenticationMechanism "${_authMechanism}" 4;
+  local _authenticationDatabase="${3}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
+  local _authenticationMechanism="${4}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
   local _output;
 
-  _output="$(echo "db.disableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authDb}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  _output="$(echo "db.disableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -466,15 +461,15 @@ function killMongod() {
   return ${_rescode};
 }
 
-# fun: mongoDump output host user? pass? authDb? authMechanism?
+# fun: mongoDump output host user? pass? authenticationDatabase? authenticationMechanism?
 # api: public
 # txt: Performs a dump (gzipped, using the MongoDB archive format)
 # opt: output: The output file.
 # opt: host: The host. Optional. Defaults to localhost.
 # opt: user: The user name. Optional.
 # opt: pass: The password. Optional.
-# opt: authDb: The authentication database. Optional. Defaults to admin.
-# opt: authMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA1.
+# opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
+# opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA1.
 # txt: Returns 0/TRUE if the dump gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR would contain some information about the error.
 # use: if mongoDump /tmp/dump-today.gz localhost root secret; then
@@ -487,8 +482,8 @@ function mongoDump() {
   checkNotEmpty host "${_host}" 2;
   local _user="${3}";
   local _pass="${4}";
-  local _authDb="${5:-admin}";
-  local _authMechanism="${6:-SCRAM-SHA1}";
+  local _authenticationDatabase="${5:-admin}";
+  local _authenticationMechanism="${6:-SCRAM-SHA1}";
 
   local -i _rescode;
   local _output;
@@ -499,7 +494,7 @@ function mongoDump() {
     _output="$(mongodump --gzip --archive="${_output}" -h ${_host} 2>&1)";
     _rescode=$?;
   else
-    _output="$(mongodump --gzip --archive="${_output}" -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authDb} --authenticationMechanism=${_authMechanism} 2>&1)";
+    _output="$(mongodump --gzip --archive="${_output}" -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
     _rescode=$?;
   fi
 
@@ -533,8 +528,8 @@ function mongoRestore() {
   local _host="${2:-localhost}";
   local _user="${3}";
   local _pass="${4}";
-  local _authDb="${5:-admin}";
-  local _authMechanism="${6:-SCRAM-SHA-256}";
+  local _authenticationDatabase="${5:-admin}";
+  local _authenticationMechanism="${6:-SCRAM-SHA-256}";
   local _database="${7}";
 
   if isNotEmpty "${_database}"; then
@@ -548,7 +543,7 @@ function mongoRestore() {
     _output="$(mongoimport -h ${_host} ${_database} "${_file}" 2>&1)";
     _rescode=$?;
   else
-    _output="$(mongoimport -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authDb} --authenticationMechanism=${_authMechanism} ${_database} "${_file}" 2>&1)";
+    _output="$(mongoimport -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1)";
     _rescode=$?;
   fi
 
@@ -594,14 +589,14 @@ function startMongodWithAuthenticationDisabled() {
   return ${_rescode};
 }
 
-# fun: startMongodWithAuthenticationEnabled user group permissionsFolder configFile authMechanism
+# fun: startMongodWithAuthenticationEnabled user group permissionsFolder configFile authenticationMechanism
 # api: public
 # txt: Starts mongod with authentication enabled, using given user and group (and ensuring its permissions match the owners of given permissionsFolder parameter).
 # opt: user: The owner of the process.
 # opt: group: The group of the process.
 # opt: permissionsFolder: The folder used to get the permissions from (the user and group will be adapted to match the folder's).
 # opt: configFile: The mongod config file.
-# opt: authMechanism: The authentication mechanism.
+# opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if the process could be started; 1/FALSE otherwise.
 # use: startMongodbWithAuthenticationEnabled mongo mongo /var/lib/mongodb /etc/mongod.conf SCRAM-SHA-256 & disown;
 function startMongodWithAuthenticationEnabled() {
@@ -613,8 +608,8 @@ function startMongodWithAuthenticationEnabled() {
   checkNotEmpty permissionsFolder "${_permissionsFolder}" 3;
   local _configFile="${4}";
   checkNotEmpty configFile "${_configFile}" 4;
-  local _authMechanism="${5}";
-  checkNotEmpty authMechanism "${_authMechanism}" 5;
+  local _authenticationMechanism="${5}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 5;
 
   checkReq run-as.sh;
   checkReq mongod;
@@ -624,7 +619,7 @@ function startMongodWithAuthenticationEnabled() {
 
   chmod a+x "${_permissionsFolder}";
 
-  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authMechanism};
+  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authenticationMechanism};
   local -i _rescode=$?;
 
   return ${_rescode};
@@ -668,7 +663,7 @@ function waitUntilMongodIsRunning() {
 # txt: Checks mongod is not running.
 # txt: Returns 0/TRUE if mongod is running; 1/FALSE otherwise.
 # use: if isMongodRunning; then
-# use:   echo "mongod is not running";
+# use:   echo "mongod is running";
 # use: fi
 function isMongodRunning() {
   DW.import process;
@@ -686,7 +681,7 @@ function isMongodRunning() {
 function isMongodRunningWithNoAuthentication() {
   local -i _rescode=${FALSE};
 
-  if checkMongodIsRunning; then
+  if isMongodRunning; then
     ps -ef | grep --color=none $(which mongod) | grep --color=none -v " --auth " | grep -v grep > /dev/null 2>&1;
     _rescode=$?;
   fi
@@ -694,12 +689,12 @@ function isMongodRunningWithNoAuthentication() {
   return ${_rescode};
 }
 
-# fun: checkMongoUserCanLogin user password authenticationDb authenticationMechanism
+# fun: checkMongoUserCanLogin user password authenticationDatabase authenticationMechanism
 # api: public
 # txt: Checks given MongoDB user can login.
 # opt: user: The user name.
 # opt: password: The password.
-# opt: authenticationDb: The authentication database.
+# opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if given user can log in; 1/FALSE otherwise.
 # use: if checkMongoUserCanLogIn root secret admin SCRAM-SHA-256; then echo "User can log in"; fi
@@ -708,14 +703,14 @@ function checkMongoUserCanLogIn() {
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
   checkNotEmpty password "${_password}" 2;
-  local _authenticationDb="${3}";
-  checkNotEmpty authenticationDb "${_authenticationDb}" 3;
+  local _authenticationDatabase="${3}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "{_authenticationMechanism}" 4;
 
   local _output;
 
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" 2>&1)";
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -727,12 +722,12 @@ function checkMongoUserCanLogIn() {
   return ${_rescode};
 }
 
-# fun: createMongoDbIndex user password authDb authMechanism database collection index options
+# fun: createMongoDbIndex user password authenticationDatabase authenticationMechanism database collection index options
 # api: public
 # txt: Creates a MongoDB index on given collection.
 # opt: user: The user to log in.
 # opt: password: The password.
-# opt: authenticationDb: The authentication database.
+# opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
 # opt: database: The database of the collection.
 # opt: collection: The collection.
@@ -747,8 +742,8 @@ function createMongoDbIndex() {
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
   checkNotEmpty password "${_password}" 2;
-  local _authenticationDb="${3}";
-  checkNotEmpty authenticationDb "${_authenticationDb}" 3;
+  local _authenticationDatabase="${3}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
   local _database="${5}";
@@ -760,7 +755,7 @@ function createMongoDbIndex() {
   local _options="${8}";
   checkNotEmpty options "${_options}" 8;
 
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.createIndex(${_index},${_options})" 2>&1)";
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.createIndex(${_index},${_options})" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -772,12 +767,12 @@ function createMongoDbIndex() {
   return ${_rescode};
 }
 
-# fun: mongoDbIndexAlreadyExists user password authDb authMechanism database collection index
+# fun: mongoDbIndexAlreadyExists user password authenticationDatabase authenticationMechanism database collection index
 # api: public
 # txt: Checks a MongoDB index exists on given collection.
 # opt: user: The user to log in.
 # opt: password: The password.
-# opt: authenticationDb: The authentication database.
+# opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
 # opt: database: The database.
 # opt: collection: The collection.
@@ -791,8 +786,8 @@ function mongoDbIndexAlreadyExists() {
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
   checkNotEmpty password "${_password}" 2;
-  local _authenticationDb="${3}";
-  checkNotEmpty authenticationDb "${_authenticationDb}" 3;
+  local _authenticationDatabase="${3}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
   local _database="${5}";
@@ -804,7 +799,7 @@ function mongoDbIndexAlreadyExists() {
 
   local _output;
 
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDb}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "var indexes = db.getCollection('${_collection}').getIndexes(); var exists = false; for (var i=0; i < indexes.length; i++) { if (indexes[i].name == '${_index}') { exists = true; break; } }; print(exists);" 2>&1)";
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "var indexes = db.getCollection('${_collection}').getIndexes(); var exists = false; for (var i=0; i < indexes.length; i++) { if (indexes[i].name == '${_index}') { exists = true; break; } }; print(exists);" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
