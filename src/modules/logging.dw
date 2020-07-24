@@ -2959,19 +2959,21 @@ function LOGGING.logToFiles() {
   local _msg="${@}";
   checkNotEmpty msg "${_msg}" 1;
 
-  LOGGING.getLogFilesVariableName;
-  local -n _logFiles="${RESULT}";
+  if isLogToFilesEnabled; then
+    LOGGING.getLogFilesVariableName;
+    local -n _logFiles="${RESULT}";
 
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  local _file;
-  for _file in ${_logFiles[@]}; do
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    local _file;
+    for _file in ${_logFiles[@]}; do
+      IFS="${_oldIFS}";
+      echo -n "${_msg}" >> "${_file}" 2> /dev/null;
+    done
     IFS="${_oldIFS}";
-    echo -n "${_msg}" >> "${_file}" 2> /dev/null;
-  done
-  IFS="${_oldIFS}";
+  fi
 
-  return ${_rescode};
+  return ${TRUE};
 }
 
 # fun: LOGGING.logToFilesAnEmptyLine
@@ -2980,19 +2982,34 @@ function LOGGING.logToFiles() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.logToFilesAnEmptyLine;
 function LOGGING.logToFilesAnEmptyLine() {
-  LOGGING.getLogFilesVariableName;
-  local -n _logFiles="${RESULT}";
 
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  local _file;
-  for _file in ${_logFiles[@]}; do
+  if isLogToFilesEnabled; then
+    LOGGING.getLogFilesVariableName;
+    local -n _logFiles="${RESULT}";
+
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    local _file;
+    for _file in ${_logFiles[@]}; do
+      IFS="${_oldIFS}";
+      echo >> "${_file}" 2> /dev/null;
+    done
     IFS="${_oldIFS}";
-    echo >> "${_file}" 2> /dev/null;
-  done
-  IFS="${_oldIFS}";
+  fi
 
   return ${TRUE};
+}
+
+# fun: isLogToFilesEnabled
+# api: public
+# txt: Checks if logging to files is enabled or not.
+# txt: Returns 0/TRUE if it's enabled; 1/FALSE otherwise.
+# use: if isLogToFilesEnabled; then
+# use:   echo "log to files is enabled";
+# use: fi
+function isLogToFilesEnabled() {
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_TO_FILES;
 }
 
 # fun: applyThemeIfPresent
@@ -3087,6 +3104,9 @@ function LOGGING.resetState() {
 
   # env: LOG_LEVEL_STACK: The stack of log levels.
   DW.declareGlobalArray "${_moduleName}" LOG_LEVEL_STACK;
+
+  # env: LOG_TO_FILES: Whether logging to files is enabled.
+  DW.declareGlobalInt "${_moduleName}" LOG_TO_FILES ${FALSE};
 
   # env: LOG_TRACE: Whether to print TRACE messages.
   DW.declareGlobalInt "${_moduleName}" LOG_TRACE ${FALSE};
