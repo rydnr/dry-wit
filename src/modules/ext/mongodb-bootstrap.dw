@@ -4,6 +4,8 @@
 
 DW.import mongodb;
 
+setDebugEnabled;
+
 # fun: mongodbMigrate user group dbFolder permissionsFolder configFile database authenticationDatabase authenticationMechanism adminUserName adminUserPassword enableFreeMonitoring backupRoleName backupRoleSpec backupUserName backupUserPassword startTimeout startCheckInterval lockFile dumpFile?
 # api: public
 # txt: Migrates a MongoDB server.
@@ -18,6 +20,7 @@ DW.import mongodb;
 # opt: adminUserPassword: The password of the admin user.
 # opt: enableFreeMonitoring: Whether to enable free monitoring.
 # opt: lockFile: The lock file.
+# opt: bootstrapFile: The bootstrap file.
 # opt: dumpFile: The dump file to restore, if any. Optional.
 # txt: Returns 0/TRUE always, but can exit in case of error.
 # use: mongodbMigrate mongod admin /var/lib/mongod /etc/mongod.config admin "SCRAM-SHA-1" admin secret false 60 5 /tmp/bootstrap.lock;
@@ -58,12 +61,13 @@ function mongodbMigrate() {
   checkNotEmpty startCheckInterval "${_startCheckInterval}" 17;
   local _lockFile="${18}";
   checkNotEmpty lockFile "${_lockFile}" 18;
-  local _dumpFile="${19}";
+  local _bootstrapFile="${19}";
+  checkNotEmpty bootstrapFile "${_bootstrapFile}" 19;
+  local _dumpFile="${20}";
 
-  local -i _initialized=${FALSE};
-  local -i _running=${FALSE};
-
-  logInfo "free monitoring? ${_enableFreeMonitoring}";
+  if fileExists "${_bootstrapFile}"; then
+    exitWithErrorCode MONGODB_IS_ALREADY_BOOTSTRAPPED;
+  fi
 
   if isMongodRunning; then
     exitWithErrorCode MONGOD_IS_ALREADY_RUNNING;
@@ -73,7 +77,11 @@ function mongodbMigrate() {
   if MONGODBBOOTSTRAP.acquireBootstrapLock "${_lockFile}"; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logDebug "${_error}";
+    fi
     exitWithErrorCode CANNOT_ACQUIRE_LOCK;
   fi
 
@@ -85,16 +93,21 @@ function mongodbMigrate() {
   if    isNotEmpty "${_dumpFile}" \
      && fileExists "${_dumpFile}"; then
     MONGODBBOOTSTRAP.restoreFromDump "${_dumpFile}";
+
+    MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
   else
-    logDebugResult SUCCESS "missing";
+    logDebugResult NEUTRAL "missing";
 
     logDebug "Creating admin user";
     MONGODBBOOTSTRAP.createAdminUserIfItDoesNotExist "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}";
 
     if MONGODBBOOTSTRAP.freeMonitoringRequested "${_enableFreeMonitoring}"; then
-      logDebug -n "Enabling free monitoring";
-      MONGODBBOOTSTRAP.enableFreeMonitoringIfNotEnabledAlready "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}";
-      logDebugResult SUCCESS "${RESULT}";
+      if MONGODBBOOTSTRAP.enableFreeMonitoringIfNotEnabledAlready "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}"; then
+        local _url="${RESULT}";
+        if isNotEmpty "${_url}"; then
+          logInfo "Monitoring url: ${url}";
+        fi
+      fi
     else
       logDebug "Disabling free monitoring";
       MONGODBBOOTSTRAP.disableFreeMonitoringIfNotDisabledAlready "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}";
@@ -108,16 +121,32 @@ function mongodbMigrate() {
 
     MONGODBBOOTSTRAP.addBackupRoleIfItDoesNotExist "${_backupRoleName}" "${_database}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_adminUserName}" "${_adminUserPassword}" "${_lockFile}";
 
-    logDebug "Adding user ${_backupUserName}";
-    MONGODBBOOTSTRAP.addUserIfItDoesNotExist "${_backupUserName}" "${_backupUserPassword}" "${_backupRoleSpec}" "${_database}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_adminUserName}" "${_adminUserPassword}" "${_lockFile}";
+    MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
+
+    logDebug "Adding ${_backupUserName} user";
+    addMongodbUserIfNecessary \
+      "${_backupUserName}" \
+      "${_backupUserPassword}" \
+      "${_database}" \
+      "${_backupRoleSpec}" \
+      CANNOT_CREATE_BACKUP_USER \
+      BACKUP_USER_DOES_NOT_EXIST \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}";
 
     if isFunctionPresent mongodb_patch; then
-      logDebug "Calling mongodb_patch";
       mongodb_patch;
     fi
+
+    logDebug "Killing mongod process";
+    MONGODBBOOTSTRAP.killMongodProcess "${_lockFile}";
+
+    touch "${_bootstrapFile}";
   fi
 
-  MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
+  return ${TRUE};
 }
 
 # fun: MONGODBBOOTSTRAP.freeMonitoringRequested
@@ -169,18 +198,21 @@ function MONGODBBOOTSTRAP.enableFreeMonitoringIfNotEnabledAlready() {
   local -i _rescode=${TRUE};
   local _url;
 
-  if mongoDbFreeMonitoringAlreadyEnabled "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  if mongodbFreeMonitoringAlreadyEnabled "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
     _url="${RESULT}";
   else
     logInfo -n "Enabling free monitoring";
-    enableMongoDbFreeMonitoring "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}";
+    enableMongodbFreeMonitoring "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}";
     _rescode=$?;
     _url="${RESULT}";
     if isTrue ${_rescode}; then
       logInfoResult SUCCESS "done";
     else
-      logInfoResult FAILURE "failed";
-      logInfo "${ERROR}";
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode CANNOT_ENABLE_FREE_MONITORING;
     fi
@@ -221,12 +253,16 @@ function MONGODBBOOTSTRAP.disableFreeMonitoringIfNotDisabledAlready() {
 
   if mongodbFreeMonitoringAlreadyEnabled  "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
     logInfo -n "Disabling free monitoring";
-    disableMongoDbFreeMonitoring  "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}";
+    disableMongodbFreeMonitoring  "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}";
     _rescode=$?;
     if isTrue ${_rescode}; then
       logInfoResult SUCCESS "done";
     else
-      logInfoResult FAILURE "failed";
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode CANNOT_DISABLE_FREE_MONITORING;
     fi
@@ -259,12 +295,20 @@ function MONGODBBOOTSTRAP.fixDatabaseFolderIfNecessary() {
     if changeFolderPermissionsRecursively "${_dbFolder}" 755; then
       logInfoResult SUCCESS "done";
     else
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode CANNOT_FIX_FOLDER_PERMISSIONS;
     fi
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logDebug "${_error}";
+    fi
     MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
     exitWithErrorCode CANNOT_CHANGE_FOLDER_OWNERSHIP;
   fi
@@ -301,13 +345,16 @@ function MONGODBBOOTSTRAP.runMongodWithLocalhostExceptionIfNecessary() {
   if isMongodRunningWithNoAuthentication; then
     logInfo "MongoDB already running with authentication disabled (localhost exception)";
   else
-    logInfo "Launching MongoDB with authentication disabled (localhost exception) as ${_user} ${_group}";
+    logInfo "Launching MongoDB with authentication disabled (localhost exception) as ${_user}:${_group}";
     startMongodWithAuthenticationDisabled "${_user}" "${_group}" "${_dbFolder}" "${_configFile}" & disown
 
-    logDebug "waitUntilMongodIsRunning ${_startTimeout} ${_startCheckInterval}";
     if ! waitUntilMongodIsRunning ${_startTimeout} ${_startCheckInterval}; then
       logInfo -n "Launching MongoDB with authentication disabled (localhost exception)";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode MONGOD_DID_NOT_START;
     fi
@@ -332,10 +379,14 @@ function MONGODBBOOTSTRAP.restoreFromDump() {
   checkNotEmpty dumpFile "${_dumpFile}" 1;
 
   logDebugResult -n "Importing backup ${_dumpFile}";
-  if restoreMongoDbBackup "${_dumpFile}"; then
+  if restoreMongodbBackup "${_dumpFile}"; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logDebug "${_error}";
+    fi
     exitWithErrorCode DUMP_FILE_COULD_NOT_BE_RESTORED;
   fi
 }
@@ -362,20 +413,36 @@ function MONGODBBOOTSTRAP.createAdminUserIfItDoesNotExist() {
   local _lockFile="${5}";
   checkNotEmpty lockFile "${_lockFile}" 5;
 
-  if ! checkMongoUserCanLogIn "${_user}" "${_password}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  logDebug -n "Checking if ${_user} already exists";
+  if mongodbAdminUserAlreadyExists "${_user}" "${_authenticationDatabase}"; then
+    logDebugResult SUCCESS "success";
+  else
+    logDebugResult NEUTRAL "failed";
     logDebug -n "Adding ${_user} user";
-    if addMongoDbAdminUser "${_user}" "${_password}"; then
+    if addMongodbAdminUser "${_user}" "${_password}" "${_authenticationDatabase}"; then
       logDebugResult SUCCESS "done";
     else
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode CANNOT_ADD_ADMIN_USER;
     fi
-  fi
 
-  if ! checkMongoUserCanLogIn "${_user}" "${_password}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
-    MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
-    exitWithErrorCode ADMIN_USER_CANNOT_LOG_IN;
+    logDebug -n "Double-checking if ${_user} user can log in now";
+    if mongodbAdminUserAlreadyExists "${_user}" "${_authenticationDatabase}"; then
+      logDebugResult SUCCESS "success";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
+      exitWithErrorCode ADMIN_USER_CANNOT_LOG_IN;
+    fi
   fi
 }
 
@@ -395,7 +462,11 @@ function MONGODBBOOTSTRAP.killMongodProcess() {
       logDebugResult SUCCESS "done";
     else
       logDebug -n "Killing mongod process";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode CANNOT_KILL_MONGOD_PROCESS;
     fi
@@ -443,8 +514,11 @@ function MONGODBBOOTSTRAP.startMongodProcess() {
 
     if ! waitUntilMongodIsRunning ${_startTimeout} ${_startCheckInterval}; then
       logDebug -n "Starting mongod process";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
-      logDebug "${ERROR}";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode MONGOD_DID_NOT_START;
     fi
@@ -486,30 +560,36 @@ function MONGODBBOOTSTRAP.addBackupRoleIfItDoesNotExist() {
   local _lockFile="${7}";
   checkNotEmpty lockFile "${_lockFile}" 7;
 
-  logInfo -n "Checking if ${_roleName} already exists";
-  if mongoDbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  logInfo -n "Checking if ${_roleName} role already exists";
+  if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
     logInfoResult SUCCESS "exists";
   else
-    logInfoResult SUCCESS "missing";
+    logInfoResult NEUTRAL "missing";
     logDebug -n "Adding ${_roleName} role";
-    if addMongoDbBackupRole "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if addMongodbBackupRole "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       logDebugResult SUCCESS "done";
     else
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
-      logDebug "${ERROR}";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode CANNOT_ADD_ROLE "${_roleName}";
     fi
-  fi
 
-  logInfo -n "Double-checking if ${_roleName} already exists";
-  if ! mongoDbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
-    logInfoResult SUCCESS "missing";
-    logDebug "${ERROR}";
-    MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
-    exitWithErrorCode ROLE_DOES_NOT_EXIST "${_roleName}";
-  else
-    logInfoResult SUCCESS "exists";
+    logInfo -n "Double-checking if ${_roleName} role has been created correctly";
+    if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      logInfoResult SUCCESS "exists";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "missing";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
+      exitWithErrorCode ROLE_DOES_NOT_EXIST "${_roleName}";
+    fi
   fi
 }
 
@@ -547,22 +627,38 @@ function MONGODBBOOTSTRAP.addUserIfItDoesNotExist() {
   local _lockFile="${9}";
   checkNotEmpty lockFile "${_lockFile}" 9;
 
-  if ! checkMongoUserCanLogIn "${_userName}" "${_userPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
-    logDebug -n "Adding ${_userName} user";
-    if addMongoDbUser "${_userName}" "${_userPassword}" "${_authenticationDatabase}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}"; then
+  logDebug -n "Checking if user ${_userName} user can log in, using database ${_database}";
+
+  if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "success";
+  else
+    logDebugResult NEUTRAL "failed";
+
+    logDebug -n "Adding ${_userName} user ['${_userName}' '${_userPassword}' '${_database}' '${_adminUserName}' '${_adminUserPassword}' '${_authenticationDatabase}' '${_authenticationMechanism}' '${_roleSpec}'] ";
+    if addMongodbUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}"; then
       logDebugResult SUCCESS "done";
     else
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
-      logDebug "${ERROR}";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
       MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
       exitWithErrorCode CANNOT_ADD_USER "${_userName}";
     fi
   fi
 
-  if ! checkMongoUserCanLogIn "${_userName}" "${_userPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
-    logDebug "${ERROR}";
+  logDebug -n "Double-checking if user ${_userName} user can log in, using database ${_database}";
+  if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "success";
+  else
+    local _error="${ERROR}";
+    logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logDebug "${_error}";
+    fi
     MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
-    exitWithErrorCode BACKUP_USER_CANNOT_LOG_IN;
+    exitWithErrorCode USER_CANNOT_LOG_IN "${_userName}";
   fi
 }
 
@@ -614,6 +710,7 @@ function MONGODBBOOTSTRAP.releaseBootstrapLock() {
 }
 
 # errors
+addError MONGODB_IS_ALREADY_BOOTSTRAPPED "This MongoDB server is already bootstrapped";
 addError MONGOD_IS_ALREADY_RUNNING 'mongod is already running';
 addError CANNOT_ACQUIRE_LOCK 'Cannot acquire lock';
 addError CANNOT_ENABLE_FREE_MONITORING 'Cannot enable free monitoring';
@@ -623,8 +720,8 @@ addError CANNOT_CHANGE_FOLDER_OWNERSHIP 'Cannot change folder ownership';
 addError MONGOD_DID_NOT_START 'mongod did not start';
 addError MONGOD_WITH_LOCALHOST_EXCEPTION_NOT_RUNNING 'mongod (with localhost exception) is not running';
 addError DUMP_FILE_COULD_NOT_BE_RESTORED 'dump file could not be restored';
-addError CANNOT_ADD_ADMIN_USER 'Cannot add addmin user';
-addError ADMIN_USER_NAME_CANNOT_LOG_IN 'admin user cannot log in';
+addError CANNOT_ADD_ADMIN_USER 'Cannot add admin user';
+addError ADMIN_USER_CANNOT_LOG_IN 'admin user cannot log in';
 addError CANNOT_KILL_MONGOD_PROCESS 'Cannot kill mongod process';
 addError MONGOD_IS_NOT_RUNNING 'mongod is not running';
 addError CANNOT_ADD_ROLE 'cannot add role';

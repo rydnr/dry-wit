@@ -37,7 +37,7 @@ function enableMongodbCrAuthentication() {
 # use: if addMongodbAdminUser "admin" "secret"; then
 # use:   echo "User admin created successfully";
 # use: fi
-function addMongoDbAdminUser() {
+function addMongodbAdminUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
@@ -86,7 +86,7 @@ EOF
   return ${_rescode};
 }
 
-# fun: addMongoDbBackupRole roleName root rootPassword authenticationDatabase? authenticationMechanism?
+# fun: addMongodbBackupRole roleName root rootPassword authenticationDatabase? authenticationMechanism?
 # api: public
 # txt: Adds a backup role (includes both "backup" and "restore").
 # opt: roleName: The role name. It must not match any of the built-in roles.
@@ -97,10 +97,10 @@ EOF
 # opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256
 # txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
-# use: if addMongoDbBackupRole "backupRestore" myDb root "s3cr3t"; then
+# use: if addMongodbBackupRole "backupRestore" myDb root "s3cr3t"; then
 # use:   echo "Role backupRestore created successfully";
 # use: fi
-function addMongoDbBackupRole() {
+function addMongodbBackupRole() {
   local _roleName="${1}";
   checkNotEmpty roleName "${_roleName}" 1;
   local _database="${2}";
@@ -141,25 +141,23 @@ EOF
     export ERROR="${_output}";
   fi
 
-  echo "${_output}";
-
   return ${_rescode};
 }
 
-# fun: mongoDbRoleAlreadyExists roleName root rootPassword authenticationDatabase authenticationMechanism
+# fun: mongodbRoleAlreadyExists roleName database root rootPassword authenticationDatabase authenticationMechanism
 # api: public
 # txt: Checks if giwen role already exists.
 # opt: roleName: The role name.
-# opt: targetDatabase: The target database.
+# opt: database: The target database.
 # opt: root: The root user.
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if the role exists already; 1/FALSE otherwise.
-# use: if mongoDbRoleAlreadyExists "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256; then
+# use: if mongodbRoleAlreadyExists "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256; then
 # use:   echo "Role already exists";
 # use: i
-function mongoDbRoleAlreadyExists() {
+function mongodbRoleAlreadyExists() {
   local _roleName="${1}";
   checkNotEmpty roleName "${_roleName}" 1;
   local _database="${2}";
@@ -173,21 +171,28 @@ function mongoDbRoleAlreadyExists() {
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
 
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+use ${_database}
+db.getRole("${_roleName}")
+EOF
   local _output;
-  _output="$(echo "db.getRole(\"${_roleName}\")" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}"  --quiet "${_authenticationDatabase}" | grep -v -e '^switched to db ' | jq '.role' | sed 's ^"  g' | sed 's "$  g' | grep --color=none -e "^${_roleName}$" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}"  --quiet)";
+  echo "${_output}" | grep -v -e '^switched to db ' | jq '.role' | sed 's ^"  g' | sed 's "$  g' | grep --color=none -e "^${_roleName}$" 2>&1 > /dev/null;
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
-    _output="$(echo "db.getRole(\"${_roleName}\")" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}"  --quiet "${_authenticationDatabase}" 2>&1)";
     export ERROR="${_output}";
   fi
 
   return ${_rescode};
 }
 
-# fun: addMongoDbRole roleName root rootPassword authenticationDatabase authenticationMechanism privilegeSpec? roleSpec?
+# fun: addMongodbRole roleName root rootPassword authenticationDatabase authenticationMechanism privilegeSpec? roleSpec?
 # api: public
 # txt: Adds a role.
 # opt: roleName: The role name. It must not match any of the built-in roles.
@@ -200,10 +205,10 @@ function mongoDbRoleAlreadyExists() {
 # opt: roleSpec: the role spec.
 # txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
-# use: if addMongoDbRole "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256 "[ { db: 'core', collection: 'eventSourcingEvent'}, actions: ['find'] } ]" '[]'; then
+# use: if addMongodbRole "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256 "[ { db: 'core', collection: 'eventSourcingEvent'}, actions: ['find'] } ]" '[]'; then
 # use:   echo "Role created successfully";
 # use: i
-function addMongoDbRole() {
+function addMongodbRole() {
   local _roleName="${1}";
   checkNotEmpty roleName "${_roleName}" 1;
   local _database="${2}";
@@ -247,7 +252,7 @@ EOF
   return ${_rescode};
 }
 
-# fun: addMongoDbUser user password database root rootPassword authenticationDatabase authenticationMechanism roleSpec+
+# fun: addMongodbUser user password database root rootPassword authenticationDatabase authenticationMechanism roleSpec+
 # api: public
 # txt: Adds a new user.
 # opt: user: The user.
@@ -260,10 +265,10 @@ EOF
 # opt: roleSpec: The space-separated list of role names.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
-# use: if addMongoDbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }""; then
+# use: if addMongodbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }""; then
 # use:   echo "User admin created successfully";
 # use: fi
-function addMongoDbUser() {
+function addMongodbUser() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
   shift;
@@ -293,16 +298,11 @@ function addMongoDbUser() {
 
   cat <<EOF > "${_tmpFile}"
 use ${_database}
-db.createUser(
-  {
-    user: "${_user}",
-    pwd: "${_password}",
-    roles: ${_roleSpec}
-  }
-)
+db.createUser({ user: "${_user}", pwd: "${_password}", roles: ${_roleSpec} })
 EOF
+
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_database}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -314,7 +314,7 @@ EOF
   return ${_rescode};
 }
 
-# fun: mongoDbFreeMonitoringAlreadyEnabled root rootPassword authenticationDatabase authenticationMechanism
+# fun: mongodbFreeMonitoringAlreadyEnabled root rootPassword authenticationDatabase authenticationMechanism
 # api: public
 # txt: Checks if free monitoring on the instance is already enabled.
 # opt: root: The root user.
@@ -323,10 +323,10 @@ EOF
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if the free monitoring is enabled; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the monitoring url; else, the variable ERROR contains some error information.
-# use: if mongoDbFreeMonitoringAlreadyEnabled "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
+# use: if mongodbFreeMonitoringAlreadyEnabled "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
 # use:   echo "Free monitoring enabled";
 # use: fi
-function mongoDbFreeMonitoringAlreadyEnabled() {
+function mongodbFreeMonitoringAlreadyEnabled() {
   local _root="${1}";
   checkNotEmpty root "${_root}" 1;
   local _rootPassword="${2}";
@@ -337,10 +337,13 @@ function mongoDbFreeMonitoringAlreadyEnabled() {
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
   local _output;
 
-  _output="$(echo "db.getFreeMonitoringStatus()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  _output="$(mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "db.getFreeMonitoringStatus()" 2>&1)";
+
+  echo "${_output}" | grep -q '"url"' > /dev/null;
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
+    echo "output: ${_output}";
     _result="$(echo "${_output}" | grep '"url"' | awk '{print $3;}' | cut -d'"' -f 2)";
     export RESULT="${_result}";
   else
@@ -350,7 +353,7 @@ function mongoDbFreeMonitoringAlreadyEnabled() {
   return ${_rescode};
 }
 
-# fun: enableMongoDbFreeMonitoring root rootPassword authenticationDatabase authenticationMechanism
+# fun: enableMongodbFreeMonitoring root rootPassword authenticationDatabase authenticationMechanism
 # api: public
 # txt: Enables free monitoring on the instance.
 # opt: root: The root user.
@@ -359,10 +362,10 @@ function mongoDbFreeMonitoringAlreadyEnabled() {
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if the free monitoring gets enabled; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the monitoring url; else, the variable ERROR contains some error information.
-# use: if enableMongoDbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
+# use: if enableMongodbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
 # use:   echo "Free monitoring enabled";
 # use: fi
-function enableMongoDbFreeMonitoring() {
+function enableMongodbFreeMonitoring() {
   local _root="${1}";
   checkNotEmpty root "${_root}" 1;
   local _rootPassword="${2}";
@@ -373,7 +376,9 @@ function enableMongoDbFreeMonitoring() {
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
   local _output;
 
-  _output="$(echo "db.enableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  _output="$(mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "db.enableFreeMonitoring()" 2>&1)";
+
+  echo "${_output}" | grep -q '"url"' > /dev/null;
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -386,7 +391,7 @@ function enableMongoDbFreeMonitoring() {
   return ${_rescode};
 }
 
-# fun: disableMongoDbFreeMonitoring root rootPassword authenticationDatabase authenticationMechanism
+# fun: disableMongodbFreeMonitoring root rootPassword authenticationDatabase authenticationMechanism
 # api: public
 # txt: Disables free monitoring on the instance.
 # opt: root: The root user.
@@ -395,8 +400,8 @@ function enableMongoDbFreeMonitoring() {
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if the free monitoring gets disabled; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
-# use: if disableMongoDbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then echo "Free monitoring enabled"; fi
-function disableMongoDbFreeMonitoring() {
+# use: if disableMongodbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then echo "Free monitoring enabled"; fi
+function disableMongodbFreeMonitoring() {
   local _root="${1}";
   checkNotEmpty root "${_root}" 1;
   local _rootPassword="${2}";
@@ -453,6 +458,9 @@ function killMongod() {
       logInfoResult SUCCESS "done";
     else
       logInfoResult FAILURE "failed";
+      if isNotEmpty "${ERROR}"; then
+        logDebug "${ERROR}";
+      fi
     fi
   else
     logInfoResult SUCCESS "not running";
@@ -583,7 +591,7 @@ function startMongodWithAuthenticationDisabled() {
 
   chmod a+x "${_permissionsFolder}";
 
-  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}";
+  $(which run-as.sh) ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}";
   local -i _rescode=$?;
 
   return ${_rescode};
@@ -689,7 +697,7 @@ function isMongodRunningWithNoAuthentication() {
   return ${_rescode};
 }
 
-# fun: checkMongoUserCanLogin user password authenticationDatabase authenticationMechanism
+# fun: checkMongodbUserCanLogin user password authenticationDatabase authenticationMechanism
 # api: public
 # txt: Checks given MongoDB user can login.
 # opt: user: The user name.
@@ -697,8 +705,10 @@ function isMongodRunningWithNoAuthentication() {
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if given user can log in; 1/FALSE otherwise.
-# use: if checkMongoUserCanLogIn root secret admin SCRAM-SHA-256; then echo "User can log in"; fi
-function checkMongoUserCanLogIn() {
+# use: if mongodbUserCanLogIn root secret myDb SCRAM-SHA-256; then
+# use:   echo "User can log in";
+# use: fi
+function mongodbUserCanLogIn() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
@@ -709,8 +719,7 @@ function checkMongoUserCanLogIn() {
   checkNotEmpty authenticationMechanism "{_authenticationMechanism}" 4;
 
   local _output;
-
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" 2>&1)";
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -722,7 +731,74 @@ function checkMongoUserCanLogIn() {
   return ${_rescode};
 }
 
-# fun: createMongoDbIndex user password authenticationDatabase authenticationMechanism database collection index options
+# fun: mongodbAdminUserAlreadyExists user database
+# api: public
+# txt: Checks given MongoDB user can login.
+# opt: user: The user name.
+# opt: database: The database.
+# txt: Returns 0/TRUE if given user exists; 1/FALSE otherwise.
+# use: if mongodbAdminUserAlreadyExists root myDb; then
+# use:   echo "User root exists in myDb database";
+# use: fi
+function mongodbAdminUserAlreadyExists() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _database="${2}";
+  checkNotEmpty database  "${_database}" 2;
+
+  local _output;
+  _output="$(mongo --quiet "${_database}" --eval "db.getUsers({filter: {'user': '${_user}'}})" 2>&1)";
+  local -i _rescode=$?;
+
+  if   isTrue ${_rescode} \
+    && isNotEmpty "$(echo "${_output}" | sed 's/\[//g' | sed 's/\]//g' | sed 's/\s*//g')"; then
+      export RESULT="${_output}";
+  else
+    _rescode=${FALSE};
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: mongodbUserAlreadyExists user adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Checks given MongoDB user can login.
+# opt: user: The user name.
+# opt: adminUser: The user to access the MongoDB server.
+# opt: adminPassword: The password to access the MongoDB server.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if given user exists; 1/FALSE otherwise.
+# use: if mongodbUserAlreadyExists root myDb; then
+# use:   echo "User root exists in myDb database";
+# use: fi
+function mongodbUserAlreadyExists() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _adminUserName="${2}";
+  checkNotEmpty adminUserName "${_adminUserName}" 2;
+  local _adminUserPassword="${3}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 3;
+  local _authenticationDatabase="${4}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 4;
+  local _authenticationMechanism="${5}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 5;
+
+  local _output;
+  _output="$(mongo -u ${_adminUserName} -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --quiet "${_database}" --eval "db.getUsers({filter: {'user': '${_user}'}})" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: createMongodbIndex user password authenticationDatabase authenticationMechanism database collection index options
 # api: public
 # txt: Creates a MongoDB index on given collection.
 # opt: user: The user to log in.
@@ -734,10 +810,10 @@ function checkMongoUserCanLogIn() {
 # opt: index: The index.
 # opt: options: The index options.
 # txt: Returns 0/TRUE if the index could be created; 1/FALSE otherwise.
-# use: if createMongoDbIndex root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }' '{ name: "myIndex" }'; then
+# use: if createMongodbIndex root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }' '{ name: "myIndex" }'; then
 # use:   echo "Index created successfully";
 # use: fi
-function createMongoDbIndex() {
+function createMongodbIndex() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
@@ -755,6 +831,7 @@ function createMongoDbIndex() {
   local _options="${8}";
   checkNotEmpty options "${_options}" 8;
 
+  local _output;
   _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.createIndex(${_index},${_options})" 2>&1)";
   local -i _rescode=$?;
 
@@ -767,7 +844,7 @@ function createMongoDbIndex() {
   return ${_rescode};
 }
 
-# fun: mongoDbIndexAlreadyExists user password authenticationDatabase authenticationMechanism database collection index
+# fun: mongodbIndexAlreadyExists user password authenticationDatabase authenticationMechanism database collection index
 # api: public
 # txt: Checks a MongoDB index exists on given collection.
 # opt: user: The user to log in.
@@ -778,10 +855,10 @@ function createMongoDbIndex() {
 # opt: collection: The collection.
 # opt: index: The index.
 # txt: Returns 0/TRUE if the index exists; 1/FALSE otherwise.
-# use: if mongoDbIndexAlreadyExists root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }'; then
+# use: if mongodbIndexAlreadyExists root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }'; then
 # use:   echo "Index exists";
 # use: fi
-function mongoDbIndexAlreadyExists() {
+function mongodbIndexAlreadyExists() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
@@ -798,7 +875,6 @@ function mongoDbIndexAlreadyExists() {
   checkNotEmpty index "${_index}" 7;
 
   local _output;
-
   _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "var indexes = db.getCollection('${_collection}').getIndexes(); var exists = false; for (var i=0; i < indexes.length; i++) { if (indexes[i].name == '${_index}') { exists = true; break; } }; print(exists);" 2>&1)";
   local -i _rescode=$?;
 
@@ -809,5 +885,617 @@ function mongoDbIndexAlreadyExists() {
   fi
 
   return ${_rescode};
+}
+
+# fun: createMongodbDatabase database temporaryCollection user password authenticationDatabase authenticationMechanism
+# api: public
+# txt: Creates a MongoDB database.
+# opt: database: The database.
+# opt: temporaryCollection: A temporary collection needed to ensure the database gets created.
+# opt: user: The user to log in.
+# opt: password: The password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the database could be created; 1/FALSE otherwise.
+# use: if createMongodbDatabase myDatabase removeme root secret admin SCRAM-SHA-1; then
+# use:   echo "Database created successfully";
+# use: fi
+function createMongodbDatabase() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _temporaryCollection="${2}";
+  checkNotEmpty temporaryCollection "${_temporaryCollection}" 2;
+  local _user="${3}";
+  checkNotEmpty user "${_user}" 3;
+  local _password="${4}";
+  checkNotEmpty password "${_password}" 4;
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+
+  local _output;
+  _output="$(echo "db.${_temporaryCollection}.insert({name: 'sample'})" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" ${_database} 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: mongodbDatabaseAlreadyExists database user password authenticationDatabase authenticationMechanism
+# api: public
+# txt: Checks a MongoDB database exists.
+# opt: database: The database.
+# opt: user: The user to log in.
+# opt: password: The password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the database exists; 1/FALSE otherwise.
+# use: if mongodbDatabaseAlreadyExists myDatabase root secret admin SCRAM-SHA-1; then
+# use:   echo "Database exists";
+# use: fi
+function mongodbDatabaseAlreadyExists() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _user="${2}";
+  checkNotEmpty user "${_user}" 2;
+  local _password="${3}";
+  checkNotEmpty password "${_password}" 3;
+  local _authenticationDatabase="${4}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 4;
+  local _authenticationMechanism="${5}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 5;
+
+  local _output;
+  _output="$(echo "show dbs" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1 | grep -q -e "^${_database}\W")";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: createMongodbCollection database collection user password authenticationDatabase authenticationMechanism database options
+# api: public
+# txt: Creates a MongoDB collection on given database.
+# opt: database: The database.
+# opt: collection: The collection.
+# opt: user: The user to log in.
+# opt: password: The password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: options: The collection options.
+# txt: Returns 0/TRUE if the collection could be created; 1/FALSE otherwise.
+# use: if createMongodbCollection myDatabase myCollection root secret admin SCRAM-SHA-1 myDatabase myCollection ; then
+# use:   echo "Collection created successfully";
+# use: fi
+function createMongodbCollection() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _collection="${2}";
+  checkNotEmpty collection "${_collection}" 2;
+  local _user="${3}";
+  checkNotEmpty user "${_user}" 3;
+  local _password="${4}";
+  checkNotEmpty password "${_password}" 4;
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  local _options="${7}";
+  if isNotEmpty "${_options}"; then
+    _options=",${_options}";
+  fi
+
+  local _output;
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.createCollection('${_collection}'${_options})" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: mongodbCollectionAlreadyExists database collection user password authenticationDatabase authenticationMechanism
+# api: public
+# txt: Checks a MongoDB collection exists on given collection.
+# opt: database: The database.
+# opt: collection: The collection.
+# opt: user: The user to log in.
+# opt: password: The password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the collection exists; 1/FALSE otherwise.
+# use: if mongodbCollectionAlreadyExists  myDatabase myCollection root secret admin SCRAM-SHA-1; then
+# use:   echo "Collection exists";
+# use: fi
+function mongodbCollectionAlreadyExists() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _collection="${2}";
+  checkNotEmpty collection "${_collection}" 2;
+  local _user="${3}";
+  checkNotEmpty user "${_user}" 3;
+  local _password="${4}";
+  checkNotEmpty password "${_password}" 4;
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+
+  local _output;
+  _output="$(echo "show collections" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" 2>&1 | grep -e "^${_collection}$")";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: removeMongodbCollection database collection user password authenticationDatabase authenticationMechanism
+# api: public
+# txt: Removes a MongoDB collection on given database.
+# opt: database: The database.
+# opt: collection: The collection.
+# opt: user: The user to log in.
+# opt: password: The password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the collection could be removed; 1/FALSE otherwise.
+# use: if removeMongodbCollection myDatabase myCollection root secret admin SCRAM-SHA-1; then
+# use:   echo "Collection removed successfully";
+# use: fi
+function removeMongodbCollection() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _collection="${2}";
+  checkNotEmpty collection "${_collection}" 2;
+  local _user="${3}";
+  checkNotEmpty user "${_user}" 3;
+  local _password="${4}";
+  checkNotEmpty password "${_password}" 4;
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+
+  local _output;
+  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.drop()" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: addMongodbRoleIfNecessary roleName privilegeSpec roleSpec cannotAddRoleErrorLabel roleDoesNotExistErrorLabel database adminUser adminPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Adds the EventSourcingEventFind role, if necessary.
+# opt: roleName: The name of the role.
+# opt: privilegeSpec: The privilege definition.
+# opt: roleSpec: The role definition.
+# opt: cannotAddRoleErrorLabel: The label of the error in case the role cannot be added.
+# opt: roleDoesNotExistErrorLabel: The label of the error in case the role is missing after being supposedly created.
+# opt: database: The target database.
+# opt: adminUser: The user to access the MongoDB server.
+# opt: adminPassword: The password to access the MongoDB server.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE always, but can exit if the role cannot be added.
+# use: addMongodbRoleIfNecessary "MyRole" "[ { resource: { db: '${EVENTSTORE_DATABASE}', collection: '${EVENTSOURCINGEVENT_COLLECTION}' }, actions: [ 'find'  ] } ]" '[]' CANNOT_ADD_MYROLE MYROLE_STILL_DOES_NOT_EXIST admin admin secret admin SCRAM-SHA-256;
+function addMongodbRoleIfNecessary() {
+  local _roleName="${1}";
+  checkNotEmpty roleName "${_roleName}" 1;
+  local _privilegeSpec="${2}";
+  checkNotEmpty privilegeSpec "${_privilegeSpec}" 2;
+  local _roleSpec="${3}";
+  checkNotEmpty roleSpec "${_roleSpec}" 3;
+  local _cannotAddRoleErrorLabel="${4}";
+  checkNotEmpty cannotAddRoleErrorLabel "${_cannotAddRoleErrorLabel}" 4;
+  local _roleDoesNotExistErrorLabel="${5}";
+  checkNotEmpty roleDoesNotExistErrorLabel "${_roleDoesNotExistErrorLabel}" 5;
+  local _database="${6}";
+  checkNotEmpty database "${_database}" 6;
+  local _adminUserName="${7}";
+  checkNotEmpty adminUserName "${_adminUserName}" 7;
+  local _adminUserPassword="${8}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 8;
+  local _authenticationDatabase="${9}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 9;
+  local _authenticationMechanism="${10}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
+
+  logDebug -n "Checking if ${_roleName} role already exists";
+  if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "exists";
+  else
+    logDebugResult NEUTRAL "missing";
+    logDebug -n "Adding ${_roleName} role";
+    if addMongodbRole "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_privilegeSpec}" "${_roleSpec}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      logTrace "${_output}";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotAddRoleErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking ${_roleName} role already exists";
+    if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      logDebugResult SUCCESS "exists";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "missing";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_roleDoesNotExistErrorLabel}";
+    fi
+  fi
+}
+
+# fun: addMongodbUserIfNecessary userName userPassword database roleSpec cannotCreateUserErrorLabel cannotLogInErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Adds the user able to access the EventStore database, if necessary.
+# opt: userName: The user name.
+# opt: userPassword: The user password.
+# opt: database: The target database.
+# opt: roleSpec: The role specification.
+# opt: cannotCreateUserErrorLabel: The error label when the user cannot be created.
+# opt: cannotLogInErrorLabel: The error label when the user cannot log in.
+# opt: adminUserName: The user to access the MongoDB server.
+# opt: adminUserPassword: The password to access the MongoDB server.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE always, but can exit if the EventStore user cannot be added.
+# use: addMongodbUserIfNecessary core secret admin "[ { role: '${MyCollectionFindRole}', db: 'admin' },{ role: '${MyCollectionInsertRole}', db: 'admin' } ]" CANNOT_ADD_CORE_USER CORE_USER_CANNOT_LOG_IN admin secret admin SCRAM-SHA-256;
+function addMongodbUserIfNecessary() {
+  local _userName="${1}";
+  checkNotEmpty userName "${_userName}" 1;
+  local _userPassword="${2}";
+  checkNotEmpty userPassword "${_userPassword}" 2;
+  local _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _roleSpec="${4}";
+  checkNotEmpty roleSpec "${_roleSpec}" 4;
+  local _cannotCreateUserErrorLabel="${5}";
+  checkNotEmpty cannotCreateUserErrorLabel "${_cannotCreateUserErrorLabel}" 5;
+  local _cannotLogInErrorLabel="${6}";
+  checkNotEmpty cannotLogInErrorLabel "${_cannotLogInErrorLabel}" 6;
+  local _adminUserName="${7}";
+  checkNotEmpty adminUserName "${_adminUserName}" 7;
+  local _adminUserPassword="${8}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 8;
+  local _authenticationDatabase="${9}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 9;
+  local _authenticationMechanism="${10}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
+
+  logDebug -n "Checking if user ${_userName} can log in, using database ${_database}";
+  if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "success";
+  else
+    logDebugResult SUCCESS "failed";
+    logDebug -n "Adding ${_userName} user";
+    if addMongodbUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      logTrace "${_output}";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotCreateUserErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking if user ${_userName} can log in, using database ${_database}";
+    if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
+      logDebugResult SUCCESS "success";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotLogInErrorLabel}";
+    fi
+  fi
+}
+
+# fun: addMongodbIndexIfNecessary indexName roleSpec database collection cannotCreateIndexErrorLabel indexDoesNotExistErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Adds an index, if necessary.
+# opt: indexName: The index name.
+# opt: roleSpec: The role specification.
+# opt: database: The database.
+# opt: collection: The collection.
+# opt: cannotCreateIndexErrorLabel: The label of the error when the index cannot be created.
+# opt: indexDoesNotExistErrorLabel: The label of the error when the index still doesn't exist after being created, supposedly.
+# opt: adminUserName: The name of the admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE always, but can exit if the index cannot be created.
+# use: addMongodbIndexIfNecessary id '{ id: 1 }' myDatabase myCollection CANNOT_CREATE_ID_INDEX ID_INDEX_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
+function addMongodbIndexIfNecessary() {
+  local _indexName="${1}";
+  checkNotEmpty indexName "${_indexName}" 1;
+  local _roleSpec="${2}";
+  checkNotEmpty roleSpec "${_roleSpec}" 2;
+  local _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _collection="${4}";
+  checkNotEmpty collection "${_collection}" 4;
+  local _cannotCreateIndexErrorLabel="${5}";
+  checkNotEmpty cannotCreateIndexErrorLabel "${_cannotCreateIndexErrorLabel}" 5;
+  local _indexDoesNotExistErrorLabel="${6}";
+  checkNotEmpty indexDoesNotExistErrorLabel "${_indexDoesNotExistErrorLabel}" 6;
+  local _adminUserName="${7}";
+  checkNotEmpty adminUserName "${_adminUserName}" 7;
+  local _adminUserPassword="${8}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 8;
+  local _authenticationDatabase="${9}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 9;
+  local _authenticationMechanism="${10}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
+
+  logDebug -n "Checking if ${_database}.${_collection}.${_indexName} index already exists";
+  if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}"; then
+    logDebugResult SUCCESS "exists";
+  else
+    logDebugResult NEUTRAL "missing";
+
+    logDebug -n "Creating ${_database}.${_collection}.${_indexName} index";
+
+    if createMongodbIndex "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_roleSpec}" "{ name: '${_indexName}' }"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      logTrace "${_output}";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotCreateIndexErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking ${_database}.${_collection}.${_indexName} index is actually created";
+    if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}"; then
+      logDebugResult SUCCESS "exists";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "missing";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_indexDoesNotExistErrorLabel}";
+    fi
+  fi
+}
+
+# fun: addMongodbDatabaseIfNecessary database temporaryCollection cannotCreateDatabaseErrorLabel databaseDoesNotExistErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Adds a database, if necessary.
+# opt: database: The database.
+# opt: temporaryCollection: The name of a temporary collection, needed to ensure the database gets created.
+# opt: cannotCreateDatabaseErrorLabel: The error label when the user cannot be created.
+# opt: databaseDoesNotExistErrorLabel: The error label when the database still does not exist even after being supposedly created.
+# opt: adminUserName: The name of the admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE always, but can exit if the database cannot be added.
+# use: addMongodbDatabaseIfNecessary eventStore removeme CANNOT_ADD_EVENTSTORE_DATABASE EVENTSTORE_DATABASE_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
+function addMongodbDatabaseIfNecessary() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _temporaryCollection="${2}";
+  checkNotEmpty temporaryCollection "${_temporaryCollection}" 2;
+  local _cannotCreateDatabaseErrorLabel="${3}";
+  checkNotEmpty cannotCreateDatabaseErrorLabel "${_cannotCreateDatabaseErrorLabel}" 3;
+  local _databaseDoesNotExistErrorLabel="${4}";
+  checkNotEmpty databaseDoesNotExistErrorLabel "${_databaseDoesNotExistErrorLabel}" 4;
+  local _adminUserName="${5}";
+  checkNotEmpty adminUserName "${_adminUserName}" 5;
+  local _adminUserPassword="${6}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 6;
+  local _authenticationDatabase="${7}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 7;
+  local _authenticationMechanism="${8}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 8;
+
+  logDebug -n "Checking if database ${_database} already exists";
+  if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "success";
+  else
+    logDebugResult SUCCESS "failed";
+    logDebug -n "Adding ${_database} database";
+    if createMongodbDatabase "${_database}" "${_temporaryCollection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      if isNotEmpty "${_output}"; then
+        logTrace "${_output}";
+      fi
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotCreateDatabaseErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking if database ${_database} exists";
+    if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      logDebugResult SUCCESS "success";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_databaseDoesNotExistErrorLabel}";
+    fi
+  fi
+}
+
+# fun: addMongodbCollectionIfNecessary database collection cannotCreateCollectionErrorLabel collectionDoesNotExist adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Adds a collection, if necessary.
+# opt: database: The database.
+# opt: collection: The collection.
+# opt: cannotCreateCollectionErrorLabel: The error label when the collection cannot be created.
+# opt: databaseDoesNotExistErrorLabel: The error label when the collection still does not exist even after being supposedly created.
+# opt: adminUserName: The name of the admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE always, but can exit if the collection cannot be added.
+# use: addMongodbCollectionIfNecessary EventSourcingEvent eventStore CANNOT_ADD_EVENTSOURCINGEVENT_COLLECTION EVENTSOURCINGEVENT_COLLECTION_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
+function addMongodbCollectionIfNecessary() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _collection="${2}";
+  checkNotEmpty collection "${_collection}" 2;
+  local _cannotCreateCollectionErrorLabel="${3}";
+  checkNotEmpty cannotCreateCollectionErrorLabel "${_cannotCreateCollectionErrorLabel}" 3;
+  local _collectionDoesNotExistErrorLabel="${4}";
+  checkNotEmpty collectionDoesNotExistErrorLabel "${_collectionDoesNotExistErrorLabel}" 4;
+  local _adminUserName="${5}";
+  checkNotEmpty adminUserName "${_adminUserName}" 5;
+  local _adminUserPassword="${6}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 6;
+  local _authenticationDatabase="${7}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 7;
+  local _authenticationMechanism="${8}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 8;
+
+  logDebug -n "Checking if collection ${_collection} already exists in ${_database} database";
+  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "success";
+  else
+    logDebugResult SUCCESS "failed";
+    logDebug -n "Adding ${_collection} collection in ${_database} database";
+    if createMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      if isNotEmpty "${_output}"; then
+        logTrace "${_output}";
+      fi
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotCreateCollectionErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking if collection ${_collection} exists in database ${_database}";
+    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      logDebugResult SUCCESS "success";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_collectionDoesNotExistErrorLabel}";
+    fi
+  fi
+}
+
+# fun: removeMongodbCollectionIfNecessary database collection cannotRemoveCollectionErrorLabel collectionExistsErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Removes given collection, if necessary.
+# opt: database: The database.
+# opt: collection: The collection.
+# opt: cannotRemoveCollectionErrorLabel: The error to use if the collection cannot be deleted.
+# opt: collectionExistsErrorLabel: The error to use if the collection still exists after being supposedly removed.
+# opt: adminUserName: The name of the admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE always, but can exit if the collection could not be removed.
+# use: removeMongodbCollectionIfNecessary eventStore removeme CANNOT_DELETE_REMOVEME_COLLECTION REMOVEME_COLLECTION_EXISTS admin secret admin SCRAM-SHA-256;
+function removeMongodbCollectionIfNecessary() {
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _collection="${2}";
+  checkNotEmpty collection "${_collection}" 2;
+  local _cannotRemoveCollectionErrorLabel="${3}";
+  checkNotEmpty cannotRemoveCollectionErrorLabel "${_cannotRemoveCollectionErrorLabel}" 3;
+  local _collectionExistsErrorLabel="${4}";
+  checkNotEmpty collectionExistsErrorLabel "${_collectionExistsErrorLabel}" 4;
+  local _adminUserName="${5}";
+  checkNotEmpty adminUserName "${_adminUserName}" 5;
+  local _adminUserPassword="${6}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 6;
+  local _authenticationMechanism="${7}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
+  local _authenticationDatabase="${8}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 8;
+
+  logDebug -n "Checking if collection ${_collection} actually exists in ${_database} database";
+  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "true";
+    logDebug -n "Removing ${_collection} collection in ${_database} database";
+    if removeMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      if isNotEmpty "${_output}"; then
+        logTrace "${_output}";
+      fi
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotRemoveCollectionErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking if collection ${_collection} is actually removed in database ${_database}";
+    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_collectionExistsErrorLabel}";
+    else
+      logDebugResult SUCCESS "success";
+    fi
+  else
+    logDebugResult SUCCESS "false";
+  fi
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
