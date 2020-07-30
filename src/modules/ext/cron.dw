@@ -1,0 +1,42 @@
+# mod: cron
+# api: public
+# txt: Cron module.
+
+# fun: isCronDaemonRunning
+# api: public
+# txt: Checks if the cron daemon is running.
+# txt: Returns 0/TRUE if the daemon is running; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the process id of the cron daemon.
+# use: if isCronDaemonRunning; then
+# use:   echo "Cron daemon running: ${RESULT}";
+# use: fi
+function isCronDaemonRunning() {
+  local _cronPid;
+  _cronPid="$(pidof /usr/sbin/cron)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_cronPid}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: restartCronDaemon
+# api: public
+# txt: Restarts the cron daemon.
+# txt: Returns 0/TRUE if the daemon could be restarted; 1/FALSE otherwise.
+# use: if restartCronDaemon; then
+# use:   echo "Cron daemon restarted";
+# use: fi
+function restartCronDaemon() {
+  local -i _rescode=${FALSE};
+
+  if isCronDaemonRunning; then
+    kill ${RESULT};
+    _rescode=$?;
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
