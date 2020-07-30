@@ -1200,7 +1200,7 @@ function addMongodbUserIfNecessary() {
   if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
     logDebugResult SUCCESS "success";
   else
-    logDebugResult SUCCESS "failed";
+    logDebugResult NEUTRAL "failed";
     logDebug -n "Adding ${_userName} user";
     if addMongodbUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}"; then
       local _output="${RESULT}";
@@ -1336,7 +1336,7 @@ function addMongodbDatabaseIfNecessary() {
   if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
     logDebugResult SUCCESS "success";
   else
-    logDebugResult SUCCESS "failed";
+    logDebugResult NEUTRAL "failed";
     logDebug -n "Adding ${_database} database";
     if createMongodbDatabase "${_database}" "${_temporaryCollection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       local _output="${RESULT}";
@@ -1402,7 +1402,7 @@ function addMongodbCollectionIfNecessary() {
   if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
     logDebugResult SUCCESS "success";
   else
-    logDebugResult SUCCESS "failed";
+    logDebugResult NEUTRAL "failed";
     logDebug -n "Adding ${_collection} collection in ${_database} database";
     if createMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       local _output="${RESULT}";
