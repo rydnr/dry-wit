@@ -63,6 +63,31 @@ function setFailureColor() {
   DW.declareGlobalString "${RESULT}" FAILURE_COLOR "${_color}";
 }
 
+# fun: getNeutralColor
+# api: public
+# txt: Retrieves the color used to represent neutral.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the color.
+# use: getNeutralColor; echo "neutral color: ${RESULT}";
+function getNeutralColor() {
+  COLOR.getModuleName;
+  DW.getGlobalString "${RESULT}" NEUTRAL_COLOR;
+}
+
+# fun: setNeutralColor color
+# api: public
+# txt: Specifies the color to use to represent neutral.
+# opt: color: The color for neutral.
+# txt: Returns 0/TRUE always.
+# use: setNeutralColor GREEN;
+function setNeutralColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  COLOR.getModuleName;
+  DW.declareGlobalString "${RESULT}" NEUTRAL_COLOR "${_color}";
+}
+
 # fun: getInProgressColor
 # api: public
 # txt: Retrieves the color used to represent in-progress tasks.
@@ -262,8 +287,8 @@ function getColorEscapeCode() {
     elif   isNotEmpty "${_defaultColorVariableName}" \
         && evalConstant "${_defaultColorVariableName}"; then
       _result="${RESULT}";
-    else
-      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol} (variable: ${_colorVariableName}) (default: ${_defaultColorVariableName})";
+#    else
+#      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol} (variable: ${_colorVariableName}) (default: ${_defaultColorVariableName})";
     fi
   fi
 
@@ -320,6 +345,7 @@ function COLOR.resetState() {
 
     setSuccessColor GREEN;
     setFailureColor RED;
+    setNeutralColor YELLOW;
     setInProgressColor BLUE;
     setNoColor GRAY;
   fi

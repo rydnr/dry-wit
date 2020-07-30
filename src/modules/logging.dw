@@ -521,7 +521,7 @@ function logResult() {
   LOGGING.keywordLabelFromCode ${_outcomeCode};
   local _outcomeLabel="${RESULT}";
 
-  LOGGING.checkSuccessOrFailure "${_outcomeLabel}" 1;
+  LOGGING.checkSuccessFailureOrNeutral "${_outcomeLabel}" 1;
   checkNotEmpty message "${_message}" 2;
   LOGGING.logStuffResult "${_outcomeLabel}" "${_message}";
 }
@@ -640,8 +640,8 @@ function logDebugResult() {
   local _message="${@}";
 
   if isDebugEnabled; then
-    checkNotEmpty "SUCCESS|FAILURE" "${_outcome}" 1;
-    LOGGING.checkSuccessOrFailure "${_outcome}" 1;
+    checkNotEmpty "SUCCESS|FAILURE|NEUTRAL" "${_outcome}" 1;
+    LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1;
     checkNotEmpty message "${_message}" 2;
     LOGGING.logStuffResult "${_outcome}" "${_message}";
   fi
@@ -1116,17 +1116,17 @@ function LOGGING.echoLogPrefix() {
   LOGGING.logToFiles "${_result}";
 }
 
-# fun: LOGGING.echoLogOutcome SUCCESS|FAILURE|IN_PROGRESS text
+# fun: LOGGING.echoLogOutcome SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS text
 # api: private
 # txt: Prints the log outcome.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS).
 # opt: text: The outcome text.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.echoLogOutcome SUCCESS "sample";
 function LOGGING.echoLogOutcome() {
   local _keyword="${1}";
   checkNotEmpty keyword "${_keyword}" 1;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 1;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 1;
   shift;
   local _text="${@}";
   checkNotEmpty text "${_text}" 2;
@@ -1206,11 +1206,11 @@ function setLogNestedIndentation() {
   DW.declareGlobalString "${RESULT}" LOG_NESTED_INDENTATION "${_text}";
 }
 
-# fun: LOGGING.echoLogOutcomeNested TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS text
+# fun: LOGGING.echoLogOutcomeNested TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS text
 # api: private
 # txt: Prints the log outcome, used when nesting log calls.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS).
 # opt: text: The outcome text.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.echoLogOutcome DEBUG SUCCESS "sample"
@@ -1220,8 +1220,8 @@ function LOGGING.echoLogOutcomeNested() {
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1;
   shift;
   local _keyword="${1}";
-  checkNotEmpty "SUCCESS|FAILURE|IN_PROGRESS" "${_keyword}" 2;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 2;
+  checkNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 2;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 2;
   shift;
   local _text="${@}";
   checkNotEmpty text "${_text}" 3;
@@ -1283,17 +1283,17 @@ function isLogLineOpen() {
   return ${_rescode};
 }
 
-# fun: LOGGING.logCompleted SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompleted SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS).
 # opt: outcome: The outcome text.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.logCompleted SUCCESS "done";
 function LOGGING.logCompleted() {
   local _keyword="${1}";
-  checkNotEmpty "SUCCESS|FAILURE|IN_PROGRESS" "${_keyword}" 1;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 1;
+  checkNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 1;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 1;
   shift;
   local _text="${@}";
   checkNotEmpty text "${_text}" 2;
@@ -1333,17 +1333,17 @@ function setDefaultLogResumingTaskColor() {
   DW.declareGlobalString "${RESULT}" DEFAULT_LOG_RESUMING_TASK_COLOR "${_color}";
 }
 
-# fun: LOGGING.logCompletedNested SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompletedNested SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task, when there're nested tasks.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS).
 # opt: outcome: The outcome text.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.logCompletedNested SUCCESS "done";
 function LOGGING.logCompletedNested() {
   local _keyword="${1}";
-  checkNotEmpty "SUCCESS|FAILURE|IN_PROGRESS" "${_keyword}" 2;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 2;
+  checkNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 2;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 2;
   shift
   local _message="$@";
   checkNotEmpty outcome "${_message}" 3;
@@ -1380,43 +1380,43 @@ function LOGGING.checkTraceDebugInfoWarnOrError() {
   CHECK.checkOneOf 2 "TRACE|DEBUG|INFO|WARN|ERROR" "${_logLevel}" "TRACE DEBUG INFO WARN ERROR" "${_index}";
 }
 
-# fun: LOGGING.checkSuccessOrFailure paramValue paramIndex
+# fun: LOGGING.checkSuccessFailureOrNeutral paramValue paramIndex
 # api: private
 # txt: Performs a precondition check on given parameter to ensure it's either SUCCESS or FAILURE.
 # opt: paramValue: The parameter value.
 # opt: paramIndex: The parameter index.
 # txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: LOGGING.checkSuccessOrFailure "${successOrFailure}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither SUCCESS or FAILURE.
-function LOGGING.checkSuccessOrFailure() {
+# use: LOGGING.checkSuccessFailureOrNeutral "${successFailureOrNeutral}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither SUCCESS or FAILURE.
+function LOGGING.checkSuccessFailureOrNeutral() {
   local _value="${1}";
   checkNotEmpty paramValue "${_value}" 1;
   local _index="${2}";
   checkNotEmpty paramIndex "${_index}" 2;
 
-  CHECK.checkOneOf 1 "SUCCESS|FAILURE" "${_value}" "SUCCESS FAILURE" "${_index}";
+  CHECK.checkOneOf 1 "SUCCESS|FAILURE|NEUTRAL" "${_value}" "SUCCESS FAILURE NEUTRAL" "${_index}";
 }
 
-# fun: LOGGING.checkSuccessFailureOrInProgress paramValue paramIndex
+# fun: LOGGING.checkSuccessFailureNeutralOrInProgress paramValue paramIndex
 # api: private
-# txt: Performs a precondition check on given parameter to ensure it's either SUCCESS, FAILURE or IN_PROGRESS.
+# txt: Performs a precondition check on given parameter to ensure it's either SUCCESS, FAILURE, NEUTRAL or IN_PROGRESS.
 # opt: paramValue: The parameter value.
 # opt: paramIndex: The parameter index.
 # txt: Exits if the check fails; otherwise returns 0/TRUE.
-# use: LOGGING.checkSuccessFailureOrInProgress "${successFailureOrInProgress}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither SUCCESS, nor FAILURE, nor IN_PROGRESS.
-function LOGGING.checkSuccessFailureOrInProgress() {
+# use: LOGGING.checkSuccessFailureNeutralOrInProgress "${successFailureNeutralOrInProgress}" 1 # -> throws an error if the first (1) parameter ("paramValue") is neither SUCCESS, nor FAILURE, nor NEUTRAL, nor IN_PROGRESS.
+function LOGGING.checkSuccessFailureNeutralOrInProgress() {
   local _value="${1}";
   checkNotEmpty paramValue "${_value}" 1;
   local _index="${2}";
   checkNotEmpty paramIndex "${_index}" 2;
 
-  CHECK.checkOneOf 1 "SUCCESS|FAILURE|IN_PROGRESS" "${_value}" "SUCCESS FAILURE IN_PROGRESS" "${_index}";
+  CHECK.checkOneOf 1 "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_value}" "SUCCESS FAILURE NEUTRAL IN_PROGRESS" "${_index}";
 }
 
-# fun: LOGGING.logCompletedNestedNoPop TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompletedNestedNoPop TRACE|DEBUG|INFO|WARN|ERROR SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task, when there're nested tasks.
 # opt: TRACE|DEBUG|INFO|WARN|ERROR: The log level.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS);
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS);
 # opt: outcome: The outcome text.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.logCompletedNestedNoPop SUCCESS "done";
@@ -1426,8 +1426,8 @@ function LOGGING.logCompletedNestedNoPop() {
   LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1;
   shift;
   local _keyword="${1}";
-  checkNotEmpty "SUCCESS|FAILURE|IN_PROGRESS" "${_keyword}" 2;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 2;
+  checkNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 2;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 2;
   shift;
   local _message="$@";
   checkNotEmpty message "${_message}" 3;
@@ -1435,17 +1435,17 @@ function LOGGING.logCompletedNestedNoPop() {
   LOGGING.echoLogOutcomeNested "${_level}" "${_keyword}" "${_message}";
 }
 
-# fun: LOGGING.logCompletedNoNested SUCCESS|FAILURE|IN_PROGRESS outcome
+# fun: LOGGING.logCompletedNoNested SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS outcome
 # api: private
 # txt: Prints the result of a task.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The outcome keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS).
 # opt: outcome: The outcome text.
 # txt: Returns 0/TRUE always.
 # use: LOGGING.logCompletedNoNested SUCCESS "done";
 function LOGGING.logCompletedNoNested() {
   local _keyword="${1}";
   checkNotEmpty keyword "${_keyword}" 1;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 1;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 1;
   shift;
 
   local _text="${@}";
@@ -1810,7 +1810,7 @@ function getLastLogLevel() {
 function LOGGING.logStuffResult() {
   local _outcome="${1}";
   checkNotEmpty outcome "${_outcome}" 1;
-  LOGGING.checkSuccessOrFailure "${_outcome}" 1;
+  LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1;
   shift;
   checkNotEmpty "text" "${@}" 2;
 
@@ -2188,10 +2188,10 @@ function LOGGING.pushLogLevel() {
   _logLevelStack[${#_logLevelStack[@]}]="$*";
 }
 
-# fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|IN_PROGRESS defaultColor
+# fun: LOGGING.retrieveKeywordColor SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS defaultColor
 # api: private
 # txt: Retrieves the color for a given keyword.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS).
 # opt: defaultColor: The default color. Optional.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the associated color.
@@ -2200,7 +2200,7 @@ function LOGGING.pushLogLevel() {
 function LOGGING.retrieveKeywordColor() {
   local _keyword="${1}";
   checkNotEmpty keyword "${_keyword}" 1;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 2;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 2;
 
   getNoColor;
   local _noColor="${RESULT}";
@@ -2212,6 +2212,8 @@ function LOGGING.retrieveKeywordColor() {
   local _successColor="${RESULT}";
   getFailureColor;
   local _failureColor="${RESULT}";
+  getNeutralColor;
+  local _neutralColor="${RESULT}";
   getInProgressColor;
   local _inProgressColor="${RESULT}";
 
@@ -2220,6 +2222,8 @@ function LOGGING.retrieveKeywordColor() {
                             ;;
     FAILURE | "${FAILURE}" | "${FAILED}" | "FAILED" | "failed" | "FAIL" | "fail" | "${KO}") _result="${_failureColor}";
                                                                                             ;;
+    NEUTRAL | "${NEUTRAL}") _result="${_neutralColor}";
+                                    ;;
     IN_PROGRESS | "${IN_PROGRESS}") _result="${_inProgressColor}";
                                     ;;
     *) _result="${_defaultColor}";
@@ -2255,17 +2259,17 @@ function LOGGING.retrieveLogNamespace() {
   export RESULT="${_result}";
 }
 
-# fun: LOGGING.processLogOutcomeColors SUCCESS|FAILURE|IN_PROGRESS
+# fun: LOGGING.processLogOutcomeColors SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS
 # api: private
 # txt: Processes the log outcome colors based on given outcome and text.
 #      Call LOGGING.getLogOutcomeColorsVariableName afterwards to use them.
-# opt: SUCCESS|FAILURE|IN_PROGRESS: The keyword (SUCCESS, FAILURE, IN_PROGRESS).
+# opt: SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS: The keyword (SUCCESS, FAILURE, NEUTRAL, IN_PROGRESS).
 # txt: Returns 0/TRUE always.
 # use: LOGGING.processLogOutcomeColors SUCCESS "done";
 function LOGGING.processLogOutcomeColors() {
   local _keyword="${1}";
-  checkNotEmpty "SUCCESS|FAILURE|IN_PROGRESS" "${_keyword}" 1;
-  LOGGING.checkSuccessFailureOrInProgress "${_keyword}" 1;
+  checkNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 1;
+  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 1;
 
   LOGGING.retrieveKeywordColor "${_keyword}";
   local _keywordColor="${RESULT}";
@@ -2349,7 +2353,9 @@ function LOGGING.retrieveLogPrefixLevelToken() {
     "ERROR") LOGGING.getErrorLogPrefixToken;
              _result="${RESULT}";
              ;;
-    *) _rescode=${FALSE};
+    *) LOGGING.getInfoLogPrefixToken;
+       _result="${RESULT}";
+       _rescode=${FALSE};
        ;;
   esac;
 
@@ -2737,7 +2743,7 @@ function logInfoResult() {
 
   if isInfoEnabled; then
     checkNotEmpty "SUCCESS|FAILURE" "${_outcome}" 1;
-    LOGGING.checkSuccessOrFailure "${_outcome}" 1;
+    LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1;
     checkNotEmpty message "${_message}" 2;
 
     LOGGING.logStuffResult "${_outcome}" "${_message}";
@@ -2805,7 +2811,7 @@ function logTraceResult() {
 
   if isTraceEnabled; then
     checkNotEmpty outcome "${_outcome}" 1;
-    LOGGING.checkSuccessOrFailure "${_outcome}" 1;
+    LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1;
     checkNotEmpty message "${_message}" 2;
     LOGGING.logStuffResult "${_outcome}" "${_message}";
   fi
@@ -3030,12 +3036,6 @@ function applyThemeIfPresent() {
 }
 
 # State
-# env: SUCCESS: Indicates the operation has succeeded.
-declare -igx SUCCESS=0;
-# env: FAILURE: Indicates the operation has failed.
-declare -igx FAILURE=1;
-# env: IN_PROGRESS: Indicates the operation is in progress.
-declare -igx IN_PROGRESS=2;
 # env: UNDEFINED: Indicates the operation outcome is undefined.
 declare -igx UNDEFINED=255;
 # env: SUCCESS: The 'Success' literal.
@@ -3050,6 +3050,10 @@ declare -gx FAILURE="Failure";
 declare -gx FAILED="failed";
 # env: KO: The 'ko' literal.
 declare -gx KO="ko";
+# env: NEUTRAL: The 'Neutral' literal.
+declare -gx NEUTRAL="Neutral";
+# env: IN_PROGRESS: Indicates the operation is in progress.
+declare -gx IN_PROGRESS="In progress";
 # env: DW_LOGGING_EMPTY_LOG_CATEGORY: A marker for empty log categories.
 declare -gx DW_LOGGING_EMPTY_LOG_CATEGORY="DW_LOGGING_EMPTY_LOG_CATEGORY";
 
