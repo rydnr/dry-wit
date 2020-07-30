@@ -5,6 +5,8 @@
 
 DW.import rabbitmq;
 
+DW.import cron;
+
 # fun: rabbitmqMigrate
 # api: public
 # txt: Migrates the RabbitMQ instance.
@@ -144,6 +146,12 @@ function rabbitmqMigrate() {
     logDebug -n "Enabling changesets";
     if enable_changesets; then
       logDebugResult SUCCESS "done";
+      restart_cron_daemon;
+    else
+      logInfo "Changeset monitoring NOT enabled";
+    fi
+  fi
+
     else
       logDebugResult FAILURE "failed";
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
