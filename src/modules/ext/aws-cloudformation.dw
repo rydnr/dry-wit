@@ -1,0 +1,74 @@
+# mod: aws-cloudformation.dw
+# api: public
+# txt: AWS Cloudformation functions
+
+# fun: isCloudformationTemplateValid template awsCli
+# api: public
+# txt: Validates the CloudFormation template.
+# opt: template: The template file.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the template is correct; 1/FALSE otherwise.
+# use: if isCloudformationTemplateValid "my-template.json" dev; then
+# use:   echo "my-template.json is correct";
+# use: fi
+function isCloudformationTemplateValid() {
+  local _template="${1}";
+  checkNotEmpty template "${_template}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+  local -i _rescode;
+  local _awsCli;
+  local _output;
+
+  logDebug -n "Checking CloudFormation template ${_template}";
+  logTrace "$(which aws) --profile ${_profile} cloudformation validate-template --template-body file://${_template}";
+  _output="$($(which aws) --profile ${_profile} cloudformation validate-template --template-body file://"${_template}" 2>&1)";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logDebugResult SUCCESS "valid";
+  else
+    logDebugResult FAILURE "invalid";
+    logDebug "${_output}";
+    exitWithErrorCode INVALID_CLOUDFORMATION_TEMPLATE "${_template}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getCloudformationExport name awsProfile
+# api: public
+# txt: Retrieves the value of an output exported by a CloudFormation stack, under given name.
+# opt: name: The name of the export.
+# opt: awsProfile: The AWS CLI profile.
+# txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the value.
+# use: if getCloudformationExport myKey dev; then
+# use:   echo "myKey='${RESULT}'";
+# use: fi
+function getCloudformationExport() {
+  local _name="${1}";
+  checkNotEmpty name "${_name}" 1;
+  local _awsProfile="${2}";
+  checkNotEmpty awsProfile "${_awsProfile}" 2;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+aws --profile ${_awsProfile} cloudformation list-exports | jq '.Exports' | jq '.[] | select (."Name" == "${_name}") | .Value' | tr -d '"'
+EOF
+  chmod +x ${_tmpFile};
+
+  local _output;
+  _output="$(${_tmpFile})";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

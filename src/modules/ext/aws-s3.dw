@@ -1,0 +1,387 @@
+# mod: aws-s3.dw
+# api: public
+# txt: AWS S3 functions
+
+# fun: emptyS3Bucket bucket profile
+# api: public
+# txt: Empties a bucket.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket could be emptied; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if emptyS3Bucket myBucket dev; then
+# use:   echo "S3 Bucket myBucket emptied";
+# use: fi
+function emptyS3Bucket() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile}  s3 rm s3://${_bucket} --recursive 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}\n${_errors}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3Bucket bucket profile
+# api: public
+# txt: Deletes a bucket.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3Bucket myBucket dev; then
+# use:   echo "S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3Bucket() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _errors;
+
+  if ! deleteS3BucketCors "${_bucket}" "${_profile}"; then
+    _errors="${_errors}${ERROR}\n";
+  fi
+  if ! deleteS3BucketEncryption "${_bucket}" "${_profile}"; then
+    _errors="${_errors}${ERROR}\n";
+  fi
+  if ! deleteS3BucketLifecycle "${_bucket}" "${_profile}"; then
+    _errors="${_errors}${ERROR}\n";
+  fi
+  if ! deleteS3BucketPolicy "${_bucket}" "${_profile}"; then
+    _errors="${_errors}${ERROR}\n";
+  fi
+  if ! deleteS3BucketReplication "${_bucket}" "${_profile}"; then
+    _errors="${_errors}${ERROR}\n";
+  fi
+  if ! deleteS3BucketTagging "${_bucket}" "${_profile}"; then
+    _errors="${_errors}${ERROR}\n";
+  fi
+  if ! deleteS3BucketWebsite "${_bucket}" "${_profile}"; then
+    _errors="${_errors}${ERROR}\n";
+  fi
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}\n${_errors}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketAnalyticsConfiguration bucket id profile
+# api: public
+# txt: Deletes the bucket analytics configuration.
+# opt: bucket: The bucket.
+# opt: id: The analytics configuration id.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket analytics configuration could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketAnalyticsConfiguration myBucket ${id} dev; then
+# use:   echo "The analytics configuration ${id} of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketAnalyticsConfiguration() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _id="${2}";
+  checkNotEmpty id "${_id}" 2;
+  local _profile="${3}";
+  checkNotEmpty profile "${_profile}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-analytics-configuration --bucket "${_bucket}" --id "${_id}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketCors bucket profile
+# api: public
+# txt: Deletes the bucket CORS.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket CORS could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketCors myBucket dev; then
+# use:   echo "The CORS of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketCors() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-cors --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketEncryption bucket profile
+# api: public
+# txt: Deletes the bucket encryption.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket encryption could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketEncryption myBucket dev; then
+# use:   echo "The encryption of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketEncryption() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-encryption --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketInventoryConfiguration bucket profile
+# api: public
+# txt: Deletes the bucket inventory configuration.
+# opt: bucket: The bucket.
+# opt: id: The analytics configuration id.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket inventory configuration could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketInventoryConfiguration myBucket dev; then
+# use:   echo "The inventory configuration of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketInventoryConfiguration() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _id="${2}";
+  checkNotEmpty id "${_id}" 2;
+  local _profile="${3}";
+  checkNotEmpty profile "${_profile}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-inventory-configuration --bucket "${_bucket}" --id "${_id}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketLifecycle bucket profile
+# api: public
+# txt: Deletes the bucket lifecycle.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket lifecycle could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketLifecycle myBucket dev; then
+# use:   echo "The lifecycle of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketLifecycle() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-lifecycle --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketMetricsConfiguration bucket profile
+# api: public
+# txt: Deletes the bucket metrics configuration.
+# opt: bucket: The bucket.
+# opt: id: The analytics configuration id.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket metrics configuration could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketMetricsConfiguration myBucket dev; then
+# use:   echo "The metrics configuration of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketMetricsConfiguration() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _id="${2}";
+  checkNotEmpty id "${_id}" 2;
+  local _profile="${3}";
+  checkNotEmpty profile "${_profile}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-metrics-configuration --bucket "${_bucket}" --id "${_id}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketPolicy bucket profile
+# api: public
+# txt: Deletes the bucket policy.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket policy could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketPolicy myBucket dev; then
+# use:   echo "The policy of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketPolicy() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-policy --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketReplication bucket profile
+# api: public
+# txt: Deletes the bucket replication.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket replication could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketReplication myBucket dev; then
+# use:   echo "The replication of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketReplication() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-replication --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketTagging bucket profile
+# api: public
+# txt: Deletes the bucket tagging.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket policy could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketTagging myBucket dev; then
+# use:   echo "The tags of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketTagging() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-tagging --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteS3BucketWebsite bucket profile
+# api: public
+# txt: Deletes the bucket website.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket website could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteS3BucketWebsite myBucket dev; then
+# use:   echo "The website of the S3 Bucket myBucket deleted";
+# use: fi
+function deleteS3BucketWebsite() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api delete-bucket-website --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: s3BucketAlreadyExists bucket profile
+# api: public
+# txt: Checks if a bucket actually exists.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the S3 bucket exists; 1/FALSE otherwise.
+# use: if s3BucketAlreadyExists myBucket dev; then
+# use:   echo "S3 Bucket myBucket exists";
+# use: fi
+function s3BucketAlreadyExists() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3api head-bucket --bucket "${_bucket}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

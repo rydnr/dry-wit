@@ -1,0 +1,31 @@
+# mod: aws-cli.dw
+# api: public
+# txt: AWS CLI functions
+
+# fun: retrieveAwsCliFromProfileAndRegion awsProfile awsRegion
+# api: public
+# txt: Retrieves the AWS command-line.
+# opt: awsProfile: The AWS profile.
+# opt: awsRegion: The AWS region.
+# txt: Returns 0/TRUE if the AWS CLI could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the path and common flags for AWS CLI.
+# use: if retrieveAwsCliFromProfileAndRegion "contestia-dev" "us-east-1"; then
+# use:   echo "AWS CLI -> ${RESULT}";
+# use: fi
+function retrieveAwsCliFromProfileAndRegion () {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  local _awsRegion="${2}";
+  checkNotEmpty awsRegion "${_awsRegion}" 2;
+  local -i _rescode;
+
+  local _result="$(which aws) --profile ${_awsProfile} --region ${_awsRegion}";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

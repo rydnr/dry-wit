@@ -1,0 +1,144 @@
+# mod: aws-ecr.dw
+# api: public
+# txt: AWS ECR functions
+
+# fun: getEcrImages repository profile
+# api: public
+# txt: Retrieves the list of ECR images.
+# opt: repository: The repository.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the name of the images was accessible; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains a list of space-separated image identifiers.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if getEcrImages "my/repository" dev; then
+# use:   echo "Images: ${RESULT}";
+# use: fi
+function getEcrImages() {
+  local _repository="${1}";
+  checkNotEmpty repository "${_repository}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ecr list-images --repository "${_repository}" | jq '.imageIds[] | .imageDigest' | tr -d '"' 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: emptyEcrRepository repository profile
+# api: public
+# txt: Empties a ECR repository.
+# opt: repository: The repository.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the repository could be emptied; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if emptyEcrRepository "my/repository" dev; then
+# use:   echo "Repository now empty";
+# use: fi
+function emptyEcrRepository() {
+  local _repository="${1}";
+  checkNotEmpty repository "${_repository}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local -i _rescode=${FALSE};
+
+  if getEcrImages "${_repository}" "${_profile}"; then
+    local _images="${RESULT}";
+    if isEmpty "${_images}"; then
+      _rescode=${TRUE};
+    else
+      deleteEcrImages "${_repository}" "${_profile}" ${_images};
+      _rescode=$?;
+    fi
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteEcrImages repository profile imageDigests+
+# api: public
+# txt: Deletes one or more Docker images in given ECR repository.
+# opt: imageDigests: The digests of the images to delete.
+# opt: repository: The repository.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the images could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteEcrImages repository dev sha256:42304204 other/image; then
+# use:   echo "Images deleted";
+# use: fi
+function deleteEcrImages() {
+  local _repository="${1}";
+  checkNotEmpty repository "${_repository}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+  shift;
+  shift;
+  checkNotEmpty image "${@}" 3;
+
+  local _images;
+  local _oldIFS="${_oldIFS}";
+  local _image;
+  IFS="${DWIFS}"
+  for _image in ${@}; do
+    IFS="${_oldIFS}";
+    if isNotEmpty "${_images}"; then
+      _images="${_images},";
+    fi
+    _images="${_images}imageDigest=${_image}";
+  done
+  IFS="${_oldIFS}";
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ecr batch-delete-image --repository-name "${_repository}" --image-ids ${_images} 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: ecrRepositoryAlreadyExists bucket profile
+# api: public
+# txt: Checks if a repository actually exists.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the ECR repository exists; 1/FALSE otherwise.
+# use: if ecrRepositoryAlreadyExists myRepository dev; then
+# use:   echo "ECR Repository myRepository exists";
+# use: fi
+function ecrRepositoryAlreadyExists() {
+  local _repository="${1}";
+  checkNotEmpty repository "${_repository}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+aws --profile ${_profile} ecr describe-repositories | jq '.repositories' | jq '.[] | select (."repositoryName" == "${_repository}") | .repositoryName' | tr -d '"'
+EOF
+  chmod +x ${_tmpFile};
+
+  local _output;
+  _output="$(${_tmpFile})";
+  local -i _rescode=${FALSE};
+  if areEqual "${_output}" "${_repository}"; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
