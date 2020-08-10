@@ -69,7 +69,9 @@ function debugEcho() {
   if isDebugEchoEnabled; then
     DEBUG.getDebugLogFile;
     local _logFile="${RESULT}";
-    echo "$*" >> "${_logFile}";
+    if isNotEmpty "${_logFile}"; then
+      echo "$*" >> "${_logFile}";
+    fi
   fi
 }
 
@@ -170,8 +172,9 @@ function setDebugLogFile() {
 function traceApiCall() {
   DEBUG.getDebugLogFile;
   local _logFile="${RESULT}";
-
-  printApiCall >> "${_logFile}";
+  if isNotEmpty "${_logFile}"; then
+    printApiCall >> "${_logFile}";
+  fi
 }
 
 # fun: printApiCall parentArgs*

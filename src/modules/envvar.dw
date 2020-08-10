@@ -371,7 +371,7 @@ EOF
 # use: echo "Custom environment variables: ${RESULT}";
 function retrieveCustomEnvironmentVariables() {
   ENVVAR.getEnvironmentVariablesVariableName;
-  local -n _envVariables=${RESULT};
+  local -n _envVariables="${RESULT}";
   export RESULT="${_envVariables[@]}";
 }
 
@@ -510,7 +510,7 @@ function ENVVAR.addEnvVarCommand() {
   checkNotEmpty command "${_varCommand}" 1;
 
   ENVVAR.getEnvironmentVariablesCommandsVariableName;
-  local -n _environmentVariablesCommands=${RESULT};
+  local -n _environmentVariablesCommands="${RESULT}";
   _environmentVariablesCommands[${_varName}]="${_varCommand}";
 }
 
@@ -539,7 +539,7 @@ function ENVVAR.addEnvVarDefault() {
   checkNotEmpty defaultValue "${_varDefault}" 1;
 
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
-  local -n _environmentVariablesDefaults=${RESULT};
+  local -n _environmentVariablesDefaults="${RESULT}";
   _environmentVariablesDefaults["${_varName}"]="${_varDefault}";
 }
 
@@ -568,7 +568,7 @@ function ENVVAR.addEnvVarDescription() {
   checkNotEmpty description "${_varDescription}" 2;
 
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
-  local -n _environmentVariablesDescriptions=${RESULT};
+  local -n _environmentVariablesDescriptions="${RESULT}";
   _environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
 }
 
@@ -597,7 +597,7 @@ function ENVVAR.addEnvVarMandatory() {
   ENVVAR.checkMandatoryOrOptional "${_varMandatory}" 2;
 
   ENVVAR.getMandatoryEnvironmentVariablesVariableName;
-  local -n _mandatoryEnvironmentVariables=${RESULT};
+  local -n _mandatoryEnvironmentVariables="${RESULT}";
   _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
 }
 
@@ -626,7 +626,7 @@ function ENVVAR.addOverriddenEnvVar() {
 
   if isEnvVarDefined "${_varName}"; then
     ENVVAR.getOverriddenEnvironmentVariablesVariableName;
-    local -n _overriddenEnvVariables=${RESULT};
+    local -n _overriddenEnvVariables="${RESULT}";
     _overriddenEnvVariables["${_varName}"]="${_varValue}";
     ENVVAR.addEnvVar "${_varName}" "${_varValue}";
   fi
@@ -643,7 +643,7 @@ function ENVVAR.appendEnvironmentVariable() {
   checkNotEmpty varName "${_varName}" 1;
 
   ENVVAR.getEnvironmentVariablesVariableName;
-  local -n _envVariables=${RESULT};
+  local -n _envVariables="${RESULT}";
   _envVariables[${#_envVariables[@]}]="${_varName}";
 }
 
@@ -781,8 +781,11 @@ function ENVVAR.evalVarDefault() {
 
   ENVVAR.getModuleName;
   DW.getGlobalVariableName "${RESULT}" ENVIRONMENT_VARIABLES_DEFAULTS;
-  local -n _environmentVariablesDefaults=${RESULT};
-  local _result="${_environmentVariablesDefaults[${_varName}]}";
+  local _result;
+  if isNotEmpty "${RESULT}"; then
+    local -n _environmentVariablesDefaults=${RESULT};
+    _result="${_environmentVariablesDefaults[${_varName}]}";
+  fi
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
     export RESULT="";

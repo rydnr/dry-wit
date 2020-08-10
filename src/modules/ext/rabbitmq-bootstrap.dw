@@ -146,16 +146,11 @@ function rabbitmqMigrate() {
     logDebug -n "Enabling changesets";
     if enable_changesets; then
       logDebugResult SUCCESS "done";
-      restart_cron_daemon;
+
+      DW.import cron;
+      restartCronDaemon;
     else
       logInfo "Changeset monitoring NOT enabled";
-    fi
-  fi
-
-    else
-      logDebugResult FAILURE "failed";
-      RABBITMQBOOTSTRAP.releaseBootstrapLock;
-      exitWithErrorCode CANNOT_ENABLE_CHANGESETS;
     fi
   fi
 

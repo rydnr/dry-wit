@@ -33,8 +33,18 @@ function restartCronDaemon() {
   local -i _rescode=${FALSE};
 
   if isCronDaemonRunning; then
-    kill ${RESULT};
-    _rescode=$?;
+    _rescode=${TRUE};
+    local _oldIFS="${IFS}";
+    local _pid;
+    local _aux;
+    IFS="${DWIFS}";
+    for _pid in ${RESULT}; do
+      kill ${_pid};
+      _aux=$?;
+      if isFalse ${_aux}; then
+        _rescode=${FALSE};
+      fi
+    done
   fi
 
   return ${_rescode};

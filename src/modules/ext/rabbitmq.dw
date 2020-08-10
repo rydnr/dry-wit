@@ -136,7 +136,7 @@ function addUser() {
 
   logTrace -n "Adding ${_user}";
   _log="$(rabbitmqctl -n "${_nodename}" add_user ${_user} "${_password}" 2>&1)";
-j  _rescode=$?;
+  _rescode=$?;
   if isTrue ${_rescode}; then
     logTraceResult SUCCESS "done";
     export OUTPUT="${_log}";
