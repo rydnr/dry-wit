@@ -394,7 +394,15 @@ function replaceAll() {
 
   local -i _rescode;
 
-  local _result="${_text//${_old}/${_replacement}}";
+  local _result;
+
+  local _source="${_text//\//\\/}";
+  local _saneOld="${_old//\//\\/}";
+  local _saneReplacement="${_replacement//\//\\/}";
+  _saneReplacement="${_saneReplacement//&/\\&}";
+  _saneReplacement="${_saneReplacement//\\/\\\\}";
+
+  _result="$(echo "${_source}" | sed "s/${_saneOld}/${_saneReplacement}/g")";
 
   if areEqual "${_text}" "${_result}"; then
     _rescode=${FALSE};

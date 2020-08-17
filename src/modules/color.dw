@@ -220,12 +220,12 @@ function allowsColors() {
       local _colors="$(tput colors 2>&1)";
       if isNotEmpty "${_colors}"; then
         if isGreaterOrEqualTo "${_colors}" 8; then
-          env | grep -e '^_=' | grep env > /dev/null 2>&1;
-          if isTrue $?; then
+#          env | grep -e '^_=' | grep env > /dev/null 2>&1;
+#          if isTrue $?; then
             _rescode=${TRUE};
-          else
-            _rescode=${FALSE};
-          fi
+#          else
+#            _rescode=${FALSE};
+#          fi
         else
           _rescode=${FALSE};
         fi
