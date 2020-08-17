@@ -102,6 +102,7 @@ function mongodbMigrate() {
     MONGODBBOOTSTRAP.createAdminUserIfItDoesNotExist "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}";
 
     if MONGODBBOOTSTRAP.freeMonitoringRequested "${_enableFreeMonitoring}"; then
+      logDebug "Enabling free monitoring";
       if MONGODBBOOTSTRAP.enableFreeMonitoringIfNotEnabledAlready "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}"; then
         local _url="${RESULT}";
         if isNotEmpty "${_url}"; then
@@ -261,8 +262,6 @@ function MONGODBBOOTSTRAP.disableFreeMonitoringIfNotDisabledAlready() {
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
       fi
-      MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
-      exitWithErrorCode CANNOT_DISABLE_FREE_MONITORING;
     fi
   fi
 

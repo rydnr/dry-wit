@@ -831,8 +831,17 @@ function createMongodbIndex() {
   local _options="${8}";
   checkNotEmpty options "${_options}" 8;
 
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}";
+use ${_database}
+
+db.${_collection}.createIndex(${_index}, ${_options})
+EOF
+
   local _output;
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.createIndex(${_index},${_options})" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1 | grep 'ok' | grep '1')";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -874,8 +883,25 @@ function mongodbIndexAlreadyExists() {
   local _index="${7}";
   checkNotEmpty index "${_index}" 7;
 
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > ${_tmpFile}
+use ${_database}
+
+var indexes = db.${_collection}.getIndexes();
+var exists = false;
+for (var i=0; i < indexes.length; i++) {
+  if (indexes[i].name == "${_index}") {
+    exists = true;
+    break;
+  }
+};
+print('**' + exists + '**');
+EOF
+
   local _output;
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "var indexes = db.getCollection('${_collection}').getIndexes(); var exists = false; for (var i=0; i < indexes.length; i++) { if (indexes[i].name == '${_index}') { exists = true; break; } }; print(exists);" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" | grep "**true**")";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -1126,7 +1152,7 @@ function addMongodbRoleIfNecessary() {
   local _authenticationMechanism="${10}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
 
-  logDebug -n "Checking if ${_roleName} role already exists";
+  logDebug -n "Checking if ${_roleName} role already exists in ${_database} database";
   if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
     logDebugResult SUCCESS "exists";
   else
@@ -1145,7 +1171,7 @@ function addMongodbRoleIfNecessary() {
       exitWithErrorCode "${_cannotAddRoleErrorLabel}";
     fi
 
-    logDebug -n "Double-checking ${_roleName} role already exists";
+    logDebug -n "Double-checking ${_roleName} role already exists in ${_database} database";
     if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       logDebugResult SUCCESS "exists";
     else
@@ -1215,7 +1241,7 @@ function addMongodbUserIfNecessary() {
       exitWithErrorCode "${_cannotCreateUserErrorLabel}";
     fi
 
-    logDebug -n "Double-checking if user ${_userName} can log in, using database ${_database}";
+    logDebug -n "Double-checking if user ${_userName} can log in, using ${_database} database";
     if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
       logDebugResult SUCCESS "success";
     else
@@ -1332,7 +1358,7 @@ function addMongodbDatabaseIfNecessary() {
   local _authenticationMechanism="${8}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 8;
 
-  logDebug -n "Checking if database ${_database} already exists";
+  logDebug -n "Checking if ${_database} database already exists";
   if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
     logDebugResult SUCCESS "success";
   else
@@ -1353,7 +1379,7 @@ function addMongodbDatabaseIfNecessary() {
       exitWithErrorCode "${_cannotCreateDatabaseErrorLabel}";
     fi
 
-    logDebug -n "Double-checking if database ${_database} exists";
+    logDebug -n "Double-checking if ${_database} database exists";
     if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       logDebugResult SUCCESS "success";
     else
@@ -1419,7 +1445,7 @@ function addMongodbCollectionIfNecessary() {
       exitWithErrorCode "${_cannotCreateCollectionErrorLabel}";
     fi
 
-    logDebug -n "Double-checking if collection ${_collection} exists in database ${_database}";
+    logDebug -n "Double-checking if collection ${_collection} exists in ${_database} database";
     if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       logDebugResult SUCCESS "success";
     else
@@ -1483,7 +1509,7 @@ function removeMongodbCollectionIfNecessary() {
       exitWithErrorCode "${_cannotRemoveCollectionErrorLabel}";
     fi
 
-    logDebug -n "Double-checking if collection ${_collection} is actually removed in database ${_database}";
+    logDebug -n "Double-checking if collection ${_collection} is actually removed from ${_database} database";
     if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       local _error="${ERROR}";
       logDebugResult FAILURE "failed";
