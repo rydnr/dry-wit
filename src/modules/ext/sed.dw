@@ -1,0 +1,52 @@
+# mod: sed
+# api: public
+# txt: sed-related functions.
+
+# fun: safeSedReplacement match replacement file?
+# api: public
+# txt: A sed "s/${keyword}/${replacement}/g" alternative, which ensures both the keyword and the replacement are safe for sed to use, i.e., if they contain special characters for sed, they are managed properly.
+# txt: It's meant to be used as a replacement for sed, so it expects reading from stdin if no file is provided.
+# opt: match: The match.
+# opt: replacement: The replacement.
+# opt: file: The input file. Optional. If omitted, it expects input from stdin.
+# txt: Returns whatever sed returns.
+# use: cat /tmp/myFile | safeSedReplacement "|password|" "${MY_RANDOM_PASSWORD_WITH_SPECIAL_CHARACTERS}"
+function safeSedReplacement() {
+  local _match="${1}";
+  checkNotEmpty text "${_match}" 1;
+  local _replacement="${2}";
+  checkNotEmpty replacement "${_replacement}" 2;
+  local _file="${3}";
+
+  local _aux="$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"${_replacement}")";
+
+  if isEmpty "${_file}"; then
+    sed "s/${_match//\//\\/}/${_aux}/g";
+  else
+    sed "s/${_match//\//\\/}/${_aux}/g" "${_file}";
+  fi
+}
+
+# fun: safeSedMinusIReplacement match replacement file
+# api: public
+# txt: A sed "s/${keyword}/${replacement}/g" alternative, which ensures both the keyword and the replacement are safe for sed to use, i.e., if they contain special characters for sed, they are managed properly.
+# txt: It's meant to be used as a replacement for sed -i.
+# opt: match: The match.
+# opt: replacement: The replacement.
+# opt: file: The file to update.
+# txt: Returns whatever sed returns.
+# use: safeSedMinusIReplacement "|password|" "${MY_RANDOM_PASSWORD_WITH_SPECIAL_CHARACTERS}" /tmp/myFile
+function safeSedMinusIReplacement() {
+  local _match="${1}";
+  checkNotEmpty text "${_match}" 1;
+  local _replacement="${2}";
+  checkNotEmpty replacement "${_replacement}" 2;
+  local _file="${3}";
+  checkNotEmpty file "${_file}" 3;
+
+  local _aux="$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"${_replacement}")";
+
+  sed -i "s/${_match//\//\\/}/${_aux}/g" "${_file}";
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
+
