@@ -609,8 +609,8 @@ function logDebugFile() {
     checkNotEmpty file "${_file}" 1;
 
     local _line;
-    cat "${_file}" | while IFS='' read -r line; do
-      LOGGING.logStuff DEBUG "${line}";
+    cat "${_file}" | while IFS='' read -r _line; do
+      LOGGING.logStuff DEBUG "${_line}";
     done
   fi
 }
@@ -3014,8 +3014,9 @@ function LOGGING.logToFilesAnEmptyLine() {
 # use:   echo "log to files is enabled";
 # use: fi
 function isLogToFilesEnabled() {
-  LOGGING.getModuleName;
-  DW.getGlobalInt "${RESULT}" LOG_TO_FILES;
+#  LOGGING.getModuleName;
+#  DW.getGlobalInt "${RESULT}" LOG_TO_FILES;
+  return ${FALSE};
 }
 
 # fun: applyThemeIfPresent
