@@ -15,10 +15,12 @@ function safeSedReplacement() {
   local _match="${1}";
   checkNotEmpty text "${_match}" 1;
   local _replacement="${2}";
-  checkNotEmpty replacement "${_replacement}" 2;
   local _file="${3}";
 
-  local _aux="$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"${_replacement}")";
+  local _aux="";
+  if isNotEmpty "${_replacement}"; then
+    _aux="$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"${_replacement}")";
+  fi
 
   if isEmpty "${_file}"; then
     sed "s/${_match//\//\\/}/${_aux}/g";
@@ -40,13 +42,14 @@ function safeSedMinusIReplacement() {
   local _match="${1}";
   checkNotEmpty text "${_match}" 1;
   local _replacement="${2}";
-  checkNotEmpty replacement "${_replacement}" 2;
   local _file="${3}";
   checkNotEmpty file "${_file}" 3;
 
-  local _aux="$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"${_replacement}")";
+  local _aux="";
+  if isNotEmpty "${_replacement}"; then
+    _aux="$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"${_replacement}")";
+  fi
 
   sed -i "s/${_match//\//\\/}/${_aux}/g" "${_file}";
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
-
