@@ -131,7 +131,25 @@ function normalizeUppercase_works_test() {
 function replaceAll_works_test() {
   replaceAll "a b c" " " ",";
   local _result="${RESULT}";
-  Assert.areEqual "a,b,c" "${_result}" "replaceAll 'a b c' failed";
+  Assert.areEqual "a,b,c" "${_result}" "replaceAll 'a b c' ' ' ',' failed";
+}
+
+function replaceAll_works_with_forward_slashes_test() {
+  replaceAll "a/b/c" "b" ",";
+  local _result="${RESULT}";
+  Assert.areEqual "a/,/c" "${_result}" "replaceAll 'a/b/c' 'b' ',' failed";
+}
+
+function replaceAll_works_with_backward_slashes_test() {
+  replaceAll "a\\b\\c" "b" ",";
+  local _result="${RESULT}";
+  Assert.areEqual "a\\,\\c" "${_result}" "replaceAll 'a\\b\\c' 'b' ',' failed";
+}
+
+function replaceAll_works_with_ampersands_test() {
+  replaceAll "a&b&c" "b" ",";
+  local _result="${RESULT}";
+  Assert.areEqual "a&,&c" "${_result}" "replaceAll 'a&b&c' 'b' ',' failed";
 }
 
 function areEqual_works_test() {
