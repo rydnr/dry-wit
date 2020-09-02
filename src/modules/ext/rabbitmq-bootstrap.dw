@@ -20,6 +20,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "ok";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     exitWithErrorCode CANNOT_ACQUIRE_LOCK;
   fi
 
@@ -28,6 +29,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "running";
   else
     logDebugResult FAILURE "stopped";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode RABBITMQ_NOT_RUNNING;
   fi
@@ -37,6 +39,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_RETRIEVE_RABBITMQADMIN;
   fi
@@ -46,6 +49,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_FIX_RABBITMQADMIN;
   fi
@@ -55,6 +59,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT;
   fi
@@ -68,6 +73,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_ADMIN_USER_TAGS;
   fi
@@ -77,6 +83,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_ADMIN_USER_PERMISSIONS;
   fi
@@ -90,6 +97,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_NAME_TAGS;
   fi
@@ -99,6 +107,7 @@ function rabbitmqMigrate() {
     logDebugResult SUCCESS "done";
   else
     logDebugResult FAILURE "failed";
+    RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_NAME_PERMISSIONS;
   fi
@@ -112,6 +121,7 @@ function rabbitmqMigrate() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_DECLARE_THE_VIRTUAL_HOSTS;
     fi
@@ -124,6 +134,7 @@ function rabbitmqMigrate() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES;
     fi
@@ -136,6 +147,7 @@ function rabbitmqMigrate() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_PATCH_THE_RABBITMQ_INSTANCE;
     fi
@@ -148,12 +160,13 @@ function rabbitmqMigrate() {
       logDebugResult SUCCESS "done";
 
       DW.import cron;
-      restartCronDaemon;
+      sendKillSignalToCronProcess;
     else
       logInfo "Changeset monitoring NOT enabled";
     fi
   fi
 
+  RABBITMQBOOTSTRAP.annotateBootstrapCompleted;
   RABBITMQBOOTSTRAP.releaseBootstrapLock;
 }
 
@@ -182,6 +195,7 @@ function RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist() {
     else
       logDebugResult FAILURE "failed";
       logInfo "${ERROR}";
+      RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_ADD_ADMIN_USER;
     fi
@@ -200,6 +214,7 @@ function RABBITMQBOOTSTRAP.addMonitoringUserIfItDoesNotExist() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
+      RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_ADD_MONITORING_USER;
     fi
@@ -233,10 +248,10 @@ function RABBITMQBOOTSTRAP.deleteGuestUserIfItExists() {
 function RABBITMQBOOTSTRAP.acquireBootstrapLock() {
   local -i _rescode;
 
-  if fileExists "${LOCK_FILE}"; then
+  if fileExists "${BOOTSTRAP_LOCK_FILE}"; then
     _rescode=${FALSE};
   else
-    touch ${LOCK_FILE};
+    touch ${BOOTSTRAP_LOCK_FILE};
     _rescode=${TRUE};
   fi
 
@@ -281,11 +296,51 @@ function RABBITMQBOOTSTRAP.fixRabbitmqadminIfNeeded() {
 function RABBITMQBOOTSTRAP.releaseBootstrapLock() {
   local -i _rescode;
 
-  if fileExists "${LOCK_FILE}"; then
+  if fileExists "${BOOTSTRAP_LOCK_FILE}"; then
     _rescode=${TRUE};
-    rm -f "${LOCK_FILE}";
+    rm -f "${BOOTSTRAP_LOCK_FILE}";
   else
     _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: RABBITMQBOOTSTRAP.annotateBootstrapFailed
+# api: private
+# txt: Annotates the bootstrap has failed.
+# txt: Returns 0/TRUE if the file could be created; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.annotateBootstrapFailed; then
+# use:   echo "Error: Could not annotate the bootstap process has failed";
+# use: fi
+function RABBITMQBOOTSTRAP.annotateBootstrapFailed() {
+  local -i _rescode;
+
+  if fileExists "${BOOTSTRAP_FAILED_FILE}"; then
+    _rescode=${TRUE};
+  else
+    touch "${BOOTSTRAP_FAILED_FILE}";
+    _rescode=$?;
+  fi
+
+  return ${_rescode};
+}
+
+# fun: RABBITMQBOOTSTRAP.annotateBootstrapCompleted
+# api: private
+# txt: Annotates the bootstrap has completed successfully.
+# txt: Returns 0/TRUE if the file could be created; 1/FALSE otherwise.
+# use: if RABBITMQBOOTSTRAP.annotateBootstrapCompleted; then
+# use:   echo "Error: Could not annotate the bootstap process has completed successfully";
+# use: fi
+function RABBITMQBOOTSTRAP.annotateBootstrapCompleted() {
+  local -i _rescode;
+
+  if fileExists "${BOOTSTRAP_COMPLETED_FILE}"; then
+    _rescode=${TRUE};
+  else
+    touch "${BOOTSTRAP_COMPLETED_FILE}";
+    _rescode=$?;
   fi
 
   return ${_rescode};
@@ -397,7 +452,9 @@ addError RABBITMQCTL_NOT_AVAILABLE "rabbitmqctl is not available";
 checkReq rabbitmqctl RABBITMQCTL_NOT_AVAILABLE;
 
 # errors
-addError LOCK_FILE_ENV_VAR_IS_MANDATORY "LOCK_FILE environment variable is mandatory";
+addError BOOTSTRAP_LOCK_FILE_ENV_VAR_IS_MANDATORY "BOOTSTRAP_LOCK_FILE environment variable is mandatory";
+addError BOOTSTRAP_FAILED_FILE_ENV_VAR_IS_MANDATORY "BOOTSTRAP_FAILED_FILE environment variable is mandatory";
+addError BOOTSTRAP_COMPLETED_FILE_ENV_VAR_IS_MANDATORY "BOOTSTRAP_COMPLETED_FILE environment variable is mandatory";
 addError CANNOT_ACQUIRE_LOCK "Cannot acquire lock";
 addError RABBITMQ_NOT_RUNNING "RabbitMQ is not running";
 addError CANNOT_RETRIEVE_RABBITMQADMIN "Cannot retrieve rabbitmqadmin";
@@ -417,8 +474,12 @@ addError CANNOT_ENABLE_CHANGESETS "Cannot enable the changesets";
 
 # env: RABBITMQ_NODENAME: The name of the RabbitMQ node.
 defineEnvVar RABBITMQ_NODENAME MANDATORY "The name of the RabbitMQ node";
-# env: LOCK_FILE: The file indicating if the bootstrap is running.
-defineEnvVar LOCK_FILE MANDATORY "The file indicating if the bootstrap is running";
+# env: BOOTSTRAP_LOCK_FILE: The file indicating if the bootstrap is running.
+defineEnvVar BOOTSTRAP_LOCK_FILE MANDATORY "The file indicating if the bootstrap is running";
+# env: BOOTSTRAP_FAILED_FILE: The file indicating if the bootstrap has failed.
+defineEnvVar BOOTSTRAP_FAILED_FILE MANDATORY "The file indicating if the bootstrap has failed";
+# env: BOOTSTRAP_COMPLETED_FILE: The file indicating if the bootstrap has completed successfully.
+defineEnvVar BOOTSTRAP_COMPLETED_FILE MANDATORY "The file indicating if the bootstrap has completed successfully";
 # env: ADMIN_USER_PASSWORD: The password for the admin user.
 defineEnvVar ADMIN_USER_PASSWORD MANDATORY "The password for the admin user";
 # env: MONITORING_USER_PASSWORD: The password for the monitoring user.
@@ -427,6 +488,7 @@ defineEnvVar MONITORING_USER_PASSWORD MANDATORY "The password for the monitoring
 # env: ADMIN_USER_NAME: The name of the admin user.
 defineEnvVar ADMIN_USER_NAME MANDATORY "The name of the admin user" admin;
 # env: ADMIN_USER_PASSWORD: The password of the 'admin' user.
+# ADMIN_USER_PASSWORD=
 # env: ADMIN_USER_TAGS: The tags of the admin user.
 defineEnvVar ADMIN_USER_TAGS MANDATORY "The tags of the admin user" "administrator";
 # env: ADMIN_USER_CONFIGURE_PERMISSIONS: The configure permissions for the Admin user.

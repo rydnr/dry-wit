@@ -2,17 +2,23 @@
 # api: public
 # txt: Cron module.
 
-# fun: isCronDaemonRunning
+# fun: isCronRunning cronPath?
 # api: public
-# txt: Checks if the cron daemon is running.
-# txt: Returns 0/TRUE if the daemon is running; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the process id of the cron daemon.
-# use: if isCronDaemonRunning; then
-# use:   echo "Cron daemon running: ${RESULT}";
+# txt: Checks if the cron process is running.
+# opt: cronPath: The location of the executable. Optional. Defaults to /usr/sbin/cron.
+# txt: Returns 0/TRUE if the process is running; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the process id of the cron process.
+# use: if isCronRunning; then
+# use:   echo "Cron process running: ${RESULT}";
 # use: fi
-function isCronDaemonRunning() {
+function isCronRunning() {
+  local _cronPath="${1}";
+  if isEmpty "${_cronPath}"; then
+    _cronPath="/usr/sbin/cron";
+  fi
+
   local _cronPid;
-  _cronPid="$(pidof /usr/sbin/cron)";
+  _cronPid="$(pidof ${_cronPath})";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -22,24 +28,31 @@ function isCronDaemonRunning() {
   return ${_rescode};
 }
 
-# fun: restartCronDaemon
+# fun: sendSignalToCronProcess signal?
 # api: public
-# txt: Restarts the cron daemon.
-# txt: Returns 0/TRUE if the daemon could be restarted; 1/FALSE otherwise.
-# use: if restartCronDaemon; then
-# use:   echo "Cron daemon restarted";
+# txt: Sends a signal to the cron process.
+# opt: signal: The signal to send. Optional. If omitted, the TERM signal is sent.
+# txt: Returns 0/TRUE if the cron process was running and kill command returned 0; 1/FALSE otherwise.
+# use: if sendSignalToCronProcess; then
+# use:   echo "Cron process killed";
 # use: fi
-function restartCronDaemon() {
+function sendKillSignalToCronProcess() {
+  local _signal="${1}";
+
   local -i _rescode=${FALSE};
 
-  if isCronDaemonRunning; then
+  if isCronRunning; then
     _rescode=${TRUE};
     local _oldIFS="${IFS}";
     local _pid;
     local _aux;
     IFS="${DWIFS}";
     for _pid in ${RESULT}; do
-      kill ${_pid};
+      if isEmpty "${_signal}"; then
+        kill ${_pid};
+      else
+        kill -${_signal} ${_pid};
+      fi
       _aux=$?;
       if isFalse ${_aux}; then
         _rescode=${FALSE};

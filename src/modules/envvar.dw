@@ -784,6 +784,7 @@ function ENVVAR.evalVarDefault() {
   local _result;
   if isNotEmpty "${RESULT}"; then
     local -n _environmentVariablesDefaults=${RESULT};
+    echo "_varName=\"${_varName}\", _environmentVariablesDefaults=${RESULT}" >> /tmp/envvar.log
     _result="${_environmentVariablesDefaults[${_varName}]}";
   fi
   if isEmpty "${_result}"; then
