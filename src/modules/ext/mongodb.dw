@@ -265,8 +265,8 @@ EOF
 # opt: roleSpec: The space-separated list of role names.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
-# use: if addMongodbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }""; then
-# use:   echo "User admin created successfully";
+# use: if addMongodbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }"; then
+# use:   echo "User my-user created successfully";
 # use: fi
 function addMongodbUser() {
   local _user="${1}";
@@ -299,6 +299,60 @@ function addMongodbUser() {
   cat <<EOF > "${_tmpFile}"
 use ${_database}
 db.createUser({ user: "${_user}", pwd: "${_password}", roles: ${_roleSpec} })
+EOF
+
+  local _output;
+  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_database}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: removeMongodbUser user database root rootPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Removes a new user.
+# opt: user: The user.
+# opt: database: The user database.
+# opt: root: The root user.
+# opt: rootPassword: The root password.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE if the user gets removed successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
+# use: if removeMongodbUser "my-user" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
+# use:   echo "User my-user removed successfully";
+# use: fi
+function removeMongodbUser() {
+  local _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  shift;
+  local _database="${1}";
+  checkNotEmpty database "${_database}" 2;
+  shift;
+  local _root="${1}";
+  checkNotEmpty root "${_root}" 3;
+  shift;
+  local _rootPassword="${1}";
+  checkNotEmpty rootPassword "${_rootPassword}" 4;
+  shift;
+  local _authenticationDatabase="${1}";
+  checkNotEmpty authenticationaDtabase "${_authenticationDatabase}" 5;
+  shift;
+  local _authenticationMechanism="${1}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+use ${_database}
+db.dropUser("${_user}", { j: true, w: "majority" })
 EOF
 
   local _output;
@@ -627,7 +681,7 @@ function startMongodWithAuthenticationEnabled() {
 
   chmod a+x "${_permissionsFolder}";
 
-  run-as.sh ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authenticationMechanism};
+  $(which run-as.sh) ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authenticationMechanism};
   local -i _rescode=$?;
 
   return ${_rescode};
@@ -761,33 +815,51 @@ function mongodbAdminUserAlreadyExists() {
   return ${_rescode};
 }
 
-# fun: mongodbUserAlreadyExists user adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# fun: mongodbUserAlreadyExists user database adminUserName adminUserPassword authenticationDatabase authenticationMechanism
 # api: public
-# txt: Checks given MongoDB user can login.
+# txt: Checks given MongoDB user exists in given database.
 # opt: user: The user name.
+# opt: database: The database.
 # opt: adminUser: The user to access the MongoDB server.
 # opt: adminPassword: The password to access the MongoDB server.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
 # txt: Returns 0/TRUE if given user exists; 1/FALSE otherwise.
-# use: if mongodbUserAlreadyExists root myDb; then
+# use: if mongodbUserAlreadyExists root myDb admin secret admin SCRAM-SHA-256; then
 # use:   echo "User root exists in myDb database";
 # use: fi
 function mongodbUserAlreadyExists() {
   local _user="${1}";
   checkNotEmpty user "${_user}" 1;
-  local _adminUserName="${2}";
-  checkNotEmpty adminUserName "${_adminUserName}" 2;
-  local _adminUserPassword="${3}";
-  checkNotEmpty adminUserPassword "${_adminUserPassword}" 3;
-  local _authenticationDatabase="${4}";
-  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 4;
-  local _authenticationMechanism="${5}";
-  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 5;
+  local _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _adminUserName="${3}";
+  checkNotEmpty adminUserName "${_adminUserName}" 3;
+  local _adminUserPassword="${4}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 4;
+  local _authenticationDatabase="${5}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
+  local _authenticationMechanism="${6}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}";
+use ${_database}
+
+db.getUsers( { filter: { 'user': '${_user}' } } )
+EOF
 
   local _output;
-  _output="$(mongo -u ${_adminUserName} -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --quiet "${_database}" --eval "db.getUsers({filter: {'user': '${_user}'}})" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1 | grep -v "switched to db " | grep -v "UUID" | jq '. | length')";
   local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    if areEqual "${_output}" 0; then
+      _rescode=${FALSE};
+    fi
+  fi
 
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
@@ -1187,7 +1259,7 @@ function addMongodbRoleIfNecessary() {
 
 # fun: addMongodbUserIfNecessary userName userPassword database roleSpec cannotCreateUserErrorLabel cannotLogInErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
 # api: public
-# txt: Adds the user able to access the EventStore database, if necessary.
+# txt: Adds the user able to access given database, if necessary.
 # opt: userName: The user name.
 # opt: userPassword: The user password.
 # opt: database: The target database.
@@ -1198,7 +1270,7 @@ function addMongodbRoleIfNecessary() {
 # opt: adminUserPassword: The password to access the MongoDB server.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
-# txt: Returns 0/TRUE always, but can exit if the EventStore user cannot be added.
+# txt: Returns 0/TRUE always, but can exit if the user cannot be added.
 # use: addMongodbUserIfNecessary core secret admin "[ { role: '${MyCollectionFindRole}', db: 'admin' },{ role: '${MyCollectionInsertRole}', db: 'admin' } ]" CANNOT_ADD_CORE_USER CORE_USER_CANNOT_LOG_IN admin secret admin SCRAM-SHA-256;
 function addMongodbUserIfNecessary() {
   local _userName="${1}";
@@ -1252,6 +1324,68 @@ function addMongodbUserIfNecessary() {
       fi
       exitWithErrorCode "${_cannotLogInErrorLabel}";
     fi
+  fi
+}
+
+# fun: removeMongodbUserIfNecessary userName database cannotCreateUserErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# api: public
+# txt: Removes the user from given database, if necessary.
+# opt: userName: The user name.
+# opt: database: The database.
+# opt: cannotRemoveUserErrorLabel: The error label when the user cannot be removed.
+# opt: adminUserName: The user to access the MongoDB server.
+# opt: adminUserPassword: The password to access the MongoDB server.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# txt: Returns 0/TRUE always, but can exit if the user cannot be removed.
+# use: removeMongodbUserIfNecessary core myDb CANNOT_REMOVE_CORE_USER admin secret admin SCRAM-SHA-256;
+function removeMongodbUserIfNecessary() {
+  local _userName="${1}";
+  checkNotEmpty userName "${_userName}" 1;
+  local _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _cannotRemoveUserErrorLabel="${3}";
+  checkNotEmpty cannotRemoveUserErrorLabel "${_cannotRemoveUserErrorLabel}" 3;
+  local _adminUserName="${4}";
+  checkNotEmpty adminUserName "${_adminUserName}" 4;
+  local _adminUserPassword="${5}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5;
+  local _authenticationDatabase="${6}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 6;
+  local _authenticationMechanism="${7}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
+
+  logDebug -n "Checking if user ${_userName} already exists in database ${_database}";
+  if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    logDebugResult SUCCESS "success";
+
+    logDebug -n "Removing ${_userName} user";
+    if removeMongodbUser "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      logTrace "${_output}";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotRemoveUserErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking if user ${_userName} still exists in database ${_database}";
+    if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotRemoveUserErrorLabel}";
+    else
+      logDebugResult SUCCESS "success";
+    fi
+  else
+    logDebugResult NEUTRAL "failed";
   fi
 }
 
