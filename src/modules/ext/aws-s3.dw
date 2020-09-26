@@ -384,4 +384,98 @@ function s3BucketAlreadyExists() {
 
   return ${_rescode};
 }
+
+# fun: syncS3Bucket folder bucket profile
+# api: public
+# txt: Synchronizes given folder's contents with the bucket's.
+# opt: folder: The folder.
+# opt: bucket: The bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the contents were synchronized; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if syncS3Bucket ${folder} ${myBucket} dev; then
+# use:   echo "${folder} synchronized with ${myBucket}";
+# use: fi
+function syncS3Bucket() {
+  local _folder="${1}";
+  checkNotEmpty folder "${_folder}" 1;
+  local _bucket="${2}";
+  checkNotEmpty bucket "${_bucket}" 2;
+  local _profile="${3}";
+  checkNotEmpty profile "${_profile}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile}  s3 sync ${_folder} s3://${_bucket} 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: cpS3Bucket file bucket destination profile
+# api: public
+# txt: Copies given file to given bucket.
+# opt: file: The file.
+# opt: bucket: The bucket.
+# opt: destination: The destination file inside the bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the file was copied; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR might contain more information.
+# use: if cpS3Bucket ${file} ${myBucket} myFile dev; then
+# use:   echo "${file} copied to ${myBucket}/myFile";
+# use: fi
+function cpS3Bucket() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local _bucket="${2}";
+  checkNotEmpty bucket "${_bucket}" 2;
+  local _destination="${3}";
+  checkNotEmpty destination "${_destination}" 3;
+  local _profile="${4}";
+  checkNotEmpty profile "${_profile}" 4;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile}  s3 cp "${_file}" "s3://${_bucket}/${_destination}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: rmS3Bucket bucket file profile
+# api: public
+# txt: Removes a file in given bucket.
+# opt: bucket: The bucket.
+# opt: file: The file.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the file was removed; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR might contain more information.
+# use: if rmS3Bucket ${myBucket} ${myFile} dev; then
+# use:   echo "${myBucket}/${myFile} removed";
+# use: fi
+function rmS3Bucket() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _file="${2}";
+  checkNotEmpty file "${_file}" 2;
+  local _profile="${3}";
+  checkNotEmpty profile "${_profile}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile}  s3 rm "s3://${_bucket}/${_file}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
