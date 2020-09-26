@@ -206,38 +206,38 @@ function buildColor() {
 function allowsColors() {
   local -i _rescode;
 
-  local _cachedResult="${_DW_ALLOWS_COLORS}";
+  local -i _disableColors=${FALSE};
+  if isNotEmpty "${NO_COLOR}"; then
+    _disableColors=${TRUE};
+  elif   isNotEmpty "${USECOLOR}" \
+      && areEqual "${USECOLOR}" "no"; then
+    _disableColors=${TRUE};
+  fi
+  if isFalse ${_disableColors}; then
+    local _cachedResult="${_DW_ALLOWS_COLORS}";
 
-  if isEmpty "${_cachedResult}"; then
-    local -i _disableColors=${FALSE};
-    if isNotEmpty "${NO_COLOR}"; then
-      _disableColors=${TRUE};
-    elif   isNotEmpty "${USECOLOR}" \
-        && areEqual "${USECOLOR}" "no"; then
-      _disableColors=${TRUE};
-    fi
-    if isFalse ${_disableColors}; then
+    if isEmpty "${_cachedResult}"; then
       local _colors="$(tput colors 2>&1)";
       if isNotEmpty "${_colors}"; then
         if isGreaterOrEqualTo "${_colors}" 8; then
-#          env | grep -e '^_=' | grep env > /dev/null 2>&1;
-#          if isTrue $?; then
-            _rescode=${TRUE};
-#          else
-#            _rescode=${FALSE};
-#          fi
+          #          env | grep -e '^_=' | grep env > /dev/null 2>&1;
+          #          if isTrue $?; then
+          _rescode=${TRUE};
+          #          else
+          #            _rescode=${FALSE};
+          #          fi
         else
           _rescode=${FALSE};
         fi
       else
         _rescode=${FALSE};
       fi;
+      export _DW_ALLOWS_COLORS=${_rescode};
     else
-      _rescode=${FALSE};
+      _rescode=${_cachedResult};
     fi
-    export _DW_ALLOWS_COLORS=${_rescode};
   else
-    _rescode=${_cachedResult};
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
