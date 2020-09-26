@@ -614,14 +614,16 @@ function DRYWITTEST.dwtest() {
   IFS=${DWIFS};
   for _t in ${_tests}; do
     IFS="${_oldIFS}";
-    humanReadableTest "${_t}";
-    logInfo -n "${RESULT}";
-    if runTest "${_t}"; then
-      logInfoResult SUCCESS "pass";
-      _passed=$((_passed+1));
-    else
-      logInfoResult FAILURE "failed";
-      _failed=$((_failed+1));
+    if isNotEmpty "${_t}"; then
+      humanReadableTest "${_t}";
+      logInfo -n " ${RESULT}";
+      if runTest "${_t}"; then
+        logInfoResult SUCCESS "pass";
+        _passed=$((_passed+1));
+      else
+        logInfoResult FAILURE "failed";
+        _failed=$((_failed+1));
+      fi
     fi
   done
   IFS="${_oldIFS}";
@@ -1112,9 +1114,11 @@ function humanReadableTest() {
   local _test="${1}";
   checkNotEmpty test "${_test}" 1;
 
-  removeSuffix "${_test}" "_test";
-  replaceAll "${RESULT}" "_" " ";
-  capitalize "${RESULT}";
+  if removeSuffix "${_test}" "_test"; then
+    if replaceAll "${RESULT}" "_" " "; then
+      capitalize "${RESULT}";
+    fi
+  fi
 
   return ${TRUE};
 }
