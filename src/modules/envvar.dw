@@ -40,11 +40,11 @@ function ENVVAR.getModuleName() {
 # opt: defaultValue: The default value. Optional.
 # opt: command: An optional command to provide the variable value at runtime.
 # txt: Returns 0/TRUE if the variable is defined; 1/FALSE otherwise.
-# use: if defineButDoNotOverrideEnvVar "MY_VAR" "MY_VAR is used for this and that" "dummy";
-#        echo "MY_VAR defined";
-#      else
-#        echo "MY_VAR already defined. Not overridden"
-#      fi
+# use: if defineButDoNotOverrideEnvVar "MY_VAR" "MY_VAR is used for this and that" "dummy"; then
+# use:   echo "MY_VAR defined";
+# use: else
+# use:   echo "MY_VAR already defined. Not overridden"
+# use: fi
 function defineButDoNotOverrideEnvVar() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
@@ -147,8 +147,8 @@ function evalEnvVars() {
   local -n _envVariables=${RESULT};
 
   local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
   local _var;
+  IFS="${DWIFS}";
   for _var in ${_envVariables[@]}; do
     IFS="${_oldIFS}";
     evalEnvVar "${_var}";
@@ -661,7 +661,7 @@ function ENVVAR.appendEnvironmentVariable() {
 # api: public
 # txt: Evaluates given environment variable.
 # opt: varName: the variable name.
-# txt: Returns <- 0/TRUE if the environment variable is evaluated successfully; 1/FALSE otherwise.
+# txt: Returns 0/TRUE if the environment variable is evaluated successfully; 1/FALSE otherwise.
 # use: if evalEnvVar "MY_VAR"; then
 # use:   echo "MY_VAR -> ${RESULT}";
 # use: fi
@@ -670,8 +670,8 @@ function evalEnvVar() {
   checkNotEmpty varName "${_varName}" 1;
   local -i _rescode;
 
-  if ENVVAR.removeDollarSquareBrackets "${_varName}"; then
-    evalEnvVar "${RESULT}";
+  if ENVVAR.removeDollarCurlyBrackets "${_varName}"; then
+    evalVar "${RESULT}";
   else
     local _defaultValue="";
     if ENVVAR.evalVarDefault "${_varName}"; then
@@ -737,7 +737,10 @@ function ENVVAR.evalOverriddenVar() {
 
   ENVVAR.getOverriddenEnvironmentVariablesVariableName;
   local -n _overriddenEnvVariables=${RESULT};
-  if isNotEmpty "${_overriddenEnvVariables[*]}"; then
+  if contains "${_varName}" '.'; then
+    echo "overriden ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  else
     _result="${_overriddenEnvVariables[${_varName}]}";
   fi
 
@@ -770,7 +773,10 @@ function ENVVAR.evalVarCommand() {
 
   ENVVAR.getEnviromentVariablesCommands;
   local -n _environmentVariablesCommands=${RESULT};
-  if isNotEmpty "${_environmentVariablesCommands[*]}"; then
+  if contains "${_varName}" '.'; then
+    echo "command ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  else
     _result="${_environmentVariablesCommands[${_varName}]}";
   fi
 
@@ -802,7 +808,10 @@ function ENVVAR.evalVarDefault() {
   local _result;
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults=${RESULT};
-  if isNotEmpty "${_environmentVariablesDefaults[*]}"; then
+  if contains "${_varName}" '.'; then
+    echo "default ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  else
     _result="${_environmentVariablesDefaults[${_varName}]}";
   fi
 
@@ -836,7 +845,10 @@ function ENVVAR.evalVarDescription() {
 
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
-  if isNotEmpty "${_environmentVariablesDescriptions[*]}"; then
+  if contains "${_varName}" '.'; then
+    echo "description ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  else
     _result="${_environmentVariablesDescriptions[${_varName}]}";
   fi
 
@@ -850,16 +862,16 @@ function ENVVAR.evalVarDescription() {
   return ${_rescode};
 }
 
-# fun: ENVVAR.removeDollarSquareBrackets varName
+# fun: ENVVAR.removeDollarCurlyBrackets varName
 # api: private
 # txt: Removes the ${..} envelope.
 # opt: varName: The variable name.
 # txt: Returns 0/TRUE if the envelope was removed; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the variable name, without envelope, if existed. Unset otherwise.
-# use: if ENVVAR.removeDollarSquareBrackets '${bla}'; then
+# use: if ENVVAR.removeDollarCurlyBrackets '${bla}'; then
 #        echo "result -> ${RESULT}" # bla
 #      fi
-function ENVVAR.removeDollarSquareBrackets() {
+function ENVVAR.removeDollarCurlyBrackets() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
 
