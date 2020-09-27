@@ -126,10 +126,17 @@ EOF
 function check_bug_envvar_defaults_fixed_test() {
   local _expected="contest.created contest.updated form.created form.updated application.created application.updated";
   defineEnvVar EVENT_EXCHANGE_TO_EVENT_QUEUE_BINDINGS MANDATORY "The space-separated list of bindings from the events exchange to the FormService event queue" "${_expected}";
-  ENVVAR.evalVarDefault EVENT_EXCHANGE_TO_EVENT_QUEUE_BINDINGS;
+  evalEnvVar EVENT_EXCHANGE_TO_EVENT_QUEUE_BINDINGS;
   local _actual="${RESULT}";
-  Assert.areEqual "${_expected}" "${_actual}" "evalVarDefault failed";
+  Assert.areEqual "${_expected}" "${_actual}" "evalVarDefault failed for EVENT_EXCHANGE_TO_EVENT_QUEUE_BINDINGS";
+
+  _expected="/backup/rabbitmq/storage/mnesia/.bootstrap.lock";
+  defineEnvVar BOOTSTRAP_LOCK_FILE MANDATORY "The file indicating if the bootstrap is running" "${_expected}";
+  evalEnvVar BOOTSTRAP_LOCK_FILE;
+  _actual="${RESULT}";
+  Assert.areEqual "${_expected}" "${_actual}" "evalVarDefault failed for BOOTSTRAP_LOCK_FILE";
 }
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
 
 setScriptDescription "Runs all tests implemented for envvar.dw";
