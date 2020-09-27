@@ -466,6 +466,7 @@ function BOOTSTRAP.isDebugEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
+  local _flag;
   IFS="${DWIFS}";
   for _flag in ${BASH_ARGV[@]}; do
     IFS="${_oldIFS}";
@@ -631,12 +632,12 @@ function BOOTSTRAP.isFunctionDefined() {
 function BOOTSTRAP.arrayContains() {
   local _item="${1}";
   local _array="${2}";
-  local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
   BOOTSTRAP.checkNotEmpty item "${_item}" 1;
 
+  local _aux;
   IFS="${DWIFS}";
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
@@ -752,13 +753,13 @@ function BOOTSTRAP.getEssentialModulesVariableName() {
 # txt: Returns always 0/TRUE.
 # use: BOOTSTRAP.bootstrap;
 function BOOTSTRAP.bootstrap() {
-  local _module;
   local _modulePath;
   local _oldIFS="${IFS}";
 
   BOOTSTRAP.getEssentialModulesVariableName;
   local -n _essentialModules=${RESULT};
 
+  local _module;
   IFS=${DWIFS};
   for _module in ${_essentialModules[@]}; do
     IFS="${_oldIFS}";
