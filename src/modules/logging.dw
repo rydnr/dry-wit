@@ -61,10 +61,7 @@ function LOGGING.buildDefaultLogCategory() {
     local _functionName="${FUNCNAME[${_index}]}";
     if LOGGING.isValidAsLogCategory "${_functionName}"; then
       _result="${_functionName}";
-#      debugEcho "index: ${_index}, maxIndex: ${_maxIndex}, upperLimit: ${_upperLimit}, functionName: ${_functionName}, valid: true";
       break;
-#    else
-#      debugEcho "index: ${_index}, maxIndex: ${_maxIndex}, upperLimit: ${_upperLimit}, functionName: ${_functionName}, valid: false";
     fi
   done
   IFS="${_oldIFS}";
@@ -484,6 +481,7 @@ function isSuccessKeyword() {
      && isNotEmpty "${_builtinSuccessKeywords}" \
      && isNotEmpty "${_builtinSuccessKeywords[@]}"; then
     IFS="${DWIFS}";
+    local _i;
     for _i in ${_builtinSuccessKeywords[@]}; do
       IFS="${_oldIFS}";
       if    areEqual "${_i}" "${1}" \
@@ -915,7 +913,6 @@ function LOGGING.alignRight() {
         _separatorSpace="${_separatorSpace}${_logOutcomeSeparator}";
       done
       IFS="${_oldIFS}";
-      debugEcho "separatorSpace: '${_separatorSpace}' (${#_separatorSpace})";
       echo -n "${_separatorSpace}";
     fi
   fi
@@ -952,7 +949,6 @@ function LOGGING.alignRightForWidth() {
     _logMessage="${_logMessage}${_token}";
   done
   IFS="${_oldIFS}";
-  debugEcho "In LOGGING.alignRightForWidth '${_logLineMessage}' '${_outcome}' ${_termWidth}. logMessage: '${_logMessage}'";
 
   local -i _result=$((${_termWidth}-${#_logLineMessage}%${_termWidth}-${#_logMessage}-1));
 
@@ -1144,7 +1140,6 @@ function LOGGING.echoLogOutcome() {
   LOGGING.buildLogPrefix ${FALSE};
   local _logPrefix="${RESULT}";
 
-  debugEcho "LOGGING.alignRight '${_logPrefix}${_inProgressMessage}' '${_text}'";
   LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}";
 
   LOGGING.getLogOutcomeTokensVariableName;
@@ -1476,7 +1471,6 @@ function LOGGING.logInProgress() {
   checkNotEmpty message "${_message}" 2;
 
   LOGGING.peekLogCategory;
-  debugEcho "In LOGGING.logInProgress ${_level} '${_message}', before saveLogCategory (category: ${RESULT})";
   LOGGING.saveLogCategory;
   LOGGING.setLastLogLevel "${_level}";
   LOGGING.saveLogLevel;
@@ -1694,7 +1688,6 @@ function LOGGING.isNewLogCategoryNeeded() {
     LOGGING.getLogCategoryStackVariableName;
     local -n _logCategories=${RESULT};
 
-    debugEcho "log categories: ${_logCategories[@]}";
     local -i _len=${#_logCategories[@]};
     if areEqual ${_len} 1; then
       if areEqual "${_logCategories[0]}" "${DW_LOGGING_EMPTY_LOG_CATEGORY}"; then
@@ -1731,10 +1724,7 @@ function LOGGING.saveLogCategory() {
   local _category="${RESULT}";
   if LOGGING.isNewLogCategoryNeeded "${_category}"; then
 
-    debugEcho "New log category needed";
     LOGGING.pushLogCategory "${_category}";
-  else
-    debugEcho "No new log category needed";
   fi
 }
 
@@ -2081,8 +2071,6 @@ function LOGGING.popLogCategory() {
     export RESULT="";
   fi
 
-  debugEcho "pop  ${FUNCNAME[6]}/${FUNCNAME[5]}/${FUNCNAME[4]}/${FUNCNAME[3]}/${FUNCNAME[2]}/${FUNCNAME[1]} |${_before}| = |${_logCategoryStack[@]}|";
-
   return ${_rescode};
 }
 
@@ -2164,7 +2152,6 @@ function LOGGING.pushLogCategory() {
 
   LOGGING.getLogCategoryStackVariableName;
   local -n _logCategoryStack=${RESULT};
-  local _before="${_logCategoryStack[@]}";
 
   if isEmpty "${_category}"; then
     LOGGING.buildDefaultLogCategory;
@@ -2172,7 +2159,6 @@ function LOGGING.pushLogCategory() {
   fi
 
   _logCategoryStack[${#_logCategoryStack[@]}]="${_category}";
-  debugEcho "push ${FUNCNAME[6]}/${FUNCNAME[5]}/${FUNCNAME[4]}/${FUNCNAME[3]}/${FUNCNAME[2]}/${FUNCNAME[1]} |${_before}| = |${_logCategoryStack[@]}|";
 }
 
 # fun: LOGGING.pushLogLevel TRACE|DEBUG|INFO|WARN|ERROR
@@ -3086,8 +3072,6 @@ function LOGGING.defaultState() {
 function LOGGING.resetState() {
   LOGGING.getModuleName;
   local _moduleName="${RESULT}";
-
-  debugEcho "Resetting LOGGING.dw state";
 
   # env: The built-in success keywords.
   DW.declareGlobalArray "${_moduleName}" BUILTIN_SUCCESS_KEYWORDS;
