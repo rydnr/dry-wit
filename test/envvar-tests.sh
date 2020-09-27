@@ -123,6 +123,13 @@ EOF
   Assert.isFalse ${_result} "isVariableDefinedInFile [file] MYOTHERVAR passed and should not pass";
 }
 
+function check_bug_envvar_defaults_fixed_test() {
+  local _expected="contest.created contest.updated form.created form.updated application.created application.updated";
+  defineEnvVar EVENT_EXCHANGE_TO_EVENT_QUEUE_BINDINGS MANDATORY "The space-separated list of bindings from the events exchange to the FormService event queue" "${_expected}";
+  ENVVAR.evalVarDefault EVENT_EXCHANGE_TO_EVENT_QUEUE_BINDINGS;
+  local _actual="${RESULT}";
+  Assert.areEqual "${_expected}" "${_actual}" "evalVarDefault failed";
+}
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
 
 setScriptDescription "Runs all tests implemented for envvar.dw";

@@ -236,9 +236,13 @@ function isEnvVarMandatory() {
 
   local -i _rescode;
 
+  local _varMandatory;
+
   ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
-  local _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
+  if isNotEmpty "${_mandatoryEnvironmentVariables[*]}"; then
+    _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
+  fi
 
   if areEqual "${MANDATORY}" "${_varMandatory}" || areEqual "${_varMandatory}" "MANDATORY"; then
     _rescode=${TRUE};
@@ -263,9 +267,13 @@ function isEnvVarOptional() {
 
   local -i _rescode;
 
+  local _varMandatory;
+
   ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
-  local _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
+  if isNotEmpty "${_mandatoryEnvironmentVariables[*]}"; then
+    _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
+  fi
 
   if areEqual ${OPTIONAL} ${_varMandatory} || areEqual "${_varMandatory}" "OPTIONAL"; then
     _rescode=${TRUE};
@@ -314,50 +322,52 @@ function overrideEnvVar() {
 # use:  printEnvironment;
 function printEnvironment() {
 
-  ENVVAR.getEnvironmentVariablesVariableName;
-  local -n _envVariables=${RESULT};
+  if isTraceEnabled; then
+    ENVVAR.getEnvironmentVariablesVariableName;
+    local -n _envVariables=${RESULT};
 
-  if isNotEmpty "${_envVariables}" && isTraceEnabled; then
-    cat <<EOF
+    if isNotEmpty "${_envVariables[*]}"; then
+      cat <<EOF
 Environment variables:
 EOF
-    local _tempFile="";
-    if createTempFileNoCleanup; then
-      _tempFile="${RESULT}";
-    fi
+      local _tempFile="";
+      if createTempFileNoCleanup; then
+        _tempFile="${RESULT}";
+      fi
 
-    local _oldIFS="${IFS}";
-    IFS="${DWIFS}";
-    local -i _i;
-    for ((_i = 0; _i < ${#_envVariables[@]}; _i++)); do
+      local _oldIFS="${IFS}";
+      IFS="${DWIFS}";
+      local -i _i;
+      for ((_i = 0; _i < ${#_envVariables[@]}; _i++)); do
+        IFS="${_oldIFS}";
+        local _varName="${_envVariables[${_i}]}";
+        local _varValue;
+        if ENVVAR.evalOverriddenVar "${_varName}"; then
+          _varValue="${RESULT}";
+        else
+          evalVar "${_varName}";
+          _varValue="${RESULT}";
+        fi
+
+        local _description;
+        if ENVVAR.evalVarDescription "${_varName}"; then
+          _description=": ${RESULT}.";
+        else
+          _description="";
+        fi
+
+        if isEmpty "${_tempFile}"; then
+          echo "  ${_varName} (${_varValue})${_description}";
+        else
+          echo "  ${_varName} (${_varValue})${_description}" >> "${_tempFile}";
+        fi
+      done
       IFS="${_oldIFS}";
-      local _varName="${_envVariables[${_i}]}";
-      local _varValue;
-      if ENVVAR.evalOverriddenVar "${_varName}"; then
-        _varValue="${RESULT}";
-      else
-        evalVar "${_varName}";
-        _varValue="${RESULT}";
-      fi
 
-      local _description;
-      if ENVVAR.evalVarDescription "${_varName}"; then
-        _description=": ${RESULT}.";
-      else
-        _description="";
+      if isNotEmpty "${_tempFile}"; then
+        cat "${_tempFile}" | sort;
+        rm -f "${_tempFile}" > /dev/null 2>&1;
       fi
-
-      if isEmpty "${_tempFile}"; then
-        echo "  ${_varName} (${_varValue})${_description}";
-      else
-        echo "  ${_varName} (${_varValue})${_description}" >> "${_tempFile}";
-      fi
-    done
-    IFS="${_oldIFS}";
-
-    if isNotEmpty "${_tempFile}"; then
-      cat "${_tempFile}" | sort;
-      rm -f "${_tempFile}" > /dev/null 2>&1;
     fi
   fi
 }
@@ -723,9 +733,14 @@ function ENVVAR.evalOverriddenVar() {
 
   local -i _rescode;
 
+  local _result;
+
   ENVVAR.getOverriddenEnvironmentVariablesVariableName;
   local -n _overriddenEnvVariables=${RESULT};
-  local _result="${_overriddenEnvVariables[${_varName}]}";
+  if isNotEmpty "${_overriddenEnvVariables[*]}"; then
+    _result="${_overriddenEnvVariables[${_varName}]}";
+  fi
+
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
@@ -751,9 +766,14 @@ function ENVVAR.evalVarCommand() {
 
   local -i _rescode;
 
+  local _result;
+
   ENVVAR.getEnviromentVariablesCommands;
   local -n _environmentVariablesCommands=${RESULT};
-  local _result="${_environmentVariablesCommands[${_varName}]}";
+  if isNotEmpty "${_environmentVariablesCommands[*]}"; then
+    _result="${_environmentVariablesCommands[${_varName}]}";
+  fi
+
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
@@ -779,15 +799,13 @@ function ENVVAR.evalVarDefault() {
 
   local -i _rescode;
 
-  ENVVAR.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" ENVIRONMENT_VARIABLES_DEFAULTS;
   local _result;
-  if isNotEmpty "${RESULT}"; then
-    local -n _environmentVariablesDefaults=${RESULT};
-    echo -n "_varName=\"${_varName}\", _environmentVariablesDefaults=${RESULT}" >> /tmp/envvar.log
+  ENVVAR.getEnvironmentVariablesDefaultsVariableName;
+  local -n _environmentVariablesDefaults=${RESULT};
+  if isNotEmpty "${_environmentVariablesDefaults[*]}"; then
     _result="${_environmentVariablesDefaults[${_varName}]}";
-    echo  " .. ok" >> /tmp/envvar.log
   fi
+
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
     export RESULT="";
@@ -814,9 +832,14 @@ function ENVVAR.evalVarDescription() {
 
   local -i _rescode;
 
+  local _result;
+
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
-  local _result="${_environmentVariablesDescriptions[${_varName}]}";
+  if isNotEmpty "${_environmentVariablesDescriptions[*]}"; then
+    _result="${_environmentVariablesDescriptions[${_varName}]}";
+  fi
+
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   else
