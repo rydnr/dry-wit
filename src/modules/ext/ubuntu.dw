@@ -131,7 +131,7 @@ function autoremoveUbuntuPackages() {
 # txt: Cleans up the system.
 # txt: Returns 0/TRUE if the system gets cleaned; 1/FALSE otherwise.
 # use: if cleanUbuntuSystem; then
-# use:   ...
+# use:   echo "Ubuntu system cleaned up";
 # use: fi
 function cleanUbuntuSystem() {
 
@@ -146,10 +146,10 @@ function cleanUbuntuSystem() {
   local _oldIFS="${IFS}";
   local _locale;
   IFS="${DWIFS}";
-  for _locale in $(find /usr/share/i18n/locales); do
+  for _locale in $(find /usr/share/i18n/locales/); do
     IFS="${_oldIFS}";
     if arrayDoesNotContain "$(basename ${_locale})" "${PINNED_LOCALES}"; then
-      rm -f "${_locale}";
+      rm -f "${_locale}" 2> /dev/null;
     fi
   done;
   IFS="${_oldIFS}";
@@ -163,7 +163,7 @@ function cleanUbuntuSystem() {
 # opt: package: The package to pin.
 # txt: Returns 0/TRUE always, but can exit if the package cannot be pinned.
 # use: if pinUbuntuPackage wget; then
-# use:   ...
+# use:   echo "wget pinned";
 # use: fi
 function pinUbuntuPackage() {
   local _package="${1}";
