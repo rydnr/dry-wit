@@ -737,11 +737,11 @@ function ENVVAR.evalOverriddenVar() {
 
   ENVVAR.getOverriddenEnvironmentVariablesVariableName;
   local -n _overriddenEnvVariables=${RESULT};
-  if contains "${_varName}" '.'; then
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    _result="${_overriddenEnvVariables[${_varName}]}";
+  else
     echo "overriden ${_varName}" >> /tmp/envvar-bug.log
     printApiCall >> /tmp/envvar-bug.log
-  else
-    _result="${_overriddenEnvVariables[${_varName}]}";
   fi
 
   if isEmpty "${_result}"; then
@@ -773,11 +773,11 @@ function ENVVAR.evalVarCommand() {
 
   ENVVAR.getEnviromentVariablesCommands;
   local -n _environmentVariablesCommands=${RESULT};
-  if contains "${_varName}" '.'; then
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    _result="${_environmentVariablesCommands[${_varName}]}";
+  else
     echo "command ${_varName}" >> /tmp/envvar-bug.log
     printApiCall >> /tmp/envvar-bug.log
-  else
-    _result="${_environmentVariablesCommands[${_varName}]}";
   fi
 
   if isEmpty "${_result}"; then
@@ -808,11 +808,11 @@ function ENVVAR.evalVarDefault() {
   local _result;
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults=${RESULT};
-  if contains "${_varName}" '.'; then
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    _result="${_environmentVariablesDefaults[${_varName}]}";
+  else
     echo "default ${_varName}" >> /tmp/envvar-bug.log
     printApiCall >> /tmp/envvar-bug.log
-  else
-    _result="${_environmentVariablesDefaults[${_varName}]}";
   fi
 
   if isEmpty "${_result}"; then
@@ -845,11 +845,11 @@ function ENVVAR.evalVarDescription() {
 
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
-  if contains "${_varName}" '.'; then
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    _result="${_environmentVariablesDescriptions[${_varName}]}";
+  else
     echo "description ${_varName}" >> /tmp/envvar-bug.log
     printApiCall >> /tmp/envvar-bug.log
-  else
-    _result="${_environmentVariablesDescriptions[${_varName}]}";
   fi
 
   if isEmpty "${_result}"; then
@@ -993,6 +993,30 @@ function isVariableDefinedInFile() {
 
   grep -q -e "^\s*defineEnvVar ${_varName} " "${_file}";
   local -i _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: ENVVAR.isInEnvvarFormat varName
+# api: private
+# txt: Checks whether given variable name seems to be an environment variable reference.
+# opt: varName: The variable name.
+# txt: Returns 0/TRUE if the variable name could be an environment variable reference; 1/FALSE otherwise.
+# use: if ENVVAR.isInEnvvarFormat "${myVarName}"; then
+# use:   echo "${myVarName} might be an environment variable reference";
+# use: fi
+function ENVVAR.isInEnvvarFormat() {
+  local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
+
+  local -i _rescode=${FALSE};
+
+  if normalizeUppercase "${_varName}"; then
+    local _candidate="${RESULT}";
+
+    areEqual "${_varName}" "${_candidate}";
+    _rescode=$?;
+  fi
 
   return ${_rescode};
 }

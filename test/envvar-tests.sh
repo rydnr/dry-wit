@@ -137,6 +137,24 @@ function check_bug_envvar_defaults_fixed_test() {
   Assert.areEqual "${_expected}" "${_actual}" "evalVarDefault failed for BOOTSTRAP_LOCK_FILE";
 }
 
+function isInEnvvarFormat_test() {
+  local _input="create.contest";
+  ENVVAR.isInEnvvarFormat "${_input}";
+  Assert.isFalse $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
+
+  _input="/Dockerfile";
+  ENVVAR.isInEnvvarFormat "${_input}";
+  Assert.isFalse $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
+
+  _input="MY_VAR";
+  ENVVAR.isInEnvvarFormat "${_input}";
+  Assert.isTrue $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
+
+  _input="my_var";
+  ENVVAR.isInEnvvarFormat "${_input}";
+  Assert.isFalse $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
 
 setScriptDescription "Runs all tests implemented for envvar.dw";
