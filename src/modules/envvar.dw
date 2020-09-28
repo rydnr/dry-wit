@@ -487,12 +487,17 @@ function ENVVAR.addEnvVar() {
   checkNotEmpty varName "${_varName}" 1;
   local _varValue="${2:-}";
 
-  if ! isEnvVarDefined "${_varName}"; then
-    ENVVAR.appendEnvironmentVariable "${_varName}";
-    declare -gx "${_varName}"="${_varValue}";
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    if ! isEnvVarDefined "${_varName}"; then
+      ENVVAR.appendEnvironmentVariable "${_varName}";
+      declare -gx "${_varName}"="${_varValue}";
+    fi
+    ENVVAR.getModuleName;
+    DW.setGlobalString "${RESULT}" "${_varName}" "${_varValue}";
+  else
+    echo "addEnvVar ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
   fi
-  ENVVAR.getModuleName;
-  DW.setGlobalString "${RESULT}" "${_varName}" "${_varValue}";
 }
 
 # fun: ENVVAR.getEnvironmentVariablesCommandsVariableName
@@ -519,9 +524,14 @@ function ENVVAR.addEnvVarCommand() {
   local _varCommand="${2}";
   checkNotEmpty command "${_varCommand}" 1;
 
-  ENVVAR.getEnvironmentVariablesCommandsVariableName;
-  local -n _environmentVariablesCommands="${RESULT}";
-  _environmentVariablesCommands[${_varName}]="${_varCommand}";
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    ENVVAR.getEnvironmentVariablesCommandsVariableName;
+    local -n _environmentVariablesCommands="${RESULT}";
+    _environmentVariablesCommands[${_varName}]="${_varCommand}";
+  else
+    echo "addEnvVarCommand ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  fi
 }
 
 # fun: ENVVAR.getEnvironmentVariablesDefaultsVariableName
@@ -548,9 +558,14 @@ function ENVVAR.addEnvVarDefault() {
   local _varDefault="${2}";
   checkNotEmpty defaultValue "${_varDefault}" 1;
 
-  ENVVAR.getEnvironmentVariablesDefaultsVariableName;
-  local -n _environmentVariablesDefaults="${RESULT}";
-  _environmentVariablesDefaults["${_varName}"]="${_varDefault}";
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    ENVVAR.getEnvironmentVariablesDefaultsVariableName;
+    local -n _environmentVariablesDefaults="${RESULT}";
+    _environmentVariablesDefaults["${_varName}"]="${_varDefault}";
+  else
+    echo "addEnvVarDefault ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  fi
 }
 
 # fun: ENVVAR.getEnvironmentVariablesDescriptionsVariableName
@@ -577,9 +592,14 @@ function ENVVAR.addEnvVarDescription() {
   local _varDescription="${2}";
   checkNotEmpty description "${_varDescription}" 2;
 
-  ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
-  local -n _environmentVariablesDescriptions="${RESULT}";
-  _environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
+    local -n _environmentVariablesDescriptions="${RESULT}";
+    _environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
+  else
+    echo "addEnvVarDescription ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  fi
 }
 
 # fun: ENVVAR.getMandatoryEnvironmentVariablesVariableName
@@ -606,9 +626,14 @@ function ENVVAR.addEnvVarMandatory() {
   local _varMandatory="${2}";
   ENVVAR.checkMandatoryOrOptional "${_varMandatory}" 2;
 
-  ENVVAR.getMandatoryEnvironmentVariablesVariableName;
-  local -n _mandatoryEnvironmentVariables="${RESULT}";
-  _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
+  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+    ENVVAR.getMandatoryEnvironmentVariablesVariableName;
+    local -n _mandatoryEnvironmentVariables="${RESULT}";
+    _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
+  else
+    echo "addEnvVarMandatory ${_varName}" >> /tmp/envvar-bug.log
+    printApiCall >> /tmp/envvar-bug.log
+  fi
 }
 
 # fun: ENVVAR.getOverriddenEnvironmentVariablesVariableName

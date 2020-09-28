@@ -137,7 +137,7 @@ function check_bug_envvar_defaults_fixed_test() {
   Assert.areEqual "${_expected}" "${_actual}" "evalVarDefault failed for BOOTSTRAP_LOCK_FILE";
 }
 
-function isInEnvvarFormat_test() {
+function isInEnvvarFormat_works_test() {
   local _input="create.contest";
   ENVVAR.isInEnvvarFormat "${_input}";
   Assert.isFalse $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
@@ -151,6 +151,10 @@ function isInEnvvarFormat_test() {
   Assert.isTrue $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
 
   _input="my_var";
+  ENVVAR.isInEnvvarFormat "${_input}";
+  Assert.isFalse $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
+
+  _input="/backup/rabbitmq/changesets";
   ENVVAR.isInEnvvarFormat "${_input}";
   Assert.isFalse $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
 }
