@@ -43,4 +43,29 @@ function halt() {
     sleep ${_seconds};
   done;
 }
+
+# fun: anotherProcessAlreadyRunning
+# api: public
+# txt: Checks if this script is already running.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if anotherProcessAlreadyRunning; then
+# use:   echo "Another process already running";
+# use: fi
+function anotherProcessAlreadyRunning() {
+  DW.getScriptPath;
+  local _scriptPath="${RESULT}";
+
+  local -i _rescode;
+  local _count;
+  local _ownPid=$$;
+  _count="$(ps -ef | grep "${_scriptPath}" | grep -v grep | awk '{print $2;}' | grep -v -e "^${_ownPid}$" | wc -l)";
+
+  if areEqual "${_count}" 1; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
