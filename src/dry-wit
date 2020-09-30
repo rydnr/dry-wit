@@ -71,8 +71,11 @@ function DW.setGlobalInt() {
 
   if ! DW.declareGlobalInt "${_module}" "${_varName}" "${_value}"; then
     DW.buildGlobalVariableName "${_module}" "${_varName}";
-    local -n _variable="${RESULT}";
+    local _variableName="${RESULT}"
+    BOOTSTRAP.logTrace -n "Setting value of ${_variableName} to ${_value}";
+    local -n _variable="${_variableName}";
     _variable=${_value};
+    BOOTSTRAP.logTraceResult SUCCESS "${_variable}";
   fi
 }
 
@@ -177,9 +180,16 @@ function DW.getGlobalString() {
   local -i _rescode;
 
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
+    local _actualVariableName="${RESULT}";
     local -n _result=${RESULT};
-    _rescode=${TRUE};
-    export RESULT="${_result}";
+    _rescode=$?;
+    BOOTSTRAP.logTrace -n "Reading ${_actualVariableName}";
+    if BOOTSTRAP.isTrue ${_rescode}; then
+      BOOTSTRAP.logTraceResult SUCCESS "${_result}";
+      export RESULT="${_result}";
+    else
+      BOOTSTRAP.logTraceResult FAILURE "failed";
+    fi
   else
     _rescode=${FALSE};
   fi
@@ -259,31 +269,65 @@ function DW.declareGlobalVariable() {
 
   if BOOTSTRAP.isTrue ${_rescode}; then
     unset "${_aux}";
+    local -i _initialValueProvided;
+    if BOOTSTRAP.isEmpty "${_initialValue}"; then
+      _initialValueProvided=${FALSE};
+    else
+      _initialValueProvided=${TRUE};
+    fi
+
     case "${_varType}" in
-      "int") if BOOTSTRAP.isEmpty "${_initialValue}"; then
-               declare -agx "${_aux}";
+      "int") if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+               BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+               declare -igx "${_aux}"=-1;
+               BOOTSTRAP.logTraceResult SUCCESS "done";
              else
-               declare -agx "${_aux}"=${_initialValue};
+               BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
+               declare -igx "${_aux}"=${_initialValue};
+               BOOTSTRAP.logTraceResult SUCCESS "done";
              fi
              _rescode=$?;
              ;;
-      "array") declare -agx "${_aux}";
-               _rescode=$?;
-               if ! BOOTSTRAP.isEmpty "${_initialValue}"; then
-                 local -n _tmp=${_aux};
-                 _tmp=( $@ );
+      "array") if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+                 BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
+                 declare -agx "${_aux}";
+                 _rescode=$?;
+                 if BOOTSTRAP.isTrue ${_rescode}; then
+                   local -n _tmp=${_aux};
+                   _tmp=( ${@} );
+                   _rescode=$?;
+                 fi
+               else
+                 BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+                 declare -agx "${_aux}";
                  _rescode=$?;
                fi
+               if BOOTSTRAP.isTrue ${_rescode}; then
+                 BOOTSTRAP.logTraceResult SUCCESS "done";
+               else
+                 BOOTSTRAP.logTraceResult FAILURE "failed";
+               fi
                ;;
-      "map") declare -Agx "${_aux}";
+      "map") BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+             declare -Agx "${_aux}";
              _rescode=$?;
+             if BOOTSTRAP.isTrue ${_rescode}; then
+               BOOTSTRAP.logTraceResult SUCCESS "done";
+             else
+               BOOTSTRAP.logTraceResult FAILURE "failed";
+             fi
              ;;
-      *) if BOOTSTRAP.isEmpty "${_initialValue}"; then
-           declare -gx "${_aux}";
-           _rescode=$?;
+      *) if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+           BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
          else
-           declare -gx "${_aux}"="${_initialValue}";
-           _rescode=$?;
+           BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+         fi
+         declare -gx "${_aux}"="${_initialValue}";
+         _rescode=$?;
+         if BOOTSTRAP.isTrue ${_rescode}; then
+           BOOTSTRAP.logTraceResult SUCCESS "done";
+         else
+           BOOTSTRAP.logTraceResult FAILURE "failed";
          fi
          ;;
     esac
@@ -483,8 +527,8 @@ function BOOTSTRAP.isEmpty() {
   local _value="${1}";
   local -i _rescode;
 
-  if [ -z "${_value}" ]; then
-    _rescode=${TRUE}
+  if [[ -z "${_value}" ]]; then
+    _rescode=${TRUE};
   else
     _rescode=${FALSE};
   fi
@@ -628,15 +672,11 @@ function BOOTSTRAP.logDebug() {
   fi
   BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logDebug is loaded.
-  if BOOTSTRAP.isFunctionDefined "logDebug"; then
-    logDebug $@;
-  elif BOOTSTRAP.isDebugEnabled; then
-    if [ ${_newline} -eq 0 ]; then
+  if BOOTSTRAP.isDebugEnabled; then
+    if BOOTSTRAP.isTrue ${_newline}; then
       command echo "[dry-wit:bootstrap] ${_message}";
     else
-      command echo "[dry-wit:bootstrap] ${_message} ... ";
+      command echo -n "[dry-wit:bootstrap] ${_message} ... ";
     fi
   fi
 }
@@ -660,15 +700,11 @@ function BOOTSTRAP.logTrace() {
   fi
   BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTrace is loaded.
-  if BOOTSTRAP.isFunctionDefined "logTrace"; then
-    logTrace $@;
-  elif BOOTSTRAP.isTraceEnabled; then
-    if [ ${_newline} -eq 0 ]; then
+  if BOOTSTRAP.isTraceEnabled; then
+    if BOOTSTRAP.isTrue ${_newline}; then
       command echo "[dry-wit:bootstrap] ${_message}";
     else
-      command echo "[dry-wit:bootstrap] ${_message} ... ";
+      command echo -n "[dry-wit:bootstrap] ${_message} ... ";
     fi
   fi
 }
@@ -677,19 +713,20 @@ function BOOTSTRAP.logTrace() {
 # api: private
 # txt: A fail-safe version of logDebugResult.
 # opt: outcome: The outcome.
-# opt: message: The message.
+# opt: message: The message. Optional.
 # txt: Returns 0/TRUE always.
-# use: BOOTSTRAP.logDebugResult SUCCESS "done"
+# use: BOOTSTRAP.logDebugResult SUCCESS "done";
 function BOOTSTRAP.logDebugResult() {
   local _outcome="${1}";
   BOOTSTRAP.checkNotEmpty outcome "${_outcome}" 1;
   local _outcomeMessage="${2}";
-  BOOTSTRAP.checkNotEmpty outcomeMessage "${_outcomeMessage}" 2;
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logDebugResult is loaded.
-  if BOOTSTRAP.isFunctionDefined "logDebugResult"; then
-    logDebugResult ${_outcome} "${_outcomeMessage}";
+  if BOOTSTRAP.isEmpty "${_outcomeMessage}"; then
+    _outcomeMessage="unset";
+  fi
+
+  if BOOTSTRAP.isDebugEnabled; then
+    command echo "[${_outcomeMessage}]";
   fi
 }
 
@@ -697,18 +734,19 @@ function BOOTSTRAP.logDebugResult() {
 # api: private
 # txt: A fail-safe version of logTraceResult.
 # opt: outcome: The outcome.
-# opt: message: The message.
+# opt: message: The message. Optional.
 # use: BOOTSTRAP.logTraceResult SUCCESS "done"
 function BOOTSTRAP.logTraceResult() {
   local _outcome="${1}";
   BOOTSTRAP.checkNotEmpty outcome "${_outcome}" 1;
   local _outcomeMessage="${2}";
-  BOOTSTRAP.checkNotEmpty outcomeMessage "${_outcomeMessage}" 2;
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTraceResult is loaded.
-  if BOOTSTRAP.isFunctionDefined "logTraceResult"; then
-    logTraceResult ${_outcome} "${_outcomeMessage}";
+  if BOOTSTRAP.isEmpty "${_outcomeMessage}"; then
+    _outcomeMessage="unset";
+  fi
+
+  if BOOTSTRAP.isTraceEnabled; then
+    command echo "[${_outcomeMessage}]";
   fi
 }
 
@@ -769,6 +807,21 @@ function BOOTSTRAP.toUpper() {
   BOOTSTRAP.checkNotEmpty text "${_text}" 1;
 
   local result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${result}";
+}
+
+# fun: BOOTSTRAP.toLower text
+# api: public
+# txt: Converts given string to lower case.
+# opt: text: The string to convert.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the string in lower case.
+# use: local _text="abc"; toLower "${_text}"; local _lowcased="${RESULT}";
+function BOOTSTRAP.toLower() {
+  local _text="${1}";
+  BOOTSTRAP.checkNotEmpty text "${_text}" 1;
+
+  local result=$(echo "${_text}" | awk '{print tolower($0);}');
   export RESULT="${result}";
 }
 
@@ -889,10 +942,11 @@ function DW.import() {
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
 
   BOOTSTRAP.getImportedModulesVariableName;
-  local -n _importedModules=${RESULT};
+  local _importedModulesVariableName="${RESULT}";
+  local -n _importedModules=${_importedModulesVariableName};
 
-  if    BOOTSTRAP.isEmpty "${_importedModules[@]}" \
-     || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[@]}"; then
+  if    BOOTSTRAP.isEmpty "${_importedModules[*]}" \
+     || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[*]}"; then
 
     local _modulePath;
 
@@ -912,10 +966,14 @@ function DW.import() {
     BOOTSTRAP.normalize "${_module}";
     local _normalizedModule="${RESULT}";
     if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.resetState"; then
+      BOOTSTRAP.logTrace -n "Resetting ${_modulePath} state";
       ${_normalizedModule}.resetState;
+      BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
     if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.defaultState"; then
+      BOOTSTRAP.logTrace -n "Restoring ${_modulePath} default state";
       ${_normalizedModule}.defaultState;
+      BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
 
     _importedModules[${#_importedModules[@]}]="${_module}";
@@ -947,17 +1005,30 @@ function findModule() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
 
+  local _result;
   local -i _rescode=${FALSE};
 
   getModulePath;
   local _modulePath="${RESULT}";
 
-  if [[ -e "${_modulePath}/${_module}.dw" ]]; then
-    _rescode=${TRUE};
-    export RESULT="${_modulePath}/${_module}.dw";
-  elif [[ -e "${_modulePath}/ext/${_module}.dw" ]]; then
-    _rescode=${TRUE};
-    export RESULT="${_modulePath}/ext/${_module}.dw";
+  local _oldIFS="${IFS}";
+
+  IFS="${DWIFS}";
+  for _result in "${_modulePath}/${_module}.dw" "${_modulePath}/ext/${_module}.dw"; do
+    IFS="${_oldIFS}";
+    BOOTSTRAP.logTrace -n "Checking id ${_result} exists";
+    if [[ -e "${_result}" ]]; then
+      _rescode=${TRUE};
+      BOOTSTRAP.logTraceResult SUCCESS "true";
+      break;
+    else
+      BOOTSTRAP.logTraceResult FAILURE "false";
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  if BOOTSTRAP.isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};
@@ -1099,18 +1170,6 @@ function DW.isTest() {
   fi
 }
 
-# fun: BOOTSTRAP.getImportedModulesVariableName
-# api: private
-# txt: Retrieves the name of the variable with the imported variables.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the variable name.
-# use: BOOTSTRAP.getImportedModulesVariableName; local -n importedModules=${RESULT}
-function BOOTSTRAP.getImportedModulesVariableName() {
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" IMPORTED_MODULES;
-}
-
 # fun: BOOTSTRAP.getModuleTag
 # api: private
 # txt: Retrieves the module tag.
@@ -1218,7 +1277,7 @@ function BOOTSTRAP.isOnlineMode() {
 
   DW.getGlobalString "${_moduleName}" ONLINE_MODE;
 
-  if areEqual "${RESULT}" ${TRUE}; then
+  if BOOTSTRAP.isTrue "${RESULT}"; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
