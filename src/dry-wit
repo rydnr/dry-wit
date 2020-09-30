@@ -49,7 +49,7 @@ function DW.declareGlobalInt() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
-  DW.declareGlobalVariable "${_module}" "${_varName}" "int" "${_value}";
+  DW.declareGlobalVariable "${_module}" "${_varName}" int "${_value}";
 }
 
 # fun: DW.setGlobalInt module varName value
@@ -131,7 +131,7 @@ function DW.declareGlobalString() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
-  DW.declareGlobalVariable "${_module}" "${_varName}" "string" "${_value}";
+  DW.declareGlobalVariable "${_module}" "${_varName}" string "${_value}";
 }
 
 # fun: DW.setGlobalString module varName value
@@ -205,7 +205,7 @@ function DW.declareGlobalArray() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   shift;
   shift;
-  DW.declareGlobalVariable "${_module}" "${_varName}" "array" ${@};
+  DW.declareGlobalVariable "${_module}" "${_varName}" array ${@};
 }
 
 # fun: DW.declareGlobalMap module varName values*
@@ -226,7 +226,7 @@ function DW.declareGlobalMap() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   shift;
   shift;
-  DW.declareGlobalVariable "${_module}" "${_varName}" "map" ${@};
+  DW.declareGlobalVariable "${_module}" "${_varName}" map ${@};
 }
 
 # fun: DW.declareGlobalVariable module varName varType initialValue
@@ -234,7 +234,7 @@ function DW.declareGlobalMap() {
 # txt: Declares a global variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
 # opt: varName: The name of the variable.
-# opt: varType: Either "int", "array" or "string".
+# opt: varType: Either int, array, string or map.
 # opt: initialValue: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
@@ -244,20 +244,20 @@ function DW.declareGlobalMap() {
 function DW.declareGlobalVariable() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
-  local _varName="${2}";
+  shift;
+  local _varName="${1}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local _varType="${3}";
+  shift;
+  local _varType="${1}";
   BOOTSTRAP.checkNotEmpty varType "${_varType}" 3;
-  local _initialValue="${4:-}";
   shift;
-  shift;
-  shift;
+  local _initialValue="${@:-}";
 
   DW.getGlobalVariableName "${_module}" "${_varName}";
   local -i _rescode=$?;
   local _aux="${RESULT}";
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if BOOTSTRAP.isTrue ${_rescode}; then
     unset "${_aux}";
     case "${_varType}" in
       "int") if BOOTSTRAP.isEmpty "${_initialValue}"; then
@@ -267,22 +267,24 @@ function DW.declareGlobalVariable() {
              fi
              _rescode=$?;
              ;;
-      "array") eval "declare -agx ${_aux}";
+      "array") declare -agx "${_aux}";
                _rescode=$?;
                if ! BOOTSTRAP.isEmpty "${_initialValue}"; then
                  local -n _tmp=${_aux};
                  _tmp=( $@ );
+                 _rescode=$?;
                fi
                ;;
-      "map") eval "declare -Agx ${_aux}";
+      "map") declare -Agx "${_aux}";
              _rescode=$?;
              ;;
       *) if BOOTSTRAP.isEmpty "${_initialValue}"; then
            declare -gx "${_aux}";
+           _rescode=$?;
          else
            declare -gx "${_aux}"="${_initialValue}";
+           _rescode=$?;
          fi
-         _rescode=$?;
          ;;
     esac
   else
@@ -329,13 +331,31 @@ function DW.buildGlobalVariableName() {
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
 
-  BOOTSTRAP.toUpper "${_module}";
+  BOOTSTRAP.normalize "${_module}";
   local _moduleUpcased="${RESULT}";
 
-  BOOTSTRAP.toUpper "${_varName}";
+  BOOTSTRAP.normalize "${_varName}";
   local _varNameUpcased="${RESULT}";
 
-  local _result="_DW_${_moduleUpcased}_${_varNameUpcased}_${DW_SCRIPT_INDEX}";
+  local _result="_DW_$$_${_moduleUpcased}_${_varNameUpcased}";
+
+  export RESULT="${_result}";
+
+  return ${TRUE};
+}
+
+# fun: DW.buildGlobalVariableName module varName
+# api: public
+# txt: Retrieves the name of a global variable. Its name depends on the nesting level. It might not yet exist.
+# opt: module: The name of the module.
+# opt: varName: The (logical) name of the variable.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the global variable.
+# use: DW.buildGlobalVariableName "LOGGING" "MY_LIST";
+# use: echo "variable name: ${RESULT}";
+function BOOTSTRAP.buildScriptNameVariableName() {
+
+  local _result="_DW_SCRIPT_NAME_$$";
 
   export RESULT="${_result}";
 
@@ -351,17 +371,12 @@ function DW.buildGlobalVariableName() {
 # use: echo "Script name: ${RESULT}";
 function DW.getScriptName() {
   local -i _rescode=${FALSE};
-  local _result;
 
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
+  BOOTSTRAP.buildScriptNameVariableName;
+  local _scriptNameVariableName="${RESULT}";
+  local -n _result="${_scriptNameVariableName}";
 
-  if DW.getGlobalString "${_moduleName}" SCRIPT_NAME; then
-    _result="${RESULT}";
-    if [[ -n "${_result}" ]]; then
-      _result="${SCRIPT_NAME}";
-    fi
-  fi
+  echo "${_scriptNameVariableName} -> ${_result}" >> /tmp/.scriptName.log
 
   if [[ -n "${_result}" ]]; then
     _rescode=${TRUE};
@@ -438,20 +453,64 @@ function BOOTSTRAP.checkNotEmpty() {
   fi
 }
 
-# fun: BOOTSTRAP.isEmpty name
+# fun: BOOTSTRAP.isEmpty value
 # api: private
 # txt: A fail-safe version of isEmpty.
-# opt: name: The parameter name.
+# opt: value: The parameter value.
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# use: BOOTSTRAP.isEmpty "${value}";
+# use: if BOOTSTRAP.isEmpty "${value}"; then
+# use:   echo "value is empty";
+# use: fi
 function BOOTSTRAP.isEmpty() {
-  local _name="${1}";
+  local _value="${1}";
   local -i _rescode;
 
-  if [ -z "${_name}" ]; then
+  if [ -z "${_value}" ]; then
     _rescode=${TRUE}
   else
     _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: BOOTSTRAP.isTrue value
+# api: private
+# txt: A version of isTrue prior to loading check.dw.
+# opt: value: The parameter value.
+# txt: Returns 0/TRUE if the value is true; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isTrue ${value}; then
+# use:   echo "...";
+# use: fi
+function BOOTSTRAP.isTrue() {
+  local _value="${1}";
+  local -i _rescode;
+
+  if [[ "${_value}" == "${TRUE}" ]]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: BOOTSTRAP.isFalse value
+# api: private
+# txt: A version of isFalse prior to loading check.dw.
+# opt: value: The parameter value.
+# txt: Returns 0/TRUE if the value is false; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isFalse ${value}; then
+# use:   echo "...";
+# use: fi
+function BOOTSTRAP.isFalse() {
+  local _value="${1}";
+  local -i _rescode;
+
+  if BOOTSTRAP.isTrue "${_value}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
   fi
 
   return ${_rescode};
@@ -798,7 +857,7 @@ function DW.import() {
 
     if findModule "${_module}"; then
       _modulePath="${RESULT}";
-    elif downloadModule "${_module}"; then
+    elif BOOTSTRAP.isOnlineMode && downloadModule "${_module}"; then
       _modulePath="${RESULT}";
     else
       echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?";
@@ -908,44 +967,61 @@ function DW.initialized() {
   return ${_rescode};
 
 }
-# fun: DW.nested
+
+# fun: BOOTSTRAP.setNested flag
+# api: private
+# txt: Checks whether this script is running within another dry-wit script.
+# opt: flag: The nested flag.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setNested ${FALSE};
+function BOOTSTRAP.setNested() {
+  local _flag="${1}";
+  BOOTSTRAP.checkNotEmpty flag "${_flag}" 1;
+
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalString "${_moduleName}" NESTED "${_flag}";
+}
+
+# fun: BOOTSTRAP.isNested
 # api: private
 # txt: Checks whether this script is running within another dry-wit script.
 # txt: Returns 0/TRUE if this script is nested within another dry-wit; 1/FALSE otherwise.
-# use: if DW.nested; then
+# use: if BOOTSTRAP.isNested; then
 # use:   echo "Nesting detected";
 # use: fi
-function DW.nested() {
+function BOOTSTRAP.isNested() {
   local -i _rescode;
 
-  if ! DW.initialized; then
-    _rescode=${FALSE};
-  else
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" NESTED;
+
+  if BOOTSTRAP.isTrue "${RESULT}"; then
     _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
 }
 
-# fun: DW.init
+# fun: DW.initScriptName scriptArgs*
 # api: private
-# txt: Initializes dry-wit.
-# use: DW.init
-function DW.init() {
-
-  if DW.initialized; then
-    DW_SCRIPT_INDEX=$((DW_SCRIPT_INDEX+1));
-  fi
-
+# txt: Initializes the script name stuff.
+# opt: scriptArgs: The script arguments.
+# txt: Returns 0/TRUE always.
+# use: DW.initScriptName $*;
+function DW.initScriptName() {
   local _scriptName;
   local _scriptPath;
   local _scriptFolder;
   if [ "$1" == "" ]; then
-    _scriptName="${0}";
+    _scriptName="$(basename "${0}" 2>&1)";
     _scriptPath="${0}";
     _scriptFolder="$(dirname "${0}" 2>&1)";
   else
-    _scriptName="${1}";
+    _scriptName="$(basename "${1}" 2>&1)";
     _scriptPath="${1}";
     _scriptFolder="$(dirname "${1}" 2>&1)";
     shift;
@@ -959,7 +1035,17 @@ function DW.init() {
   DW.declareGlobalString "${_moduleName}" SCRIPT_NAME "${_scriptName}";
   DW.declareGlobalString "${_moduleName}" SCRIPT_PATH "${_scriptPath}";
   DW.declareGlobalString "${_moduleName}" SCRIPT_FOLDER "${_scriptFolder}";
-  declare -igx DW_INITIALIZED=0;
+}
+
+# fun: DW.init
+# api: private
+# txt: Initializes dry-wit.
+# use: DW.init
+function DW.init() {
+
+  DW.initScriptName $@;
+
+  declare -igx DW_INITIALIZED=${TRUE};
 }
 
 function DW.isTest() {
@@ -1058,9 +1144,48 @@ function getModulePath() {
 # use: BOOTSTRAP.setModulePath "${HOME}/.dry-wit/src/modules";
 function BOOTSTRAP.setModulePath() {
   local _path="${1}";
+  BOOTSTRAP.checkNotEmpty path "${_path}" 1;
 
   BOOTSTRAP.getModuleName;
   DW.declareGlobalString "${RESULT}" MODULE_PATH "${_path}";
+}
+
+# fun: BOOTSTRAP.setOnlineMode mode
+# api: private
+# txt: Specifies whether to attempt to download missing modules from the Internet.
+# opt: mode: The flag.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setOnlineMode ${FALSE};
+function BOOTSTRAP.setOnlineMode() {
+  local _mode="${1}";
+  BOOTSTRAP.checkNotEmpty mode "${_mode}" 1;
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" ONLINE_MODE "${_mode}";
+}
+
+# fun: BOOTSTRAP.isOnlineMode
+# api: private
+# txt: Retrieves whether attempting to download missing modules from the Internet is enabled.
+# txt: Returns 0/TRUE if online mode is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isOnlineMode; then
+# use:   echo "Online mode enabled";
+# use: fi
+function BOOTSTRAP.isOnlineMode() {
+  local -i _rescode;
+
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getGlobalString "${_moduleName}" ONLINE_MODE;
+
+  if areEqual "${RESULT}" ${TRUE}; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 # env: TRUE: A synomim for 0.
@@ -1095,10 +1220,11 @@ function BOOTSTRAP.resetState() {
   # env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
   DW.declareGlobalArray "${_moduleName}" BOOTSTRAP_MODULES;
   DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
+  echo "bootstrapModules variable name: ${RESULT}" >> /tmp/.bootstrap.log;
   local -n _bootstrapModules=${RESULT};
   _bootstrapModules[${#_bootstrapModules[@]}]=constant;
   _bootstrapModules[${#_bootstrapModules[@]}]=color;
-  _bootstrapModules[${#_bootstrapModules[@]}]=debug;
+#  _bootstrapModules[${#_bootstrapModules[@]}]=debug;
   _bootstrapModules[${#_bootstrapModules[@]}]=echo;
   _bootstrapModules[${#_bootstrapModules[@]}]=logging;
   _bootstrapModules[${#_bootstrapModules[@]}]=error;
@@ -1121,6 +1247,9 @@ function BOOTSTRAP.resetState() {
 
   # env: MODULE_PATH: Where to download dry-wit modules.
   BOOTSTRAP.setModulePath "${HOME:-/root}/.dry-wit/src/modules";
+
+  # env: ONLINE_MODE: Whether to attempt downloading missing modules from the Internet.
+  BOOTSTRAP.setOnlineMode ${FALSE};
 }
 
 #set -o errexit  # terminate on any unhandled error
@@ -1132,18 +1261,20 @@ if [ ! -z ${SKIP_LOADING_DRY_WIT+x} ]; then
   exit 0;
 fi
 
-if [ -z ${DW_SCRIPT_INDEX+x} ]; then
-  declare -igx DW_SCRIPT_INDEX=0;
+if DW.initialized; then
+  BOOTSTRAP.setNested ${TRUE};
+else
+  BOOTSTRAP.setNested ${FALSE};
 fi
 
 DW.init $@;
 
 BOOTSTRAP.resetState;
+
 BOOTSTRAP.bootstrap;
 
-DW.isTest;
 DRYWIT.main $@;
-if ! DW.nested; then
+if BOOTSTRAP.isNested; then
   cleanup;
 fi
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
