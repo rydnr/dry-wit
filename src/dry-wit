@@ -862,22 +862,16 @@ function BOOTSTRAP.bootstrap() {
   local _modulePath;
   local _oldIFS="${IFS}";
 
-  BOOTSTRAP.getEssentialModulesVariableName;
-  local -n _essentialModules=${RESULT};
-
   local _module;
   IFS=${DWIFS};
-  for _module in ${_essentialModules[@]}; do
+  for _module in ${_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}; do
     IFS="${_oldIFS}";
     DW.import "${_module}";
   done;
   IFS="${_oldIFS}";
 
-  BOOTSTRAP.getBootstrapModulesVariableName;
-  local -n _bootstrapModules=${RESULT};
-
   IFS=${DWIFS};
-  for _module in ${_bootstrapModules[@]}; do
+  for _module in ${_DW_BOOTSTRAP_EXTRA_MODULES[@]}; do
     IFS="${_oldIFS}";
     DW.import "${_module}";
   done;
@@ -1242,6 +1236,37 @@ declare -igx FALSE=1;
 # env: DWIFS: The IFS used by dry-wit.
 declare -gx DWIFS=$' \t\n';
 
+# fun: BOOTSTRAP.declareModules
+# api: private
+# txt: Declares the essential and extra modules.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.declareModules;
+function BOOTSTRAP.declareModules() {
+  # env: _DW_BOOTSTRAP_ESSENTIAL_MODULES: The modules included in the bootstrap process.
+  declare -agx _DW_BOOTSTRAP_ESSENTIAL_MODULES;
+
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=check;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=stdlib;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=number;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=string;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=array;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=envvar;
+
+  # env: _DW_BOOTSTRAP_EXTRA_MODULES: The modules included in the bootstrap process.
+  declare -agx _DW_BOOTSTRAP_EXTRA_MODULES;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=constant;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=color;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=debug;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=echo;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=logging;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=error;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=file;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=dw-plumbing;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=term;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=cli;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=package;
+}
+
 # fun: BOOTSTRAP.resetState
 # api: private
 # txt: Resets the module state.
@@ -1250,34 +1275,6 @@ declare -gx DWIFS=$' \t\n';
 function BOOTSTRAP.resetState() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
-
-  # env: __DRYWIT_ESSENTIAL_MODULES: The essential modules.
-  DW.declareGlobalArray "${_moduleName}" ESSENTIAL_MODULES;
-  DW.getGlobalVariableName "${_moduleName}" ESSENTIAL_MODULES;
-  local -n _essentialModules=${RESULT};
-  _essentialModules[${#_essentialModules[@]}]=check;
-  _essentialModules[${#_essentialModules[@]}]=stdlib;
-  _essentialModules[${#_essentialModules[@]}]=number;
-  _essentialModules[${#_essentialModules[@]}]=string;
-  _essentialModules[${#_essentialModules[@]}]=array;
-  _essentialModules[${#_essentialModules[@]}]=envvar;
-
-  # env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
-  DW.declareGlobalArray "${_moduleName}" BOOTSTRAP_MODULES;
-  DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
-  echo "bootstrapModules variable name: ${RESULT}" >> /tmp/.bootstrap.log;
-  local -n _bootstrapModules=${RESULT};
-  _bootstrapModules[${#_bootstrapModules[@]}]=constant;
-  _bootstrapModules[${#_bootstrapModules[@]}]=color;
-  _bootstrapModules[${#_bootstrapModules[@]}]=debug;
-  _bootstrapModules[${#_bootstrapModules[@]}]=echo;
-  _bootstrapModules[${#_bootstrapModules[@]}]=logging;
-  _bootstrapModules[${#_bootstrapModules[@]}]=error;
-  _bootstrapModules[${#_bootstrapModules[@]}]=file;
-  _bootstrapModules[${#_bootstrapModules[@]}]=dw-plumbing;
-  _bootstrapModules[${#_bootstrapModules[@]}]=term;
-  _bootstrapModules[${#_bootstrapModules[@]}]=cli;
-  _bootstrapModules[${#_bootstrapModules[@]}]=package;
 
   # env: IMPORTED_MODULES: The modules eventually imported in the bootstrap process.
   DW.declareGlobalArray "${_moduleName}" IMPORTED_MODULES;
@@ -1297,9 +1294,12 @@ function BOOTSTRAP.resetState() {
   BOOTSTRAP.setOnlineMode ${FALSE};
 }
 
+BOOTSTRAP.declareModules;
+
 #set -o errexit;  # terminate on any unhandled error
 #set -o nounset;  # terminate on any unset variable
 set -o pipefail; # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
+
 if BOOTSTRAP.isXtraceEnabled; then
   set -o xtrace;   # trace what gets executed
 fi
