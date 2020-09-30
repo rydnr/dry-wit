@@ -183,12 +183,12 @@ function DW.getGlobalString() {
     local _actualVariableName="${RESULT}";
     local -n _result=${RESULT};
     _rescode=$?;
-    BOOTSTRAP.logTrace -n "Reading ${_actualVariableName}";
+#    BOOTSTRAP.logTrace -n "Reading ${_actualVariableName}";
     if BOOTSTRAP.isTrue ${_rescode}; then
-      BOOTSTRAP.logTraceResult SUCCESS "${_result}";
+#      BOOTSTRAP.logTraceResult SUCCESS "${_result}";
       export RESULT="${_result}";
-    else
-      BOOTSTRAP.logTraceResult FAILURE "failed";
+#    else
+#      BOOTSTRAP.logTraceResult FAILURE "failed";
     fi
   else
     _rescode=${FALSE};
@@ -277,61 +277,65 @@ function DW.declareGlobalVariable() {
     fi
 
     case "${_varType}" in
-      "int") if BOOTSTRAP.isTrue ${_initialValueProvided}; then
-               BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
-               declare -igx "${_aux}"=${_initialValue};
-               BOOTSTRAP.logTraceResult SUCCESS "done";
-             else
-               BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
-               declare -igx "${_aux}";
-               BOOTSTRAP.logTraceResult SUCCESS "done";
-             fi
-             _rescode=$?;
-             ;;
-      "array") if BOOTSTRAP.isTrue ${_initialValueProvided}; then
-                 BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
-                 declare -agx "${_aux}";
-                 _rescode=$?;
-                 if BOOTSTRAP.isTrue ${_rescode}; then
-                   local -n _tmp=${_aux};
-                   _tmp=( ${@} );
-                   _rescode=$?;
-                 fi
-               else
-                 BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
-                 declare -agx "${_aux}";
-                 _rescode=$?;
-               fi
-               if BOOTSTRAP.isTrue ${_rescode}; then
-                 BOOTSTRAP.logTraceResult SUCCESS "done";
-               else
-                 BOOTSTRAP.logTraceResult FAILURE "failed";
-               fi
-               ;;
-      "map") BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
-             declare -Agx "${_aux}";
-             _rescode=$?;
-             if BOOTSTRAP.isTrue ${_rescode}; then
-               BOOTSTRAP.logTraceResult SUCCESS "done";
-             else
-               BOOTSTRAP.logTraceResult FAILURE "failed";
-             fi
-             ;;
-      *) if BOOTSTRAP.isTrue ${_initialValueProvided}; then
-           BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
-           declare -gx "${_aux}"="${_initialValue}";
-           _rescode=$?;
-         else
-           BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
-           declare -gx "${_aux}";
-           _rescode=$?;
-         fi
-         if BOOTSTRAP.isTrue ${_rescode}; then
-           BOOTSTRAP.logTraceResult SUCCESS "done";
-         else
-           BOOTSTRAP.logTraceResult FAILURE "failed";
-         fi
-         ;;
+      "int")
+        if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+#          BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+          declare -igx "${_aux}"=${_initialValue};
+#          BOOTSTRAP.logTraceResult SUCCESS "done";
+        else
+#          BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
+          declare -igx "${_aux}";
+#          BOOTSTRAP.logTraceResult SUCCESS "done";
+        fi
+        _rescode=$?;
+        ;;
+      "array")
+        if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+#          BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
+          declare -agx "${_aux}";
+          _rescode=$?;
+          if BOOTSTRAP.isTrue ${_rescode}; then
+            local -n _tmp=${_aux};
+            _tmp=( ${@} );
+            _rescode=$?;
+          fi
+        else
+#          BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+          declare -agx "${_aux}";
+          _rescode=$?;
+        fi
+#        if BOOTSTRAP.isTrue ${_rescode}; then
+#          BOOTSTRAP.logTraceResult SUCCESS "done";
+#        else
+#          BOOTSTRAP.logTraceResult FAILURE "failed";
+#        fi
+        ;;
+      "map")
+#        BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+        declare -Agx "${_aux}";
+        _rescode=$?;
+#        if BOOTSTRAP.isTrue ${_rescode}; then
+#          BOOTSTRAP.logTraceResult SUCCESS "done";
+#        else
+#          BOOTSTRAP.logTraceResult FAILURE "failed";
+#        fi
+        ;;
+      *)
+        if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+#          BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
+          declare -gx "${_aux}"="${_initialValue}";
+          _rescode=$?;
+        else
+#          BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+          declare -gx "${_aux}";
+          _rescode=$?;
+        fi
+#        if BOOTSTRAP.isTrue ${_rescode}; then
+#          BOOTSTRAP.logTraceResult SUCCESS "done";
+#        else
+#          BOOTSTRAP.logTraceResult FAILURE "failed";
+#        fi
+        ;;
     esac
   else
     echo "DW.getGlobalVariableName ${_module} ${_varName} returned 1. Please fill-in a bug report."
