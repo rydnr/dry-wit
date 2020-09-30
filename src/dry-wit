@@ -344,24 +344,6 @@ function DW.buildGlobalVariableName() {
   return ${TRUE};
 }
 
-# fun: DW.buildGlobalVariableName module varName
-# api: public
-# txt: Retrieves the name of a global variable. Its name depends on the nesting level. It might not yet exist.
-# opt: module: The name of the module.
-# opt: varName: The (logical) name of the variable.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the name of the global variable.
-# use: DW.buildGlobalVariableName "LOGGING" "MY_LIST";
-# use: echo "variable name: ${RESULT}";
-function BOOTSTRAP.buildScriptNameVariableName() {
-
-  local _result="_DW_SCRIPT_NAME_$$";
-
-  export RESULT="${_result}";
-
-  return ${TRUE};
-}
-
 # fun: DW.getScriptName
 # api: public
 # txt: Retrieves the name of the script.
@@ -370,20 +352,24 @@ function BOOTSTRAP.buildScriptNameVariableName() {
 # use: DW.getScriptName;
 # use: echo "Script name: ${RESULT}";
 function DW.getScriptName() {
-  local -i _rescode=${FALSE};
+  BOOTSTRAP.getModuleName;
+  DW.getGlobalString "${RESULT}" SCRIPT_NAME;
+}
 
-  BOOTSTRAP.buildScriptNameVariableName;
-  local _scriptNameVariableName="${RESULT}";
-  local -n _result="${_scriptNameVariableName}";
+# fun: BOOTSTRAP.setScriptName name
+# api: public
+# txt: Annotates the name of the script.
+# opt: name: The script name.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setScriptName "myScript";;
+function BOOTSTRAP.setScriptName() {
+  local _name="${1}";
+  BOOTSTRAP.checkNotEmpty name "${_name}" 1;
 
-  echo "${_scriptNameVariableName} -> ${_result}" >> /tmp/.scriptName.log
+  BOOTSTRAP.getModuleName;
+  local _module="${RESULT}";
 
-  if [[ -n "${_result}" ]]; then
-    _rescode=${TRUE};
-    export RESULT="${_result}";
-  fi
-
-  return ${_rescode};
+  DW.declareGlobalString "${_module}" SCRIPT_NAME "${_name}";
 }
 
 # fun: DW.getScriptPath
@@ -398,6 +384,22 @@ function DW.getScriptPath() {
   DW.getGlobalString "${RESULT}" SCRIPT_PATH;
 }
 
+# fun: BOOTSTRAP.setScriptPath path
+# api: public
+# txt: Annotates the path of the script.
+# opt: path: The script path.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setScriptPath "myScript";;
+function BOOTSTRAP.setScriptPath() {
+  local _path="${1}";
+  BOOTSTRAP.checkNotEmpty path "${_path}" 1;
+
+  BOOTSTRAP.getModuleName;
+  local _module="${RESULT}";
+
+  DW.declareGlobalString "${_module}" SCRIPT_PATH "${_path}";
+}
+
 # fun: DW.getScriptFolder
 # api: public
 # txt: Retrieves the folder of the script.
@@ -408,6 +410,22 @@ function DW.getScriptPath() {
 function DW.getScriptFolder() {
   BOOTSTRAP.getModuleName;
   DW.getGlobalString "${RESULT}" SCRIPT_FOLDER;
+}
+
+# fun: BOOTSTRAP.setScriptFolder folder
+# api: public
+# txt: Annotates the folder of the script.
+# opt: folder: The script folder.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setScriptFolder "myScript";;
+function BOOTSTRAP.setScriptFolder() {
+  local _folder="${1}";
+  BOOTSTRAP.checkNotEmpty folder "${_folder}" 1;
+
+  BOOTSTRAP.getModuleName;
+  local _module="${RESULT}";
+
+  DW.declareGlobalString "${_module}" SCRIPT_FOLDER "${_folder}";
 }
 
 # fun: BOOTSTRAP.exitWithError label message
@@ -1030,11 +1048,9 @@ function DW.initScriptName() {
     _scriptFolder="${PWD}";
   fi
 
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" SCRIPT_NAME "${_scriptName}";
-  DW.declareGlobalString "${_moduleName}" SCRIPT_PATH "${_scriptPath}";
-  DW.declareGlobalString "${_moduleName}" SCRIPT_FOLDER "${_scriptFolder}";
+  BOOTSTRAP.setScriptName "${_scriptName}";
+  BOOTSTRAP.setScriptPath "${_scriptPath}";
+  BOOTSTRAP.setScriptFolder "${_scriptFolder}";
 }
 
 # fun: DW.init
@@ -1125,7 +1141,7 @@ function BOOTSTRAP.setModuleUrl() {
 }
 
 # fun: getModulePath
-# api: private
+# api: public
 # txt: Retrieves the module path.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module path.
