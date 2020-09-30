@@ -173,27 +173,22 @@ function buildColor() {
 
   local result="";
 
-  COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-
-  #  upvar "${_color}" "\033[0;${_fgValue}m";
-  DW.setGlobalString "${_moduleName}" "${_color}" "\033[0;${_fgValue}m";
+ #  upvar "${_color}" "\033[0;${_fgValue}m";
+  declare -gx "${_color}" "\033[0;${_fgValue}m";
 #  upvar "${_color}_FG" "\033[0;${_fgValue}m";
-  DW.setGlobalString "${_moduleName}" "${_color}_FG" "\033[0;${_fgValue}m";
+  declare -gx "${_color}_FG" "\033[0;${_fgValue}m";
 #  upvar "${_color}_BG" "\033[${_bgValue}m";
-  DW.setGlobalString "${_moduleName}" "${_color}_BG" "\033[${_bgValue}m";
+  declare -gx "${_color}_BG" "\033[${_bgValue}m";
 #  upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
-  DW.setGlobalString "${_moduleName}" "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
+  declare -gx "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
 #  upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
-  DW.setGlobalString "${_moduleName}" "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
+  declare -gx "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
 #  upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
-  DW.setGlobalString "${_moduleName}" "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
+  declare -gx "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
 #  upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
-  DW.setGlobalString "${_moduleName}" "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
+  declare -gx "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
 #  upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
-  DW.setGlobalString "${_moduleName}" "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
-
-  DW.getGlobalVariableName "${_moduleName}" "${_color}";
+  declare -gx "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
 }
 
 # fun: allowsColors
@@ -325,24 +320,6 @@ function resetColor() {
 # use: COLOR.resetState
 function COLOR.resetState() {
   if allowsColors; then
-    buildColor VOID 0 0;
-    buildColor BLACK 30 0;
-    buildColor RED 31 41;
-    buildColor GREEN 32 42;
-    buildColor YELLOW 33 43;
-    buildColor BLUE 34 44;
-    buildColor MAGENTA 35 45;
-    buildColor CYAN 36 46;
-    buildColor GRAY 37 47;
-    buildColor BRIGHT_BLACK 90 100;
-    buildColor BRIGHT_RED 91 101;
-    buildColor BRIGHT_GREEN 92 102;
-    buildColor BRIGHT_YELLOW 93 103;
-    buildColor BRIGHT_BLUE 94 104;
-    buildColor BRIGHT_MAGENTA 95 105;
-    buildColor BRIGHT_CYAN 96 106;
-    buildColor WHITE 97 107;
-
     setSuccessColor GREEN;
     setFailureColor RED;
     setNeutralColor YELLOW;
@@ -350,6 +327,43 @@ function COLOR.resetState() {
     setNoColor GRAY;
   fi
 }
+
+if allowsColors; then
+  # env: VOID: No color.
+  buildColor VOID 0 0;
+  # env: BLACK: Black color.
+  buildColor BLACK 30 0;
+  # env: RED: Red color.
+  buildColor RED 31 41;
+  # env: GREEN: Green color.
+  buildColor GREEN 32 42;
+  # env: YELLOW: Yellow color.
+  buildColor YELLOW 33 43;
+  # env: BLUE: Blue color.
+  buildColor BLUE 34 44;
+  # env: MAGENTA: Magenta color.
+  buildColor MAGENTA 35 45;
+  # env: CYAN: Cyan color.
+  buildColor CYAN 36 46;
+  # env: GRAY: Gray color.
+  buildColor GRAY 37 47;
+  # env: BRIGHT_BLACK: Bright black color.
+  buildColor BRIGHT_BLACK 90 100;
+  # env: BRIGHT_RED: Bright red color.
+  buildColor BRIGHT_RED 91 101;
+  # env: BRIGHT_GREEN: Bright green color.
+  buildColor BRIGHT_GREEN 92 102;
+  # env: BRIGHT_YELLOW: Bright yellow color.
+  buildColor BRIGHT_YELLOW 93 103;
+  # env: BRIGHT_BLUE: Bright blue color.
+  buildColor BRIGHT_BLUE 94 104;
+  # env: BRIGHT_MAGENTA: Bright magenta color.
+  buildColor BRIGHT_MAGENTA 95 105;
+  # env: BRIGHT_CYAN: Bright cyan color.
+  buildColor BRIGHT_CYAN 96 106;
+  # env: WHITE: White color.
+  buildColor WHITE 97 107;
+fi
 
 # env: NO_COLOR: Whether to disable ANSI colors completely.
 # env: USECOLOR: If set to 'no', disables ANSI colors completely.

@@ -1160,7 +1160,7 @@ function LOGGING.echoLogOutcome() {
   for _i in $(seq 0 ${_len}); do
     IFS="${_oldIFS}";
     local _token="${_logOutcomeTokens[${_i}]}";
-    if isTrue ${_allowsColors}; then
+    if isTrue ${_allowsColors} && isNotEmpty "${_logOutcomeColors[${_i}]}"; then
 #      evalConstant "${_logOutcomeColors[${_i}]}";
 #      local _outcomeColor="${RESULT}";
       echoInColor -n "${_logOutcomeColors[${_i}]}" "${_token}";
