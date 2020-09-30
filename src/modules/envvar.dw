@@ -487,7 +487,17 @@ function ENVVAR.addEnvVar() {
   checkNotEmpty varName "${_varName}" 1;
   local _varValue="${2:-}";
 
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+${_varName}="${_varValue}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     if ! isEnvVarDefined "${_varName}"; then
       ENVVAR.appendEnvironmentVariable "${_varName}";
       declare -gx "${_varName}"="${_varValue}";
@@ -495,8 +505,7 @@ function ENVVAR.addEnvVar() {
     ENVVAR.getModuleName;
     DW.setGlobalString "${RESULT}" "${_varName}" "${_varValue}";
   else
-    echo "addEnvVar ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "addEnvVar ${_varName} '${_varValue}'" "${_tmpFile}";
   fi
 }
 
@@ -524,13 +533,23 @@ function ENVVAR.addEnvVarCommand() {
   local _varCommand="${2}";
   checkNotEmpty command "${_varCommand}" 1;
 
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
-    ENVVAR.getEnvironmentVariablesCommandsVariableName;
-    local -n _environmentVariablesCommands="${RESULT}";
+  ENVVAR.getEnvironmentVariablesCommandsVariableName;
+  local -n _environmentVariablesCommands="${RESULT}";
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_environmentVariablesCommands[${_varName}]="${_varCommand}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _environmentVariablesCommands[${_varName}]="${_varCommand}";
   else
-    echo "addEnvVarCommand ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "addEnvVarCommand ${_varName} '${_varCommand}'" "${_tmpFile}";
   fi
 }
 
@@ -558,14 +577,46 @@ function ENVVAR.addEnvVarDefault() {
   local _varDefault="${2}";
   checkNotEmpty defaultValue "${_varDefault}" 1;
 
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
-    ENVVAR.getEnvironmentVariablesDefaultsVariableName;
-    local -n _environmentVariablesDefaults="${RESULT}";
+  ENVVAR.getEnvironmentVariablesDefaultsVariableName;
+  local -n _environmentVariablesDefaults="${RESULT}";
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_environmentVariablesDefaults["${_varName}"]="${_varCommand}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _environmentVariablesDefaults["${_varName}"]="${_varDefault}";
   else
-    echo "addEnvVarDefault ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "addEnvVarDefault ${_varName} '${_varDefault}'" "${_tmpFile}";
   fi
+}
+
+# fun: ENVVAR.diagnoseBug text file
+# api: private
+# txt: Provides diagnostic information in the envvar bug.
+# opt: text: The header text.
+# opt: file: The file with diagnostic information.
+# txt: Returns 0/TRUE always.
+# use: ENVVAR.diagnoseBug "my text" "${tempFile}";
+function ENVVAR.diagnoseBug() {
+  local _text="${1}";
+  checkNotEmpty text "${_text}" 1;
+  local _file="${2}";
+  checkNotEmpty file "${_file}" 2;
+
+  local _output="/tmp/envvar-bug.log";
+
+  echo "$(date): ${_text}" >> ${_output};
+  env >> ${_output};
+  cat "${_file}" >> ${_output};
+  printApiCall >> ${_output};
+  echo "" >> ${_output};
 }
 
 # fun: ENVVAR.getEnvironmentVariablesDescriptionsVariableName
@@ -592,13 +643,23 @@ function ENVVAR.addEnvVarDescription() {
   local _varDescription="${2}";
   checkNotEmpty description "${_varDescription}" 2;
 
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
-    ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
-    local -n _environmentVariablesDescriptions="${RESULT}";
+  ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
+  local -n _environmentVariablesDescriptions="${RESULT}";
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
   else
-    echo "addEnvVarDescription ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "addEnvVarDescription ${_varName} '${_varDescription}'" "${_tmpFile}";
   fi
 }
 
@@ -626,13 +687,23 @@ function ENVVAR.addEnvVarMandatory() {
   local _varMandatory="${2}";
   ENVVAR.checkMandatoryOrOptional "${_varMandatory}" 2;
 
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
-    ENVVAR.getMandatoryEnvironmentVariablesVariableName;
-    local -n _mandatoryEnvironmentVariables="${RESULT}";
+  ENVVAR.getMandatoryEnvironmentVariablesVariableName;
+  local -n _mandatoryEnvironmentVariables="${RESULT}";
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
   else
-    echo "addEnvVarMandatory ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "addEnvVarMandatory ${_varName} '${_varMandatory}'" "${_tmpFile}";
   fi
 }
 
@@ -762,11 +833,21 @@ function ENVVAR.evalOverriddenVar() {
 
   ENVVAR.getOverriddenEnvironmentVariablesVariableName;
   local -n _overriddenEnvVariables=${RESULT};
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_tmp="${_overriddenEnvVariables[${_varName}]}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _result="${_overriddenEnvVariables[${_varName}]}";
   else
-    echo "overriden ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "overriden ${_varName}" "${_tmpFile}";
   fi
 
   if isEmpty "${_result}"; then
@@ -798,11 +879,21 @@ function ENVVAR.evalVarCommand() {
 
   ENVVAR.getEnviromentVariablesCommands;
   local -n _environmentVariablesCommands=${RESULT};
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_tmp="${_environmentVariablesCommands[${_varName}]}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _result="${_environmentVariablesCommands[${_varName}]}";
   else
-    echo "command ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "command ${_varName}" "${_tmpFile}";
   fi
 
   if isEmpty "${_result}"; then
@@ -833,11 +924,21 @@ function ENVVAR.evalVarDefault() {
   local _result;
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults=${RESULT};
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_tmp="${_environmentVariablesDefaults[${_varName}]}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _result="${_environmentVariablesDefaults[${_varName}]}";
   else
-    echo "default ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "default ${_varName}" "${_tmpFile}";
   fi
 
   if isEmpty "${_result}"; then
@@ -870,11 +971,21 @@ function ENVVAR.evalVarDescription() {
 
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
-  if ENVVAR.isInEnvvarFormat "${_varName}"; then
+
+  local _tmpFile;
+  createTempFile;
+  _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+_tmp="${_environmentVariablesDescriptions[${_varName}]}";
+EOF
+  chmod +x "${_tmpFile}";
+  "${_tmpFile}" 2> /dev/null;
+  if isTrue $?; then
     _result="${_environmentVariablesDescriptions[${_varName}]}";
   else
-    echo "description ${_varName}" >> /tmp/envvar-bug.log
-    printApiCall >> /tmp/envvar-bug.log
+    ENVVAR.diagnoseBug "description ${_varName}" "${_tmpFile}";
   fi
 
   if isEmpty "${_result}"; then
