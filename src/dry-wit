@@ -102,14 +102,14 @@ function DW.getGlobalInt() {
 
   if DW.getGlobalString "${_module}" "${_varName}"; then
     _rescode=${TRUE};
-    if [[ "${RESULT}" == "" ]]; then
+    if BOOTSTRAP.isEmpty "${RESULT}"; then
       _result=${_default};
     else
       _result=${RESULT};
     fi
   fi
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if BOOTSTRAP.isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
 
@@ -279,11 +279,11 @@ function DW.declareGlobalVariable() {
     case "${_varType}" in
       "int") if BOOTSTRAP.isTrue ${_initialValueProvided}; then
                BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
-               declare -igx "${_aux}"=-1;
+               declare -igx "${_aux}"=${_initialValue};
                BOOTSTRAP.logTraceResult SUCCESS "done";
              else
                BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
-               declare -igx "${_aux}"=${_initialValue};
+               declare -igx "${_aux}";
                BOOTSTRAP.logTraceResult SUCCESS "done";
              fi
              _rescode=$?;
@@ -319,11 +319,13 @@ function DW.declareGlobalVariable() {
              ;;
       *) if BOOTSTRAP.isTrue ${_initialValueProvided}; then
            BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType}) as ${_initialValue}";
+           declare -gx "${_aux}"="${_initialValue}";
+           _rescode=$?;
          else
            BOOTSTRAP.logTrace -n "Writing ${_aux} (type ${_varType})";
+           declare -gx "${_aux}";
+           _rescode=$?;
          fi
-         declare -gx "${_aux}"="${_initialValue}";
-         _rescode=$?;
          if BOOTSTRAP.isTrue ${_rescode}; then
            BOOTSTRAP.logTraceResult SUCCESS "done";
          else
@@ -864,14 +866,14 @@ function downloadModule() {
   BOOTSTRAP.logDebug -n "Downloading ${_moduleUrl}/${_module}.dw to ${_moduleUrl}/${_module}.dw";
   curl -s "${_moduleUrl}/${_module}.dw" > "${_modulePath}/${_module}.dw";
   _rescode=$?;
-  if [[ ${_rescode} -eq ${TRUE} ]]; then
+  if BOOTSTRAP.isTrue ${_rescode}; then
     export RESULT="${_modulePath}/${_module}.dw";
   else
     rm -f "${_modulePath}/${_module}.dw";
     curl -s "${_moduleUrl}/ext/${_module}.dw" > "${_modulePath}/ext/${_module}.dw";
     _rescode=$?;
 
-    if [[ ${_rescode} -eq ${TRUE} ]]; then
+    if BOOTSTRAP.isTrue ${_rescode}; then
       BOOTSTRAP.logDebugResult SUCCESS "done";
       export RESULT="${_modulePath}/ext/${_module}.dw";
     else
@@ -1016,7 +1018,7 @@ function findModule() {
   IFS="${DWIFS}";
   for _result in "${_modulePath}/${_module}.dw" "${_modulePath}/ext/${_module}.dw"; do
     IFS="${_oldIFS}";
-    BOOTSTRAP.logTrace -n "Checking id ${_result} exists";
+    BOOTSTRAP.logTrace -n "Checking if ${_result} exists";
     if [[ -e "${_result}" ]]; then
       _rescode=${TRUE};
       BOOTSTRAP.logTraceResult SUCCESS "true";
