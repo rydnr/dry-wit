@@ -2419,6 +2419,10 @@ function LOGGING.processLogPrefixTokens() {
   LOGGING.retrieveLogPrefixLevelToken "${_level}";
   local _levelPrefix="${RESULT}";
 
+  if isEmpty "${_levelPrefix}"; then
+    _levelPrefix="-";
+  fi
+
   LOGGING.processLogPrefixTokensWithValues "${_timestamp}" "${_namespace}" "${_categoryPrefix}" "${_levelPrefix}";
 }
 
