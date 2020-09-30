@@ -201,7 +201,8 @@ function allowsColors() {
     _disableColors=${TRUE};
   fi
   if isFalse ${_disableColors}; then
-    local _cachedResult="${_DW_ALLOWS_COLORS}";
+    COLOR.getCachedAllowsColors;
+    local _cachedResult="${RESULT}";
 
     if isEmpty "${_cachedResult}"; then
       local _colors="$(tput colors 2>&1)";
@@ -219,7 +220,7 @@ function allowsColors() {
       else
         _rescode=${FALSE};
       fi;
-      export _DW_ALLOWS_COLORS=${_rescode};
+      COLOR.setCachedAllowsColors "${_rescode}";
     else
       _rescode=${_cachedResult};
     fi
@@ -230,8 +231,41 @@ function allowsColors() {
   return ${_rescode};
 }
 
+# fun: COLOR.getCachedAllowsColors
+# api: private
+# txt: Retrieves the cached value of calling allowsColors.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT is empty if there's no cached value, otherwise contains the cached value.
+# use: COLOR.getCachedAllowsColors;
+# use: if isEmpty "${RESULT}"; then
+# use:   echo "Colors allowed value not yet cached";
+# use: fi
+function COLOR.getCachedAllowsColors() {
+  COLOR.getModuleName;
+  DW.getGlobalInt "${RESULT}" CACHED_ALLOWS_COLORS -1;
+
+  if areEqual "${RESULT}" -1; then
+    export RESULT="";
+  fi
+}
+
+# fun: COLOR.setCachedAllowsColors flag
+# api: private
+# txt: Specifies the cached value of calling allowsColors.
+# txt: Returns 0/TRUE if colors are allowed; 1/FALSE otherwise.
+# use: if COLOR.getCachedAllowsColors; then
+# use:   echo "Colors allowed";
+# use: fi
+function COLOR.setCachedAllowsColors() {
+  local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
+
+  COLOR.getModuleName;
+  DW.setGlobalInt "${RESULT}" CACHED_ALLOWS_COLORS ${_flag};
+}
+
 # fun: COLOR.getColorName symbol
-# api: public
+# api: private
 # txt: Retrieves the color name associated to given symbol.
 # opt: symbol: The color symbol.
 # txt: Returns 0/TRUE if the symbol is known; 1/FALSE otherwise.
