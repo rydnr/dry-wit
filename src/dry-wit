@@ -536,9 +536,11 @@ function BOOTSTRAP.isFalse() {
 
 # fun: BOOTSTRAP.isDebugEnabled
 # api: private
-# txt: A fail-safe version of isDebugEnabled.
+# txt: Checks if bootstrap debug is enabled.
 # txt: Returns 0/TRUE if DEBUG logging is enabled; 1/FALSE otherwise.
-# use: if BOOTSTRAP.isDebugEnabled; then ...; fi
+# use: if BOOTSTRAP.isDebugEnabled; then
+# use:   echo "Debug enabled";
+# use: fi
 function BOOTSTRAP.isDebugEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
@@ -559,18 +561,45 @@ function BOOTSTRAP.isDebugEnabled() {
 
 # fun: BOOTSTRAP.isTraceEnabled
 # api: private
-# txt: A fail-safe version of isTraceEnabled.
-# txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
-# use: if BOOTSTRAP.isTraceEnabled; then ...; fi
+# txt: Checks if bootstrap tracing is enabled.
+# txt: Returns 0/TRUE if tracing is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isTraceEnabled; then
+# use:   echo "Tracing enabled";
+# use: fi
 function BOOTSTRAP.isTraceEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
-  local _flag;
 
+  local _flag;
   IFS="${DWIFS}";
   for _flag in ${BASH_ARGV[@]}; do
     IFS="${_oldIFS}";
     if [ "${_flag}" == "-DW:vv" ]; then
+	    _rescode=${TRUE};
+	    break;
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  return ${_rescode};
+}
+
+# fun: BOOTSTRAP.isXtraceEnabled
+# api: private
+# txt: Checks if extreme tracing is enabled.
+# txt: Returns 0/TRUE if tracing is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isXtraceEnabled; then
+# use:   echo "Extreme tracing enabled";
+# use: fi
+function BOOTSTRAP.isXtraceEnabled() {
+  local -i _rescode=${FALSE};
+  local _oldIFS="${IFS}";
+
+  local _flag;
+  IFS="${DWIFS}";
+  for _flag in ${BASH_ARGV[@]}; do
+    IFS="${_oldIFS}";
+    if [ "${_flag}" == "-DW:xv" ]; then
 	    _rescode=${TRUE};
 	    break;
     fi
@@ -1268,10 +1297,12 @@ function BOOTSTRAP.resetState() {
   BOOTSTRAP.setOnlineMode ${FALSE};
 }
 
-#set -o errexit  # terminate on any unhandled error
-#set -o nounset  # terminate on any unset variable
-set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
-#set -o xtrace   # trace what gets executed
+#set -o errexit;  # terminate on any unhandled error
+#set -o nounset;  # terminate on any unset variable
+set -o pipefail; # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
+if BOOTSTRAP.isXtraceEnabled; then
+  set -o xtrace;   # trace what gets executed
+fi
 
 if [ ! -z ${SKIP_LOADING_DRY_WIT+x} ]; then
   exit 0;
