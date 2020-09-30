@@ -173,22 +173,14 @@ function buildColor() {
 
   local result="";
 
- #  upvar "${_color}" "\033[0;${_fgValue}m";
-  declare -gx "${_color}" "\033[0;${_fgValue}m";
-#  upvar "${_color}_FG" "\033[0;${_fgValue}m";
-  declare -gx "${_color}_FG" "\033[0;${_fgValue}m";
-#  upvar "${_color}_BG" "\033[${_bgValue}m";
-  declare -gx "${_color}_BG" "\033[${_bgValue}m";
-#  upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
-  declare -gx "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
-#  upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
-  declare -gx "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
-#  upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
-  declare -gx "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
-#  upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
-  declare -gx "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
-#  upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
-  declare -gx "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
+  declare -gx "${_color}"="\033[0;${_fgValue}m";
+  declare -gx "${_color}_FG"="\033[0;${_fgValue}m";
+  declare -gx "${_color}_BG"="\033[${_bgValue}m";
+  declare -gx "LIGHT_${_color}_FG"="\033[1;${_fgValue}m";
+  declare -gx "UNDERSCORE_${_color}_FG"="\033[4;${_fgValue}m";
+  declare -gx "BLINK_${_color}_FG"="\033[5;${_fgValue}m";
+  declare -gx "INVERSE_${_color}_FG"="\033[7;${_fgValue}m";
+  declare -gx "CONCEALED_${_color}_FG"="\033[8;${_fgValue}m";
 }
 
 # fun: allowsColors
