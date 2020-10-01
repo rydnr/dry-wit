@@ -3,9 +3,9 @@
 # Distributed under the terms of the GNU General Public License v3
 
 function evalConstant_works_for_predefined_colors_test() {
-  local _expected="\033[0;37m";
-  local _colorName=GRAY;
-  DW.getGlobalVariableName "COLOR" "${_colorName}";
+  local _expected=GRAY;
+  local _colorName=NO_COLOR;
+  DW.getGlobalVariableName COLOR "${_colorName}";
   local _constant="${RESULT}";
   evalConstant ${_constant};
   local -i _rescode=$?;
