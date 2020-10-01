@@ -264,21 +264,6 @@ function COLOR.setCachedAllowsColors() {
   DW.setGlobalInt "${RESULT}" CACHED_ALLOWS_COLORS ${_flag};
 }
 
-# fun: COLOR.getColorName symbol
-# api: private
-# txt: Retrieves the color name associated to given symbol.
-# opt: symbol: The color symbol.
-# txt: Returns 0/TRUE if the symbol is known; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the color name.
-# use: if getColorName GRAY; then echo "color name: ${RESULT}"; fi
-function COLOR.getColorName() {
-  local _symbol="${1}";
-  checkNotEmpty symbol "${_symbol}" 1;
-
-  COLOR.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" "${_symbol}";
-}
-
 # fun: getColorEscapeCode name defaultColor?
 # api: public
 # txt: Retrieves the color for given name.
@@ -300,13 +285,11 @@ function getColorEscapeCode() {
   local -i _rescode;
 
   if allowsColors; then
-    COLOR.getColorName "${_colorSymbol}";
-    local _colorVariableName="${RESULT}";
-    if    isNotEmpty "${_colorVariableName}" \
-       && evalConstant "${_colorVariableName}"; then
+    if    isNotEmpty "${_colorSymbol}" \
+       && evalConstant "${_colorSymbol}"; then
        _result="${RESULT}";
-    elif   isNotEmpty "${_defaultColorVariableName}" \
-        && evalConstant "${_defaultColorVariableName}"; then
+    elif   isNotEmpty "${_defaultColorSymbol}" \
+        && evalConstant "${_defaultColorSymbol}"; then
       _result="${RESULT}";
 #    else
 #      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol} (variable: ${_colorVariableName}) (default: ${_defaultColorVariableName})";
@@ -325,6 +308,23 @@ function getColorEscapeCode() {
   fi
 
   return ${_rescode};
+}
+
+# fun: COLOR.getColorName symbol
+# api: private
+# txt: Retrieves the color name associated to given symbol.
+# opt: symbol: The color symbol.
+# txt: Returns 0/TRUE if the symbol is known; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the color name.
+# use: if getColorName GRAY; then
+# use:   echo "color name: ${RESULT}";
+# use: fi
+function COLOR.getColorName() {
+  local _symbol="${1}";
+  checkNotEmpty symbol "${_symbol}" 1;
+
+  COLOR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" "${_symbol}";
 }
 
 # fun: resetColor
@@ -354,7 +354,7 @@ function COLOR.resetState() {
   fi
 }
 
-if allowsColors; then
+if allowsColors && isEmpty "${VOID}"; then
   # env: VOID: No color.
   buildColor VOID 0 0;
   # env: BLACK: Black color.
