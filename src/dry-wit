@@ -1164,7 +1164,7 @@ function DW.init() {
   declare -igx DW_INITIALIZED=${TRUE};
 }
 
-function DW.isTest() {
+function DW.ifTestRunDryWitTest() {
   DW.getScriptName;
   local _scriptName="${RESULT}";
 
@@ -1384,6 +1384,8 @@ DW.init $@;
 BOOTSTRAP.resetState;
 
 BOOTSTRAP.bootstrap;
+
+DW.ifTestRunDryWitTest;
 
 DRYWIT.main $@;
 if BOOTSTRAP.isNested; then
