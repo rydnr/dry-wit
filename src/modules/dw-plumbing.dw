@@ -326,10 +326,13 @@ function DRYWIT.main() {
 
   if isHelpFlagProvided; then
     printHelp;
+  elif isFunctionPresent main "${_scriptName}"; then
+    setLogCategory "";
+    main ${BASH_ARGV[@]};
+    setLogCategory "";
   else
-    setLogCategory "";
-    main;
-    setLogCategory "";
+    echo "main function is mandatory in dry-wit scripts";
+    exit 255;
   fi
 }
 
