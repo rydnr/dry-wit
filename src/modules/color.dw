@@ -185,21 +185,19 @@ function buildColor() {
 
 # fun: allowsColors
 # api: public
-# txt: Checks whether the terminal allows colors or not. If the variable DW_DISABLE_ANSI_COLORS is non-empty, or USECOLOR=no, colors are disabled.
-# txt: Returns 0/TRUE if the terminal supports colors; 1/FALSE otherwise.
+# txt: Checks whether the terminal allows colors or not. If the variable ENABLE_COLOR is ${FALSE}, colors are disabled.
+# txt: Returns 0/TRUE if the terminal supports colors and ENABLE_COLOR is ${TRUE}; 1/FALSE otherwise.
 # use: if allowsColors; then
 # use:   ...
 # use: fi
 function allowsColors() {
   local -i _rescode;
 
-  local -i _disableColors=${FALSE};
-  if isNotEmpty "${NO_COLOR}"; then
-    _disableColors=${TRUE};
-  elif   isNotEmpty "${USECOLOR}" \
-      && areEqual "${USECOLOR}" "no"; then
-    _disableColors=${TRUE};
+  local -i _disableColors=${TRUE};
+  if isTrue "${ENABLE_COLOR}"; then
+    _disableColors=${FALSE};
   fi
+
   if isFalse ${_disableColors}; then
     COLOR.getCachedAllowsColors;
     local _cachedResult="${RESULT}";
@@ -391,7 +389,6 @@ if allowsColors && isEmpty "${VOID}"; then
   buildColor WHITE 97 107;
 fi
 
-# env: NO_COLOR: Whether to disable ANSI colors completely.
-# env: USECOLOR: If set to 'no', disables ANSI colors completely.
-
+# env: ENABLE_COLOR: Whether to enable colors when logging. Defaults to ${FALSE}.
+defineEnvVar ENABLE_COLOR MANDATORY "Whether to enable colors when logging" ${FALSE};
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
