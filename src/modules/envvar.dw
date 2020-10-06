@@ -82,8 +82,10 @@ function defineButDoNotOverrideEnvVar() {
 # opt: description: The variable description.
 # opt: defaultValue: The default value (optional).
 # opt: command: The command to retrieve the actual value (optional).
-# txt: Returns 0/TRUE always.
-# use: defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";
+# txt: Returns 0/TRUE if a new variable gets defined; 1/FALSE if the variable already existed.
+# use: if defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date"; then
+# use:   echo "MY_VAR created";
+# use: fi
 function defineEnvVar() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
@@ -94,46 +96,54 @@ function defineEnvVar() {
   local _varDefault="${4}";
   local _varCommand="${5:-}";
 
+  local -i _rescode;
+
   toUpper "${_varName}";
   local _upcasedVarName="${RESULT}";
 
-  ENVVAR.addEnvVarMandatory "${_upcasedVarName}" "${_varMandatory}";
+  if isEnvVarDefined "${_upcasedVarName}"; then
+    _rescode=${FALSE};
+  else
 
-  local _description;
-  if ENVVAR.evalVarDescription "${_upcasedVarName}"; then
-    _description="${RESULT}";
-  fi
+    ENVVAR.addEnvVarMandatory "${_upcasedVarName}" "${_varMandatory}";
 
-  if isEmpty "${_description}"; then
-    ENVVAR.addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
-  fi
+    local _description;
+    if ENVVAR.evalVarDescription "${_upcasedVarName}"; then
+      _description="${RESULT}";
+    fi
 
-  if isNotEmpty "${_varDefault}"; then
-    ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
-    if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
-      local _defaultValue="${RESULT}";
+    if isEmpty "${_description}"; then
+      ENVVAR.addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
+    fi
 
-      evalVar "${_upcasedVarName}";
-      local _varValue="${RESULT}";
+    if isNotEmpty "${_varDefault}"; then
+      ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
+      if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
+        local _defaultValue="${RESULT}";
 
-      if isEmpty "${_varValue}"; then
-        if isNotEmpty "${_defaultValue}"; then
-          _varValue="${_defaultValue}";
-        elif isNotEmpty "${_varCommand}"; then
-          ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
-          if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
-            _varValue="${RESULT}";
+        evalVar "${_upcasedVarName}";
+        local _varValue="${RESULT}";
+
+        if isEmpty "${_varValue}"; then
+          if isNotEmpty "${_defaultValue}"; then
+            _varValue="${_defaultValue}";
+          elif isNotEmpty "${_varCommand}"; then
+            ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
+            if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
+              _varValue="${RESULT}";
+            fi
           fi
+        else
+          ENVVAR.appendEnvironmentVariable "${_upcasedVarName}";
         fi
-      else
-        ENVVAR.appendEnvironmentVariable "${_upcasedVarName}";
       fi
     fi
+
+    ENVVAR.addEnvVar "${_upcasedVarName}" "${_varValue}";
+    _rescode=${TRUE};
   fi
 
-  ENVVAR.addEnvVar "${_upcasedVarName}" "${_varValue}";
-
-  return ${TRUE};
+  return ${_rescode};
 }
 
 # fun: evalEnvVars
@@ -487,25 +497,11 @@ function ENVVAR.addEnvVar() {
   checkNotEmpty varName "${_varName}" 1;
   local _varValue="${2:-}";
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-${_varName}="${_varValue}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    if ! isEnvVarDefined "${_varName}"; then
+  if ! isEnvVarDefined "${_varName}"; then
+    declare -gx "${_varName}"="${_varValue}";
+    if isTrue $?; then
       ENVVAR.appendEnvironmentVariable "${_varName}";
-      declare -gx "${_varName}"="${_varValue}";
     fi
-    ENVVAR.getModuleName;
-    DW.setGlobalString "${RESULT}" "${_varName}" "${_varValue}";
-  else
-    ENVVAR.diagnoseBug "addEnvVar ${_varName} '${_varValue}'" "${_tmpFile}";
   fi
 }
 
@@ -536,21 +532,7 @@ function ENVVAR.addEnvVarCommand() {
   ENVVAR.getEnvironmentVariablesCommandsVariableName;
   local -n _environmentVariablesCommands="${RESULT}";
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_environmentVariablesCommands[${_varName}]="${_varCommand}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _environmentVariablesCommands[${_varName}]="${_varCommand}";
-  else
-    ENVVAR.diagnoseBug "addEnvVarCommand ${_varName} '${_varCommand}'" "${_tmpFile}";
-  fi
+  _environmentVariablesCommands[${_varName}]="${_varCommand}";
 }
 
 # fun: ENVVAR.getEnvironmentVariablesDefaultsVariableName
@@ -580,21 +562,7 @@ function ENVVAR.addEnvVarDefault() {
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults="${RESULT}";
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_environmentVariablesDefaults["${_varName}"]="${_varCommand}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _environmentVariablesDefaults["${_varName}"]="${_varDefault}";
-  else
-    ENVVAR.diagnoseBug "addEnvVarDefault ${_varName} '${_varDefault}'" "${_tmpFile}";
-  fi
+  _environmentVariablesDefaults["${_varName}"]="${_varDefault}";
 }
 
 # fun: ENVVAR.diagnoseBug text file
@@ -646,21 +614,7 @@ function ENVVAR.addEnvVarDescription() {
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions="${RESULT}";
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
-  else
-    ENVVAR.diagnoseBug "addEnvVarDescription ${_varName} '${_varDescription}'" "${_tmpFile}";
-  fi
+  _environmentVariablesDescriptions["${_varName}"]="${_varDescription}";
 }
 
 # fun: ENVVAR.getMandatoryEnvironmentVariablesVariableName
@@ -690,21 +644,7 @@ function ENVVAR.addEnvVarMandatory() {
   ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables="${RESULT}";
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
-  else
-    ENVVAR.diagnoseBug "addEnvVarMandatory ${_varName} '${_varMandatory}'" "${_tmpFile}";
-  fi
+  _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
 }
 
 # fun: ENVVAR.getOverriddenEnvironmentVariablesVariableName
@@ -834,21 +774,7 @@ function ENVVAR.evalOverriddenVar() {
   ENVVAR.getOverriddenEnvironmentVariablesVariableName;
   local -n _overriddenEnvVariables=${RESULT};
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_tmp="${_overriddenEnvVariables[${_varName}]}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _result="${_overriddenEnvVariables[${_varName}]}";
-  else
-    ENVVAR.diagnoseBug "overriden ${_varName}" "${_tmpFile}";
-  fi
+  _result="${_overriddenEnvVariables[${_varName}]}";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
@@ -880,21 +806,7 @@ function ENVVAR.evalVarCommand() {
   ENVVAR.getEnviromentVariablesCommands;
   local -n _environmentVariablesCommands=${RESULT};
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_tmp="${_environmentVariablesCommands[${_varName}]}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _result="${_environmentVariablesCommands[${_varName}]}";
-  else
-    ENVVAR.diagnoseBug "command ${_varName}" "${_tmpFile}";
-  fi
+  _result="${_environmentVariablesCommands[${_varName}]}";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
@@ -925,21 +837,7 @@ function ENVVAR.evalVarDefault() {
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults=${RESULT};
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_tmp="${_environmentVariablesDefaults[${_varName}]}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _result="${_environmentVariablesDefaults[${_varName}]}";
-  else
-    ENVVAR.diagnoseBug "default ${_varName}" "${_tmpFile}";
-  fi
+  _result="${_environmentVariablesDefaults[${_varName}]}";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
@@ -972,21 +870,7 @@ function ENVVAR.evalVarDescription() {
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
 
-  local _tmpFile;
-  createTempFile;
-  _tmpFile="${RESULT}";
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
-
-_tmp="${_environmentVariablesDescriptions[${_varName}]}";
-EOF
-  chmod +x "${_tmpFile}";
-  "${_tmpFile}" 2> /dev/null;
-  if isTrue $?; then
-    _result="${_environmentVariablesDescriptions[${_varName}]}";
-  else
-    ENVVAR.diagnoseBug "description ${_varName}" "${_tmpFile}";
-  fi
+  _result="${_environmentVariablesDescriptions[${_varName}]}";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
