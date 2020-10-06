@@ -1112,6 +1112,23 @@ function LOGGING.echoLogPrefix() {
   LOGGING.logToFiles "${_result}";
 }
 
+# fun: rightJustificationEnabled
+# api: public
+# txt: Checks if the logging outcomes should be justified to the right or not.
+# txt: Returns 0/TRUE in that case; 1/FALSE otherwise.
+# use: if rightJustificationEnabled; then
+# use:   echo "Justification is enabled";
+# use: fi
+function rightJustificationEnabled() {
+  local -i _rescode=${FALSE};
+
+  if isNotEmpty "${ENABLE_RIGHT_JUSTIFIED_LOGGING}" && isTrue "${ENABLE_RIGHT_JUSTIFIED_LOGGING}"; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
 # fun: LOGGING.echoLogOutcome SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS text
 # api: private
 # txt: Prints the log outcome.
@@ -1132,6 +1149,7 @@ function LOGGING.echoLogOutcome() {
 
   if isTrue ${_allowsColors}; then
     LOGGING.processLogOutcomeColors ${_keyword};
+
   fi
 
   LOGGING.peekLog;
@@ -1140,7 +1158,11 @@ function LOGGING.echoLogOutcome() {
   LOGGING.buildLogPrefix ${FALSE};
   local _logPrefix="${RESULT}";
 
-  LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}";
+  if rightJustificationEnabled; then
+    LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}";
+  else
+    echo -n " ... ";
+  fi
 
   LOGGING.getLogOutcomeTokensVariableName;
   local -n _logOutcomeTokens=${RESULT};
@@ -1151,27 +1173,32 @@ function LOGGING.echoLogOutcome() {
   local -i _len=$((${#_logOutcomeTokens[@]} - 1));
 
   if isFalse ${_allowsColors}; then
-    echo -n "...";
-  fi
-
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  local -i _i;
-  for _i in $(seq 0 ${_len}); do
-    IFS="${_oldIFS}";
-    local _token="${_logOutcomeTokens[${_i}]}";
-    if isTrue ${_allowsColors} && isNotEmpty "${_logOutcomeColors[${_i}]}"; then
-#      evalConstant "${_logOutcomeColors[${_i}]}";
-#      local _outcomeColor="${RESULT}";
-      echoInColor -n "${_logOutcomeColors[${_i}]}" "${_token}";
-    else
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    local -i _i;
+    for _i in $(seq 0 ${_len}); do
+      IFS="${_oldIFS}";
+      local _token="${_logOutcomeTokens[${_i}]}";
       echo -n "${_token}";
-    fi
-    LOGGING.logToFiles "${_token}";
-  done
-  IFS="${_oldIFS}";
+      LOGGING.logToFiles "${_token}";
+    done
+    IFS="${_oldIFS}";
+  else
 
-  if isTrue ${_allowsColors}; then
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    local -i _i;
+    for _i in $(seq 0 ${_len}); do
+      IFS="${_oldIFS}";
+      local _token="${_logOutcomeTokens[${_i}]}";
+      if isNotEmpty "${_logOutcomeColors[${_i}]}"; then
+        #      evalConstant "${_logOutcomeColors[${_i}]}";
+        #      local _outcomeColor="${RESULT}";
+        echoInColor -n "${_logOutcomeColors[${_i}]}" "${_token}";
+      fi
+    done
+    IFS="${_oldIFS}";
+
     resetColor;
   fi
 }
@@ -1802,7 +1829,7 @@ function LOGGING.logStuffResult() {
   checkNotEmpty outcome "${_outcome}" 1;
   LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1;
   shift;
-  checkNotEmpty "text" "${@}" 2;
+  checkNotEmpty text "${@}" 2;
 
   LOGGING.numberOfNestedInProgressTasks;
   local -i _nestedTasks=$?;
@@ -3192,4 +3219,6 @@ function LOGGING.resetState() {
   DW.declareGlobalArray "${_moduleName}" INVALID_LOG_CATEGORIES;
   setInvalidLogCategories logResult logInfo logInfoResult logInfoFromStdin BOOTSTRAP.logInfo logDebug logDebugResult logDebugFromStdin BOOTSTRAP.logDebug logTrace logTraceResult logTraceFromStdin BOOTSTRAP.logTrace runCommandLongOutput;
 }
+# env: ENABLE_RIGHT_JUSTIFIED_LOGGING: Whether to justify text to the right when printing outcomes in log messages. Defaults to ${FALSE};
+defineEnvVar ENABLE_RIGHT_JUSTIFIED_LOGGING MANDATORY "Whether to justify text to the right when printing outcomes in log messages" ${FALSE};
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
