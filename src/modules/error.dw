@@ -308,7 +308,10 @@ EOF
 # txt: Returns 0/TRUE always.
 # use: ERROR.printError "My error message.";
 function ERROR.printError() {
-  echo "Error: $@.";
+  DW.getScriptName;
+  local _scriptName="${RESULT}";
+
+  echo "Error in ${_scriptName}: $@.";
 }
 
 # fun: ERROR.getBuiltInErrorsVariableName
