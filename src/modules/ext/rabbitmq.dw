@@ -542,7 +542,7 @@ function setPolicy() {
   local -i _rescode;
   local _log;
 
-  logTrace -n "Setting policy  ${_name} ${_match} ${_body} --apply-to ${_objectType}";
+  logTrace -n "Setting policy ${_name} ${_match} ${_body} --apply-to ${_objectType}";
   _log="$(rabbitmqctl -n ${_nodename} set_policy "${_name}" "${_match}" "${_body}" --apply-to "${_objectType}" 2>&1)";
   _rescode=$?;
   if isTrue ${_rescode}; then
@@ -568,7 +568,7 @@ function setPolicy() {
 # txt: Returns 0/TRUE if the policy exists, and it's the same type; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
 # use: if policyAlreadyExists / "my-dlx" "^my-ex" '{"dead-letter-exchange":"my-dlx"}' "queues" 'rabbit@server'; then
-# use:   echo "Policy exch already exists";
+# use:   echo "Policy my-dlx already exists";
 # use: fi
 function policyAlreadyExists() {
   local _virtualHost="${1}";
@@ -639,6 +639,42 @@ function deletePolicy() {
   return ${_rescode};
 }
 
+# fun: setPolicyUnlessItExistsAlready
+# api: public
+# txt: Declares a policy if it doesn't exist already.
+# opt: vhost: The virtual host.
+# opt: name: The policy name.
+# opt: match: The match.
+# opt: body: The body.
+# opt: objectType: The object type. Either queues or exchanges.
+# opt: nodename: The node name.
+# txt: Returns 0/TRUE if the policy is successfully declared, or already existed; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains some logging information; otherwise, the variable ERROR contains some information about the error.
+# use: if setPolicyUnlessItExistsAlready / "my-dlx" "^my-ex" '{"dead-letter-exchange":"my-dlx"}' "queues" 'rabbit@server'; then
+# use:   echo "Policy my-dlx already existed or has just been created";
+# use: fi
+function setPolicyUnlessItExistsAlready() {
+  local _virtualHost="${1}";
+  checkNotEmpty vhost "${_virtualHost}" 1
+  local _name="${2}";
+  checkNotEmpty name "${_name}" 2;
+  local _match="${3}";
+  checkNotEmpty match "${_match}" 3;
+  local _body="${4}";
+  checkNotEmpty body "${_body}" 4;
+  local _objectType="${5}";
+  checkNotEmpty objectType "${_objectType}" 5;
+  local _nodename="${6}";
+  checkNotEmpty nodename "${_nodename}" 6;
+  local -i _rescode=${TRUE};
+
+  if    ! policyAlreadyExists "${_virtualHost}" "${_name}" "${_match}" "${_body}" "${_objectType}" "${_nodename}" \
+     && ! setPolicy "${_name}" "${_match}" "${_body}" "${_objectType}" "${_nodename}"; then
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
 
 # fun: declareBinding source destinationType destination routingKey nodename
 # api: public
