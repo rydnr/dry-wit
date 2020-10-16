@@ -43,7 +43,7 @@ function installUbuntuPackage() {
   shift;
   local _extraArgs="${@}";
 
-  runCommandLongOutput "/usr/bin/apt-get install -y ${_extraArgs} --no-install-recommends ${_package}";
+  runCommandLongOutput "/usr/bin/apt-get -qq install -y ${_extraArgs} --no-install-recommends ${_package}";
   local -i _rescode=$?;
 
   return ${_rescode};
@@ -85,7 +85,7 @@ function isAptCacheMissing() {
 # use: fi
 function updateUbuntuSystem() {
 
-  runCommandLongOutput /usr/bin/apt -y update;
+  runCommandLongOutput /usr/bin/apt -qq -y update;
   local -i _rescode=$?;
 
   return ${_rescode};
@@ -100,7 +100,7 @@ function updateUbuntuSystem() {
 # use: fi
 function upgradeUbuntuSystem() {
 
-  runCommandLongOutput /usr/bin/apt -y upgrade;
+  runCommandLongOutput /usr/bin/apt -qq -y upgrade;
   local -i _rescode=$?;
 
   return ${_rescode};
@@ -115,11 +115,11 @@ function upgradeUbuntuSystem() {
 # use: fi
 function autoremoveUbuntuPackages() {
 
-  runCommandLongOutput /usr/bin/apt-get remove --purge -y;
+  runCommandLongOutput /usr/bin/apt-get -qq remove --purge -y;
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
-    runCommandLongOutput /usr/bin/apt-get autoremove;
+    runCommandLongOutput /usr/bin/apt-get -qq autoremove;
     _rescode=$?;
   fi
 
@@ -135,7 +135,7 @@ function autoremoveUbuntuPackages() {
 # use: fi
 function cleanUbuntuSystem() {
 
-  runCommandLongOutput /usr/bin/apt-get clean;
+  runCommandLongOutput /usr/bin/apt-get -qq clean;
   local -i _rescode=$?;
 
   # TODO: Fix automatic temporary file cleanup.
