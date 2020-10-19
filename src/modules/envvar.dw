@@ -232,36 +232,17 @@ function isEnvVarDefined() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
 
-  ##  echo "Callee: ${FUNCNAME[1]}"
-  ##  echo "var -> ${_varName}";
-  ##  echo -n "val -> ";
-  ##  echo "echo \${${_varName}}" | bash;
-  # echo "echo \${${_varName}}" | bash > /dev/null 2>&1;
   local -i _rescode;
-  local -n _var=${_varName};
-  if isEmpty "${_var}"; then
+
+  ENVVAR.getEnvironmentVariablesVariableName;
+  local -n _envVars=${RESULT};
+
+  if isEmpty "${_envVars[@]}"; then
     _rescode=${FALSE};
   else
-    _rescode=${TRUE};
+    arrayContains "${_varName}" "${_envVars[@]}";
+    _rescode=$?;
   fi
-
-  #  if isTrue ${rescode}; then
-  #      echo "${_variable} already defined";
-  #      exit 1;
-  #  fi
-
-  #  local _oldIFS="${IFS}";
-  #  IFS=$' \t\n';
-  ##  set +o nounset
-  #  local _e;
-  #  for _e in ${#__DW_ENVVAR_ENV_VARIABLES[@]}; do
-  #    if [[ "${e}" == "${_varName}" ]]; then
-  #      rescode=${TRUE};
-  #      break;
-  #    fi
-  #  done
-  #  # TODO set -o nounset
-  #  IFS="${_oldIFS}";
 
   return ${_rescode};
 }
@@ -349,7 +330,9 @@ function overrideEnvVar() {
 
   if isEnvVarDefined "${_uppercased}"; then
     toUpper "${_varName}";
-    ENVVAR.addOverriddenEnvVar "${RESULT}" "${_varValue}";
+    local _upcased="${RESULT}";
+    declare -gx "${_upcased}"="${_varValue}";
+    ENVVAR.addOverriddenEnvVar "${_upcased}" "${_varValue}";
     _rescode=$?;
   else
     logInfo "Warning: Rejecting attempt to override unknown variable ${_varName}";
@@ -722,7 +705,11 @@ function ENVVAR.appendEnvironmentVariable() {
 
   ENVVAR.getEnvironmentVariablesVariableName;
   local -n _envVariables="${RESULT}";
-  _envVariables[${#_envVariables[@]}]="${_varName}";
+  local _literal="${_envVariables[@]}";
+  if     isEmpty "${_literal}" \
+      || arrayDoesNotContain "${_varName}" "${_literal}"; then
+    _envVariables[${#_envVariables[@]}]="${_varName}";
+  fi
 }
 
 # fun: evalEnvVar varName
