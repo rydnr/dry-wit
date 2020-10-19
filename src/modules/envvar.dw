@@ -73,7 +73,6 @@ function defineButDoNotOverrideEnvVar() {
   return ${_rescode};
 }
 
-
 # fun: defineEnvVar varName MANDATORY|OPTIONAL description defaultValue? command?
 # api: public
 # txt: Declares a new environment variable.
@@ -104,44 +103,73 @@ function defineEnvVar() {
   if isEnvVarDefined "${_upcasedVarName}"; then
     _rescode=${FALSE};
   else
+    ENVVAR.defineEnvVar "${_varName}" "${_varMandatory}" "${_varDescription}" "${_varDefault}" "${_varCommand}";
+  fi
 
-    ENVVAR.addEnvVarMandatory "${_upcasedVarName}" "${_varMandatory}";
+  return ${_rescode};
+}
 
-    local _description;
-    if ENVVAR.evalVarDescription "${_upcasedVarName}"; then
-      _description="${RESULT}";
-    fi
+# fun: ENVVAR.defineEnvVar varName MANDATORY|OPTIONAL description defaultValue? command?
+# api: private
+# txt: Declares a new environment variable.
+# opt: varName: The variable name.
+# opt: MANDATORY|OPTIONAL: Whether is the variable is mandatory or not.
+# opt: description: The variable description.
+# opt: defaultValue: The default value (optional).
+# opt: command: The command to retrieve the actual value (optional).
+# txt: Returns 0/TRUE if a new variable gets defined; 1/FALSE if the variable already existed.
+# use: if ENVVAR.defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date"; then
+# use:   echo "MY_VAR created";
+# use: fi
+function ENVVAR.defineEnvVar() {
+  local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
+  local _varMandatory="${2}";
+  ENVVAR.checkMandatoryOrOptional "${_varMandatory}" 2;
+  local _varDescription="${3}";
+  checkNotEmpty description "${_varDescription}" 3;
+  local _varDefault="${4}";
+  local _varCommand="${5:-}";
 
-    if isEmpty "${_description}"; then
-      ENVVAR.addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
-    fi
+  local -i _rescode;
 
-    if isNotEmpty "${_varDefault}"; then
-      ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
-      if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
-        local _defaultValue="${RESULT}";
+  toUpper "${_varName}";
+  local _upcasedVarName="${RESULT}";
 
-        evalVar "${_upcasedVarName}";
-        local _varValue="${RESULT}";
+  ENVVAR.addEnvVarMandatory "${_upcasedVarName}" "${_varMandatory}";
 
-        if isEmpty "${_varValue}"; then
-          if isNotEmpty "${_defaultValue}"; then
-            _varValue="${_defaultValue}";
-          elif isNotEmpty "${_varCommand}"; then
-            ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
-            if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
-              _varValue="${RESULT}";
-            fi
+  local _description;
+  if ENVVAR.evalVarDescription "${_upcasedVarName}"; then
+    _description="${RESULT}";
+  fi
+
+  if isEmpty "${_description}"; then
+    ENVVAR.addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
+  fi
+
+  if isNotEmpty "${_varDefault}"; then
+    ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
+    if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
+      local _defaultValue="${RESULT}";
+
+      evalVar "${_upcasedVarName}";
+      local _varValue="${RESULT}";
+
+      if isEmpty "${_varValue}"; then
+        if isNotEmpty "${_defaultValue}"; then
+          _varValue="${_defaultValue}";
+        elif isNotEmpty "${_varCommand}"; then
+          ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
+          if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
+            _varValue="${RESULT}";
           fi
-        else
-          ENVVAR.appendEnvironmentVariable "${_upcasedVarName}";
         fi
       fi
     fi
-
-    ENVVAR.addEnvVar "${_upcasedVarName}" "${_varValue}";
-    _rescode=${TRUE};
   fi
+
+  ENVVAR.addEnvVar "${_upcasedVarName}" "${_varValue}";
+  _rescode=${TRUE};
 
   return ${_rescode};
 }
@@ -204,12 +232,18 @@ function isEnvVarDefined() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
 
-  #  echo "Callee: ${FUNCNAME[1]}"
-  #  echo "var -> ${_varName}";
-  #  echo -n "val -> ";
-  #  echo "echo \${${_varName}}" | bash;
-  echo "echo \${${_varName}}" | bash > /dev/null 2>&1;
-  local -i _rescode=$?;
+  ##  echo "Callee: ${FUNCNAME[1]}"
+  ##  echo "var -> ${_varName}";
+  ##  echo -n "val -> ";
+  ##  echo "echo \${${_varName}}" | bash;
+  # echo "echo \${${_varName}}" | bash > /dev/null 2>&1;
+  local -i _rescode;
+  local -n _var=${_varName};
+  if isEmpty "${_var}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
 
   #  if isTrue ${rescode}; then
   #      echo "${_variable} already defined";
@@ -308,21 +342,20 @@ function overrideEnvVar() {
   local _varValue="${2}";
   local _varDescription="${3:-not provided}";
 
-  if isEnvVarDefined ${_varName}; then
+  local -i _rescode=${FALSE};
+
+  toUpper "${_varName}";
+  local _uppercased="${RESULT}";
+
+  if isEnvVarDefined "${_uppercased}"; then
     toUpper "${_varName}";
     ENVVAR.addOverriddenEnvVar "${RESULT}" "${_varValue}";
-  fi
-
-  local _mandatoryOrOptional;
-  if isEnvVarMandatory "${_varName}"; then
-    _mandatoryOrOptional="MANDATORY";
+    _rescode=$?;
   else
-    _mandatoryOrOptional="OPTIONAL";
+    logInfo "Warning: Rejecting attempt to override unknown variable ${_varName}";
   fi
-  defineEnvVar "${_varName}" "${_mandatoryOrOptional}" "${_varDescription}" "${_varValue}";
-  declare -gx "${_varName}"="${_varValue}";
 
-  return ${TRUE};
+  return ${_rescode};
 }
 
 # fun: printEnvironment
@@ -336,7 +369,7 @@ function printEnvironment() {
     ENVVAR.getEnvironmentVariablesVariableName;
     local -n _envVariables=${RESULT};
 
-    if isNotEmpty "${_envVariables[*]}"; then
+    if isNotEmpty "${_envVariables[@]}"; then
       cat <<EOF
 Environment variables:
 EOF
@@ -674,7 +707,6 @@ function ENVVAR.addOverriddenEnvVar() {
     ENVVAR.getOverriddenEnvironmentVariablesVariableName;
     local -n _overriddenEnvVariables="${RESULT}";
     _overriddenEnvVariables["${_varName}"]="${_varValue}";
-    ENVVAR.addEnvVar "${_varName}" "${_varValue}";
   fi
 }
 
