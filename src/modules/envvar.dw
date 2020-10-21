@@ -151,6 +151,8 @@ function ENVVAR.defineEnvVar() {
   local _varValue="${RESULT}";
 
   if isEmpty "${_varValue}"; then
+    local _defaultValue="${_varDefault}";
+
     if isNotEmpty "${_varCommand}"; then
       ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
       if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
@@ -159,7 +161,7 @@ function ENVVAR.defineEnvVar() {
     fi
 
     if isNotEmpty "${_defaultValue}"; then
-      ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
+      ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_defaultValue}";
       if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
         defaultValue="${RESULT}";
       fi
@@ -821,7 +823,7 @@ function ENVVAR.evalVarCommand() {
 
   local _result;
 
-  ENVVAR.getEnviromentVariablesCommands;
+  ENVVAR.getEnvironmentVariablesCommandsVariableName;
   local -n _environmentVariablesCommands=${RESULT};
 
   _result="${_environmentVariablesCommands[${_varName}]}";
