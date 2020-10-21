@@ -147,24 +147,23 @@ function ENVVAR.defineEnvVar() {
     ENVVAR.addEnvVarDescription "${_upcasedVarName}" "${_varDescription}";
   fi
 
-  if isNotEmpty "${_varDefault}"; then
-    ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
-    if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
-      local _defaultValue="${RESULT}";
+  evalVar "${_upcasedVarName}";
+  local _varValue="${RESULT}";
 
-      evalVar "${_upcasedVarName}";
-      local _varValue="${RESULT}";
-
-      if isEmpty "${_varValue}"; then
-        if isNotEmpty "${_defaultValue}"; then
-          _varValue="${_defaultValue}";
-        elif isNotEmpty "${_varCommand}"; then
-          ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
-          if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
-            _varValue="${RESULT}";
-          fi
-        fi
+  if isEmpty "${_varValue}"; then
+    if isNotEmpty "${_varCommand}"; then
+      ENVVAR.addEnvVarCommand "${_upcasedVarName}" "${_varCommand}";
+      if ENVVAR.evalVarCommand "${_upcasedVarName}"; then
+        _defaultValue="${RESULT}";
       fi
+    fi
+
+    if isNotEmpty "${_defaultValue}"; then
+      ENVVAR.addEnvVarDefault "${_upcasedVarName}" "${_varDefault}";
+      if ENVVAR.evalVarDefault "${_upcasedVarName}"; then
+        defaultValue="${RESULT}";
+      fi
+      _varValue="${_defaultValue}";
     fi
   fi
 
