@@ -525,7 +525,7 @@ function killMongod() {
 
 # fun: mongoDump output host user? pass? authenticationDatabase? authenticationMechanism?
 # api: public
-# txt: Performs a dump (gzipped, using the MongoDB archive format)
+# txt: Performs a dump.
 # opt: output: The output file.
 # opt: host: The host. Optional. Defaults to localhost.
 # opt: user: The user name. Optional.
@@ -553,10 +553,10 @@ function mongoDump() {
   checkReq mongodump;
 
   if isEmpty "${_user}"; then
-    _output="$(mongodump --gzip --archive="${_output}" -h ${_host} 2>&1)";
+    _output="$(mongodump --oplog --excludeCollectionsWithPrefix=system --out="${_output}" -h ${_host} 2>&1)";
     _rescode=$?;
   else
-    _output="$(mongodump --gzip --archive="${_output}" -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
+    _output="$(mongodump --oplog --out="${_output}" --excludeCollectionsWithPrefix=system -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
     _rescode=$?;
   fi
 
@@ -584,6 +584,51 @@ function mongoDump() {
 # use:   echo "Backup /tmp/dump.gz restored successfully";
 # use: fi
 function mongoRestore() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+
+  local _host="${2:-localhost}";
+  local _user="${3}";
+  local _pass="${4}";
+  local _authenticationDatabase="${5:-admin}";
+  local _authenticationMechanism="${6:-SCRAM-SHA-256}";
+
+  local -i _rescode;
+  local _output;
+
+  if isEmpty "${_user}"; then
+    _output="$(mongorestore -h ${_host} "${_file}" 2>&1)";
+    _rescode=$?;
+  else
+    _output="$(mongorestore -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1)";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: mongoImport file host? user? pass? authenticationDatabase? authenticationMechanism?
+# api: public
+# txt: Restores from backup.
+# opt: file: The file to import.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: user: The user name. Optional.
+# opt: password: The password. Optional.
+# opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
+# opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256.
+# opt: database: The database to import. Optional.
+# txt: Returns 0/TRUE if the import process succeeds; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if mongoImport "/tmp/dump.gz"; then
+# use:   echo "Backup /tmp/dump.gz imported successfully";
+# use: fi
+function mongoImport() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
 

@@ -98,7 +98,7 @@ function mongodbMigrate() {
   else
     logDebugResult NEUTRAL "missing";
 
-    logDebug "Creating admin user";
+    logDebug "Adding user '${_adminUserName}'";
     MONGODBBOOTSTRAP.createAdminUserIfItDoesNotExist "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}";
 
     if MONGODBBOOTSTRAP.freeMonitoringRequested "${_enableFreeMonitoring}"; then
@@ -124,7 +124,7 @@ function mongodbMigrate() {
 
     MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
 
-    logDebug "Adding ${_backupUserName} user";
+    logDebug "Adding user '${_backupUserName}'";
     addMongodbUserIfNecessary \
       "${_backupUserName}" \
       "${_backupUserPassword}" \
