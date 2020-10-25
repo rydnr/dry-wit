@@ -208,6 +208,23 @@ function isInEnvvarFormat_works_test() {
   Assert.isFalse $? "ENVVAR.isInEnvvarFormat failed for ${_input}";
 }
 
+function check_checkIsEnvVarReadonly_works_test() {
+  export MY_EXTERNAL_VAR="$(date)";
+  defineEnvVar MY_EXTERNAL_VAR OPTIONAL "Test variable" "${MY_EXTERNAL_VAR}";
+  ENVVAR.isEnvVarReadonly MY_EXTERNAL_VAR;
+  Assert.isTrue $? "ENVVAR.isEnvVarReadonly failed for MY_EXTERNAL_VAR / ${MY_EXTERNAL_VAR}";
+}
+
+function check_overrideEnvVar_fails_for_environment_variables_defined_externally_test() {
+  local _expected="$(date)";
+  export MY_EXTERNAL_VAR2="${_expected}";
+  defineEnvVar MY_EXTERNAL_VAR2 OPTIONAL "Test variable" "${MY_EXTERNAL_VAR}";
+  local _overriden="A different value";
+  overrideEnvVar MY_EXTERNAL_VAR2 "${_overriden}";
+  Assert.isFalse $? "ENVVAR.overrideEnvVar returned TRUE for MY_EXTERNAL_VAR2";
+  Assert.areEqual "${_expected}" "${MY_EXTERNAL_VAR2}" "ENVVAR.overrideEnvVar changed MY_EXTERNAL_VAR2 value from ${_expected} to ${_overriden}";
+}
+
 declare -Ag __DW_ASSOCIATIVE_ARRAY_FOR_TESTING=( [foo11]=bar11 [foo214]=bar214 [key-without-spaces]="value with spaces" [key with spaces]="value with spaces");
 
 setScriptDescription "Runs all tests implemented for envvar.dw";

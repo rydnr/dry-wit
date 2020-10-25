@@ -172,6 +172,8 @@ function ENVVAR.defineEnvVar() {
       fi
       _varValue="${_defaultValue}";
     fi
+  else
+    ENVVAR.addEnvVarReadonly "${_varName}";
   fi
 
   ENVVAR.addEnvVar "${_varName}" "${_varValue}";
@@ -315,6 +317,53 @@ function isEnvVarOptional() {
   return ${_rescode};
 }
 
+# fun: ENVVAR.isEnvVarReadonly varName
+# api: private
+# txt: Checks whether given variable is read-only or not.
+# opt: varName: The name of the variable.
+# txt: Returns 0/TRUE if the variable can be modified; 1/FALSE otherwise.
+# use: if ENVVAR.isEnvVarReadonly MY_VARIABLE; then
+# use:   echo "MY_VARIABLE cannot be overriden via overrideEnvVar";
+# use: fi
+function ENVVAR.isEnvVarReadonly() {
+  local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
+
+  local -i _rescode;
+
+  ENVVAR.getReadonlyEnvironmentVariablesVariableName;
+  local -n _readonlyEnvironmentVariables=${RESULT};
+
+  local _varReadonly;
+
+  if isNotEmpty "${_readonlyEnvironmentVariables[*]}"; then
+    _varReadonly="${_readonlyEnvironmentVariables[${_varName}]}";
+  fi
+
+  if isNotEmpty "${_varReadonly}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: ENVVAR.addEnvVarReadonly varName
+# api: private
+# txt: Annotates given variable cannot be modified.
+# opt: varName: The name of the variable.
+# txt: Returns 0/TRUE always.
+# use: ENVVAR.addEnvVarReadonly MY_VARIABLE;
+function ENVVAR.addEnvVarReadonly() {
+  local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
+
+  ENVVAR.getReadonlyEnvironmentVariablesVariableName;
+  local -n _readonlyEnvironmentVariables=${RESULT};
+  _readonlyEnvironmentVariables[${_varName}]=${TRUE};
+}
+
 # fun: overrideEnvVar varName varValue? description?
 # api: public
 # txt: Overrides the value of an environment variable.
@@ -331,10 +380,14 @@ function overrideEnvVar() {
 
   local -i _rescode=${FALSE};
 
-  if isEnvVarDefined "${_varName}"; then
-    declare -gx "${_varName}"="${_varValue}";
-    ENVVAR.addOverriddenEnvVar "${_varName}" "${_varValue}";
-    _rescode=$?;
+  if  isEnvVarDefined "${_varName}"; then
+    if ENVVAR.isEnvVarReadonly "${_varName}"; then
+      logInfo "Warning: Rejecting attempt to override value of environment variable ${_varName}";
+    else
+      declare -gx "${_varName}"="${_varValue}";
+      ENVVAR.addOverriddenEnvVar "${_varName}" "${_varValue}";
+      _rescode=$?;
+    fi
   else
     logInfo "Warning: Rejecting attempt to override unknown variable ${_varName}";
   fi
@@ -666,6 +719,18 @@ function ENVVAR.addEnvVarMandatory() {
   local -n _mandatoryEnvironmentVariables="${RESULT}";
 
   _mandatoryEnvironmentVariables["${_varName}"]="${_varMandatory}";
+}
+
+# fun: ENVVAR.getReadonlyEnvironmentVariablesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing whether each environment variable is read-only.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable containing whether each environment variables is read-only.
+# use: ENVVAR.getReadonlyEnvironmentVariablesVariableName;
+# use: local -n _readonlyInfo=${RESULT};
+function ENVVAR.getReadonlyEnvironmentVariablesVariableName() {
+  ENVVAR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" READONLY_ENVIRONMENT_VARIABLES;
 }
 
 # fun: ENVVAR.getOverriddenEnvironmentVariablesVariableName
@@ -1086,5 +1151,7 @@ function ENVVAR.resetState() {
   DW.declareGlobalMap "${_moduleName}" ENVIRONMENT_VARIABLES_DESCRIPTIONS;
   # env: ENVIRONMENT_VARIABLES_COMMANDS: The commands associated to the environment variables.
   DW.declareGlobalMap "${_moduleName}" ENVIRONMENT_VARIABLES_COMMANDS;
+  # env: READONLY_ENVIRONMENT_VARIABLES: The read-only environment variables.
+  DW.declareGlobalMap "${_moduleName}" READONLY_ENVIRONMENT_VARIABLES;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
