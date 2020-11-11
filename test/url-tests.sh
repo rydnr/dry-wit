@@ -31,5 +31,12 @@ function extractPathSegmentFromUrl_works_test() {
   Assert.areEqual "${_expectedPathSegment}" "${_actualPathSegment}" "extractPathSegmentFromUrl \"${_targetUrl}\" 1 returned an invalid value (${_actualPathSegment})";
 }
 
+function urlIsUp_works_test() {
+  local _url="https://www.google.com";
+  urlIsUp "${_url}";
+  local -i _rescode=$?;
+  Assert.isTrue ${_rescode} "urlIsUp failed for ${_url}";
+}
+
 setScriptDescription "Runs all tests implemented for url.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
