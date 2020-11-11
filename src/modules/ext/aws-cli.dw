@@ -28,4 +28,30 @@ function retrieveAwsCliFromProfileAndRegion () {
 
   return ${_rescode};
 }
+
+# fun: retrieveAwsRegionForProfile awsProfile
+# api: public
+# txt: Retrieves the default region for given profile.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the region could be found for given profile; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the region.
+# use: if retrieveAwsRegionForProfile ${awsProfile}; then
+# use:   echo "region: ${RESULT}";
+# use: fi
+function retrieveAwsRegionForProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  local _result;
+  _result="$(sed -n "/^[ \t]*\[profile ${_awsProfile}\]/,/\[/s/^[ \t]*region[ \t]*=[ \t]*//p" ~/.aws/config)";
+  local -i _rescode=$?;
+
+  if    isTrue ${_rescode} \
+     && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
