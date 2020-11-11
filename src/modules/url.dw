@@ -70,4 +70,34 @@ function extractPathSegmentFromUrl() {
 
   return ${_rescode};
 }
+
+# fun: urlIsUp url
+# api: public
+# txt: Checks whether given url is up.
+# opt: url: The URL to check.
+# txt: Returns 0/TRUE if the url is up; 1/FALSE otherwise.
+# use: if urlIsUp "${url}"; then
+# use:   echo "${url} is up";
+# use: fi
+function urlIsUp() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+
+  local -i _rescode=${FALSE};
+
+  which curl > /dev/null 2>&1;
+  if isTrue $?; then
+    $(which curl) -q "${_url}" > /dev/null 2>&1;
+    _rescode=$?;
+  else
+    which wget > /dev/null 2>&1;
+    if isTrue $?; then
+      $(which wget) -q "${_url}" > /dev/null 2>&1;
+      _rescode=$?;
+    fi
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
