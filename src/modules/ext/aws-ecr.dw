@@ -63,6 +63,35 @@ function emptyEcrRepository() {
   return ${_rescode};
 }
 
+# fun: deleteEcrRepository repository profile
+# api: public
+# txt: Deletes a ECR repository.
+# opt: repository: The repository.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the repository could be deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if deleteEcrRepository "my/repository" dev; then
+# use:   echo "Repository deleted";
+# use: fi
+function deleteEcrRepository() {
+  local _repository="${1}";
+  checkNotEmpty repository "${_repository}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local -i _rescode=${FALSE};
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ecr delete-repository --repository-name "${_repository}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: deleteEcrImages repository profile imageDigests+
 # api: public
 # txt: Deletes one or more Docker images in given ECR repository.
@@ -141,4 +170,86 @@ EOF
 
   return ${_rescode};
 }
+
+# fun: pushImageToEcrRepository image repository profile
+# api: public
+# txt: Pushes a Docker image to a given ECR repository.
+# opt: image: The image.
+# opt: repository: The repository.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the image gets pushed successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the logging from the push operation.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if ! pushImageToEcrRepository 'myImage:tag' "my/repository" dev; then
+# use:   echo "Could not push myImage:tag ${ERROR}";
+# use: fi
+function pushImageToEcrRepository() {
+  local _image="${1}";
+  checkNotEmpty image "${_image}" 1;
+  local _repository="${2}";
+  checkNotEmpty repository "${_repository}" 2;
+  local _profile="${3}";
+  checkNotEmpty profile "${_profile}" 3;
+
+  local -i _rescode=${FALSE};
+  local _output;
+
+  if ecrLogin "${_profile}"; then
+
+    _output="$(docker tag "${_image}" "${_repository}:${_image#*:}")";
+    _rescode=$?;
+
+    if isTrue ${_rescode}; then
+      _output="$(docker push "${_repository}:${_image#*:}")";
+      _rescode=$?;
+
+      if isTrue ${_rescode}; then
+        export RESULT="${_output}";
+      else
+        export ERROR="${_output}";
+      fi
+    else
+      export ERROR="${_output}";
+    fi
+  fi
+
+  return ${_rescode};
+}
+
+# fun: ecrLogin profile
+# api: public
+# txt: Performs a login into ECR.
+# opt: image: The image.
+# opt: repository: The repository.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the login succeeds; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if ! ecrLogin dev; then
+# use:   echo "Could not login: ${ERROR}";
+# use: fi
+function ecrLogin() {
+  local _profile="${1}";
+  checkNotEmpty profile "${_profile}" 1;
+
+  local _awsLogIn;
+  _awsLogIn="$(aws --profile ${_profile} ecr get-login --no-include-email)";
+  local _output;
+  createTempFile;
+  local _tmpFile="${RESULT}";
+  cat <<EOF >> "${_tmpFile}"
+#!/bin/bash
+
+${_awsLogIn} 2> /dev/null;
+EOF
+  chmod +x "${_tmpFile}";
+  _output="$(${_tmpFile})";
+  _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
