@@ -233,6 +233,36 @@ function setScriptLicenseSummary() {
   return ${TRUE};
 }
 
+# fun: getScriptUrl
+# api: public
+# txt: Retrieves the script URL.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the url.
+# use: getScriptUrl;
+# use: echo "URL: ${RESULT}";
+function getScriptUrl() {
+  CLI.getModuleName;
+  DW.getGlobalString "${RESULT}" SCRIPT_URL;
+
+  return ${TRUE};
+}
+
+# fun: setScriptUrl url
+# api: public
+# txt: Sets the script URL.
+# opt: url: The url.
+# txt: Returns 0/TRUE always.
+# use: setScriptUrl "https://github.com/rydnr/dry-wit";
+function setScriptUrl() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+
+  CLI.getModuleName;
+  DW.setGlobalString "${RESULT}" SCRIPT_URL "${_url}";
+
+  return ${TRUE};
+}
+
 # fun: addCommandLineFlag longName shortName description MANDATORY|OPTIONAL EXPECTS_ARGUMENT|NO_ARGUMENT defaultValue?
 # api: public
 # txt: Adds a command-line flag.
@@ -457,7 +487,7 @@ function removeCommandLineFlag() {
 }
 
 # fun: usage
-# api: private
+# api: public
 # txt: Prints the usage description.
 # txt: Returns 0/TRUE always.
 # use: usage
@@ -468,6 +498,7 @@ function usage() {
   fi
   CLI.scriptCopyrightUsage
   CLI.scriptLicenseSummaryUsage;
+  CLI.scriptUrlUsage;
   if ! CLI.scriptDescriptionUsage; then
     echo;
   fi
@@ -1988,6 +2019,29 @@ function CLI.scriptLicenseSummaryUsage() {
   else
     _rescode=${FALSE};
     echo "${_scriptLicenseSummary}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.scriptUrlUsage
+# api: private
+# txt: Conditionally prints (to stdout) a line with the script URL.
+# txt: Returns 0/TRUE if this function printed anything; 1/FALSE otherwise.
+# use: if CLI.scriptUrlUsage then
+# use:   ...
+# use: fi
+function CLI.scriptUrlUsage() {
+  local -i _rescode;
+
+  getScriptUrl;
+  local _scriptUrl="${RESULT}";
+
+  if isEmpty "${_scriptUrl}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+    echo "${_scriptUrl}";
   fi
 
   return ${_rescode};
