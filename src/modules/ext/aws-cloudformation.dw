@@ -67,18 +67,29 @@ function getCloudformationExport() {
   cat <<EOF > "${_tmpFile}"
 #!/bin/bash
 
-$(which aws) --profile ${_awsProfile} cloudformation list-exports | jq '.Exports' | jq '.[] | select (."Name" == "${_name}") | .Value' | tr -d '"'
+out="\$($(which aws) --profile ${_awsProfile} cloudformation list-exports)";
+rescode=\$?;
+
+if [[ ${rescode} -eq 0 ]]; then
+  cat <<FDF | jq '.Exports' | jq '.[] | select (."Name" == "${_name}") | .Value' | tr -d '"';
+\${out}
+FDF
+  rescode=\$?;
+fi
+
+exit \${rescode};
 EOF
   chmod +x ${_tmpFile};
 
-  local _output;
-  _output="$(${_tmpFile})";
+  local _result;
+  _result="$(${_tmpFile})";
   local -i _rescode=$?;
 
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}";
+  if    isTrue ${_rescode} \
+     && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
   else
-    export ERROR="${_output}";
+    export ERROR="${_result}";
   fi
 
   return ${_rescode};
@@ -109,7 +120,7 @@ function listCloudformationStacks() {
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
   else
-    export ERROR="${_aux}";
+    export ERROR="${_result}";
   fi
 
   return ${_rescode};
