@@ -54,6 +54,7 @@ function emptyEcrRepository() {
     local _images="${RESULT}";
     if isEmpty "${_images}"; then
       _rescode=${TRUE};
+      echo "no images found in ${_repository}";
     else
       deleteEcrImages "${_repository}" "${_profile}" ${_images};
       _rescode=$?;
@@ -81,12 +82,23 @@ function deleteEcrRepository() {
 
   local -i _rescode=${FALSE};
 
+  createTempFile;
+  local _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+$(which aws) --profile ${_profile} ecr delete-repository --repository-name "${_repository}";
+EOF
+  chmod +x "${_tmpFile}";
+
   local _output;
-  _output="$($(which aws) --profile ${_profile} ecr delete-repository --repository-name "${_repository}" 2>&1)";
+  _output="$(${_tmpFile} 2>&1)";
   local -i _rescode=$?;
 
   if isFalse ${_rescode}; then
-    export ERROR="${_output}";
+    export ERROR="$(cat "${_tmpFile}")
+-----
+${_output}";
   fi
 
   return ${_rescode};
@@ -125,12 +137,23 @@ function deleteEcrImages() {
   done
   IFS="${_oldIFS}";
 
+  createTempFile;
+  local _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+$(which aws) --profile ${_profile} ecr batch-delete-image --repository-name "${_repository}" --image-ids ${_images};
+EOF
+  chmod +x "${_tmpFile}";
+
   local _output;
-  _output="$($(which aws) --profile ${_profile} ecr batch-delete-image --repository-name "${_repository}" --image-ids ${_images} 2>&1)";
+  _output="$(${_tmpFile} 2>&1)";
   local -i _rescode=$?;
 
   if isFalse ${_rescode}; then
-    export ERROR="${_output}";
+    export ERROR="$(cat "${_tmpFile}")
+-----
+${_output}";
   fi
 
   return ${_rescode};
