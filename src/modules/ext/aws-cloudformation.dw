@@ -70,10 +70,17 @@ function getCloudformationExport() {
 out="\$($(which aws) --profile ${_awsProfile} cloudformation list-exports)";
 rescode=\$?;
 
-if [[ ${rescode} -eq 0 ]]; then
-  cat <<FDF | jq '.Exports' | jq '.[] | select (."Name" == "${_name}") | .Value' | tr -d '"';
-\${out}
-FDF
+if [[ \${rescode} -eq 0 ]]; then
+  val="\$(echo \${out} | jq '.Exports | .[] | select (."Name" == "${_name}") | .Value')";
+  rescode=\$?;
+fi
+
+if [[ "x\${val}" == "x" ]]; then
+  rescode=1;
+fi
+
+if [[ \${rescode} -eq 0 ]]; then
+  echo "\${val}" | tr -d '"';
   rescode=\$?;
 fi
 
@@ -85,11 +92,15 @@ EOF
   _result="$(${_tmpFile})";
   local -i _rescode=$?;
 
-  if    isTrue ${_rescode} \
-     && isNotEmpty "${_result}"; then
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
     export RESULT="${_result}";
   else
     export ERROR="${_result}";
+    export RESULT="";
   fi
 
   return ${_rescode};
