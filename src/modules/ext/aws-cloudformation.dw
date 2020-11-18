@@ -199,7 +199,7 @@ function requestCreateStack() {
   local _parameters="${6}";
   checkNotEmpty parameters "${_parameters}" 6;
 
-  AWS_CLOUDFORMATION.requestCreateOrUpdateStack create "${_awsProfile}" "${_stackName}" "${_region}" "${_template}" "${_tags}" "${_parameters}";
+  requestCreateOrUpdateStack create "${_awsProfile}" "${_stackName}" "${_region}" "${_template}" "${_tags}" "${_parameters}";
 }
 
 # fun: requestUpdateStack awsProfile stackName region template tags parameters
@@ -229,11 +229,11 @@ function requestUpdateStack() {
   local _parameters="${6}";
   checkNotEmpty parameters "${_parameters}" 6;
 
-  AWS_CLOUDFORMATION.requestCreateOrUpdateStack create "${_awsProfile}" "${_stackName}" "${_region}" "${_template}" "${_tags}" "${_parameters}";
+  requestCreateOrUpdateStack update "${_awsProfile}" "${_stackName}" "${_region}" "${_template}" "${_tags}" "${_parameters}";
 }
 
-# fun: AWS_CLOUDFORMATION.requestCreateOrUpdateStack awsProfile stackName region template tags parameters
-# api: private
+# fun: requestCreateOrUpdateStack awsProfile stackName region template tags parameters
+# api: public
 # txt: Requests the creation or modification of given stack.
 # opt: action: either create or update.
 # opt: awsProfile: The AWS profile.
@@ -245,10 +245,10 @@ function requestUpdateStack() {
 # txt: Returns 0/${TRUE} if the stack gets deployed successfully; 1/${FALSE} otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains some output from the AWS CLI.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
-# use: if requestCreateStack "my-profile" "pre-1-my-stack" "eu-west-1" "stack.json" "Key=vendor:name,Value=Vendor1 Key=vendor:timestamp,Value=today" "ParameterKey=Environment,ParameterValue=test ParameterKey=AllowedCidrs,ParameterValue=0.0.0.0/0"; then
+# use: if requestCreateOrUpdateStack "my-profile" "pre-1-my-stack" "eu-west-1" "stack.json" "Key=vendor:name,Value=Vendor1 Key=vendor:timestamp,Value=today" "ParameterKey=Environment,ParameterValue=test ParameterKey=AllowedCidrs,ParameterValue=0.0.0.0/0"; then
 # use:   echo "pre-1-my-stack is being created";
 # use: fi
-function AWS_CLOUDFORMATION.requestCreateOrUpdateStack() {
+function requestCreateOrUpdateStack() {
   local _action="${1}";
   checkNotEmpty action "${_action}" 1;
   local _awsProfile="${2}";
@@ -267,12 +267,13 @@ function AWS_CLOUDFORMATION.requestCreateOrUpdateStack() {
   createTempFile;
   local _tmpFile="${RESULT}";
   cat <<EOF > "${_tmpFile}"
-#!/bin/sh
+#!/bin/bash
 
 $(which aws) --profile ${_awsProfile} --region ${_region} cloudformation ${_action}-stack --stack-name ${_stackName} --tags ${_tags} --template-body file://${_template} --parameters ${_parameters} --capabilities CAPABILITY_NAMED_IAM;
 EOF
   chmod +x "${_tmpFile}";
-  local _output="$(${_tmpFile})";
+  local _output;
+  _output="$(${_tmpFile})";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
