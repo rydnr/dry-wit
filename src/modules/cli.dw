@@ -543,6 +543,7 @@ function checkInput() {
           IFS="${_oldIFS}";
           shift;
         done
+        IFS="${_oldIFS}";
         _flagsChecked[${#_flagsChecked[@]}]="${_flag}";
       fi
     fi
@@ -1005,9 +1006,6 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
           if CLI.isCommandLineFlagMandatory "${_key}"; then
             exitWithError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} flag is mandatory";
           fi
-        fi
-        if isFunctionDefined "dw_check_${_longName}_cli_flag"; then
-          "dw_check_${_longName}_cli_flag";
         fi
       else
         exitWithError DRYWIT_BUG "flagKey ${_key} not found";
