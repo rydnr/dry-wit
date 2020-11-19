@@ -56,10 +56,11 @@ function isCloudformationTemplateValid() {
   return ${_rescode};
 }
 
-# fun: cacheCloudformationExports awsProfile file
+# fun: cacheCloudformationExports awsProfile awsRegion file
 # api: public
 # txt: Retrieves the cloudformation exports to a file.
 # opt: awsProfile: The AWS CLI profile.
+# opt: awsRegion: The region.
 # opt: file: The name of the cache file.
 # txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
@@ -69,8 +70,61 @@ function isCloudformationTemplateValid() {
 function cacheCloudformationExports() {
   local _awsProfile="${1}";
   checkNotEmpty awsProfile "${_awsProfile}" 1;
-  local _file="${2}";
-  checkNotEmpty file "${_file}" 2;
+  local _awsRegion="${2}";
+  checkNotEmpty awsRegion "${_awsRegion}" 2;
+  local _file="${3}";
+  checkNotEmpty file "${_file}" 3;
+
+  local -i _rescode=${TRUE};
+
+  local _oldIFS="${IFS}";
+  local _region;
+  IFS="${DWIFS}";
+  for _region in "${_awsRegion}" "us-east-1"; do
+    IFS="${_oldIFS}";
+    if ! cacheCloudformationExportsForRegion "${_awsProfile}" "${_region}" "${_file}.${_region}"; then
+      _rescode=${FALSE};
+      break;
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  if isTrue ${_rescode}; then
+    local _files=();
+    IFS="${DWIFS}";
+    for _region in "${_awsRegion}" "us-east-1"; do
+      IFS="${_oldIFS}";
+      _files+=( "${_file}.${_region}" );
+    done;
+    IFS="${_oldIFS}";
+
+    jq 'reduce inputs as $i (.; .Exports += $i.Exports)' ${_files[@]} > "${_file}";
+    _rescode=$?;
+  fi
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_result}";
+  fi
+
+}
+
+# fun: cacheCloudformationExportsForRegion awsProfile awsRegion file
+# api: public
+# txt: Retrieves the cloudformation exports to a file.
+# opt: awsProfile: The AWS CLI profile.
+# opt: file: The name of the cache file.
+# txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
+# use: if cacheCloudformationExportForRegion dev us-east-1 ".cache"; then
+# use:   echo "us-east-1 exports cached in .cache: ${RESULT}";
+# use: fi
+function cacheCloudformationExportsForRegion() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  local _awsRegion="${2}";
+  checkNotEmpty awsRegion "${_awsRegion}" 2;
+  local _file="${3}";
+  checkNotEmpty file "${_file}" 3;
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -78,17 +132,49 @@ function cacheCloudformationExports() {
   cat <<EOF > "${_tmpFile}"
 #!/bin/bash
 
-$(which aws) --profile ${_awsProfile} cloudformation list-exports
+$(which aws) --profile ${_awsProfile} --region ${_awsRegion} cloudformation list-exports --max-items 200;
 EOF
   chmod +x ${_tmpFile};
 
+  local -i _page=0;
   local _result;
-  _result="$(${_tmpFile} > "${_file}" 2>&1)";
+  _result="$(${_tmpFile} > "${_file}.${_page}" 2>&1)";
+  local -i _rescode=$?;
+
+  local _paginated="$(cat "${_file}.${_page}" | jq '. | has("NextToken")')";
+  while isTrue "${_paginated}"; do
+    local _token="$(cat "${_file}.${_page}" | jq '.NextToken')";
+    ((_page++));
+    cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+$(which aws) --profile ${_awsProfile} --region ${_awsRegion} cloudformation list-exports --max-items 200 --starting-token "${_token}";
+EOF
+    chmod +x ${_tmpFile};
+
+    ${_tmpFile} > "${_file}.${_page}" 2>&1;
+    _paginated="$(cat "${_file}.${_page}" | jq '. | has("NextToken")')";
+
+  done
+
+  local _files=();
+  local _oldIFS="${IFS}";
+  local _pageIndex;
+  IFS="${DWIFS}";
+  for _pageIndex in $(seq 0 ${_page}); do
+    IFS="${_oldIFS}";
+    _files+=( "${_file}.${_pageIndex}" );
+  done;
+  IFS="${_oldIFS}";
+
+  jq 'reduce inputs as $i (.; .Exports += $i.Exports)' ${_files[@]} > "${_file}";
   local -i _rescode=$?;
 
   if isFalse ${_rescode}; then
     export ERROR="${_result}";
   fi
+
+  rm -f ${_files[@]};
 
   return ${_rescode};
 }
@@ -98,10 +184,11 @@ EOF
 # txt: Retrieves the value of an output exported by a CloudFormation stack, under given name.
 # opt: name: The name of the export.
 # opt: awsProfile: The AWS CLI profile.
+# opt: awsRegion: The AWS region. Optional. Defaults to eu-west-1.
 # txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains some output from the AWS CLI.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
-# use: if getCloudformationExport myKey dev; then
+# use: if getCloudformationExport myKey dev eu-west-1; then
 # use:   echo "myKey='${RESULT}'";
 # use: fi
 function getCloudformationExport() {
@@ -109,6 +196,7 @@ function getCloudformationExport() {
   checkNotEmpty name "${_name}" 1;
   local _awsProfile="${2}";
   checkNotEmpty awsProfile "${_awsProfile}" 2;
+  local _awsRegion="${3:-eu-west-1}";
 
   AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}";
   local _cacheFile="${RESULT}";
@@ -117,12 +205,11 @@ function getCloudformationExport() {
   local -i _expiration=${RESULT};
 
   if ! fileExists "${_cacheFile}" || ! fileModifiedInLastXMinutes "${_cacheFile}" ${_expiration}; then
-    cacheCloudformationExports "${_awsProfile}" "${_cacheFile}";
+    cacheCloudformationExports "${_awsProfile}" "${_awsRegion}" "${_cacheFile}";
   fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
-  echo "tmp file: ${_tmpFile}";
 
   cat <<EOF > "${_tmpFile}"
 #!/bin/bash
