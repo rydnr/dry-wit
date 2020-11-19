@@ -2,6 +2,18 @@
 # api: public
 # txt: AWS Cloudformation functions
 
+# fun: AWS_CLOUDFORMATION.getModuleName
+# api: private
+# txt: Retrieves the name of the module.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the name of the module.
+# use: AWS_CLOUDFORMATION.getModuleName;
+# use: echo "Module: ${RESULT}";
+function AWS_CLOUDFORMATION.getModuleName() {
+  export RESULT="AWS_CLOUDFORMATION";
+  return ${TRUE};
+}
+
 # fun: isCloudformationTemplateValid template awsCli templateName?
 # api: public
 # txt: Validates the CloudFormation template.
@@ -44,6 +56,43 @@ function isCloudformationTemplateValid() {
   return ${_rescode};
 }
 
+# fun: cacheCloudformationExports awsProfile file
+# api: public
+# txt: Retrieves the cloudformation exports to a file.
+# opt: awsProfile: The AWS CLI profile.
+# opt: file: The name of the cache file.
+# txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
+# use: if cacheCloudformationExport dev ".cache"; then
+# use:   echo "exports cached in .cache: ${RESULT}";
+# use: fi
+function cacheCloudformationExports() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  local _file="${2}";
+  checkNotEmpty file "${_file}" 2;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+$(which aws) --profile ${_awsProfile} cloudformation list-exports
+EOF
+  chmod +x ${_tmpFile};
+
+  local _result;
+  _result="$(${_tmpFile} > "${_file}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: getCloudformationExport name awsProfile
 # api: public
 # txt: Retrieves the value of an output exported by a CloudFormation stack, under given name.
@@ -61,19 +110,25 @@ function getCloudformationExport() {
   local _awsProfile="${2}";
   checkNotEmpty awsProfile "${_awsProfile}" 2;
 
+  AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}";
+  local _cacheFile="${RESULT}";
+
+  AWS_CLOUDFORMATION.getExportsCacheExpirationInMinutes;
+  local -i _expiration=${RESULT};
+
+  if ! fileExists "${_cacheFile}" || ! fileModifiedInLastXMinutes "${_cacheFile}" ${_expiration}; then
+    cacheCloudformationExports "${_awsProfile}" "${_cacheFile}";
+  fi
+
   createTempFile;
   local _tmpFile="${RESULT}";
+  echo "tmp file: ${_tmpFile}";
 
   cat <<EOF > "${_tmpFile}"
 #!/bin/bash
 
-out="\$($(which aws) --profile ${_awsProfile} cloudformation list-exports)";
+val="\$(cat "${_cacheFile}" | jq '.Exports | .[] | select (."Name" == "${_name}") | .Value')";
 rescode=\$?;
-
-if [[ \${rescode} -eq 0 ]]; then
-  val="\$(echo \${out} | jq '.Exports | .[] | select (."Name" == "${_name}") | .Value')";
-  rescode=\$?;
-fi
 
 if [[ "x\${val}" == "x" ]]; then
   rescode=1;
@@ -318,4 +373,142 @@ function requestDeleteStack() {
   return ${_rescode};
 }
 
+# fun: refreshAwsCloudformationExportsCache awsProfile
+# api: public
+# txt: Ensures the exports cache gets refreshed.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE always.
+# use: refreshAwsCloudformationExportsCache myProfile;
+function refreshAwsCloudformationExportsCache() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}";
+  rm -f "${RESULT}";
+}
+
+# fun: awsCloudformationJsonTemplateDefinesParameter template parameter
+# api: public
+# txt: Checks whether given template includes a certain parameter.
+# opt: template: The template.
+# opt: parameter: The parameter.
+# txt: Returns 0/TRUE if the template includes the parameter; 1/FALSE otherwise.
+# use: if awsCloudformationJsonTemplateDefinesParameter myTemplate.json AwsRegion; then
+# use:   echo "myTemplate.json defines AwsRegion parameter";
+# use: fi
+function awsCloudformationJsonTemplateDefinesParameter() {
+  local _template="${1}";
+  checkNotEmpty template "${_template}" 1;
+  local _parameter="${2}";
+  checkNotEmpty parameter "${_parameter}" 2;
+
+  local -i _rescode=${FALSE};
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+out="\$(cat "${_template}" | jq '.Parameters | has("${_parameter}")')";
+
+rescode=1;
+if [[ "x\${out}" == "xtrue" ]]; then
+  rescode=0;
+fi
+
+exit \${rescode};
+EOF
+
+  chmod +x "${_tmpFile}";
+  ${_tmpFile};
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: AWS_CLOUDFORMATION.getExportsCacheFile awsProfile
+# api: private
+# txt: Retrieves the name of the file with the exports.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE always.
+# use: AWS_CLOUDFORMATION.getExportsCacheFile myProfile;
+# use: echo "File: ${RESULT}";
+function AWS_CLOUDFORMATION.getExportsCacheFile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  AWS_CLOUDFORMATION.getExportsCacheFileName;
+  export RESULT="${RESULT}-${_awsProfile}";
+}
+
+# fun: AWS_CLOUDFORMATION.getExportsCacheFileName
+# api: private
+# txt: Retrieves the prefix of the file used to cache exports.
+# txt: Returns 0/TRUE always.
+# use: AWS_CLOUDFORMATION.getExportsCacheFileName;
+# use: echo "File: ${RESULT}";
+function AWS_CLOUDFORMATION.getExportsCacheFileName() {
+  AWS_CLOUDFORMATION.getModuleName;
+  DW.getGlobalString "${RESULT}" EXPORTS_CACHE_FILE_NAME;
+}
+
+# fun: AWS_CLOUDFORMATION.setExportsCacheFileName file
+# api: private
+# txt: Specifies the name of the file with the exports.
+# opt: file: The cache file.
+# txt: Returns 0/TRUE always.
+# use: AWS_CLOUDFORMATION.setExportsCacheFileName "my-cache-file";
+function AWS_CLOUDFORMATION.setExportsCacheFileName() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+
+  AWS_CLOUDFORMATION.getModuleName;
+  DW.setGlobalString "${RESULT}" EXPORTS_CACHE_FILE_NAME "${_file}";
+}
+
+# fun: AWS_CLOUDFORMATION.getExportsCacheExpirationInMinutes
+# api: private
+# txt: Retrieves the minutes before the exports cache expires.
+# txt: Returns 0/TRUE always.
+# use: AWS_CLOUDFORMATION.getExportsCacheExpirationInMinutes;
+# use: echo "Expiration: ${RESULT}";
+function AWS_CLOUDFORMATION.getExportsCacheExpirationInMinutes() {
+  AWS_CLOUDFORMATION.getModuleName;
+  DW.getGlobalInt "${RESULT}" EXPORTS_CACHE_EXPIRATION_IN_MINUTES;
+}
+
+# fun: AWS_CLOUDFORMATION.setExportsCacheExpirationInMinutes duration
+# api: private
+# txt: Specifies the minutes before the exports cache expires.
+# opt: duration: The duration of the cache.
+# txt: Returns 0/TRUE always.
+# use: AWS_CLOUDFORMATION.setExportsCacheExpirationInMinutes 15;
+function AWS_CLOUDFORMATION.setExportsCacheExpirationInMinutes() {
+  local _duration="${1}";
+  checkNotEmpty duration "${_duration}" 1;
+  checkNumber duration "${_duration}" 1;
+
+  AWS_CLOUDFORMATION.getModuleName;
+  DW.getGlobalInt "${RESULT}" ${_duration};
+}
+
+# fun: AWS_CLOUDFORMATION.resetState
+# api: private
+# txt: Resets the module state.
+# txt: Returns 0/TRUE always.
+# use: CLI.resetState
+function AWS_CLOUDFORMATION.resetState() {
+  AWS_CLOUDFORMATION.getModuleName;
+  local _moduleName="${RESULT}";
+
+  DW.getScriptFolder;
+  local _scriptFolder="${RESULT}";
+
+  # env: EXPORTS_CACHE_FILE_NAME: The name of the file with the cached exports.
+  DW.declareGlobalString "${_moduleName}" EXPORTS_CACHE_FILE_NAME "${_scriptFolder}/.cloudformation-exports";
+
+  # env: EXPORTS_CACHE_EXPIRATION_IN_MINUTES: The minutes before the exports cache expires.
+  DW.declareGlobalInt "${_moduleName}" EXPORTS_CACHE_EXPIRATION_IN_MINUTES 30;
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
