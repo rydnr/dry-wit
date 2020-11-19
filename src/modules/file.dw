@@ -1202,7 +1202,33 @@ function fileContains() {
   fi
 
   return ${_rescode};
+}
 
+# fun: fileModifiedInLastXMinutes file minutes
+# api: public
+# txt: Checks if given file has been modified in the last X minutes.
+# opt: file: The file.
+# opt: minutes: The minutes.
+# txt: Returns 0/TRUE if the file was last modified in the last X minutes; 1/FALSE otherwise.
+# use: if fileModifiedInLastXMinutes "${file}" 3; then
+# use:   echo "File ${file} modified in last 3 minutes";
+# use: fi
+function fileModifiedInLastXMinutes() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local _minutes="${2}";
+  checkNotEmpty minutes "${_minutes}" 2;
+  checkNumber minutes "${_minutes}" 2;
+
+  local -i _rescode;
+
+  if [ $(stat --format=%Y "${_file}") -ge $(( $(date +%s) - 60*${_minutes} )) ]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 # fun: FILE.resetState
