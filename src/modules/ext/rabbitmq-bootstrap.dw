@@ -5,8 +5,6 @@
 
 DW.import rabbitmq;
 
-DW.import cron;
-
 # fun: rabbitmqMigrate
 # api: public
 # txt: Migrates the RabbitMQ instance.
@@ -19,7 +17,11 @@ function rabbitmqMigrate() {
   if RABBITMQBOOTSTRAP.acquireBootstrapLock; then
     logDebugResult SUCCESS "ok";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     exitWithErrorCode CANNOT_ACQUIRE_LOCK;
   fi
@@ -28,7 +30,11 @@ function rabbitmqMigrate() {
   if isRabbitmqRunning; then
     logDebugResult SUCCESS "running";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "stopped";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode RABBITMQ_NOT_RUNNING;
@@ -38,7 +44,11 @@ function rabbitmqMigrate() {
   if RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeeded http://127.0.0.1:15672/cli/rabbitmqadmin /usr/local/bin/rabbitmqadmin; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_RETRIEVE_RABBITMQADMIN;
@@ -48,7 +58,11 @@ function rabbitmqMigrate() {
   if RABBITMQBOOTSTRAP.fixRabbitmqadminIfNeeded /usr/local/bin/rabbitmqadmin; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_FIX_RABBITMQADMIN;
@@ -58,7 +72,11 @@ function rabbitmqMigrate() {
   if ensureRabbitmqManagementIsEnabled "${RABBITMQ_NODENAME}"; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_ENABLE_RABBITMQ_PLUGIN_MANAGEMENT;
@@ -72,7 +90,11 @@ function rabbitmqMigrate() {
   if setAdminUserTags; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_ADMIN_USER_TAGS;
@@ -82,7 +104,11 @@ function rabbitmqMigrate() {
   if setAdminUserPermissions; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_ADMIN_USER_PERMISSIONS;
@@ -96,7 +122,11 @@ function rabbitmqMigrate() {
   if setMonitoringUserTags "${ADMIN_USER_NAME}" "${ADMIN_USER_PASSWORD}"; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_NAME_TAGS;
@@ -106,7 +136,11 @@ function rabbitmqMigrate() {
   if setMonitoringUserPermissions; then
     logDebugResult SUCCESS "done";
   else
+    local _error="${ERROR}";
     logDebugResult FAILURE "failed";
+    if isNotEmpty "${_error}"; then
+      logInfo "${_error}";
+    fi
     RABBITMQBOOTSTRAP.annotateBootstrapFailed;
     RABBITMQBOOTSTRAP.releaseBootstrapLock;
     exitWithErrorCode CANNOT_SET_THE_MONITORING_USER_NAME_PERMISSIONS;
@@ -120,7 +154,11 @@ function rabbitmqMigrate() {
     if declare_virtual_hosts; then
       logDebugResult SUCCESS "done";
     else
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logInfo "${_error}";
+      fi
       RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_DECLARE_THE_VIRTUAL_HOSTS;
@@ -133,7 +171,11 @@ function rabbitmqMigrate() {
     if declare_alternate_exchanges; then
       logDebugResult SUCCESS "done";
     else
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logInfo "${_error}";
+      fi
       RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_DECLARE_THE_ALTERNATE_EXCHANGES;
@@ -146,7 +188,11 @@ function rabbitmqMigrate() {
     if rabbitmq_patch; then
       logDebugResult SUCCESS "done";
     else
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logInfo "${_error}";
+      fi
       RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_PATCH_THE_RABBITMQ_INSTANCE;
@@ -162,6 +208,7 @@ function rabbitmqMigrate() {
       DW.import cron;
       sendKillSignalToCronProcess;
     else
+      logDebugResult NEUTRAL "skipped";
       logInfo "Changeset monitoring NOT enabled";
     fi
   fi
