@@ -1,0 +1,38 @@
+# mod: aws-ec2
+# api: public
+# txt: AWS EC2 functions
+
+# fun: createTag key value resource profile
+# api: public
+# txt: Creates or updates a tag for given resource.
+# opt: key: The tag key.
+# opt: value: The tag value.
+# opt: resource: The affected resource.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the tag was created successfully; 1/FALSE otherwise.
+# use: if createTag "kubernetes.io/cluster/myCluster" shared "${subnet}" "${PROFILE}"; then
+# use:   echo "Tag created successfully: ${RESULT}";
+# use: fi
+function createTag() {
+  local _key="${1}";
+  checkNotEmpty key "${_key}" 1;
+  local _value="${2}";
+  checkNotEmpty value "${_value}" 2;
+  local _resource="${3}";
+  checkNotEmpty resource "${_resource}" 3;
+  local _profile="${4}";
+  checkNotEmpty profile "${_profile}" 4;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ec2 create-tags --resources "${_resource}" --tags Key=${_key},Value=${_value})";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

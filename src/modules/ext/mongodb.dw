@@ -7,14 +7,25 @@ DW.import process;
 # fun: enableMongodbCrAuthentication
 # api: public
 # txt: Enables MONGODB-CR authentication.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if MONGODB-CR gets enabled successfully; 1/FALSE otherwise.
 # use: if enableMongodbCrAuthentication; then
 # use:   echo "MONGODB-CR enabled successfully";
 # use: fi
 function enableMongodbCrAuthentication() {
+  local _url="${1:-mongodb://localhost}";
+  local _maybeTls="${2}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
+  local _database="${3:-admin}";
+  
   local _output;
 
-  _output="$(mongo admin --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }")";
+  _output="$(mongo "${_maybeTls}" --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }" "${_url}/${_database}")";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -32,6 +43,8 @@ function enableMongodbCrAuthentication() {
 # opt: user: The user.
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to "admin".
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
 # use: if addMongodbAdminUser "admin" "secret"; then
@@ -42,9 +55,13 @@ function addMongodbAdminUser() {
   checkNotEmpty user "${_user}" 1;
   local _password="${2}";
   checkNotEmpty password "${_password}" 2;
-  local _authenticationDatabase="${3}";
-  if isEmpty "${_authenticationDatabase}"; then
-    _authenticationDatabase="admin";
+  local _authenticationDatabase="${3:-admin}";
+  local _url="${4:-mongodb://localhost}";
+  local _maybeTls="${5}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
   fi
 
   createTempFile;
@@ -74,7 +91,7 @@ db.createUser(
 )
 EOF
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" "${_url}/${_authenticationDatabase}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -95,6 +112,8 @@ EOF
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
 # opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
 # use: if addMongodbBackupRole "backupRestore" myDb root "s3cr3t"; then
@@ -109,10 +128,17 @@ function addMongodbBackupRole() {
   checkNotEmpty root "${_root}" 3;
   local _rootPassword="${4}";
   checkNotEmpty rootPassword "${_rootPassword}" 4;
-  local _authenticationDatabase="${5}";
+  local _authenticationDatabase="${5:-admin}";
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  local _url="${7:-mongodb://localhost}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -132,7 +158,7 @@ db.createRole(
 )
 EOF
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -153,6 +179,8 @@ EOF
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the role exists already; 1/FALSE otherwise.
 # use: if mongodbRoleAlreadyExists "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256; then
 # use:   echo "Role already exists";
@@ -170,17 +198,27 @@ function mongodbRoleAlreadyExists() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  local _url="${7:-mongodb://localhost}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-use ${_database}
 db.getRole("${_roleName}")
 EOF
+
+  echo;
+  cat "${_tmpFile}";
+  echo "mongo ${_maybeTls} -u ${_root} -p ${_rootPassword} --authenticationDatabase ${_authenticationDatabase} --authenticationMechanism ${_authenticationMechanism}  --quiet ${_url}/${_database}";
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}"  --quiet)";
-  echo "${_output}" | grep -v -e '^switched to db ' | jq '.role' | sed 's ^"  g' | sed 's "$  g' | grep --color=none -e "^${_roleName}$" 2>&1 > /dev/null;
+  _output="$(echo "db.getRole("${_roleName}")" | mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}"  --quiet "${_url}/${_database}")";
+  echo "${_output}" | grep -v -e '^switched to db ' | grep -v "CONNPOOL" | grep -v "NETWORK" | jq '.role' 2> /dev/null | sed 's ^"  g' | sed 's "$  g' | grep --color=none -e "^${_roleName}$" 2>&1 > /dev/null;
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -203,6 +241,8 @@ EOF
 # opt: authenticationMechanism: The authentication mechanism.
 # opt: privilegeSpec: The privilege spec.
 # opt: roleSpec: the role spec.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains error information.
 # use: if addMongodbRole "EventSourcingEventView" myDb root "s3cr3t" admin SCRAM-SHA-256 "[ { db: 'core', collection: 'eventSourcingEvent'}, actions: ['find'] } ]" '[]'; then
@@ -225,6 +265,13 @@ function addMongodbRole() {
   checkNotEmpty privilegeSpec "${_privilegeSpec}" 7;
   local _roleSpec="${8}";
   checkNotEmpty roleSpec "${_roleSpec}" 8;
+  local _url="${9:-mongodb://localhost}";
+  local _maybeTls="${10}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -240,7 +287,7 @@ db.createRole(
 )
 EOF
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -263,6 +310,8 @@ EOF
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
 # opt: roleSpec: The space-separated list of role names.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the user gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
 # use: if addMongodbUser "my-user" "secret" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256" "{ role: 'userAdmin', db: 'admin' }"; then
@@ -290,8 +339,17 @@ function addMongodbUser() {
   local _authenticationMechanism="${1}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
   shift;
-  local _roleSpec="${@}";
+  local _roleSpec="${1}";
   checkNotEmpty roleSpec "${_roleSpec}" 8;
+  shift;
+  local _url="${1:-mongodb://localhost}";
+  shift;
+  local _maybeTls="${1}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -302,7 +360,7 @@ db.createUser({ user: "${_user}", pwd: "${_password}", roles: ${_roleSpec} })
 EOF
 
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_database}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -323,6 +381,8 @@ EOF
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the user gets removed successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
 # use: if removeMongodbUser "my-user" "myDb" "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
@@ -346,6 +406,15 @@ function removeMongodbUser() {
   shift;
   local _authenticationMechanism="${1}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  shift;
+  local _url="${1:-mongodb://localhost}";
+  shift;
+  local _maybeTls="${1}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -356,7 +425,7 @@ db.dropUser("${_user}", { j: true, w: "majority" })
 EOF
 
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_database}" 2>&1)";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -375,6 +444,8 @@ EOF
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the free monitoring is enabled; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the monitoring url; else, the variable ERROR contains some error information.
 # use: if mongodbFreeMonitoringAlreadyEnabled "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
@@ -389,9 +460,17 @@ function mongodbFreeMonitoringAlreadyEnabled() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
+  local _url="${5:-mongodb://localhost}";
+  local _maybeTls="${7}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
+
   local _output;
 
-  _output="$(mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "db.getFreeMonitoringStatus()" 2>&1)";
+  _output="$(mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "db.getFreeMonitoringStatus()" "${_url}/${_authenticationDatabase}" 2>&1)";
 
   echo "${_output}" | grep -q '"url"' > /dev/null;
   local -i _rescode=$?;
@@ -414,6 +493,8 @@ function mongodbFreeMonitoringAlreadyEnabled() {
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the free monitoring gets enabled; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the monitoring url; else, the variable ERROR contains some error information.
 # use: if enableMongodbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then
@@ -428,9 +509,17 @@ function enableMongodbFreeMonitoring() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
+  local _url="${5:-mongodb://localhost}";
+  local _maybeTls="${7}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
+
   local _output;
 
-  _output="$(mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "db.enableFreeMonitoring()" 2>&1)";
+  _output="$(mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "db.enableFreeMonitoring()" "${_url}/${_authenticationDatabase}" 2>&1)";
 
   echo "${_output}" | grep -q '"url"' > /dev/null;
   local -i _rescode=$?;
@@ -452,6 +541,8 @@ function enableMongodbFreeMonitoring() {
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the free monitoring gets disabled; 1/FALSE otherwise.
 # txt: If the function returns 1/TRUE, the variable ERROR contains some error information.
 # use: if disableMongodbFreeMonitoring "root" "s3cr3t" "admin" "SCRAM-SHA-256"; then echo "Free monitoring enabled"; fi
@@ -464,9 +555,17 @@ function disableMongodbFreeMonitoring() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4;
+  local _url="${5:-mongodb://localhost}";
+  local _maybeTls="${6}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
+
   local _output;
 
-  _output="$(echo "db.disableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1)";
+  _output="$(echo "db.disableFreeMonitoring()" | mongo "${_maybeTls}" -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -527,11 +626,13 @@ function killMongod() {
 # api: public
 # txt: Performs a dump.
 # opt: output: The output file.
-# opt: host: The host. Optional. Defaults to localhost.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
 # opt: user: The user name. Optional.
 # opt: pass: The password. Optional.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
 # opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA1.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the dump gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR would contain some information about the error.
 # use: if mongoDump /tmp/dump-today.gz localhost root secret; then
@@ -540,12 +641,17 @@ function killMongod() {
 function mongoDump() {
   local _output="${1}";
   checkNotEmpty output "${_output}" 1;
-  local _host="${2:-localhost}";
-  checkNotEmpty host "${_host}" 2;
+  local _url="${2:-mongodb://localhost}";
   local _user="${3}";
   local _pass="${4}";
   local _authenticationDatabase="${5:-admin}";
   local _authenticationMechanism="${6:-SCRAM-SHA1}";
+  local _maybeTls="${7}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local -i _rescode;
   local _output;
@@ -553,10 +659,10 @@ function mongoDump() {
   checkReq mongodump;
 
   if isEmpty "${_user}"; then
-    _output="$(mongodump --oplog --excludeCollectionsWithPrefix=system --out="${_output}" -h ${_host} 2>&1)";
+    _output="$(mongodump --oplog --uri="${_url}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1)";
     _rescode=$?;
   else
-    _output="$(mongodump --oplog --out="${_output}" --excludeCollectionsWithPrefix=system -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
+    _output="$(mongodump --oplog --uri="${_url}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
     _rescode=$?;
   fi
 
@@ -573,11 +679,12 @@ function mongoDump() {
 # api: public
 # txt: Restores from backup.
 # opt: file: The file to restore from.
-# opt: host: The host. Optional. Defaults to localhost.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
 # opt: user: The user name. Optional.
 # opt: password: The password. Optional.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
 # opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the restore process succeeds; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
 # use: if mongoRestore "/tmp/dump.gz"; then
@@ -587,20 +694,26 @@ function mongoRestore() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
 
-  local _host="${2:-localhost}";
+  local _url="${2:-mongodb://localhost}";
   local _user="${3}";
   local _pass="${4}";
   local _authenticationDatabase="${5:-admin}";
   local _authenticationMechanism="${6:-SCRAM-SHA-256}";
+  local _maybeTls="${7}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local -i _rescode;
   local _output;
 
   if isEmpty "${_user}"; then
-    _output="$(mongorestore -h ${_host} "${_file}" 2>&1)";
+    _output="$(mongorestore --uri "${_url}" "${_file}" 2>&1)";
     _rescode=$?;
   else
-    _output="$(mongorestore -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1)";
+    _output="$(mongorestore --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1)";
     _rescode=$?;
   fi
 
@@ -617,12 +730,13 @@ function mongoRestore() {
 # api: public
 # txt: Restores from backup.
 # opt: file: The file to import.
-# opt: host: The host. Optional. Defaults to localhost.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
 # opt: user: The user name. Optional.
 # opt: password: The password. Optional.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
 # opt: authenticationMechanism: The authentication mechanism. Optional. Defaults to SCRAM-SHA-256.
 # opt: database: The database to import. Optional.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the import process succeeds; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
 # use: if mongoImport "/tmp/dump.gz"; then
@@ -631,13 +745,18 @@ function mongoRestore() {
 function mongoImport() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
-
-  local _host="${2:-localhost}";
+  local _url="${2:-mongodb://localhost}";
   local _user="${3}";
   local _pass="${4}";
   local _authenticationDatabase="${5:-admin}";
   local _authenticationMechanism="${6:-SCRAM-SHA-256}";
   local _database="${7}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   if isNotEmpty "${_database}"; then
     _database="-d ${_database}";
@@ -647,10 +766,10 @@ function mongoImport() {
   local _output;
 
   if isEmpty "${_user}"; then
-    _output="$(mongoimport -h ${_host} ${_database} "${_file}" 2>&1)";
+    _output="$(mongoimport --uri "${_url}" ${_database} "${_file}" 2>&1)";
     _rescode=$?;
   else
-    _output="$(mongoimport -h ${_host} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1)";
+    _output="$(mongoimport --uri "${_url}" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1)";
     _rescode=$?;
   fi
 
@@ -803,6 +922,8 @@ function isMongodRunningWithNoAuthentication() {
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if given user can log in; 1/FALSE otherwise.
 # use: if mongodbUserCanLogIn root secret myDb SCRAM-SHA-256; then
 # use:   echo "User can log in";
@@ -816,9 +937,16 @@ function mongodbUserCanLogIn() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3;
   local _authenticationMechanism="${4}";
   checkNotEmpty authenticationMechanism "{_authenticationMechanism}" 4;
+  local _url="${5:-mongodb://localhost}";
+  local _maybeTls="${6}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local _output;
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" 2>&1)";
+  _output="$(mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_authenticationDatabase}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -835,6 +963,8 @@ function mongodbUserCanLogIn() {
 # txt: Checks given MongoDB user can login.
 # opt: user: The user name.
 # opt: database: The database.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if given user exists; 1/FALSE otherwise.
 # use: if mongodbAdminUserAlreadyExists root myDb; then
 # use:   echo "User root exists in myDb database";
@@ -844,9 +974,16 @@ function mongodbAdminUserAlreadyExists() {
   checkNotEmpty user "${_user}" 1;
   local _database="${2}";
   checkNotEmpty database  "${_database}" 2;
+  local _url="${3:-mongodb://localhost}";
+  local _maybeTls="${4}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local _output;
-  _output="$(mongo --quiet "${_database}" --eval "db.getUsers({filter: {'user': '${_user}'}})" 2>&1)";
+  _output="$(mongo "${_maybeTls}" --quiet "${_database}" --eval "db.getUsers({filter: {'user': '${_user}'}})" "${_url}/${_database}" 2>&1)";
   local -i _rescode=$?;
 
   if   isTrue ${_rescode} \
@@ -869,6 +1006,8 @@ function mongodbAdminUserAlreadyExists() {
 # opt: adminPassword: The password to access the MongoDB server.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if given user exists; 1/FALSE otherwise.
 # use: if mongodbUserAlreadyExists root myDb admin secret admin SCRAM-SHA-256; then
 # use:   echo "User root exists in myDb database";
@@ -886,6 +1025,13 @@ function mongodbUserAlreadyExists() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  local _url="${7:-mongodb://localhost}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -897,7 +1043,7 @@ db.getUsers( { filter: { 'user': '${_user}' } } )
 EOF
 
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1 | grep -v "switched to db " | grep -v "UUID" | jq '. | length')";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -v "switched to db " | grep -v "UUID" | jq '. | length')";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -926,6 +1072,8 @@ EOF
 # opt: collection: The collection.
 # opt: index: The index.
 # opt: options: The index options.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the index could be created; 1/FALSE otherwise.
 # use: if createMongodbIndex root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }' '{ name: "myIndex" }'; then
 # use:   echo "Index created successfully";
@@ -947,6 +1095,13 @@ function createMongodbIndex() {
   checkNotEmpty index "${_index}" 7;
   local _options="${8}";
   checkNotEmpty options "${_options}" 8;
+  local _url="${9:-mongodb://localhost}";
+  local _maybeTls="${10}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -958,7 +1113,7 @@ db.${_collection}.createIndex(${_index}, ${_options})
 EOF
 
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1 | grep 'ok' | grep '1')";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep 'ok' | grep '1')";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -980,6 +1135,8 @@ EOF
 # opt: database: The database.
 # opt: collection: The collection.
 # opt: index: The index.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the index exists; 1/FALSE otherwise.
 # use: if mongodbIndexAlreadyExists root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }'; then
 # use:   echo "Index exists";
@@ -999,6 +1156,13 @@ function mongodbIndexAlreadyExists() {
   checkNotEmpty collection "${_collection}" 6;
   local _index="${7}";
   checkNotEmpty index "${_index}" 7;
+  local _url="${8:-mongodb://localhost}";
+  local _maybeTls="${9}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
@@ -1018,7 +1182,7 @@ print('**' + exists + '**');
 EOF
 
   local _output;
-  _output="$(cat "${_tmpFile}" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" | grep "**true**")";
+  _output="$(cat "${_tmpFile}" | mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep "**true**")";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -1039,6 +1203,8 @@ EOF
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the database could be created; 1/FALSE otherwise.
 # use: if createMongodbDatabase myDatabase removeme root secret admin SCRAM-SHA-1; then
 # use:   echo "Database created successfully";
@@ -1056,9 +1222,16 @@ function createMongodbDatabase() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  local _url="${7:-mongodb://localhost}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local _output;
-  _output="$(echo "db.${_temporaryCollection}.insert({name: 'sample'})" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" ${_database} 2>&1)";
+  _output="$(echo "db.${_temporaryCollection}.insert({name: 'sample'})" | mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -1078,6 +1251,8 @@ function createMongodbDatabase() {
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the database exists; 1/FALSE otherwise.
 # use: if mongodbDatabaseAlreadyExists myDatabase root secret admin SCRAM-SHA-1; then
 # use:   echo "Database exists";
@@ -1093,9 +1268,16 @@ function mongodbDatabaseAlreadyExists() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 4;
   local _authenticationMechanism="${5}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 5;
+  local _url="${6:-mongodb://localhost}";
+  local _maybeTls="${7}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local _output;
-  _output="$(echo "show dbs" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" 2>&1 | grep -q -e "^${_database}\W")";
+  _output="$(echo "show dbs" | mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -1116,7 +1298,9 @@ function mongodbDatabaseAlreadyExists() {
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
-# opt: options: The collection options.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
+# opt: options: The collection options. Optional.
 # txt: Returns 0/TRUE if the collection could be created; 1/FALSE otherwise.
 # use: if createMongodbCollection myDatabase myCollection root secret admin SCRAM-SHA-1 myDatabase myCollection ; then
 # use:   echo "Collection created successfully";
@@ -1134,13 +1318,20 @@ function createMongodbCollection() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
-  local _options="${7}";
+  local _url="${7:-mongodb://localhost}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
+  local _options="${9}";
   if isNotEmpty "${_options}"; then
     _options=",${_options}";
   fi
 
   local _output;
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.createCollection('${_collection}'${_options})" 2>&1)";
+  _output="$(mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -1161,6 +1352,8 @@ function createMongodbCollection() {
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the collection exists; 1/FALSE otherwise.
 # use: if mongodbCollectionAlreadyExists  myDatabase myCollection root secret admin SCRAM-SHA-1; then
 # use:   echo "Collection exists";
@@ -1178,9 +1371,16 @@ function mongodbCollectionAlreadyExists() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  local _url="${7:-mongodb://localhost}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local _output;
-  _output="$(echo "show collections" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" 2>&1 | grep -e "^${_collection}$")";
+  _output="$(echo "show collections" | mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$")";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -1201,6 +1401,8 @@ function mongodbCollectionAlreadyExists() {
 # opt: password: The password.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the collection could be removed; 1/FALSE otherwise.
 # use: if removeMongodbCollection myDatabase myCollection root secret admin SCRAM-SHA-1; then
 # use:   echo "Collection removed successfully";
@@ -1218,9 +1420,16 @@ function removeMongodbCollection() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 5;
   local _authenticationMechanism="${6}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 6;
+  local _url="${7:-mongodb://localhost}";
+  local _maybeTls="${8}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   local _output;
-  _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_database}" --eval "db.${_collection}.drop()" 2>&1)";
+  _output="$(mongo "${_maybeTls}" -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -1245,6 +1454,8 @@ function removeMongodbCollection() {
 # opt: adminPassword: The password to access the MongoDB server.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the role cannot be added.
 # use: addMongodbRoleIfNecessary "MyRole" "[ { resource: { db: '${EVENTSTORE_DATABASE}', collection: '${EVENTSOURCINGEVENT_COLLECTION}' }, actions: [ 'find'  ] } ]" '[]' CANNOT_ADD_MYROLE MYROLE_STILL_DOES_NOT_EXIST admin admin secret admin SCRAM-SHA-256;
 function addMongodbRoleIfNecessary() {
@@ -1268,14 +1479,16 @@ function addMongodbRoleIfNecessary() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 9;
   local _authenticationMechanism="${10}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
-
+  local _url="${11:-mongodb://localhost}";
+  local _maybeTls="${12}";
+  
   logDebug -n "Checking if ${_roleName} role already exists in ${_database} database";
-  if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "exists";
   else
     logDebugResult NEUTRAL "missing";
     logDebug -n "Adding ${_roleName} role";
-    if addMongodbRole "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_privilegeSpec}" "${_roleSpec}"; then
+    if addMongodbRole "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_privilegeSpec}" "${_roleSpec}" "${_url}" "${_maybeTls}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
@@ -1289,7 +1502,7 @@ function addMongodbRoleIfNecessary() {
     fi
 
     logDebug -n "Double-checking ${_roleName} role already exists in ${_database} database";
-    if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "exists";
     else
       local _error="${ERROR}";
@@ -1315,6 +1528,8 @@ function addMongodbRoleIfNecessary() {
 # opt: adminUserPassword: The password to access the MongoDB server.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the user cannot be added.
 # use: addMongodbUserIfNecessary core secret admin "[ { role: '${MyCollectionFindRole}', db: 'admin' },{ role: '${MyCollectionInsertRole}', db: 'admin' } ]" CANNOT_ADD_CORE_USER CORE_USER_CANNOT_LOG_IN admin secret admin SCRAM-SHA-256;
 function addMongodbUserIfNecessary() {
@@ -1338,14 +1553,17 @@ function addMongodbUserIfNecessary() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 9;
   local _authenticationMechanism="${10}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
+  local _url="${11:-mongodb://localhost}";
+  local _maybeTls="${12}";
 
   logDebug -n "Checking if user ${_userName} can log in, using database ${_database}";
-  if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
+  if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "success";
   else
     logDebugResult NEUTRAL "failed";
+    echo "addMongodbUser ${_userName} ${_userPassword} ${_database} ${_adminUserName} ${_adminUserPassword} ${_authenticationDatabase} ${_authenticationMechanism} ${_roleSpec} ${_url} ${_maybeTls}";
     logDebug -n "Adding ${_userName} user";
-    if addMongodbUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}"; then
+    if addMongodbUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}" "${_url}" "${_maybeTls}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
@@ -1359,7 +1577,7 @@ function addMongodbUserIfNecessary() {
     fi
 
     logDebug -n "Double-checking if user ${_userName} can log in, using ${_database} database";
-    if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
+    if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "success";
     else
       local _error="${ERROR}";
@@ -1382,6 +1600,8 @@ function addMongodbUserIfNecessary() {
 # opt: adminUserPassword: The password to access the MongoDB server.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the user cannot be removed.
 # use: removeMongodbUserIfNecessary core myDb CANNOT_REMOVE_CORE_USER admin secret admin SCRAM-SHA-256;
 function removeMongodbUserIfNecessary() {
@@ -1399,13 +1619,20 @@ function removeMongodbUserIfNecessary() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 6;
   local _authenticationMechanism="${7}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
-
+  local _url="${8:-mongodb://localhost}";
+  local _maybeTls="${9}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
+  
   logDebug -n "Checking if user ${_userName} already exists in database ${_database}";
-  if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "success";
 
     logDebug -n "Removing ${_userName} user";
-    if removeMongodbUser "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if removeMongodbUser "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
@@ -1419,7 +1646,7 @@ function removeMongodbUserIfNecessary() {
     fi
 
     logDebug -n "Double-checking if user ${_userName} still exists in database ${_database}";
-    if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
@@ -1447,6 +1674,8 @@ function removeMongodbUserIfNecessary() {
 # opt: adminUserPassword: The password of the admin user.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the index cannot be created.
 # use: addMongodbIndexIfNecessary id '{ id: 1 }' myDatabase myCollection CANNOT_CREATE_ID_INDEX ID_INDEX_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
 function addMongodbIndexIfNecessary() {
@@ -1470,16 +1699,23 @@ function addMongodbIndexIfNecessary() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 9;
   local _authenticationMechanism="${10}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
+  local _url="${11:-mongodb://localhost}";
+  local _maybeTls="${12}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   logDebug -n "Checking if ${_database}.${_collection}.${_indexName} index already exists";
-  if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}"; then
+  if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "exists";
   else
     logDebugResult NEUTRAL "missing";
 
     logDebug -n "Creating ${_database}.${_collection}.${_indexName} index";
 
-    if createMongodbIndex "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_roleSpec}" "{ name: '${_indexName}' }"; then
+    if createMongodbIndex "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_roleSpec}" "{ name: '${_indexName}' }" "${_url}" "${_maybeTls}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
@@ -1493,7 +1729,7 @@ function addMongodbIndexIfNecessary() {
     fi
 
     logDebug -n "Double-checking ${_database}.${_collection}.${_indexName} index is actually created";
-    if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}"; then
+    if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "exists";
     else
       local _error="${ERROR}";
@@ -1517,6 +1753,8 @@ function addMongodbIndexIfNecessary() {
 # opt: adminUserPassword: The password of the admin user.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the database cannot be added.
 # use: addMongodbDatabaseIfNecessary eventStore removeme CANNOT_ADD_EVENTSTORE_DATABASE EVENTSTORE_DATABASE_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
 function addMongodbDatabaseIfNecessary() {
@@ -1536,14 +1774,16 @@ function addMongodbDatabaseIfNecessary() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 7;
   local _authenticationMechanism="${8}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 8;
+  local _url="${9:-mongodb://localhost}";
+  local _maybeTls="${10}";
 
   logDebug -n "Checking if ${_database} database already exists";
-  if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "success";
   else
     logDebugResult NEUTRAL "failed";
     logDebug -n "Adding ${_database} database";
-    if createMongodbDatabase "${_database}" "${_temporaryCollection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if createMongodbDatabase "${_database}" "${_temporaryCollection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
       if isNotEmpty "${_output}"; then
@@ -1559,7 +1799,7 @@ function addMongodbDatabaseIfNecessary() {
     fi
 
     logDebug -n "Double-checking if ${_database} database exists";
-    if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "success";
     else
       local _error="${ERROR}";
@@ -1583,6 +1823,8 @@ function addMongodbDatabaseIfNecessary() {
 # opt: adminUserPassword: The password of the admin user.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the collection cannot be added.
 # use: addMongodbCollectionIfNecessary EventSourcingEvent eventStore CANNOT_ADD_EVENTSOURCINGEVENT_COLLECTION EVENTSOURCINGEVENT_COLLECTION_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
 function addMongodbCollectionIfNecessary() {
@@ -1602,14 +1844,16 @@ function addMongodbCollectionIfNecessary() {
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 7;
   local _authenticationMechanism="${8}";
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 8;
+  local _url="${9:-mongodb://localhost}";
+  local _maybeTls="${10}";
 
   logDebug -n "Checking if collection ${_collection} already exists in ${_database} database";
-  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "success";
   else
     logDebugResult NEUTRAL "failed";
     logDebug -n "Adding ${_collection} collection in ${_database} database";
-    if createMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if createMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
       if isNotEmpty "${_output}"; then
@@ -1625,7 +1869,7 @@ function addMongodbCollectionIfNecessary() {
     fi
 
     logDebug -n "Double-checking if collection ${_collection} exists in ${_database} database";
-    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "success";
     else
       local _error="${ERROR}";
@@ -1649,6 +1893,8 @@ function addMongodbCollectionIfNecessary() {
 # opt: adminUserPassword: The password of the admin user.
 # opt: authenticationDatabase: The authentication database.
 # opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the collection could not be removed.
 # use: removeMongodbCollectionIfNecessary eventStore removeme CANNOT_DELETE_REMOVEME_COLLECTION REMOVEME_COLLECTION_EXISTS admin secret admin SCRAM-SHA-256;
 function removeMongodbCollectionIfNecessary() {
@@ -1668,12 +1914,19 @@ function removeMongodbCollectionIfNecessary() {
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
   local _authenticationDatabase="${8}";
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 8;
+  local _url="${9:-mongodb://localhost}";
+  local _maybeTls="${10}";
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _maybeTls="--tls";
+  else
+    _maybeTls="";
+  fi
 
   logDebug -n "Checking if collection ${_collection} actually exists in ${_database} database";
-  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "true";
     logDebug -n "Removing ${_collection} collection in ${_database} database";
-    if removeMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if removeMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
       if isNotEmpty "${_output}"; then
@@ -1689,7 +1942,7 @@ function removeMongodbCollectionIfNecessary() {
     fi
 
     logDebug -n "Double-checking if collection ${_collection} is actually removed from ${_database} database";
-    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
+    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then

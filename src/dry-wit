@@ -994,13 +994,23 @@ function findModule() {
   DW.getScriptPath;
   local _scriptPath="${RESULT}";
 
+  local _localPath="${BASH_SOURCE[0]}";
+
   local _oldIFS="${IFS}";
 
   IFS="${DWIFS}";
   for _result in "${_modulePath}/${_module}.dw" \
                  "${_modulePath}/ext/${_module}.dw" \
+                 "${_modulePath}/.${_module}/${_module}.dw" \
+                 "${_modulePath}/.${_module}/.dw/${_module}.dw" \
                  "$(dirname ${_scriptPath})/${_module}.dw" \
-                 "$(dirname ${_scriptPath})/.dw/${_module}.dw"; do
+                 "$(dirname ${_scriptPath})/.dw/${_module}.dw" \
+                 "$(dirname ${_scriptPath})/.${_module}/${_module}.dw" \
+                 "$(dirname ${_scriptPath})/.${_module}/.dw/${_module}.dw" \
+                 "${_localPath}/${_module}.dw" \
+                 "${_localPath}/.dw/${_module}.dw" \
+                 "${_localPath}/${_module}/${_module}.dw" \
+                 "${_localPath}/${_module}/.dw/${_module}.dw"; do
     IFS="${_oldIFS}";
     BOOTSTRAP.logTrace -n "Checking if ${_result} exists";
     if [[ -e "${_result}" ]]; then

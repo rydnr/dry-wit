@@ -49,7 +49,9 @@ function isCloudformationTemplateValid() {
     logDebugResult SUCCESS "valid";
   else
     logDebugResult FAILURE "invalid";
-    logDebug "${_output}";
+    if isNotEmpty "${_output}"; then
+      logDebug "${_output}";
+    fi
     exitWithErrorCode INVALID_CLOUDFORMATION_TEMPLATE "${_name}";
   fi
 
@@ -197,14 +199,19 @@ function getCloudformationExport() {
   local _awsProfile="${2}";
   checkNotEmpty awsProfile "${_awsProfile}" 2;
   local _awsRegion="${3:-eu-west-1}";
-
+  checkNotEmpty awsRegion "${_awsRegion}" 3;
+  local _refreshCache="${4:-${FALSE}}";
+  checkBoolean refreshCache "${_refreshCache}" 4;
+  
   AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}";
   local _cacheFile="${RESULT}";
 
   AWS_CLOUDFORMATION.getExportsCacheExpirationInMinutes;
   local -i _expiration=${RESULT};
 
-  if ! fileExists "${_cacheFile}" || ! fileModifiedInLastXMinutes "${_cacheFile}" ${_expiration}; then
+  if   isTrue ${_refreshCache} \
+    || ! fileExists "${_cacheFile}" \
+    || ! fileModifiedInLastXMinutes "${_cacheFile}" ${_expiration}; then
     cacheCloudformationExports "${_awsProfile}" "${_awsRegion}" "${_cacheFile}";
   fi
 
@@ -411,7 +418,7 @@ function requestCreateOrUpdateStack() {
   cat <<EOF > "${_tmpFile}"
 #!/bin/bash
 
-$(which aws) --profile ${_awsProfile} --region ${_region} cloudformation ${_action}-stack --stack-name ${_stackName} --tags ${_tags} --template-body file://${_template} --parameters ${_parameters} --capabilities CAPABILITY_NAMED_IAM;
+$(which aws) --profile ${_awsProfile} --region ${_region} cloudformation ${_action}-stack --stack-name ${_stackName} --tags ${_tags} --template-body file://${_template} --parameters ${_parameters} --capabilities CAPABILITY_NAMED_IAM 2>&1;
 EOF
   chmod +x "${_tmpFile}";
   local _output;

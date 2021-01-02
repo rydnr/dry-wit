@@ -1222,7 +1222,7 @@ function fileModifiedInLastXMinutes() {
 
   local -i _rescode;
 
-  if [ $(stat --format=%Y "${_file}") -ge $(( $(date +%s) - 60*${_minutes} )) ]; then
+  if [ $(stat -c %Y "${_file}") -ge $(( $(date +%s) - 60*${_minutes} )) ]; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};

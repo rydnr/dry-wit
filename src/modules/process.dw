@@ -16,7 +16,7 @@ function isRunning() {
   checkNotEmpty filePath "${_filePath}" 1;
 
   local _result;
-  _result=$(pidof $(which ${_filePath}));
+  _result=$(pidof -x $(which "${_filePath}""));
   local -i _rescode=$?;
 
   if isEmpty "${_result}"; then
@@ -39,7 +39,7 @@ function isRunning() {
 function halt() {
   local _seconds="${1:-100}";
 
-  while [[ 0 -eq 0 ]]; do
+  while isTrue ${TRUE}; do
     sleep ${_seconds};
   done;
 }
@@ -52,19 +52,19 @@ function halt() {
 # use:   echo "Another process already running";
 # use: fi
 function anotherProcessAlreadyRunning() {
+  local -i _rescode=${FALSE};
+  local _ownPid=$$;
+  local _pid;
+
   DW.getScriptPath;
   local _scriptPath="${RESULT}";
 
-  local -i _rescode;
-  local _count;
-  local _ownPid=$$;
-  _count="$(ps -ef | grep "${_scriptPath}" | grep -v grep | awk '{print $2;}' | grep -v -e "^${_ownPid}$" | wc -l)";
-
-  if areEqual "${_count}" 1; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
-  fi
+  for _pid in $(pidof -x "${_scriptPath}"); do
+    if ! areEqual "${_pid}" "${_ownPid}"; then
+      _rescode=${TRUE};
+      break;
+    fi
+  done
 
   return ${_rescode};
 }
