@@ -15,8 +15,9 @@ function isRunning() {
   local _filePath="${1}";
   checkNotEmpty filePath "${_filePath}" 1;
 
+  local _fileName="$(basename "${_filePath}")";
   local _result;
-  _result=$(pidof -x $(which "${_filePath}"));
+  _result=$(pidof "${_fileName}");
   local -i _rescode=$?;
 
   if isEmpty "${_result}"; then
