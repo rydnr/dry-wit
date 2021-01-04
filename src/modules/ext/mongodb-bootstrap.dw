@@ -106,7 +106,7 @@ function mongodbMigrate() {
       if MONGODBBOOTSTRAP.enableFreeMonitoringIfNotEnabledAlready "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_lockFile}"; then
         local _url="${RESULT}";
         if isNotEmpty "${_url}"; then
-          logInfo "Monitoring url: ${url}";
+          logInfo "Monitoring url: ${_url}";
         fi
       fi
     else
@@ -414,7 +414,7 @@ function MONGODBBOOTSTRAP.createAdminUserIfItDoesNotExist() {
   if mongodbAdminUserAlreadyExists "${_user}" "${_authenticationDatabase}"; then
     logDebugResult SUCCESS "success";
   else
-    logDebugResult NEUTRAL "failed";
+    logDebugResult NEUTRAL "missing";
     logDebug -n "Adding ${_user} user";
     if addMongodbAdminUser "${_user}" "${_password}" "${_authenticationDatabase}"; then
       logDebugResult SUCCESS "done";
