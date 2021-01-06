@@ -158,7 +158,7 @@ function printErrorMessage() {
 
   local -i _rescode=${TRUE};
 
-  local _message;
+  local _message="";
 
   #  set +o nounset  # allow unset variables
 
@@ -225,6 +225,8 @@ EOF
 
   IFS="${DWIFS}";
   local -i _callStackIndex;
+  local _bashFlags=$-;
+  set +u;
   for _callStackIndex in $(seq 3 ${#FUNCNAME[@]}); do
     IFS="${_oldIFS}";
     if isNotEmpty "${FUNCNAME[${_callStackIndex}]}"; then
@@ -246,6 +248,12 @@ EOF
   done
   IFS="${_oldIFS}";
 
+  if [[ "${_bashFlags}" =~ u ]]; then
+    set -u;
+  else
+    set +u;
+  fi
+  
   if isNotEmpty "${_callStack}"; then
     _callStack=" (${_callStack})";
   fi
