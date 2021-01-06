@@ -146,12 +146,18 @@ function isFunctionDefined() {
 # use:  echo is not empty";
 # use: fi
 function isNotEmpty() {
+  local _value;
   local -i _rescode;
 
-  if isEmpty "${1}"; then
-    _rescode=${FALSE};
+  if isGreaterThan $# 0; then
+    _value="${1}";
+    if isEmpty "${_value}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+    fi
   else
-    _rescode=${TRUE};
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};

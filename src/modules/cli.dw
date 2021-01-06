@@ -1350,67 +1350,69 @@ function CLI.retrieveFlagKey() {
 # use:   echo "Parsing not provided flags succeeded";
 # use: fi
 function CLI.parseNotProvidedFlags() {
-  local _providedFlags="${1}";
+  local -i _rescode=${TRUE};
 
-  local -i _rescode;
+  if isGreaterThan $# 0; then
+    local _providedFlags="${1}";
 
-  local -a _notProvidedFlags=();
+    local -a _notProvidedFlags=();
 
-  local _oldIFS="${IFS}";
+    local _oldIFS="${IFS}";
 
-  CLI.getFlagKeysVariableName;
-  local -n _flagKeys="${RESULT}";
+    CLI.getFlagKeysVariableName;
+    local -n _flagKeys="${RESULT}";
 
-  IFS="${DWIFS}";
-  local _flagKey;
-  for _flagKey in ${_flagKeys[@]}; do
-    IFS="${_oldIFS}";
-
-    local -i _provided=${FALSE};
-
-    CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
-    local _longName="${RESULT}";
-    CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
-    _shortName="${RESULT}";
     IFS="${DWIFS}";
-    for _providedFlag in ${_providedFlags}; do
+    local _flagKey;
+    for _flagKey in ${_flagKeys[@]}; do
       IFS="${_oldIFS}";
-      if    areEqual "${_providedFlag}" "--${_longName}" \
-         || areEqual "${_providedFlag}" "-${_shortName}"; then
-        _provided=${TRUE};
-        break;
-      fi
-    done
-    IFS="${_oldIFS}";
 
-    if isFalse ${_provided}; then
-      local -i _defaultValueDefined=${FALSE};
-      local _defaultValue;
+      local -i _provided=${FALSE};
 
-      if CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
-        _defaultValueDefined=${TRUE};
-        _defaultValue="${RESULT}";
-      fi
+      CLI.retrieveCommandLineFlagLongNameFromKey "${_flagKey}";
+      local _longName="${RESULT}";
+      CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}";
+      _shortName="${RESULT}";
+      IFS="${DWIFS}";
+      for _providedFlag in ${_providedFlags}; do
+        IFS="${_oldIFS}";
+        if    areEqual "${_providedFlag}" "--${_longName}" \
+          || areEqual "${_providedFlag}" "-${_shortName}"; then
+          _provided=${TRUE};
+          break;
+        fi
+      done
+      IFS="${_oldIFS}";
 
-      if isTrue ${_defaultValueDefined}; then
-        if CLI.parseCallbackDefinedForFlag "${_longName}"; then
-          CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
-          local _callbackFunction="${RESULT}";
-          "${_callbackFunction}" "${_defaultValue}";
-        else
-          camelCaseToSnakeCase "${_longName}";
-          normalizeUppercase "${RESULT}";
-          local _upcasedLongName="${RESULT}";
-          local -n _existingVariable=${_upcasedLongName};
-          if isEmpty "${_existingVariable}"; then
-            declare -gx ${_upcasedLongName}="${_defaultValue}";
+      if isFalse ${_provided}; then
+        local -i _defaultValueDefined=${FALSE};
+        local _defaultValue;
+
+        if CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
+          _defaultValueDefined=${TRUE};
+          _defaultValue="${RESULT}";
+        fi
+
+        if isTrue ${_defaultValueDefined}; then
+          if CLI.parseCallbackDefinedForFlag "${_longName}"; then
+            CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
+            local _callbackFunction="${RESULT}";
+            "${_callbackFunction}" "${_defaultValue}";
+          else
+            camelCaseToSnakeCase "${_longName}";
+            normalizeUppercase "${RESULT}";
+            local _upcasedLongName="${RESULT}";
+            local -n _existingVariable=${_upcasedLongName};
+            if isEmpty "${_existingVariable}"; then
+              declare -gx ${_upcasedLongName}="${_defaultValue}";
+            fi
           fi
         fi
       fi
-    fi
-  done
-  IFS="${_oldIFS}";
-
+    done
+    IFS="${_oldIFS}";
+  fi
+  
   return ${_rescode};
 }
 

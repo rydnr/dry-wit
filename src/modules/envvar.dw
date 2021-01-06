@@ -215,13 +215,13 @@ function evalVar() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
 
-  local -i rescode;
+  local -i _rescode;
 
   local _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null || echo "$$.ERROR.$$")";
   if areEqual "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
   else
-    rescode=${TRUE};
+    _rescode=${TRUE};
     export RESULT="${_result}";
   fi
 
@@ -806,26 +806,24 @@ function evalEnvVar() {
     local _varValue="${RESULT}";
 
     if isEmpty "${_varValue}"; then
-      if isNotEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}" ; then
-        #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
-        ENVVAR.evalVarCommand "${_varName}";
-        local _defaultCommand="${RESULT}";
-        #      echo "${_defaultCommand}";
-        if isNotEmpty "${_defaultCommand}"; then
-          logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
-          local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
-          if isNotEmpty "${_aux}"; then
-            _defaultValue="${_aux}";
-            logTraceResult SUCCESS "${_aux}";
-          else
-            logTraceResult FAILURE "failed";
-          fi
+      #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
+      ENVVAR.evalVarCommand "${_varName}";
+      local _defaultCommand="${RESULT}";
+      #      echo "${_defaultCommand}";
+      if isNotEmpty "${_defaultCommand}"; then
+        logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
+        local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
+        if isNotEmpty "${_aux}"; then
+          _defaultValue="${_aux}";
+          logTraceResult SUCCESS "${_aux}";
+        else
+          logTraceResult FAILURE "failed";
         fi
       fi
       _varValue="${_defaultValue}";
     fi
 
-    if isNotEmpty "${_varValue}" && isEmpty "${DRY_WIT_EVAL_DEFAULTS_FLAG}"; then
+    if isNotEmpty "${_varValue}"; then
       while [[ "${_varValue}" =~ .*'$'.* ]]; do
         _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
       done

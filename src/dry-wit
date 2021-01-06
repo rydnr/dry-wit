@@ -282,17 +282,17 @@ function DW.declareGlobalVariable() {
         _rescode=$?;
         ;;
       array)
-        if BOOTSTRAP.isTrue ${_initialValueProvided}; then
-          declare -agx "${_aux}";
-          _rescode=$?;
-          if BOOTSTRAP.isTrue ${_rescode}; then
-            local -n _tmp=${_aux};
+        declare -agx "${_aux}";
+        _rescode=$?;
+        if BOOTSTRAP.isTrue ${_rescode}; then
+          local -n _tmp=${_aux};
+          if BOOTSTRAP.isTrue ${_initialValueProvided}; then
             _tmp=( ${@} );
             _rescode=$?;
+          else
+            _tmp=();
+            _rescode=$?;
           fi
-        else
-          declare -agx "${_aux}";
-          _rescode=$?;
         fi
         ;;
       map)
@@ -305,7 +305,7 @@ function DW.declareGlobalVariable() {
         ;;
     esac
   else
-    BOOTSTRAP.logDebug "DW.getGlobalVariableName ${_module} ${_varName} returned 1. Please fill-in a bug report."
+    BOOTSTRAP.logDebug "DW.getGlobalVariableName ${_module} ${_varName} returned 1. Please fill-in a bug report (https://github.com/rydnr/dry-wit)"
   fi
 
   return ${_rescode};

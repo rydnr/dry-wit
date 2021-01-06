@@ -48,7 +48,7 @@ function LOGGING.retrieveCurrentLogCategory() {
 # use: LOGGING.buildDefaultLogCategory;
 # use: echo "Category: ${RESULT}";
 function LOGGING.buildDefaultLogCategory() {
-  local _result;
+  local _result="";
 
   local -i _maxIndex=$((${#FUNCNAME[@]} - 1));
   local -i _upperLimit=$((_maxIndex - 1));
@@ -1059,10 +1059,13 @@ function setLogOutcomeColors() {
 # use: LOGGING.buildLogPrefix ${FALSE};
 # use: echo -n "${RESULT}";
 function LOGGING.buildLogPrefix() {
-  local -i _allowsColors=${1};
-  checkBoolean inColor "${_allowsColors}" 1;
-
-  local _result;
+  local -i _allowsColors=${FALSE};
+  if isGreaterThan $# 0; then
+    _allowsColors=${1};
+    checkBoolean inColor "${_allowsColors}" 1;
+  fi
+  
+  local _result="";
   LOGGING.processLogPrefixTokens;
   LOGGING.getLogPrefixTokensVariableName;
   local -n _logPrefixTokens="${RESULT}";
@@ -1931,10 +1934,12 @@ function LOGGING.getLogPrefixCategorySeparator() {
   LOGGING.getModuleName;
   DW.getGlobalString "${RESULT}" LOG_PREFIX_CATEGORY_SEPARATOR;
   local _result="${RESULT}";
+
   if isEmpty "${_result}"; then
     export RESULT=":";
   fi
-  return ${_rescode};
+
+  return ${TRUE};
 }
 
 # fun: LOGGING.getLogCategoryStackVariableName
@@ -1958,7 +1963,7 @@ function LOGGING.getLogCategoryStackVariableName() {
 # use: fi
 function LOGGING.peekLogCategory() {
   local -i _rescode;
-  local _result;
+  local _result="";
 
   LOGGING.getLogCategoryStackVariableName;
   local -n _logCategoryStack=${RESULT};
@@ -2391,7 +2396,7 @@ function LOGGING.buildLogCategoryPrefix() {
   local _separator="${1}";
   checkNotEmpty separator "${_separator}" 1;
 
-  local _result;
+  local _result="";
   local _oldIFS="${IFS}";
 
   LOGGING.getLogCategoryStackVariableName;

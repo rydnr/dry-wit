@@ -151,17 +151,17 @@ function isFunctionMissing() {
 function isFunctionPresent() {
   local _function="${1}";
   checkNotEmpty funcName "${_function}" 1;
-  local _scriptName="${2}";
-
+  local _scriptName="";
+  if isGreaterThan $# 1; then
+    _scriptName="${2}";
+  fi
+  
   local _oldIFS="${IFS}";
 
   if isEmpty "${_scriptName}"; then
     DW.getScriptName;
     _scriptName="${RESULT}";
   fi
-
-  DW.getScriptFolder;
-  local _scriptFolder="${RESULT}";
 
   type ${_function} 2> /dev/null | grep -q 'function'
   local -i _rescode=$?;
@@ -172,7 +172,10 @@ function isFunctionPresent() {
     fi
   fi
   if isFalse ${_rescode}; then
-    if isNotEmpty "${_script}"; then
+    if isNotEmpty "${_scriptName}"; then
+      DW.getScriptFolder;
+      local _scriptFolder="${RESULT}";
+
       IFS="${DWIFS}";
       local _inc;
       for _inc in "./$(basename ${_scriptName} .sh).inc.sh" \
@@ -203,18 +206,24 @@ function isFunctionPresent() {
 function DRYWIT.checkDependency() {
   local _req="${1}";
   checkNotEmpty name "${_req}" 1;
-  local _errorCode="${2}";
+  local _errorCode="";
+  if isGreaterThan $# 1; then
+    _errorCode="${2}";
 
-  if isEmpty "${_errorCode}"; then
-    normalizeUppercase "${_req}_NOT_INSTALLED";
-    _errorCode="${RESULT}";
+    if isEmpty "${_errorCode}"; then
+      normalizeUppercase "${_req}_NOT_INSTALLED";
+      _errorCode="${RESULT}";
+    fi
   fi
-
+  
   which ${_req} > /dev/null 2>&1;
-  rescode=$?;
-  if isFalse ${rescode}; then
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
     exitWithErrorCode ${_errorCode};
   fi
+
+  return ${_rescode};
 }
 
 # fun: DRYWIT.checkScript script
