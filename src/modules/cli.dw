@@ -255,7 +255,6 @@ function getScriptUrl() {
 # use: setScriptUrl "https://github.com/rydnr/dry-wit";
 function setScriptUrl() {
   local _url="${1}";
-  checkNotEmpty url "${_url}" 1;
 
   CLI.getModuleName;
   DW.setGlobalString "${RESULT}" SCRIPT_URL "${_url}";
@@ -287,7 +286,10 @@ function addCommandLineFlag() {
   CLI.checkMandatoryOrOptional "${_mandatory}" 4;
   local _expectsArgument="${5}";
   CLI.checkExpectsArgumentOrNoArgument "${_expectsArgument}" 5;
-  local _defaultValue="${6}";
+  local _defaultValue="";
+  if isGreaterThan $# 5; then
+    _defaultValue="${6}";
+  fi
 
   local -i _rescode=${TRUE};
 
@@ -2080,7 +2082,7 @@ function CLI.scriptCopyrightUsage() {
 function CLI.commandLineFlagsDetailedUsage() {
   local -i _rescode;
 
-  local _message;
+  local _message="";
   local _oldIFS="${IFS}";
 
 
@@ -2210,7 +2212,7 @@ function CLI.commandLineParameterIsMandatory() {
 # use: if CLI.commandLineParametersUsage then ... fi
 function CLI.commandLineParametersUsage() {
   local -i _rescode;
-  local _message;
+  local _message="";
 
   local _oldIFS="${IFS}";
 
@@ -2249,7 +2251,7 @@ function CLI.commandLineParametersUsage() {
 # use: if CLI.commandLineParametersDetailedUsage then ... fi
 function CLI.commandLineParametersDetailedUsage() {
   local -i _rescode;
-  local _message;
+  local _message="";
 
   local _oldIFS="${IFS}";
 
@@ -2416,5 +2418,7 @@ function CLI.resetState() {
   DW.declareGlobalString "${_moduleName}" SCRIPT_COPYRIGHT;
   # env: SCRIPT_LICENSE_SUMMARY: The license of the script.
   DW.declareGlobalString "${_moduleName}" SCRIPT_LICENSE_SUMMARY;
+
+  setScriptUrl "";
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
