@@ -1,0 +1,46 @@
+# mod: helm
+# api: public
+# txt: Kubernetes Helm functions
+
+# fun: helmInstall release chartRef valuesFile overrideValuesFile?
+# api: public
+# txt: Installs given chart.
+# opt: release: The name of the release.
+# opt: chartRef: The chart reference.
+# opt: valuesFile: The file with the values.
+# opt: overrideValuesFile: The file with values to override. Optional.
+# txt: Returns 0/TRUE if the chart gets installed successfully; 1/FALSE otherwise.
+# use: if helmInstall my-app-dev "values-dev.yaml"; then
+# use:   echo "my-app-dev installed successfully";
+# use: fi
+function helmInstall () {
+  local _release="${1}";
+  checkNotEmpty release "${_release}" 1;
+  local _chartRef="${2}";
+  checkNotEmpty "${_chartRef}" chartRef 2;
+  local _valuesFile="${3}";
+  checkNotEmpty valuesFile "${_valuesFile}" 3;
+  local _overrideValuesFile="";
+  if isGreaterThan $# 3; then
+    _overrideValuesFile="${4}";
+  fi
+  
+  local -i _rescode;
+  local _result="";
+
+    if isEmpty "${_overrideValuesFile}"; then
+    _result="$($(which helm) install "${_release}" -f "${_valuesFile}" "${_chartRef}")";
+    _rescode=$?;
+  else
+    _result="$($(which helm) install "${_release}" -f "${_valuesFile}" -f "${_overrideValuesFile}" ${_chartRef})";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
+
