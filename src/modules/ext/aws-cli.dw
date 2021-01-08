@@ -54,4 +54,54 @@ function retrieveAwsRegionForProfile() {
   return ${_rescode};
 }
 
+# fun: retrieveAwsAccessKeyIdForProfile awsProfile
+# api: public
+# txt: Retrieves the AWS access key id for given profile.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the access key id could be found for given profile; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the access key id.
+# use: if retrieveAwsAccessKeyIdForProfile ${awsProfile}; then
+# use:   echo "AWS access key id: ${RESULT}";
+# use: fi
+function retrieveAwsAccessKeyIdForProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  local _result;
+  _result="$(sed -n "/^[ \t]*\[${_awsProfile}\]/,/\[/s/^[ \t]*aws_access_key_id[ \t]*=[ \t]*//p" ~/.aws/credentials)";
+  local -i _rescode=$?;
+
+  if    isTrue ${_rescode} \
+     && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveAwsSecretAccessKeyForProfile awsProfile
+# api: public
+# txt: Retrieves the AWS secret access key for given profile.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the secret access key could be found for given profile; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the secret access key.
+# use: if retrieveAwsSecretAccessKeyForProfile ${awsProfile}; then
+# use:   echo "AWS secret access key retrieved"; # value in RESULT
+# use: fi
+function retrieveAwsSecretAccessKeyForProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  local _result;
+  _result="$(sed -n "/^[ \t]*\[${_awsProfile}\]/,/\[/s/^[ \t]*aws_secret_access_key[ \t]*=[ \t]*//p" ~/.aws/credentials)";
+  local -i _rescode=$?;
+
+  if    isTrue ${_rescode} \
+     && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
