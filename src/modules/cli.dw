@@ -1214,15 +1214,29 @@ function CLI.parseCallbackDefinedForFlag() {
   checkNotEmpty longName "${_longName}" 1;
 
   CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}";
-  local _parseCallback="${RESULT}";
+  local _result="${RESULT}";
 
-  isFunctionDefined "${_parseCallback}";
+  isFunctionDefined "${_result}";
   local -i _rescode=$?;
 
+  local _toLower="";
   if isFalse ${_rescode}; then
-    toLower "${_parseCallback}";
-    isFunctionDefined "${RESULT}";
-    _rescode=$?;
+    toLower "${_result}";
+    _toLower="${RESULT}";
+    if isFunctionDefined "${_toLower}"; then
+      _result="${_toLower}";
+      _rescode=${TRUE};
+    fi
+  fi
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+  
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export RESULT="";
   fi
 
   return ${_rescode};

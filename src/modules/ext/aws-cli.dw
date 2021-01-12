@@ -104,4 +104,29 @@ function retrieveAwsSecretAccessKeyForProfile() {
   return ${_rescode};
 }
 
+# fun: isAwsProfileValid awsProfile
+# api: public
+# txt: Checks if given AWS profile is valid.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the AWS profile exists; 1/FALSE otherwise.
+# use: if isAwsProfileValid "contestia-dev"; then
+# use:   echo "AWS Profile is valid";
+# use: fi
+function isAwsProfileValid() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  
+  local -i _rescode;
+
+  local _result="$($(which aws) --profile ${_awsProfile} secretsmanager 2>&1)";
+  _rescode=$?;
+  
+  if isTrue ${_rescode} && isNotEmpty "${_result}" && contains "${_result}" "The config profile (${_awsProfile}) could not be found"; then
+    _rescode=${FALSE};
+  fi
+  
+  return ${_rescode};
+}
+
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

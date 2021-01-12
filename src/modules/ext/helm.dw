@@ -13,26 +13,80 @@
 # use: if helmInstall my-app-dev "values-dev.yaml"; then
 # use:   echo "my-app-dev installed successfully";
 # use: fi
-function helmInstall () {
+function helmInstall() {
   local _release="${1}";
   checkNotEmpty release "${_release}" 1;
   local _chartRef="${2}";
   checkNotEmpty "${_chartRef}" chartRef 2;
   local _valuesFile="${3}";
   checkNotEmpty valuesFile "${_valuesFile}" 3;
+  shift;
+  shift;
+  shift;
+
+  helmInstallOrUpgrade install "${_release}" "${_chartRef}" "${_valuesFile}" $@;
+}
+
+# fun: helmUpgrade release chartRef valuesFile overrideValuesFile?
+# api: public
+# txt: Upgrades given chart.
+# opt: release: The name of the release.
+# opt: chartRef: The chart reference.
+# opt: valuesFile: The file with the values.
+# opt: overrideValuesFile: The file with values to override. Optional.
+# txt: Returns 0/TRUE if the chart gets upgraded successfully; 1/FALSE otherwise.
+# use: if helmUpgrade my-app-dev "values-dev.yaml"; then
+# use:   echo "my-app-dev upgraded successfully";
+# use: fi
+function helmUpgrade() {
+  local _release="${1}";
+  checkNotEmpty release "${_release}" 1;
+  local _chartRef="${2}";
+  checkNotEmpty "${_chartRef}" chartRef 2;
+  local _valuesFile="${3}";
+  checkNotEmpty valuesFile "${_valuesFile}" 3;
+  shift;
+  shift;
+  shift;
+
+  helmInstallOrUpgrade upgrade "${_release}" "${_chartRef}" "${_valuesFile}" $@;
+}
+
+# fun: helmInstallOrUpgrade action release chartRef valuesFile overrideValuesFile?
+# api: public
+# txt: Installs or upgrades given chart.
+# opt: action: Either install or upgrade.
+# opt: release: The name of the release.
+# opt: chartRef: The chart reference.
+# opt: valuesFile: The file with the values.
+# opt: overrideValuesFile: The file with values to override. Optional.
+# txt: Returns 0/TRUE if the chart gets installed or upgraded successfully; 1/FALSE otherwise.
+# use: if helmInstallOrUpgrade install my-app-dev "values-dev.yaml"; then
+# use:   echo "my-app-dev installed successfully";
+# use: fi
+function helmInstallOrUpgrade() {
+  local _action="${1}";
+  checkNotEmpty action "${_action}" 1;
+  checkOneOf action "${_action}" "install upgrade" 1; 
+  local _release="${2}";
+  checkNotEmpty release "${_release}" 2;
+  local _chartRef="${3}";
+  checkNotEmpty "${_chartRef}" chartRef 3;
+  local _valuesFile="${4}";
+  checkNotEmpty valuesFile "${_valuesFile}" 4;
   local _overrideValuesFile="";
-  if isGreaterThan $# 3; then
-    _overrideValuesFile="${4}";
+  if isGreaterThan $# 4; then
+    _overrideValuesFile="${5}";
   fi
   
   local -i _rescode;
   local _result="";
 
     if isEmpty "${_overrideValuesFile}"; then
-    _result="$($(which helm) install "${_release}" -f "${_valuesFile}" "${_chartRef}")";
+    _result="$($(which helm) ${_action} "${_release}" -f "${_valuesFile}" "${_chartRef}")";
     _rescode=$?;
   else
-    _result="$($(which helm) install "${_release}" -f "${_valuesFile}" -f "${_overrideValuesFile}" ${_chartRef})";
+    _result="$($(which helm) ${_action} "${_release}" -f "${_valuesFile}" -f "${_overrideValuesFile}" ${_chartRef})";
     _rescode=$?;
   fi
 

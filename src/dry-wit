@@ -1300,6 +1300,7 @@ function BOOTSTRAP.declareModules() {
   # env: _DW_BOOTSTRAP_ESSENTIAL_MODULES: The modules included in the bootstrap process.
   declare -agx _DW_BOOTSTRAP_ESSENTIAL_MODULES;
 
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=bash-options;
   _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=check;
   _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=stdlib;
   _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=number;
@@ -1353,7 +1354,7 @@ BOOTSTRAP.declareModules;
 
 #set -o errexit;  # terminate on any unhandled error
 #set -o nounset;  # terminate on any unset variable
-set -o pipefail; # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
+#set -o pipefail; # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
 
 if BOOTSTRAP.isXtraceEnabled; then
   set -o xtrace;   # trace what gets executed
