@@ -4,12 +4,12 @@
 
 # fun: helmInstall release chartRef valuesFile overrideValuesFile?
 # api: public
-# txt: Installs given chart.
+# txt: Installs a new release for given chart.
 # opt: release: The name of the release.
 # opt: chartRef: The chart reference.
 # opt: valuesFile: The file with the values.
 # opt: overrideValuesFile: The file with values to override. Optional.
-# txt: Returns 0/TRUE if the chart gets installed successfully; 1/FALSE otherwise.
+# txt: Returns 0/TRUE if the release gets installed successfully; 1/FALSE otherwise.
 # use: if helmInstall my-app-dev "values-dev.yaml"; then
 # use:   echo "my-app-dev installed successfully";
 # use: fi
@@ -24,17 +24,17 @@ function helmInstall() {
   shift;
   shift;
 
-  helmInstallOrUpgrade install "${_release}" "${_chartRef}" "${_valuesFile}" $@;
+  HELM.helmInstallOrUpgrade install "${_release}" "${_chartRef}" "${_valuesFile}" $@;
 }
 
 # fun: helmUpgrade release chartRef valuesFile overrideValuesFile?
 # api: public
-# txt: Upgrades given chart.
+# txt: Upgrades given release.
 # opt: release: The name of the release.
 # opt: chartRef: The chart reference.
 # opt: valuesFile: The file with the values.
 # opt: overrideValuesFile: The file with values to override. Optional.
-# txt: Returns 0/TRUE if the chart gets upgraded successfully; 1/FALSE otherwise.
+# txt: Returns 0/TRUE if the release gets upgraded successfully; 1/FALSE otherwise.
 # use: if helmUpgrade my-app-dev "values-dev.yaml"; then
 # use:   echo "my-app-dev upgraded successfully";
 # use: fi
@@ -49,22 +49,22 @@ function helmUpgrade() {
   shift;
   shift;
 
-  helmInstallOrUpgrade upgrade "${_release}" "${_chartRef}" "${_valuesFile}" $@;
+  HELM.helmInstallOrUpgrade upgrade "${_release}" "${_chartRef}" "${_valuesFile}" $@;
 }
 
 # fun: helmInstallOrUpgrade action release chartRef valuesFile overrideValuesFile?
-# api: public
-# txt: Installs or upgrades given chart.
+# api: private
+# txt: Installs or upgrades given release.
 # opt: action: Either install or upgrade.
 # opt: release: The name of the release.
 # opt: chartRef: The chart reference.
 # opt: valuesFile: The file with the values.
 # opt: overrideValuesFile: The file with values to override. Optional.
-# txt: Returns 0/TRUE if the chart gets installed or upgraded successfully; 1/FALSE otherwise.
-# use: if helmInstallOrUpgrade install my-app-dev "values-dev.yaml"; then
+# txt: Returns 0/TRUE if the release gets installed or upgraded successfully; 1/FALSE otherwise.
+# use: if HELM.helmInstallOrUpgrade install my-app-dev "values-dev.yaml"; then
 # use:   echo "my-app-dev installed successfully";
 # use: fi
-function helmInstallOrUpgrade() {
+function HELM.helmInstallOrUpgrade() {
   local _action="${1}";
   checkNotEmpty action "${_action}" 1;
   checkOneOf action "${_action}" "install upgrade" 1; 
@@ -82,7 +82,7 @@ function helmInstallOrUpgrade() {
   local -i _rescode;
   local _result="";
 
-    if isEmpty "${_overrideValuesFile}"; then
+  if isEmpty "${_overrideValuesFile}"; then
     _result="$($(which helm) ${_action} "${_release}" -f "${_valuesFile}" "${_chartRef}")";
     _rescode=$?;
   else
@@ -96,5 +96,27 @@ function helmInstallOrUpgrade() {
 
   return ${_rescode};
 }
-# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
 
+# fun: helmUninstall release
+# api: public
+# txt: Uninstalls given release.
+# opt: release: The name of the release.
+# txt: Returns 0/TRUE if the release gets uninstalled successfully; 1/FALSE otherwise.
+# use: if helmUninstall my-app-dev; then
+# use:   echo "my-app-dev uninstalled successfully";
+# use: fi
+function helmUninstall() {
+  local _release="${1}";
+  checkNotEmpty release "${_release}" 1;
+
+  local _result;
+  _result="$($(which helm) uninstall "${_release}")";
+  local -i _rescode=$?;
+  
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

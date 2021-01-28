@@ -806,18 +806,19 @@ function evalEnvVar() {
     local _varValue="${RESULT}";
 
     if isEmpty "${_varValue}"; then
-      #      echo -n "Evaluating ${_varName}_DEFAULT_COMMAND -> ";
-      ENVVAR.evalVarCommand "${_varName}";
-      local _defaultCommand="${RESULT}";
-      #      echo "${_defaultCommand}";
-      if isNotEmpty "${_defaultCommand}"; then
-        logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
-        local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
-        if isNotEmpty "${_aux}"; then
-          _defaultValue="${_aux}";
-          logTraceResult SUCCESS "${_aux}";
-        else
-          logTraceResult FAILURE "failed";
+
+      if ENVVAR.evalVarCommand "${_varName}"; then
+        local _defaultCommand="${RESULT}";
+
+        if isNotEmpty "${_defaultCommand}"; then
+          logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
+          local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
+          if isNotEmpty "${_aux}"; then
+            _defaultValue="${_aux}";
+            logTraceResult SUCCESS "${_aux}";
+          else
+            logTraceResult FAILURE "failed";
+          fi
         fi
       fi
       _varValue="${_defaultValue}";
@@ -976,8 +977,8 @@ function ENVVAR.evalVarDescription() {
 # txt: Returns 0/TRUE if the envelope was removed; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the variable name, without envelope, if existed. Unset otherwise.
 # use: if ENVVAR.removeDollarCurlyBrackets '${bla}'; then
-#        echo "result -> ${RESULT}" # bla
-#      fi
+# use:   echo "result -> ${RESULT}" # bla
+# use: fi
 function ENVVAR.removeDollarCurlyBrackets() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;

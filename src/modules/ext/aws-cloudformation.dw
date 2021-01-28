@@ -307,7 +307,7 @@ function checkCloudformationStackStatus() {
   checkNotEmpty awsProfile "${_awsProfile}" 3;
 
   local _aux;
-  _aux="$($(which aws) --profile "${_awsProfile}" --region "${_region}" cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }' | grep -C 1 -- "\"${_stack}\"")";
+  _aux="$($(which aws) --profile "${_awsProfile}" --region "${_awsRegion}" cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }' | grep -C 1 -- "\"${_stack}\"")";
   local -i _rescode=$?;
 
   local _result="$(echo "${_aux}" | grep StackStatus | head -n 1 | awk -F'"' '{print $4}' 2>&1)";

@@ -74,7 +74,7 @@ function contains() {
 
   local -i _rescode;
 
-  if [[ "${_container}" =~ "${_substring}" ]]; then
+  if [ -z "${_container##*${_substring}*}" ]; then
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
@@ -555,12 +555,13 @@ function trim() {
 # use:   IFS='\n' for var in ${vars}; do
 # use:     echo "var: ${var}";
 # use:   done;
-# use:  fi
+# use: fi
 function keyValueSplit() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local _result="$(echo -e "${_text}" 2> /dev/null | awk -F'=' '\
+  local _result;
+  _result="$(echo -e "${_text}" 2> /dev/null | awk -F'=' '\
 function printKey(text,     value, len) {
   len=split(text, value, " ");
   if (len > 1) {
@@ -586,8 +587,8 @@ function printValue(text,   value, len, a) {
   #             };
   #             print;
   #     }
-  local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+  local -i _rescode=$?;
+  if isFalse ${_rescode} || areEqual "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
   else
     _rescode=${TRUE};

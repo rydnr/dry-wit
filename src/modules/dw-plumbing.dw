@@ -355,12 +355,11 @@ function DRYWIT.retrieveSettingsFiles() {
   local _result="";
   local -A _doneAlready=();
 
-
   DW.getScriptPath;
   local _scriptPath="${RESULT}";
   DW.getScriptFolder;
   local _scriptFolder="${RESULT}";
-
+  
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local _f;
@@ -369,12 +368,13 @@ function DRYWIT.retrieveSettingsFiles() {
     for _d in "${_scriptFolder}" "."; do
       IFS="${_oldIFS}";
       retrieveAbsolutePath "${_d}/${_f}";
-      if [ -e "${RESULT}" ] && [ "${_doneAlready[${RESULT}]}" != "${TRUE}" ]; then
+      local _path="${RESULT}";
+      if [ -e "${_path}" ] && [ "${_doneAlready[${_path}]}" != "${TRUE}" ]; then
         if isNotEmpty "${_result}"; then
           _result="${_result} ";
         fi
-        _result="${_result}${RESULT}";
-        _doneAlready["${RESULT}"]=${TRUE};
+        _result="${_result}${_path}";
+        _doneAlready["${_path}"]=${TRUE};
       fi
     done
   done

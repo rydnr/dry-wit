@@ -1490,16 +1490,23 @@ function CLI.parseCallbackDefinedForParameter() {
   checkNotEmpty longName "${_longName}" 1;
 
   CLI.buildNameOfTheCallbackFunctionToParseParameter "${_longName}";
-  local _parseCallback="${RESULT}";
-  isFunctionDefined "${_parseCallback}";
+  local _result="${RESULT}";
+  isFunctionDefined "${_result}";
   local -i _rescode=$?;
 
   if isFalse ${_rescode}; then
-    toLower "${_parseCallback}";
-    isFunctionDefined "${RESULT}";
+    toLower "${_result}";
+    _result="${RESULT}";
+    isFunctionDefined "${_result}";
     _rescode=$?;
   fi
 
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export RESULT="";
+  fi
+  
   return ${_rescode};
 }
 

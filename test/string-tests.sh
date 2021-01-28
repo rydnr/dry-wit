@@ -31,6 +31,22 @@ function contains_works_test() {
   Assert.isFalse $? "contains '${_text}' '${_piece}' failed";
 }
 
+function contains_works_for_multiline_texts_test() {
+
+  local _text="
+something";
+  local _piece="something";
+  contains "${_text}" "${_piece}";
+  Assert.isTrue $? "contains '${_text}' '${_piece}' failed";
+
+  _text="
+An error occurred (AlreadyExistsException) when calling the CreateStack operation: Stack [staging-contestia-55-s3uploader-05-certificates-us-east-1] already exists";
+  _piece="already exists";
+
+  contains "${_text}" "${_piece}";
+  Assert.isTrue $? "contains '${_text}' '${_piece}' failed";
+}
+
 function startsWith_works_test() {
   startsWith "abc" "a";
   Assert.isTrue $? "startsWith 'abc' 'a' failed";
@@ -239,7 +255,7 @@ function keyValueSplit_works_test() {
 key2="value2"
 key3="value3 with spaces"' "${RESULT}"  "keyValueSplit \"${_text}\" failed";
 
-  local _text='key1=value1';
+  _text='key1=value1';
   keyValueSplit "${_text}";
   Assert.isTrue $? "keyValueSplit \"${_text}\" failed";
 

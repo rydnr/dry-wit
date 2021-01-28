@@ -41,12 +41,14 @@ function checkFunctionPresent() {
 # txt: Exits if the check fails; otherwise returns 0/TRUE.
 # use: checkNotEmpty "user" "${user}" 1 # -> throws an error if the first (1) parameter ("user") is empty.
 function checkNotEmpty() {
+  local _previousResult="${RESULT}";
   local _bashFlags=$-;
   disableCheckUnsetVariablesOption;
   local _name="${1}";
   local _value="${2}";
   local _index="${3}";
 
+  
   if isEmpty "${_name}"; then
     restoreBashOptions "${_bashFlags}";
     exitWithErrorCode UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}.";
@@ -63,6 +65,8 @@ function checkNotEmpty() {
   fi
 
   restoreBashOptions "${_bashFlags}";
+
+  export RESULT="${_previousResult}";
 }
 
 # fun: checkOneOf paramName paramValue validValues paramIndex
