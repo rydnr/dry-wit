@@ -1,4 +1,4 @@
-#!/bin/bash dry-wit
+#!/usr/bin/env dry-wit
 # Copyright 2020-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 

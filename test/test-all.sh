@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 cp ../src/modules/*.dw ~/.dry-wit/src/modules/ 2> /dev/null;
 cp ../src/dry-wit* ~/.dry-wit/src/ 2> /dev/null;
