@@ -28,10 +28,10 @@ Note for Mac OS X users:
 - MacOS X comes with an old version of Bash. dry-wit requires Bash 4+. To use a recent version, install homebrew, then bash, and run
 chsh -s /usr/local/bin/bash
 - Additionally, dry-wit requires the following brew formulae:
-  - readlink
+  - greadlink
   - coreutils
   - pidof
 
-brew install readlink
+brew install greadlink
 brew install coreutils
 brew install pidof
