@@ -17,12 +17,20 @@ function isCronRunning() {
     _cronPath="/usr/sbin/cron";
   fi
 
-  local _cronPid;
-  _cronPid="$(pidof ${_cronPath})";
-  local -i _rescode=$?;
+  local -i _rescode=${FALSE};
+  local _result="";
+
+  if firstPidMatching "${_cronPath}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  fi
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_cronPid}";
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};

@@ -15,11 +15,15 @@ function isRunning() {
   local _filePath="${1}";
   checkNotEmpty filePath "${_filePath}" 1;
 
-  local _fileName="$(basename "${_filePath}")";
+  local -i _rescode=${FALSE};
   local _result;
-  _result=$(pidof "${_fileName}");
-  local -i _rescode=$?;
+  local _fileName="$(basename "${_filePath}")";
 
+  if firstPidMatching "${_fileName}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  fi
+  
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
   fi
@@ -45,6 +49,83 @@ function halt() {
   done;
 }
 
+# fun: pidsMatching processName
+# api: public
+# txt: Retrieves the ids of the process matching given name.
+# opt: processName: The name of the process.
+# txt: Returns 0/TRUE if any process matches; 1/FALSE otherwise.
+# use: if pidsMatching "my-script.sh"; then
+# use:   echo "my-script.sh : ${RESULT}";
+# use: fi
+function pidsMatching() {
+  local _processName="${1}";
+  checkNotEmpty processName "${_processName}" 1;
+
+  local -i _rescode=${FALSE};
+  local _result;
+
+  if isMacOSX; then
+    _result="$(ps -ax | grep -v grep | grep "${_processName}")";
+    _rescode=$?;
+  else
+    _result="$(pidof -x "${_processName}")";
+    _rescode=$?;
+  fi
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: firstPidMatching processName
+# api: public
+# txt: Retrieves the id of the first process matching given name.
+# opt: processName: The name of the process.
+# txt: Returns 0/TRUE if the process is found; 1/FALSE otherwise.
+# use: if firstPidMatching "my-script.sh"; then
+# use:   echo "my-script.sh : ${RESULT}";
+# use: fi
+function firstPidMatching() {
+  local _processName="${1}";
+  checkNotEmpty processName "${_processName}" 1;
+
+  local -i _rescode=${FALSE};
+  local _result;
+  local _pids;
+
+  if pidsMatching "${_processName}"; then
+    _pids="${RESULT}";
+  fi
+
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  for _pid in ${_pids}; do
+    IFS="${_oldIFS}";
+    _result="${_pid}";
+    if isNotEmpty "${_result}"; then
+      _rescode=${TRUE};
+      break;
+    fi
+  done
+  IFS="${_oldIFS}";
+  
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
 # fun: anotherProcessAlreadyRunning
 # api: public
 # txt: Checks if this script is already running.
@@ -60,12 +141,20 @@ function anotherProcessAlreadyRunning() {
   DW.getScriptPath;
   local _scriptPath="${RESULT}";
 
-  for _pid in $(pidof -x "${_scriptPath}"); do
-    if ! areEqual "${_pid}" "${_ownPid}"; then
-      _rescode=${TRUE};
-      break;
-    fi
-  done
+  local _pids="";
+
+  if pidsMatching "${_scriptPath}"; then
+    _pids="${RESULT}";
+  fi
+
+  if isNotEmpty "${_pids}"; then
+    for _pid in ${_pids}; do
+      if ! areEqual "${_pid}" "${_ownPid}"; then
+        _rescode=${TRUE};
+        break;
+      fi
+    done
+  fi
 
   return ${_rescode};
 }
