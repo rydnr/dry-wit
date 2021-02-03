@@ -31,7 +31,9 @@ chsh -s /usr/local/bin/bash
   - greadlink
   - coreutils
   - pidof
+  - wget
 
 brew install greadlink
 brew install coreutils
 brew install pidof
+brew install wget
