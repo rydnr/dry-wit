@@ -176,37 +176,37 @@ function usage_does_not_print_too_many_empty_lines_test() {
 }
 
 function checkInput_checks_mandatory_flags_test() {
-  addCommandLineFlag "file" "f" "The file to read" MANDATORY NO_ARGUMENT;
-  (checkInput > /dev/null)
+  addCommandLineFlag file f "The file to read" MANDATORY NO_ARGUMENT;
+  (checkInput > /dev/null);
   local -i _rescode=$?;
   local _result="$(checkInput)";
-  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory flag is missing";
+  Assert.isFalse ${_rescode} "checkInput didn't exit when a mandatory flag is missing";
   Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
-  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+  Assert.contains "${_result}" "file is mandatory" "checkInput didn't exit with an error message";
 }
 
 function checkInput_checks_flags_with_arguments_test() {
-  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
-  (checkInput -f > /dev/null)
+  addCommandLineFlag file f "The file to read" MANDATORY EXPECTS_ARGUMENT;
+  (checkInput -f > /dev/null);
   local -i _rescode=$?;
   local _result="$(checkInput -f)";
-  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory flag is missing";
+  Assert.isFalse ${_rescode} "checkInput didn't exit when a mandatory flag is missing";
   Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
-  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+  Assert.contains "${_result}" "file expects an argument" "checkInput didn't exit with an error message";
 }
 
 function checkInput_checks_mandatory_parameters_test() {
-  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
-  (checkInput > /dev/null)
+  addCommandLineParameter file "The file to read" MANDATORY SINGLE;
+  (checkInput > /dev/null);
   local -i _rescode=$?;
   local _result="$(checkInput)";
-  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory parameter is missing";
+  Assert.isFalse ${_rescode} "checkInput didn't exit when a mandatory parameter is missing";
   Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
-  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+  Assert.contains "${_result}" "file is mandatory" "checkInput didn't exit with an error message";
 }
 
 function checkInput_does_not_complain_with_no_flags_and_one_parameter_test() {
-  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
+  addCommandLineParameter file "The file to read" MANDATORY SINGLE;
   local _result="$(checkInput "/tmp/1.txt")";
   Assert.isEmpty "${_result}" "checkInput returned something";
 }
