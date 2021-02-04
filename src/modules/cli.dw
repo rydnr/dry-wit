@@ -533,7 +533,7 @@ function checkInput() {
     else
       _flagCount=$((_flagCount+1));
       shift;
-
+      
       if areEqual "${_flag}" "--"; then
         break;
       else
@@ -541,7 +541,7 @@ function checkInput() {
         local -i _shifts=$?;
         IFS="${DWIFS}";
         local -i _i;
-        for _i in $(seq 1 ${_shifts}); do
+        for _i in $(seq 1 1 ${_shifts} 2> /dev/null); do
           IFS="${_oldIFS}";
           shift;
         done
@@ -591,7 +591,7 @@ function parseInput() {
       local _shifts=$?;
       IFS="${DWIFS}";
       local -i _i;
-      for _i in $(seq 1 ${_shifts}); do
+      for _i in $(seq 1 1 ${_shifts} 2> /dev/null); do
         IFS="${_oldIFS}";
         shift;
       done
@@ -1064,7 +1064,7 @@ function CLI.checkCommandLineParameters() {
 
   IFS="${DWIFS}";
   local _parameterName;
-  for _parameterName in ${_parameterNames[*]}; do
+  for _parameterName in ${_parameterNames[@]}; do
     IFS="${_oldIFS}";
 
     local _parameterValue="${1}";
@@ -1092,9 +1092,10 @@ function CLI.checkCommandLineParameters() {
     fi
 
     local _parameterNameInUpperCase;
+    toUpper "${_parameterName}";
+    _parameterNameInUpperCase="${RESULT}";
+
     if isEmpty "${_parameterValue}" && isTrue ${_mandatory}; then
-      toUpper "${_parameterName}";
-      _parameterNameInUpperCase="${RESULT}";
       exitWithError "${_parameterNameInUpperCase}_IS_MANDATORY" "${_parameterName} is mandatory";
     fi
 
@@ -1104,6 +1105,9 @@ function CLI.checkCommandLineParameters() {
       else
         "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}";
       fi
+    else
+      declare -gx ${_parameterNameInUpperCase}="${_parameterValue}";
+      export ${_parameterNameInUpperCase};
     fi
   done
   IFS="${_oldIFS}";
