@@ -892,12 +892,10 @@ function LOGGING.alignRight() {
   local _outcome="${2}";
   checkNotEmpty outcome "${_outcome}" 2;
 
-  getTermWidth;
-  if isTrue $?; then
+  if getTermWidth; then
     local -i _termWidth=${RESULT};
 
-    LOGGING.alignRightForWidth "${_logLineMessage}" "${_outcome}" ${_termWidth};
-    if isTrue $?; then
+    if LOGGING.alignRightForWidth "${_logLineMessage}" "${_termWidth}"; then
       local -i _offset=${RESULT};
 
       getLogOutcomeSeparator;
@@ -918,45 +916,52 @@ function LOGGING.alignRight() {
   fi
 }
 
-# fun: LOGGING.alignRightForWidth message outcome termWidth
+# fun: LOGGING.logOutcomeTokensLength
 # api: private
-# txt: Writes spaces until the next message to print is aligned to the right.
-# opt: message: The log-line message.
-# opt: outcome: The log outcome message.
-# opt: termWidth: The term width.
+# txt: Returns the length of the string composed of the log outcome tokens.
 # txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the number of times the separator needs to be printed to get the outcome aligned to the right.
-# use: LOGGING.alignRightForWidth "Finishing work" "done" 80;
-# use: echo "offset: ${RESULT}";
-function LOGGING.alignRightForWidth() {
-  local _logLineMessage="${1}";
-  checkNotEmpty message "${_logLineMessage}" 1;
-  local _outcome="${2}";
-  checkNotEmpty outcome "${_outcome}" 2;
-  local _termWidth="${3}";
-  checkNumber termWidth "${_termWidth}" 3;
-
-  local _logMessage;
-
+# txt: The variable RESULT contains the length.
+# use: LOGGING.logOutcomeTokensLength;
+# use: echo "length: ${RESULT}";
+function LOGGING.logOutcomeTokensLength() {
+  local _result="";
+  
   LOGGING.getLogOutcomeTokensVariableName;
   local -n _logOutcomeTokens=${RESULT};
 
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local _token;
-  for _token in ${_logOutcomeTokens[@]}; do
-    _logMessage="${_logMessage}${_token}";
-  done
-  IFS="${_oldIFS}";
-
-  local -i _result=$((${_termWidth}-${#_logLineMessage}%${_termWidth}-${#_logMessage}-1));
-
-  IFS="${DWIFS}";
-  while isLessThan $((_result)) 0; do
+  for _token in "${_logOutcomeTokens[@]}"; do
     IFS="${_oldIFS}";
-    _result=$((-${_result}+${_termWidth}-${#_logMessage}));
+    _result="${_result}${_token}";
   done
   IFS="${_oldIFS}";
+
+  export RESULT=${#_result};
+  
+  return ${TRUE};
+}
+
+# fun: LOGGING.alignRightForWidth message termWidth
+# api: private
+# txt: Writes spaces until the next message to print is aligned to the right.
+# opt: message: The log-line message.
+# opt: termWidth: The term width.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the number of times the separator needs to be printed to get the outcome aligned to the right.
+# use: LOGGING.alignRightForWidth "Finishing work" 80;
+# use: echo "offset: ${RESULT}";
+function LOGGING.alignRightForWidth() {
+  local _logMessage="${1}";
+  checkNotEmpty message "${_logMessage}" 1;
+  local _termWidth="${2}";
+  checkNumber termWidth "${_termWidth}" 2;
+
+  LOGGING.logOutcomeTokensLength;
+  local -i _logOutcomeTokensLength=${RESULT};
+
+  local -i _result=$((${_termWidth}-(${#_logMessage}+${_logOutcomeTokensLength})%${_termWidth} + 1));
 
   export RESULT=${_result};
 
@@ -2320,8 +2325,7 @@ function LOGGING.processLogOutcomeTokens() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_OUTCOME_TOKENS;
+  LOGGING.getLogOutcomeTokensVariableName;
   local -n _logOutcomeTokens=${RESULT};
   local -i _len=$((${#_logOutcomeTokens[@]} - 1));
 
@@ -2329,6 +2333,7 @@ function LOGGING.processLogOutcomeTokens() {
   IFS="${DWIFS}";
   local -i _i;
   for _i in $(seq 0 ${_len}); do
+    IFS="${_oldIFS}";
     _logOutcomeTokens[${_i}]="${_logOutcomeTokens[${_i}]}";
   done
   IFS="${_oldIFS}";
