@@ -155,7 +155,7 @@ function flattenArray() {
 
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 0 ${_len}); do
+  for _i in $(seq 0 1 ${_len}); do
     IFS="${_oldIFS}";
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");

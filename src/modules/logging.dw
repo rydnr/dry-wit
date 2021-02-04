@@ -56,7 +56,7 @@ function LOGGING.buildDefaultLogCategory() {
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local -i _index;
-  for _index in $(seq 1 ${_upperLimit}); do
+  for _index in $(seq 1 1 ${_upperLimit}); do
     IFS="${_oldIFS}";
     local _functionName="${FUNCNAME[${_index}]}";
     if LOGGING.isValidAsLogCategory "${_functionName}"; then
@@ -1083,7 +1083,7 @@ function LOGGING.buildLogPrefix() {
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 0 ${_len}); do
+  for _i in $(seq 0 1 ${_len}); do
     IFS="${_oldIFS}";
     local _token="${_logPrefixTokens[${_i}]}";
     if isTrue ${_allowsColors}; then
@@ -1186,7 +1186,7 @@ function LOGGING.echoLogOutcome() {
   if isTrue ${_allowsColors}; then
 
     IFS="${DWIFS}";
-    for _i in $(seq 0 ${_len}); do
+    for _i in $(seq 0 1 ${_len}); do
       IFS="${_oldIFS}";
       local _token="${_logOutcomeTokens[${_i}]}";
       if isNotEmpty "${_logOutcomeColors[${_i}]}"; then
@@ -1201,7 +1201,7 @@ function LOGGING.echoLogOutcome() {
   else
 
     IFS="${DWIFS}";
-    for _i in $(seq 0 ${_len}); do
+    for _i in $(seq 0 1 ${_len}); do
       IFS="${_oldIFS}";
       local _token="${_logOutcomeTokens[${_i}]}";
       echo -n "${_token}";
@@ -1271,7 +1271,7 @@ function LOGGING.echoLogOutcomeNested() {
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 1 ${_nestedTasks}); do
+  for _i in $(seq 1 1 ${_nestedTasks}); do
     IFS="${_oldIFS}";
     _indentation="${_indentation}${_logNestedIndentation}";
   done
@@ -2304,7 +2304,7 @@ function LOGGING.processLogOutcomeColors() {
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 0 ${_len}); do
+  for _i in $(seq 0 1 ${_len}); do
     IFS="${_oldIFS}";
     _logOutcomeColors[${_i}]="${_logOutcomeColors[${_i}]}";
   done
@@ -2332,7 +2332,7 @@ function LOGGING.processLogOutcomeTokens() {
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 0 ${_len}); do
+  for _i in $(seq 0 1 ${_len}); do
     IFS="${_oldIFS}";
     _logOutcomeTokens[${_i}]="${_logOutcomeTokens[${_i}]}";
   done
@@ -2412,7 +2412,7 @@ function LOGGING.buildLogCategoryPrefix() {
 
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 0 ${_maxIndex}); do
+  for _i in $(seq 0 1 ${_maxIndex}); do
     IFS="${_oldIFS}";
     local _category="${_logCategories[${_i}]}";
     if    isNotEmpty "${_category}" \
@@ -2490,7 +2490,7 @@ function LOGGING.processLogPrefixTokensWithValues() {
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 0 ${_lastIndex}); do
+  for _i in $(seq 0 1 ${_lastIndex}); do
     IFS="${_oldIFS}";
     _logPrefixTokens[${_i}]="${_logPrefixTokens[${_i}]}";
   done

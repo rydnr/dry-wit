@@ -443,7 +443,7 @@ function split() {
   while read -ra _aux; do
     IFS="${DWIFS}";
     local -i _k;
-    for _k in $(seq 0 ${#_aux[@]}); do
+    for _k in $(seq 0 1 ${#_aux[@]}); do
       IFS="${_oldIFS}";
       if ! isEmpty "${_aux[${_k}]}"; then
         _split[${_i}]=${_aux[${_k}]};
@@ -456,7 +456,7 @@ function split() {
 
   local -i _j;
   IFS="${DWIFS}";
-  for _j in $(seq ${#_split[@]} ${_i}); do
+  for _j in $(seq ${#_split[@]} 1 ${_i}); do
     IFS="${_oldIFS}";
     unset _split[${_j}];
   done

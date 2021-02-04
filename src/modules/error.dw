@@ -227,7 +227,7 @@ EOF
   local -i _callStackIndex;
   local _bashFlags=$-;
   set +u;
-  for _callStackIndex in $(seq 3 ${#FUNCNAME[@]}); do
+  for _callStackIndex in $(seq 3 1 ${#FUNCNAME[@]}); do
     IFS="${_oldIFS}";
     if isNotEmpty "${FUNCNAME[${_callStackIndex}]}"; then
       if isFalse ${_mainFound}; then

@@ -457,7 +457,7 @@ function DRYWITTEST.logErrorReasons() {
 
   if [ ${_count} -gt 0 ]; then
     IFS=$' \t\n';
-    for _i in $(seq 0 $((_count-1))); do
+    for _i in $(seq 0 1 $((_count-1))); do
       IFS="${_oldIFS}";
       _error="${TEST_ERROR_MESSAGES[${_test}:${_i}]}";
       evalConstant "${_error}" "${_error}";
@@ -488,7 +488,7 @@ function DRYWITTEST.logFailureReasons() {
 
   if [ ${_count} -gt 0 ]; then
     IFS="${DWIFS}";
-    for _i in $(seq 0 $((_count-1))); do
+    for _i in $(seq 0 1 $((_count-1))); do
       IFS="${_oldIFS}";
       _error="${TEST_FAILURE_MESSAGES[${_test}:${_i}]}";
       evalConstant "${_error}" "${_error}";
@@ -520,7 +520,7 @@ function DRYWITTEST.logFailedAssertions() {
 
   if [ ${_count} -gt 0 ]; then
     IFS="${DWIFS}";
-    for _i in $(seq 0 $((_count-1))); do
+    for _i in $(seq 0 1 $((_count-1))); do
       IFS="${_oldIFS}";
       _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
       _error="${TEST_ASSERTION_FAILURE_MESSAGES[${_test}:${_i}]}";

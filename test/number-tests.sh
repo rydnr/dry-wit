@@ -111,7 +111,7 @@ function toOrdinal_works_test() {
   local _oldIFS="${IFS}";
 
   IFS="${DWIFS}";
-  for i in $(seq 1 105); do
+  for i in $(seq 1 1 105); do
     IFS="${_oldIFS}";
     toOrdinal "${i}";
     _rescode=$?;
