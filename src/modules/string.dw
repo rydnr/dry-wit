@@ -809,11 +809,24 @@ function camelCaseToSnakeCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local _result="$(sed -r 's/([a-z0-9])([A-Z])/\1_\L\2/g' <<< "${_text}" 2> /dev/null || echo "$$.ERROR.$$")";
-  local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
-    _rescode=${FALSE};
-  else
+  local _result="";
+  local -i _rescode=${FALSE};
+  
+  _result="$(echo "${_text}" | awk '{
+    head = ""
+    tail = $0
+    while ( match(tail,/[[:upper:]]/) ) {
+        tgt = substr(tail,RSTART,1)
+        if ( substr(tail,RSTART-1,1) ~ /[[:lower:]]/ ) {
+            tgt = "_" tolower(tgt)
+        }
+        head = head substr(tail,1,RSTART-1) tgt
+        tail = substr(tail,RSTART+1)
+    }
+    print head tail
+}')";
+  _rescode=$?;
+  if isTrue ${_rescode}; then
     uncapitalize "${_result}";
     _rescode=$?;
   fi
@@ -875,13 +888,27 @@ function snakeCaseToPascalCase() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local _result="$(sed -r 's/(^|_)([a-z])/\U\2/g' <<< "${_text}" 2> /dev/null || echo "$$.ERROR.$$")";
-  local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
-    export RESULT="${_result}";
+  local _result="";
+  local -i _rescode=${FALSE};
+  
+  _result="$(echo "${_text}" | awk '{
+    head = ""
+    tail = $0
+    while ( match(tail,/_/) ) {
+        tgt = substr(tail,RSTART+1,1)
+        if ( tgt ~ /[[:lower:]]/ ) {
+            tgt = toupper(tgt)
+        }
+        head = head substr(tail,1,RSTART-1) tgt
+        tail = substr(tail,RSTART+2)
+    }
+    print head tail
+}')";
+  
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    capitalize "${_result}";
+    _rescode=$?;
   fi
 
   return ${_rescode};
