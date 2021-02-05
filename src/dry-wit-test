@@ -1057,7 +1057,7 @@ function Assert.arrayDoesNotContain() {
 # txt: Returns 0/TRUE if the Subject-under-test is found; 1/FALSE otherwise.
 # use: DRYWITTEST.sourceSUT;
 function DRYWITTEST.sourceSUT() {
-  local -i _rescode=${TRUE};
+  local -i _rescode=${FALSE};
   local _sutFilename;
   local _sutFilePath;
   DW.getScriptName;
@@ -1066,9 +1066,10 @@ function DRYWITTEST.sourceSUT() {
 
   if endsWith "${_scriptName}" "bootstrap-tests.sh"; then
     _bootstrapException=${TRUE};
+    _rescode=${TRUE};
   fi
 
-  if isFalse ${_bootstrapException}; then
+  if isFalse ${_rescode}; then
     if removeSuffix "${_scriptName}" "-tests.sh"; then
       _sutFilename="${RESULT}.sh";
     elif removeSuffix "${_scriptName}" "-test.sh"; then
@@ -1077,27 +1078,43 @@ function DRYWITTEST.sourceSUT() {
       _sutFilename="${_scriptName}";
     fi
 
-     if removeSuffix "${_sutFilename}" ".sh"; then
-       _sutFilename="${RESULT}.dw";
-     fi
+    if removeSuffix "${_sutFilename}" ".sh"; then
+      _sutFilename="${RESULT}.dw";
+    fi
 
-     if fileExists "$(dirname $0)/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/${_sutFilename}";
-     elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
-     elif fileExists "$(dirname $0)/../src/modules/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/../src/modules/${_sutFilename}";
-     elif fileExists "$(dirname $0)/../../src/modules/ext/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/../../src/modules/ext/${_sutFilename}";
-     else
-       logInfo -n "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
-       logInfoResult FAILURE "failed";
-       _rescode=${FALSE};
-     fi
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    local _folder;
+    for _folder in "${BASH_SOURCE[0]}" "$(dirname $0)" "."; do
+      IFS="${_oldIFS}";
+      if fileExists "${_folder}/${_sutFilename}"; then
+        _sutFilePath="${_folder}/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      elif fileExists "${_folder}/../src/${_sutFilename}"; then
+        _sutFilePath="${_folder}/../src/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      elif fileExists "${_folder}/../src/modules/${_sutFilename}"; then
+        _sutFilePath="${_folder}/../src/modules/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      elif fileExists "${_folder}/../../src/modules/ext/${_sutFilename}"; then
+        _sutFilePath="${_folder}/../../src/modules/ext/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      fi
+    done
+    IFS="${_oldIFS}";
 
-     if isTrue ${_rescode}; then
-       source "${_sutFilePath}";
-     fi
+    if isFalse ${_rescode}; then
+      logInfo -n "Retrieving the SUT (subject under test) ${_sutFilename}";
+      logInfoResult NEUTRAL "missing";
+    fi
+
+    if isTrue ${_rescode}; then
+      source "${_sutFilePath}";
+    fi
   fi
 
   return ${_rescode};

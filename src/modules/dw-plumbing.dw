@@ -163,11 +163,19 @@ function isFunctionPresent() {
     _scriptName="${RESULT}";
   fi
 
-  type ${_function} 2> /dev/null | grep -q 'function'
-  local -i _rescode=$?;
+  local -i _rescode=${FALSE};
+  
+  if isMacOSX; then
+    command type -t "${_function}" 2> /dev/null | grep -q 'function'
+    _rescode=$?;
+  else
+    type "${_function}" 2> /dev/null | grep -q 'function'
+    _rescode=$?;
+  fi
+
   if isFalse ${_rescode}; then
     if isNotEmpty "${_scriptName}"; then
-      grep " ${_function}()" "${_scriptName}" > /dev/null 2>&1;
+      grep -q " ${_function} *()" "${_scriptName}" > /dev/null 2>&1;
       _rescode=$?;
     fi
   fi
@@ -178,15 +186,16 @@ function isFunctionPresent() {
 
       IFS="${DWIFS}";
       local _inc;
-      for _inc in "./$(basename ${_scriptName} .sh).inc.sh" \
-                    "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh"; do
+      for _inc in "${BASH_SOURCE[0]}/$(basename ${_scriptName} .sh).inc.sh" \
+                  "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh" \
+                  "./$(basename ${_scriptName} .sh).inc.sh"; do
         IFS="${_oldIFS}";
         if [ -e "${_inc}" ]; then
           isFunctionPresent "${_function}" "${_inc}";
           _rescode=$?;
-	        if isTrue ${_rescode}; then
+          if isTrue ${_rescode}; then
             break;
-	        fi
+          fi
         fi
       done
       IFS="${_oldIFS}";
