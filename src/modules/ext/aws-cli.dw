@@ -133,10 +133,10 @@ function isAwsProfileValid() {
 # txt: Checks if given AWS profile exists.
 # opt: awsProfile: The AWS profile.
 # txt: Returns 0/TRUE if the AWS profile exists; 1/FALSE otherwise.
-# use: if isAwsProfileValid "contestia-dev"; then
-# use:   echo "AWS Profile is valid";
+# use: if awsProfileExists "contestia-dev"; then
+# use:   echo "AWS Profile exists";
 # use: fi
-function isAwsProfileValid() {
+function awsProfileExists() {
   local _awsProfile="${1}";
   checkNotEmpty awsProfile "${_awsProfile}" 1;
   
@@ -145,7 +145,7 @@ function isAwsProfileValid() {
   if    fileExists "${HOME}/.aws/config" \
      && fileExists "${HOME}/.aws/credentials"; then
 
-    grep -q -e "^\[\s*profile\s+${_awsProfile}\s*]" "${HOME}/.aws/config";
+    grep -q -e "^\[\s*profile\s\+${_awsProfile}\s*]" "${HOME}/.aws/config";
     _rescode=$?;
 
     if isTrue ${_rescode}; then
@@ -183,12 +183,12 @@ function configureAwsProfile() {
 
   local -i _rescode=${FALSE};
   
-  if isAwsProfileValid; then
+  if isAwsProfileValid "${_awsProfile}"; then
     AWSCLI.updateAwsProfile "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
     _rescode=$?;
   else
     _rescode=${TRUE};
-    if AWSCLI.awsProfileExists "${_awsProfile}"; then
+    if awsProfileExists "${_awsProfile}"; then
       AWSCLI.deleteAwsProfile "${_awsProfile}";
       _rescode=$?;
     fi
@@ -228,6 +228,8 @@ function AWSCLI.createAwsProfile() {
 
   local -i _rescode=${FALSE};
 
+  mkdir -p ${HOME}/.aws 2> /dev/null;
+  
   cat <<EOF >> ${HOME}/.aws/config
 [profile ${_awsProfile}]
 region = ${_awsRegion}
@@ -273,8 +275,8 @@ function AWSCLI.updateAwsProfile() {
 
   local -i _rescode=${FALSE};
 
-  sed -i "s/\[\s*profile\s+${_awsProfile}\s*\]/[profile ${_awsProfile}-old]" "${HOME}/.aws/config";
-  sed -i "s/\[\s*${_awsProfile}\s*\]/[${_awsProfile}-old]" "${HOME}/.aws/credentials";
+  sed -i "s/^\[\s*profile\s\+${_awsProfile}\s*\]/\[profile ${_awsProfile}-$$\]/g" "${HOME}/.aws/config";
+  sed -i "s/^\[\s*${_awsProfile}\s*\]/\[${_awsProfile}-$$\]/g" "${HOME}/.aws/credentials";
   AWSCLI.createAwsProfile "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
   _rescode=$?;
   

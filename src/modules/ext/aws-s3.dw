@@ -415,7 +415,7 @@ function syncS3Bucket() {
   return ${_rescode};
 }
 
-# fun: cpS3Bucket file bucket destination profile
+# fun: uploadToS3Bucket file bucket destination profile
 # api: public
 # txt: Copies given file to given bucket.
 # opt: file: The file.
@@ -424,10 +424,10 @@ function syncS3Bucket() {
 # opt: profile: The AWS profile.
 # txt: Returns 0/TRUE if the file was copied; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR might contain more information.
-# use: if cpS3Bucket ${file} ${myBucket} myFile dev; then
+# use: if uploadToS3Bucket ${file} ${myBucket} myFile dev; then
 # use:   echo "${file} copied to ${myBucket}/myFile";
 # use: fi
-function cpS3Bucket() {
+function uploadToS3Bucket() {
   local _file="${1}";
   checkNotEmpty file "${_file}" 1;
   local _bucket="${2}";
@@ -439,6 +439,39 @@ function cpS3Bucket() {
 
   local _output;
   _output="$($(which aws) --profile ${_profile} s3 cp "${_file}" "s3://${_bucket}/${_destination}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: uploadToS3Bucket file bucket destination profile
+# api: public
+# txt: Copies given file to given bucket.
+# opt: file: The file.
+# opt: bucket: The bucket.
+# opt: destination: The destination file inside the bucket.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the file was copied; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR might contain more information.
+# use: if downloadFrom3Bucket ${myBucket} myFile ${file} dev; then
+# use:   echo "${file} downloaded from ${myBucket}/myFile";
+# use: fi
+function downloadFromS3Bucket() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _destination="${2}";
+  checkNotEmpty destination "${_destination}" 2;
+  local _file="${3}";
+  checkNotEmpty file "${_file}" 3;
+  local _profile="${4}";
+  checkNotEmpty profile "${_profile}" 4;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3 cp "s3://${_bucket}/${_destination}" "${_file}" 2>&1)";
   local -i _rescode=$?;
 
   if isFalse ${_rescode}; then
