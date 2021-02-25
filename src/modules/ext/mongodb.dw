@@ -2083,4 +2083,63 @@ function removeMongodbCollectionIfNecessary() {
     logDebugResult SUCCESS "false";
   fi
 }
+
+# fun: updateMongodbUserPassword userName userPassword database cannotUpdatePasswordErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism url? tls?
+# api: public
+# txt: Updates the password of the user.
+# opt: userName: The user name.
+# opt: userPassword: The user password.
+# opt: database: The target database.
+# opt: cannotUpdatePasswordErrorLabel: The error label when the password cannot be updated for some reason.
+# opt: adminUserName: The user to access the MongoDB server.
+# opt: adminUserPassword: The password to access the MongoDB server.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
+# txt: Returns 0/TRUE always, but can exit if the password cannot be changed.
+# use: updateMongodbUserPassword core secret admin CANNOT_CHANGE_PASSWORD admin secret admin SCRAM-SHA-256;
+function updateMongodbUserPassword() {
+  local _userName="${1}";
+  checkNotEmpty userName "${_userName}" 1;
+  local _userPassword="${2}";
+  checkNotEmpty userPassword "${_userPassword}" 2;
+  local _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _adminUserName="${4}";
+  checkNotEmpty adminUserName "${_adminUserName}" 4;
+  local _adminUserPassword="${5}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5;
+  local _authenticationDatabase="${6}";
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 6;
+  local _authenticationMechanism="${7}";
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
+  local _url="${8:-mongodb://localhost}";
+  local _maybeTls="${9}";
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+use ${_authenticationDatabase}
+db.changeUserPassword("${_userName}", "${_userPassword}")
+EOF
+  local _output;
+  local -i _rescode;
+  if isTrue ${_useTls}; then
+    _output="$(cat "${_tmpFile}" | mongo --tls -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)";
+    _rescode=$?;
+  else
+    _output="$(cat "${_tmpFile}" | mongo -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
