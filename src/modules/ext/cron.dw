@@ -70,4 +70,72 @@ function sendKillSignalToCronProcess() {
 
   return ${_rescode};
 }
+
+# fun: enableCronEntry name cronExpression cmd shell? user? mailTo?
+# api: public
+# txt: Enables a cron entry.
+# opt: name: The name of the entry.
+# opt: cronExpression: The cron expression.
+# opt: cmd: The command to run, including arguments and redirections.
+# opt: shell: The shell to use. Optional.
+# opt: user: The user. Optional.
+# opt: mailTo: The local user to send emails to. Optional.
+# txt: Returns 0/TRUE if the entry could be enabled; 1/FALSE otherwise.
+# use: if enableCronEntry "backup" "*/5 * * * *" "/opt/backup/backup.sh"; then
+# use:   echo "backup cron enabled"
+# use: fi
+function enableCronEntry() {
+
+  local _name;
+  _name="${1}"
+  checkNotEmpty name "${_name}" 1
+  local _cronExpression;
+  _cronExpression="${2}";
+  checkNotEmpty cronExpression "${_cronExpression}" 2
+  local _cmd;
+  _cmd="${3}";
+  checkNotEmpty cmd "${_cmd}" 3
+  local _shell;
+  _shell="${4}"
+  local _user;
+  _user="${5}";
+  local _mailTo;
+  _mailTo="${6}";
+  local _cronFile;
+  _cronFile="/etc/cron.d/${_name}"
+
+  local -i _rescode
+  _rescode=${TRUE}
+
+  if ! fileIsWritable "${_cronFile}"; then
+    _rescode=${FALSE}
+  fi
+
+  if isTrue ${_rescode}; then
+    if ! isEmpty "${_shell}"; then
+      cat <<EOF >> "${_cronFile}"
+# use /bin/sh to run commands, no matter what /etc/passwd says
+SHELL=${_shell}
+EOF
+    fi
+
+    if ! isEmpty "${_user}"; then
+      cat <<EOF >> "${_cronFile}"
+USER=${_user}
+EOF
+    fi
+
+    if ! isEmpty "${_shell}"; then
+      cat <<EOF >> "${_cronFile}"
+MAILTO=${_mailTo}
+EOF
+    fi
+
+    cat <<EOF >> "${_cronFile}"
+${_cronExpression}	${_cmd}
+EOF
+  fi
+
+  return ${_rescode}
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
