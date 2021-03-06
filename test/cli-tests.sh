@@ -379,6 +379,20 @@ function any_dw_flag_is_ignored_test() {
   Assert.isEmpty "${_result}" "-DW:${_flag} is not ignored";
 }
 
+function ARGS_variable_does_not_get_overwritten_test() {
+  addCommandLineFlag "userId" "u" "The user id" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineFlag "userName" "U" "The user name" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineFlag "groupId" "g" "The group id" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineFlag "groupName" "G" "The group name" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineParameter "folder" "The folder where the command should run" MANDATORY SINGLE
+  addCommandLineParameter "command" "The command to run" MANDATORY SINGLE
+  addCommandLineParameter "args" "The command arguments" OPTIONAL MULTIPLE
+  local _expected;
+  _expected="one two";
+  parseInput -pe "cmd" "${_expected}";
+  Assert.areEqual "${_expected}" "${ARGS}" "ARGS variable not set or its value is not correct";
+}
+
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
 declare -ig commandLineFlagParsingCallbackCalled=${FALSE};
 declare -ig checkInputChecksMandatoryFlagsCheckCalled=${FALSE};
