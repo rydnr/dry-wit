@@ -1106,8 +1106,11 @@ function CLI.checkCommandLineParameters() {
         "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}";
       fi
     else
-      declare -gx ${_parameterNameInUpperCase}="${_parameterValue}";
-      export ${_parameterNameInUpperCase};
+      local -n _aux="${_parameterNameInUpperCase}";
+      if isEmpty "${_aux}"; then
+        declare -gx ${_parameterNameInUpperCase}="${_parameterValue}";
+        export ${_parameterNameInUpperCase};
+      fi
     fi
   done
   IFS="${_oldIFS}";

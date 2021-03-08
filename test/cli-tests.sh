@@ -389,8 +389,16 @@ function ARGS_variable_does_not_get_overwritten_test() {
   addCommandLineParameter "args" "The command arguments" OPTIONAL MULTIPLE
   local _expected;
   _expected="one two";
-  parseInput -pe "cmd" "${_expected}";
+  parseInput -pe /tmp cmd ${_expected};
   Assert.areEqual "${_expected}" "${ARGS}" "ARGS variable not set or its value is not correct";
+}
+
+function parameters_with_multiple_values_test() {
+  addCommandLineParameter "folders" "The folders" MANDATORY MULTIPLE
+  local _expected;
+  _expected="one two";
+  parseInput -pe ${_expected};
+  Assert.areEqual "${_expected}" "${FOLDERS}" "FOLDERS variable not set or its value is not correct";
 }
 
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};
