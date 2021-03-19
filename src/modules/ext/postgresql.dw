@@ -1,0 +1,616 @@
+# mod: postgresql
+# api: public
+# txt: PostgreSQL functions
+
+# fun: createPostgresqlUser user password database adminUserName adminUserPassword host? port?
+# api: public
+# txt: Creates a database user.
+# opt: user: The name of the user.
+# opt: password: The user password.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: port: The port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the user gets created; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information about the error.
+# use: if createPostgresqlUser "test" "secret" "postgres" admin secret localhost 5432; then
+# use:   echo "User test created successfully";
+# use: fi
+function createPostgresqlUser () {
+  local _user;
+  _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _password;
+  _password="${2}";
+  checkNotEmpty password "${_password}" 2;
+  local _database;
+  _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _adminUserName;
+  _adminUserName="${4}";
+  checkNotEmpty adminUserName "${_adminUserName}" 4;
+  local _adminUserPassword;
+  _adminUserPassword="${5}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5;
+  local _host;
+  _host="${6:-localhost}";
+  local _port;
+  _port="${7:-5432}";
+  
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+create user ${_user} WITH ENCRYPTED PASSWORD '${_password}';
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1)";
+  _rescode=$?;
+
+  if contains "${_result}" "ERROR:"; then
+    _rescode=${FALSE};
+    export ERROR="${_result}";    
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: postgresqlUserAlreadyExists user database adminUserName adminUserPassword host? port?
+# api: public
+# txt: Checks if a database user already exists.
+# opt: user: The name of the user.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: port: The port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the user already exists; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information about the error.
+# use: if postgresqlUserAlreadyExists "test" "postgres" admin secret localhost 5432; then
+# use:   echo "User test already exists";
+# use: fi
+function postgresqlUserAlreadyExists () {
+  local _user;
+  _user="${1}";
+  checkNotEmpty user "${_user}" 1;
+  local _database;
+  _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _adminUserName;
+  _adminUserName="${3}";
+  checkNotEmpty adminUserName "${_adminUserName}" 3;
+  local _adminUserPassword;
+  _adminUserPassword="${4}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 4;
+  local _host;
+  _host="${5:-localhost}";
+  local _port;
+  _port="${6:-5432}";
+  
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+SELECT 1 FROM pg_roles WHERE rolname='${_user}';
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1 | grep -q 1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export ERROR="${_result}";    
+  else
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: createPostgresqlUserIfNecessary userName password database adminUserName adminUserPassword cannotCreateUserErrorLabel userDoesNotExistErrorLabel host? port?
+# api: public
+# txt: Creates a PostgreSQL user if it doesn't exist already.
+# opt: userName: The user name.
+# opt: password: The password of the user.
+# opt: database: The database.
+# opt: adminUserName: The name of the admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: cannotCreateUserErrorLabel: The error label if the user cannot be created.
+# opt: userDoesNotExistErrorLabel: The error label if the user does not exist even after being created successfully.
+# opt: host: The database host. Optional. Defaults to localhost.
+# opt: port: The database port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the PosgreSQL user existed already or has been created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some additional information.
+# use: if createPostgresqlUserIfNecessary guest secret mydb admin secret; then
+# use:   echo "User guest created (or already existed)";
+# use: fi
+function createPostgresqlUserIfNecessary() {
+  local _userName;
+  _userName="${1}";
+  checkNotEmpty userName "${_userName}" 1;
+  local _userPassword;
+  _userPassword="${2}";
+  checkNotEmpty userPassword "${_userPassword}" 2;
+  local _database;
+  _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _adminUserName;
+  _adminUserName="${4}";
+  checkNotEmpty adminUserName "${_adminUserName}" 4;
+  local _adminUserPassword;
+  _adminUserPassword="${5}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5;
+  local _cannotCreateUserErrorLabel;
+  _cannotCreateUserErrorLabel="${6}";
+  checkNotEmpty cannotCreateUserErrorLabel "${_cannotCreateUserErrorLabel}" 6;
+  local _userDoesNotExistErrorLabel;
+  _userDoesNotExistErrorLabel="${7}";
+  checkNotEmpty userDoesNotExistErrorLabel "${_userDoesNotExistErrorLabel}" 7;
+  local _host;
+  _host="${8:-localhost}";
+  local _port;
+  _port="${9:-5432}";
+
+  logDebug -n "Checking if ${_userName} user already exists in ${_database} database";
+  if postgresqlUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+    logDebugResult SUCCESS "exists";
+  else
+    logDebugResult NEUTRAL "missing";
+    logDebug -n "Creating ${_userName} user";
+    if createPostgresqlUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      logTrace "${_output}";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotCreateUserErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking ${_userName} user already exists in ${_database} database";
+    if postgresqlUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+      logDebugResult SUCCESS "exists";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "missing";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_userDoesNotExistErrorLabel}";
+    fi
+  fi
+}
+
+# fun: createPostgresqlSchema schema database adminUserName adminUserPassword host? port?
+# api: public
+# txt: Creates a database schema.
+# opt: schema: The name of the schema.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: port: The port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the schema gets created; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information about the error.
+# use: if createPostgresqlSchema myschema postgres admin secret localhost 5432; then
+# use:   echo "Schema myschema created successfully";
+# use: fi
+function createPostgresqlSchema () {
+  local _schema;
+  _schema="${1}";
+  checkNotEmpty schema "${_schema}" 1;
+  local _database;
+  _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _adminUserName;
+  _adminUserName="${3}";
+  checkNotEmpty adminUserName "${_adminUserName}" 3;
+  local _adminUserPassword;
+  _adminUserPassword="${4}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 4;
+  local _host;
+  _host="${5:-localhost}";
+  local _port;
+  _port="${6:-5432}";
+  
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+create schema ${_schema} AUTHORIZATION ${_adminUserName};
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1)";
+  _rescode=$?;
+
+  if contains "${_result}" "ERROR:"; then
+    _rescode=${FALSE};
+    export ERROR="${_result}";    
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: postgresqlSchemaAlreadyExists schema database adminUserName adminUserPassword host? port?
+# api: public
+# txt: Checks if a database schema already exists.
+# opt: schema: The name of the schema.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: port: The port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the user already exists; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information about the error.
+# use: if postgresqlSchemaAlreadyExists myschema "postgres" admin secret localhost 5432; then
+# use:   echo "Schema myschema already exists";
+# use: fi
+function postgresqlSchemaAlreadyExists () {
+  local _schema;
+  _schema="${1}";
+  checkNotEmpty schema "${_schema}" 1;
+  local _database;
+  _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _adminUserName;
+  _adminUserName="${3}";
+  checkNotEmpty adminUserName "${_adminUserName}" 3;
+  local _adminUserPassword;
+  _adminUserPassword="${4}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 4;
+  local _host;
+  _host="${5:-localhost}";
+  local _port;
+  _port="${6:-5432}";
+  
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+SELECT exists(select schema_name FROM information_schema.schemata WHERE schema_name = '${_schema}');
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1 | grep -q 1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";    
+  fi
+
+  return ${_rescode};
+}
+
+# fun: createPostgresqlSchemaIfNecessary schema database adminUserName adminUserPassword cannotCreateSchemaErrorLabel schemaDoesNotExistErrorLabel host? port?
+# api: public
+# txt: Creates a PostgreSQL schema if it doesn't exist already.
+# opt: schema: The schema.
+# opt: database: The database.
+# opt: adminUserName: The name of the admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: cannotCreateSchemaErrorLabel: The error label if the schema cannot be created.
+# opt: schemaDoesNotExistErrorLabel: The error label if the schema does not exist even after being created successfully.
+# opt: host: The database host. Optional. Defaults to localhost.
+# opt: port: The database port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the PosgreSQL schema existed already or has been created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some additional information.
+# use: if createPostgresqlSchemaIfNecessary myschema mydb admin secret CANNOT_CREATE_SCHEMA SCHEMA_DOES_NOT_EXIST; then
+# use:   echo "Schema myschema created (or already existed)";
+# use: fi
+function createPostgresqlSchemaIfNecessary() {
+  local _schema;
+  _schema="${1}";
+  checkNotEmpty schema "${_schema}" 1;
+  local _database;
+  _database="${2}";
+  checkNotEmpty database "${_database}" 2;
+  local _adminUserName;
+  _adminUserName="${3}";
+  checkNotEmpty adminUserName "${_adminUserName}" 3;
+  local _adminUserPassword;
+  _adminUserPassword="${4}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 4;
+  local _cannotCreateSchemaErrorLabel;
+  _cannotCreateSchemaErrorLabel="${5}";
+  checkNotEmpty cannotCreateSchemaErrorLabel "${_cannotCreateSchemaErrorLabel}" 5;
+  local _schemaDoesNotExistErrorLabel;
+  _schemaDoesNotExistErrorLabel="${6}";
+  checkNotEmpty schemaDoesNotExistErrorLabel "${_schemaDoesNotExistErrorLabel}" 6;
+  local _host;
+  _host="${7:-localhost}";
+  local _port;
+  _port="${8:-5432}";
+
+  logDebug -n "Checking if ${_schema} schema already exists in ${_database} database";
+  if postgresqlSchemaAlreadyExists "${_schema}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+    logDebugResult SUCCESS "exists";
+  else
+    logDebugResult NEUTRAL "missing";
+    logDebug -n "Creating ${_schema} schema";
+    if createPostgresqlSchema "${_schema}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      logTrace "${_output}";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotAddSchemaErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking ${_schema} schema already exists in ${_database} database";
+    if postgresqlSchemaAlreadyExists "${_schema}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+      logDebugResult SUCCESS "exists";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "missing";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_schemaDoesNotExistErrorLabel}";
+    fi
+  fi
+}
+
+# fun: createPostgresqlDatabase database adminUserName adminUserPassword host port
+# api: public
+# txt: Creates a database.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The database host. Optional. Defaults to localhost.
+# opt: port: The database port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the database gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if createPostgresqlDatabase mydb admin secret; then
+# use:   echo "Database mydb created successfully";
+# use: fi;
+function createPostgresqlDatabase() {
+  local _database;
+  _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _adminUserName;
+  _adminUserName="${2}";
+  checkNotEmpty adminUserName "${_adminUserName}" 2;
+  local _adminUserPassword;
+  _adminUserPassword="${3}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 3;
+  local _host;
+  _host="${4:-localhost}";
+  local _port;
+  _port="${5:-5432}";
+  
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+CREATE DATABASE ${_database};
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1)";
+  _rescode=$?;
+
+  if contains "${_result}" "ERROR:"; then
+    _rescode=${FALSE};
+    export ERROR="${_result}";    
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: postgresqlDatabaseAlreadyExists database adminUserName adminUserPassword host? port?
+# api: public
+# txt: Checks if a database database already exists.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The host. Optional. Defaults to localhost.
+# opt: port: The port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the database already exists; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information about the error.
+# use: if postgresqlDatabaseAlreadyExists mydatabase admin secret localhost 5432; then
+# use:   echo "Database mydatabase already exists";
+# use: fi
+function postgresqlDatabaseAlreadyExists () {
+  local _database;
+  _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _adminUserName;
+  _adminUserName="${2}";
+  checkNotEmpty adminUserName "${_adminUserName}" 2;
+  local _adminUserPassword;
+  _adminUserPassword="${3}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 3;
+  local _host;
+  _host="${4:-localhost}";
+  local _port;
+  _port="${5:-5432}";
+  
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+SELECT exists(select database_name FROM information_database.databaseta WHERE database_name = '${_database}');
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -lqt -h ${_host} -p ${_port} -U ${_adminUserName} | cut -d \| -f 1 | grep -qw ${_database} 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";    
+  fi
+
+  return ${_rescode};
+}
+
+# fun: createPostgresqlDatabaseIfNecessary database adminUserName adminUserPassword cannotCreateDatabaseErrorLabel databaseDoesNotExistErrorLabel host? port?
+# api: public
+# txt: Creates a PostgreSQL database if it doesn't exist already.
+# opt: database: The database.
+# opt: owner: The database owner.
+# opt: adminUserName: The name of the admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: cannotCreateDatabaseErrorLabel: The error label if the database cannot be created.
+# opt: databaseDoesNotExistErrorLabel: The error label if the database does not exist even after being created successfully.
+# opt: host: The database host. Optional. Defaults to localhost.
+# opt: port: The database port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the PosgreSQL database existed already or has been created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some additional information.
+# use: if createPostgresqlDatabaseIfNecessary mydatabase admin secret CANNOT_CREATE_DATABASE DATABASE_DOES_NOT_EXIST; then
+# use:   echo "Database mydatabase created (or already existed)";
+# use: fi
+function createPostgresqlDatabaseIfNecessary() {
+  local _database;
+  _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _owner;
+  _owner="${2}";
+  checkNotEmpty owner "${_owner}" 2;
+  local _adminUserName;
+  _adminUserName="${3}";
+  checkNotEmpty adminUserName "${_adminUserName}" 3;
+  local _adminUserPassword;
+  _adminUserPassword="${4}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 4;
+  local _cannotCreateDatabaseErrorLabel;
+  _cannotCreateDatabaseErrorLabel="${5}";
+  checkNotEmpty cannotCreateDatabaseErrorLabel "${_cannotCreateDatabaseErrorLabel}" 5;
+  local _databaseDoesNotExistErrorLabel;
+  _databaseDoesNotExistErrorLabel="${6}";
+  checkNotEmpty databaseDoesNotExistErrorLabel "${_databaseDoesNotExistErrorLabel}" 6;
+  local _host;
+  _host="${7:-localhost}";
+  local _port;
+  _port="${8:-5432}";
+
+  logDebug -n "Checking if ${_database} database already exists in ${_database} database";
+  if postgresqlDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+    logDebugResult SUCCESS "exists";
+  else
+    logDebugResult NEUTRAL "missing";
+    logDebug -n "Creating ${_database} database";
+    if createPostgresqlDatabase "${_database}" "${_owner}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+      local _output="${RESULT}";
+      logDebugResult SUCCESS "done";
+      logTrace "${_output}";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "failed";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_cannotAddDatabaseErrorLabel}";
+    fi
+
+    logDebug -n "Double-checking ${_database} database already exists in ${_database} database";
+    if postgresqlDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
+      logDebugResult SUCCESS "exists";
+    else
+      local _error="${ERROR}";
+      logDebugResult FAILURE "missing";
+      if isNotEmpty "${_error}"; then
+        logDebug "${_error}";
+      fi
+      exitWithErrorCode "${_databaseDoesNotExistErrorLabel}";
+    fi
+  fi
+}
+
+# fun: createPostgresqlDatabase database owner adminUserName adminUserPassword host port
+# api: public
+# txt: Creates a database.
+# opt: database: The database.
+# opt: owner: The database owner.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The database host. Optional. Defaults to localhost.
+# opt: port: The database port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the database gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if createPostgresqlDatabase mydb guest admin secret; then
+# use:   echo "Database mydb created successfully";
+# use: fi;
+function createPostgresqlDatabase() {
+  local _database;
+  _database="${1}";
+  checkNotEmpty database "${_database}" 1;
+  local _owner;
+  _owner="${2}";
+  checkNotEmpty owner "${_owner}" 2;
+  local _adminUserName;
+  _adminUserName="${3}";
+  checkNotEmpty adminUserName "${_adminUserName}" 3;
+  local _adminUserPassword;
+  _adminUserPassword="${4}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 4;
+  local _host;
+  _host="${5:-localhost}";
+  local _port;
+  _port="${6:-5432}";
+  
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+CREATE DATABASE ${_database} OWNER = ${_owner};
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1)";
+  _rescode=$?;
+
+  if contains "${_result}" "ERROR:"; then
+    _rescode=${FALSE};
+    export ERROR="${_result}";    
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
