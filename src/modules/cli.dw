@@ -710,12 +710,43 @@ function CLI.retrieveCommandLineFlagShortNameForLongName() {
   CLI.getFlagShortNamesVariableName;
   local -n _flagShortNames="${RESULT}";
 
-  local _result="${_flagShortNames[${_longName}]}";
-  if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+  if CLI.commandLineFlagLongNameSupported "${_longName}"; then
+    local _result="${_flagShortNames[${_longName}]}";
+    if isEmpty "${_result}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+      export RESULT="${_result}";
+    fi
   else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineFlagLongNameSupported longName
+# api: private
+# txt: Checks whether given long name is a supported command line flag.
+# opt: longName: The long name of the flag.
+# txt: Returns 0/TRUE if the flag is supported; 1/FALSE otherwise.
+# use: if CLI.commandLineFlagLongNameSupported profile; then
+# use:   echo "--profile supported";
+# use: fi
+function CLI.commandLineFlagLongNameSupported() {
+  local _longName;
+  _longName="${1}";
+  checkNotEmpty longName "${_longName}" 1;
+
+  local -i _rescode;
+
+  CLI.getFlagLongNamesVariableName;
+  local -n _flagLongNames=${RESULT};
+
+  if arrayContains "${_longName}" "${_flagLongNames[@]}"; then
     _rescode=${TRUE};
-    export RESULT="${_result}";
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
@@ -782,7 +813,7 @@ function CLI.retrieveCommandLineFlagLongNameForShortName() {
 # opt: shortName: The short name of the flag.
 # txt: Returns 0/TRUE if the flag is supported; 1/FALSE otherwise.
 # use: if CLI.commandLineFlagShortNameSupported s; then
-# use:   echo "s supported";
+# use:   echo "-s supported";
 # use: fi
 function CLI.commandLineFlagShortNameSupported() {
   local _shortName;
@@ -1318,9 +1349,8 @@ function CLI.parseFlag() {
       _shortName="${RESULT}";
     else
       _continue=${FALSE};
-      exitWithError UNKNOWN_FLAG "Unknown flag 5 ${_flag}";
+#      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
-
   fi
 
   if isTrue ${_continue}; then
