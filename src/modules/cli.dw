@@ -761,12 +761,43 @@ function CLI.retrieveCommandLineFlagLongNameForShortName() {
   CLI.getFlagLongNamesVariableName;
   local -n _flagLongNames=${RESULT};
 
-  local _result="${_flagLongNames[${_shortName}]}";
-  if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+  if CLI.commandLineFlagShortNameSupported "${_shortName}"; then
+    local _result="${_flagLongNames[${_shortName}]}";
+    if isEmpty "${_result}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+      export RESULT="${_result}";
+    fi
   else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: CLI.commandLineFlagShortNameSupported shortName
+# api: private
+# txt: Checks whether given short name is a supported command line flag.
+# opt: shortName: The short name of the flag.
+# txt: Returns 0/TRUE if the flag is supported; 1/FALSE otherwise.
+# use: if CLI.commandLineFlagShortNameSupported s; then
+# use:   echo "s supported";
+# use: fi
+function CLI.commandLineFlagShortNameSupported() {
+  local _shortName;
+  _shortName="${1}";
+  checkNotEmpty shortName "${_shortName}" 1;
+
+  local -i _rescode;
+
+  CLI.getFlagShortNamesVariableName;
+  local -n _flagShortNames=${RESULT};
+
+  if arrayContains "${_shortName}" "${_flagShortNames[@]}"; then
     _rescode=${TRUE};
-    export RESULT="${_result}";
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
