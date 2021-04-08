@@ -385,7 +385,7 @@ function s3BucketAlreadyExists() {
   return ${_rescode};
 }
 
-# fun: syncS3Bucket folder bucket profile
+# fun: syncToS3Bucket folder bucket profile
 # api: public
 # txt: Synchronizes given folder's contents with the bucket's.
 # opt: folder: The folder.
@@ -393,10 +393,10 @@ function s3BucketAlreadyExists() {
 # opt: profile: The AWS profile.
 # txt: Returns 0/TRUE if the contents were synchronized; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains more information.
-# use: if syncS3Bucket ${folder} ${myBucket} dev; then
+# use: if syncToS3Bucket ${folder} ${myBucket} dev; then
 # use:   echo "${folder} synchronized with ${myBucket}";
 # use: fi
-function syncS3Bucket() {
+function syncToS3Bucket() {
   local _folder="${1}";
   checkNotEmpty folder "${_folder}" 1;
   local _bucket="${2}";
@@ -406,6 +406,36 @@ function syncS3Bucket() {
 
   local _output;
   _output="$($(which aws) --profile ${_profile} s3 sync ${_folder} s3://${_bucket} 2>&1)";
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: syncFromS3Bucket folder bucket profile
+# api: public
+# txt: Synchronizes the bucket with given folder's contents.
+# opt: bucket: The bucket.
+# opt: folder: The folder.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the contents were synchronized; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if syncFromS3Bucket ${myBucket} ${folder} dev; then
+# use:   echo "${myBucket} synchronized with ${folder}";
+# use: fi
+function syncFromS3Bucket() {
+  local _bucket="${1}";
+  checkNotEmpty bucket "${_bucket}" 1;
+  local _folder="${2}";
+  checkNotEmpty folder "${_folder}" 2;
+  local _profile="${3}";
+  checkNotEmpty profile "${_profile}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} s3 sync s3://${_bucket} ${_folder} 2>&1)";
   local -i _rescode=$?;
 
   if isFalse ${_rescode}; then

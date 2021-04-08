@@ -49,10 +49,12 @@ create user ${_user} WITH ENCRYPTED PASSWORD '${_password}';
 EOF
 
   local _result;
-  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1)";
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" "${_database}" 2>&1)";
   _rescode=$?;
 
-  if contains "${_result}" "ERROR:"; then
+  echo "${_result}";
+
+  if contains "${_result}" "ERROR:" || contains "${_result}" "FATAL:"; then
     _rescode=${FALSE};
     export ERROR="${_result}";    
   else
@@ -106,7 +108,7 @@ SELECT 1 FROM pg_roles WHERE rolname='${_user}';
 EOF
 
   local _result;
-  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1 | grep -q 1)";
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" "${_database}" 2>&1 | grep -q 1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -167,7 +169,7 @@ function createPostgresqlUserIfNecessary() {
     logDebugResult SUCCESS "exists";
   else
     logDebugResult NEUTRAL "missing";
-    logDebug -n "Creating ${_userName} user";
+    logDebug -n "Creating ${_userName} user (${_adminUserName}/${_adminUserPassword}) in ${_database} (${_host}:${_port})";
     if createPostgresqlUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
       local _output="${RESULT}";
       logDebugResult SUCCESS "done";
@@ -238,10 +240,10 @@ create schema ${_schema} AUTHORIZATION ${_adminUserName};
 EOF
 
   local _result;
-  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1)";
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" "${_database}" 2>&1)";
   _rescode=$?;
 
-  if contains "${_result}" "ERROR:"; then
+  if contains "${_result}" "ERROR:" || contains "${_result}" "FATAL:"; then
     _rescode=${FALSE};
     export ERROR="${_result}";    
   else
@@ -295,7 +297,7 @@ SELECT exists(select schema_name FROM information_schema.schemata WHERE schema_n
 EOF
 
   local _result;
-  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1 | grep -q 1)";
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" "${_database}" 2>&1 | grep -q 1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -422,7 +424,7 @@ EOF
   _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" 2>&1)";
   _rescode=$?;
 
-  if contains "${_result}" "ERROR:"; then
+  if contains "${_result}" "ERROR:" || contains "${_result}" "FATAL:"; then
     _rescode=${FALSE};
     export ERROR="${_result}";    
   else
