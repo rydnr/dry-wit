@@ -90,25 +90,18 @@ function HELM.helmInstallOrUpgrade() {
   local -i _rescode;
   local _result="";
 
-  if isEmpty "${_overrideValuesFile}"; then
-    if isEmpty "${_namespace}"; then
-      _result="$($(which helm) ${_action} "${_release}" -f "${_valuesFile}" "${_chartRef}")";
-      _rescode=$?;
-    else
-      echo "$(which helm) -n ${_namespace} ${_action} ${_release} -f ${_valuesFile} ${_chartRef}";
-      exit 1;
-      _result="$($(which helm) -n "${_namespace}" ${_action} "${_release}" -f "${_valuesFile}" "${_chartRef}")";
-      _rescode=$?;
-    fi
-  elif isEmpty "${_namespace}"; then
-    _result="$($(which helm) ${_action} "${_release}" -f "${_valuesFile}" -f "${_overrideValuesFile}" ${_chartRef})";
-    _rescode=$?;
-  else
-      echo "$(which helm) -n ${_namespace} ${_action} ${_release} -f ${_valuesFile} -f "${_overrideValuesFile}" ${_chartRef}";
-      exit 1;
-    _result="$($(which helm) -n "${_namespace}" ${_action} "${_release}" -f "${_valuesFile}" -f "${_overrideValuesFile}" ${_chartRef})";
-    _rescode=$?;
+  local _namespaceParam="";
+  if isNotEmpty "${_namespace}"; then
+    _namespaceParam="-n ${_namespace}";
   fi
+
+  local _overrideValuesFileParam="";
+  if isNotEmpty "${_overrideValuesFile}"; then
+    _overrideValuesFileParam="-f \"${_valuesFile}\"";
+  fi
+
+  _result="$($(which helm) ${_namespaceParam} ${_action} "${_release}" -f "${_valuesFile}" ${_overrideValuesFileParam} ${_chartRef})";
+  _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
@@ -131,16 +124,16 @@ function helmUninstall() {
   checkNotEmpty release "${_release}" 1;
   local _namespace="${2}";
 
+   local _namespaceParam="";
+  if isNotEmpty "${_namespace}"; then
+    _namespaceParam="-n ${_namespace}";
+  fi
+
   local _result;
   local -i _rescode;
-  if isEmpty "${_namespace}"; then
-    _result="$($(which helm) uninstall "${_release}")";
-    _rescode=$?;
-  else
-    _result="$($(which helm) -n "${_namespace}" uninstall "${_release}")";
-    _rescode=$?;
-  fi
-  
+  _result="$($(which helm) ${_namespaceParam} uninstall "${_release}")";
+  _rescode=$?;
+
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
