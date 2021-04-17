@@ -18,8 +18,9 @@ function AWS_CLOUDFORMATION.getModuleName() {
 # api: public
 # txt: Validates the CloudFormation template.
 # opt: template: The template file.
-# opt: profile: The AWS profile.
 # opt: templateName: A human-readable name of the template. Optional.
+# opt: awsProfile: The AWS profile.
+# opt: awsRegion: The AWS region.
 # txt: Returns 0/TRUE if the template is correct; 1/FALSE otherwise.
 # logging: DEBUG
 # logging: TRACE
@@ -29,21 +30,31 @@ function AWS_CLOUDFORMATION.getModuleName() {
 function isCloudformationTemplateValid() {
   local _template="${1}";
   checkNotEmpty template "${_template}" 1;
-  local _profile="${2}";
-  checkNotEmpty profile "${_profile}" 2;
-  local _templateName="${3}";
+  local _templateName="${2:-}";
+  local _awsProfile="${3:-}";
+  local _awsRegion="${4:-}";
   local -i _rescode;
   local _awsCli;
   local _output;
 
-  local _name="${_templateName}";
+  local _name="${_templateName:-}";
   if isEmpty "${_name}"; then
     _name="${_template}";
   fi
 
+  local _profile="${_awsProfile:-}";
+  if isNotEmpty "${_profile}"; then
+    _profile="--profile ${_profile}";
+  fi
+
+  local _region="${_awsRegion:-}";
+  if isNotEmpty "${_region}"; then
+    _region="--region ${_region}";
+  fi
+
   logDebug -n "Checking CloudFormation template ${_name}";
-  logTrace "$(which aws) --profile ${_profile} cloudformation validate-template --template-body file://${_template}";
-  _output="$($(which aws) --profile ${_profile} cloudformation validate-template --template-body file://"${_template}" 2>&1)";
+  logTrace "$(which aws) ${_profile} ${_region} cloudformation validate-template --template-body file://${_template}";
+  _output="$($(which aws) ${_profile} ${_region} cloudformation validate-template --template-body file://"${_template}" 2>&1)";
   _rescode=$?;
   if isTrue ${_rescode}; then
     logDebugResult SUCCESS "valid";
@@ -58,24 +69,24 @@ function isCloudformationTemplateValid() {
   return ${_rescode};
 }
 
-# fun: cacheCloudformationExports awsProfile awsRegion file
+# fun: cacheCloudformationExports file awsProfile? awsRegion?
 # api: public
 # txt: Retrieves the cloudformation exports to a file.
-# opt: awsProfile: The AWS CLI profile.
-# opt: awsRegion: The region.
 # opt: file: The name of the cache file.
+# opt: awsProfile: The AWS profile. Optional.
+# opt: awsRegion: The AWS region. Optional.
 # txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
-# use: if cacheCloudformationExport dev ".cache"; then
+# use: if cacheCloudformationExport ".cache"; then
 # use:   echo "exports cached in .cache: ${RESULT}";
 # use: fi
 function cacheCloudformationExports() {
-  local _awsProfile="${1}";
-  checkNotEmpty awsProfile "${_awsProfile}" 1;
-  local _awsRegion="${2}";
-  checkNotEmpty awsRegion "${_awsRegion}" 2;
-  local _file="${3}";
-  checkNotEmpty file "${_file}" 3;
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local _awsProfile="${2}";
+  checkNotEmpty awsProfile "${_awsProfile}" 2;
+  local _awsRegion="${3}";
+  checkNotEmpty awsRegion "${_awsRegion}" 3;
 
   local -i _rescode=${TRUE};
 
@@ -84,7 +95,7 @@ function cacheCloudformationExports() {
   IFS="${DWIFS}";
   for _region in "${_awsRegion}" "us-east-1"; do
     IFS="${_oldIFS}";
-    if ! cacheCloudformationExportsForRegion "${_awsProfile}" "${_region}" "${_file}.${_region}"; then
+    if ! cacheCloudformationExportsForRegion "${_file}.${_region}" "${_awsProfile}" "${_region}"; then
       _rescode=${FALSE};
       break;
     fi
@@ -110,31 +121,41 @@ function cacheCloudformationExports() {
 
 }
 
-# fun: cacheCloudformationExportsForRegion awsProfile awsRegion file
+# fun: cacheCloudformationExportsForRegion file awsProfile? awsRegion?
 # api: public
 # txt: Retrieves the cloudformation exports to a file.
-# opt: awsProfile: The AWS CLI profile.
 # opt: file: The name of the cache file.
+# opt: awsProfile: The AWS CLI profile. Optional.
+# opt: awsRegion: The AWS region. Optional.
 # txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
-# use: if cacheCloudformationExportForRegion dev us-east-1 ".cache"; then
+# use: if cacheCloudformationExportForRegion .cache dev us-east-1; then
 # use:   echo "us-east-1 exports cached in .cache: ${RESULT}";
 # use: fi
 function cacheCloudformationExportsForRegion() {
-  local _awsProfile="${1}";
-  checkNotEmpty awsProfile "${_awsProfile}" 1;
-  local _awsRegion="${2}";
-  checkNotEmpty awsRegion "${_awsRegion}" 2;
-  local _file="${3}";
-  checkNotEmpty file "${_file}" 3;
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  local _awsProfile="${2:-}";
+  local _awsRegion="${3:-}";
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
-  cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+  local _profile="${_awsProfile:-}";
+  if isNotEmpty "${_profile}"; then
+    _profile="--profile ${_profile}";
+  fi
 
-$(which aws) --profile ${_awsProfile} --region ${_awsRegion} cloudformation list-exports --max-items 200;
+  local _region="${_awsRegion:-}";
+  if isNotEmpty "${_region}"; then
+    _region="--region ${_region}";
+  fi
+
+
+  cat <<EOF > "${_tmpFile}"
+#!/usr/bin/env bash
+
+$(which aws) ${_profile} ${_region} cloudformation list-exports --max-items 200;
 EOF
   chmod +x ${_tmpFile};
 
@@ -148,9 +169,9 @@ EOF
     local _token="$(cat "${_file}.${_page}" | jq '.NextToken')";
     ((_page++));
     cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
-$(which aws) --profile ${_awsProfile} --region ${_awsRegion} cloudformation list-exports --max-items 200 --starting-token "${_token}";
+$(which aws) ${_profile} ${_region} cloudformation list-exports --max-items 200 --starting-token "${_token}";
 EOF
     chmod +x ${_tmpFile};
 
@@ -181,28 +202,27 @@ EOF
   return ${_rescode};
 }
 
-# fun: getCloudformationExport name awsProfile awsRegion
+# fun: getCloudformationExport name refreshCache? awsProfile? awsRegion?
 # api: public
 # txt: Retrieves the value of an output exported by a CloudFormation stack, under given name.
 # opt: name: The name of the export.
-# opt: awsProfile: The AWS CLI profile.
-# opt: awsRegion: The AWS region. Optional. Defaults to eu-west-1.
+# opt: refreshCache: Whether to refresh the cache. Optional. Defaults to ${FALSE}.
+# opt: awsProfile: The AWS CLI profile. Optional.
+# opt: awsRegion: The AWS region. Optional.
 # txt: Returns 0/TRUE if the name was found; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains some output from the AWS CLI.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
-# use: if getCloudformationExport myKey dev eu-west-1; then
+# use: if getCloudformationExport myKey ${FALSE} dev eu-west-1; then
 # use:   echo "myKey='${RESULT}'";
 # use: fi
 function getCloudformationExport() {
   local _name="${1}";
   checkNotEmpty name "${_name}" 1;
-  local _awsProfile="${2}";
-  checkNotEmpty awsProfile "${_awsProfile}" 2;
-  local _awsRegion="${3:-eu-west-1}";
-  checkNotEmpty awsRegion "${_awsRegion}" 3;
-  local _refreshCache="${4:-${FALSE}}";
-  checkBoolean refreshCache "${_refreshCache}" 4;
-  
+  local _refreshCache="${2:-${FALSE}}";
+  checkBoolean refreshCache "${_refreshCache}" 2;
+  local _awsProfile="${3}";
+  local _awsRegion="${4:-}";
+
   AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}";
   local _cacheFile="${RESULT}";
 
@@ -212,14 +232,14 @@ function getCloudformationExport() {
   if   isTrue ${_refreshCache} \
     || ! fileExists "${_cacheFile}" \
     || ! fileModifiedInLastXMinutes "${_cacheFile}" ${_expiration}; then
-    cacheCloudformationExports "${_awsProfile}" "${_awsRegion}" "${_cacheFile}";
+    cacheCloudformationExports "${_cacheFile}" "${_awsProfile}" "${_awsRegion}";
   fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
 val="\$(cat "${_cacheFile}" | jq '.Exports | .[] | select (."Name" == "${_name}") | .Value')";
 rescode=\$?;
@@ -255,26 +275,34 @@ EOF
   return ${_rescode};
 }
 
-# fun: listCloudformationStacks environment client
+# fun: listCloudformationStacks awsProfile? awsRegion?
 # api: public
 # txt: Lists the Cloudformation stacks (name and status).
-# opt: environment: The environment.
-# opt: stackFullName: The full stack name.
-# opt: client: The client. Optional.
+# opt: awsProfile: The AWS profile. Optional.
+# opt: awsRegion: The AWS region. Optional.
 # txt: Returns 0/${TRUE} if the stacks could be queried; 1/${FALSE} otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the list of stacks.
 # txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
-# use: if listCloudformationStacks "pre" "myClient"; then
+# use: if listCloudformationStacks; then
 # use:   echo "stacks -> ${RESULT}";
 # use: fi
 function listCloudformationStacks() {
-  local _awsRegion="${1}";
-  checkNotEmpty region "${_awsRegion}" 1;
-  local _awsProfile="${2}";
-  checkNotEmpty awsProfile "${_awsProfile}" 2;
+  local _awsProfile="${1:-}";
+  local _awsRegion="${2:-}";
+
+  local _profile="${_awsProfile:-}";
+  if isNotEmpty "${_profile}"; then
+    _profile="--profile ${_profile}";
+  fi
+
+  local _region="${_awsRegion:-}";
+  if isNotEmpty "${_region}"; then
+    _region="--region ${_region}";
+  fi
+
 
   local _result;
-  _result="$($(which aws) --profile "${_awsProfile}" --region "${_region}" cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }')";
+  _result="$($(which aws) ${_profile} ${_region} cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }')";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -286,28 +314,36 @@ function listCloudformationStacks() {
   return ${_rescode};
 }
 
-# fun: checkCloudformationStatus stack environment client
+# fun: checkCloudformationStatus stack awsProfile? awsRegion?
 # api: public
 # txt: Retrieves the status of a given stack.
 # opt: stack: The stack name.
-# opt: environment: The environment.
-# opt: client: The client. Optional.
+# opt: awsProfile: The AWS profile.
+# opt: awsRegion: The AWS region.
 # txt: Returns 0/${TRUE} if the status could be queried; 1/${FALSE} otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the stack status.
 # txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
-# use: if checkCloudformationStatus "01-network" "pre" "myClient"; then
-# use:   echo "pre-client-01-network status -> ${RESULT}";
+# use: if checkCloudformationStatus "01-network"; then
+# use:   echo "status -> ${RESULT}";
 # use: fi
 function checkCloudformationStackStatus() {
   local _stack="${1}";
   checkNotEmpty stack "${_stack}" 1;
-  local _awsRegion="${2}";
-  checkNotEmpty region "${_awsRegion}" 2;
-  local _awsProfile="${3}";
-  checkNotEmpty awsProfile "${_awsProfile}" 3;
+  local _awsProfile="${2:-}";
+  local _awsRegion="${3:-}";
+
+  local _profile="${_awsProfile:-}";
+  if isNotEmpty "${_profile}"; then
+    _profile="--profile ${_profile}";
+  fi
+
+  local _region="${_awsRegion:-}";
+  if isNotEmpty "${_region}"; then
+    _region="--region ${_region}";
+  fi
 
   local _aux;
-  _aux="$($(which aws) --profile "${_awsProfile}" --region "${_awsRegion}" cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }' | grep -C 1 -- "\"${_stack}\"")";
+  _aux="$($(which aws) ${_profile} ${_region} cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }' | grep -C 1 -- "\"${_stack}\"")";
   local -i _rescode=$?;
 
   local _result="$(echo "${_aux}" | grep StackStatus | head -n 1 | awk -F'"' '{print $4}' 2>&1)";
@@ -321,40 +357,37 @@ function checkCloudformationStackStatus() {
   return ${_rescode};
 }
 
-# fun: requestCreateStack awsProfile stackName region template tags parameters
+# fun: requestCreateStack stackName template tags parameters awsProfile? awsRegion?
 # api: public
 # txt: Requests the creation of given stack.
-# opt: awsProfile: The AWS profile.
 # opt: stackName: The stack name.
-# opt: region: The AWS region.
 # opt: template: The template file.
 # opt: tags: The tags.
 # opt: parameters: The parameters.
+# opt: awsProfile: The AWS profile.
+# opt: awsRegion: The AWS region.
 # txt: Returns 0/${TRUE} if the stack gets deployed successfully; 1/${FALSE} otherwise.
-# use: if requestCreateStack "my-profile" "pre-1-my-stack" "eu-west-1" "stack.json" "Key=vendor:name,Value=Vendor1 Key=vendor:timestamp,Value=today" "ParameterKey=Environment,ParameterValue=test ParameterKey=AllowedCidrs,ParameterValue=0.0.0.0/0"; then
+# use: if requestCreateStack "pre-1-my-stack" "stack.json" "Key=vendor:name,Value=Vendor1 Key=vendor:timestamp,Value=today" "ParameterKey=Environment,ParameterValue=test ParameterKey=AllowedCidrs,ParameterValue=0.0.0.0/0"; then
 # use:   echo "pre-1-my-stack is being created";
 # use: fi
 function requestCreateStack() {
-  local _awsProfile="${1}";
-  checkNotEmpty awsProfile "${_awsProfile}" 1;
-  local _stackName="${2}";
-  checkNotEmpty stackName "${_stackName}" 2;
-  local _region="${3}";
-  checkNotEmpty region "${_region}" 3;
-  local _template="${4}";
-  checkNotEmpty template "${_template}" 4;
-  local _tags="${5}";
-  checkNotEmpty tags "${_tags}" 5;
-  local _parameters="${6}";
-  checkNotEmpty parameters "${_parameters}" 6;
+  local _stackName="${1}";
+  checkNotEmpty stackName "${_stackName}" 1;
+  local _template="${2}";
+  checkNotEmpty template "${_template}" 2;
+  local _tags="${3}";
+  checkNotEmpty tags "${_tags}" 3;
+  local _parameters="${4}";
+  checkNotEmpty parameters "${_parameters}" 4;
+  local _awsProfile="${5:-}";
+  local _awsRegion="${6:-}";
 
-  requestCreateOrUpdateStack create "${_awsProfile}" "${_stackName}" "${_region}" "${_template}" "${_tags}" "${_parameters}";
+  requestCreateOrUpdateStack create "${_stackName}" "${_template}" "${_tags}" "${_parameters}" "${_awsProfile}" "${_awsRegion}";
 }
 
-# fun: requestUpdateStack awsProfile stackName region template tags parameters
+# fun: requestUpdateStack stackName region template tags parameters awsProfile awsRegion
 # api: public
 # txt: Requests the modification of given stack.
-# opt: awsProfile: The AWS profile.
 # opt: stackName: The stack name.
 # opt: region: The AWS region.
 # opt: template: The template file.
@@ -365,60 +398,66 @@ function requestCreateStack() {
 # use:   echo "pre-1-my-stack is being updated";
 # use: fi
 function requestUpdateStack() {
-  local _awsProfile="${1}";
-  checkNotEmpty awsProfile "${_awsProfile}" 1;
-  local _stackName="${2}";
-  checkNotEmpty stackName "${_stackName}" 2;
-  local _region="${3}";
-  checkNotEmpty region "${_region}" 3;
-  local _template="${4}";
-  checkNotEmpty template "${_template}" 4;
-  local _tags="${5}";
-  checkNotEmpty tags "${_tags}" 5;
-  local _parameters="${6}";
-  checkNotEmpty parameters "${_parameters}" 6;
+  local _stackName="${1}";
+  checkNotEmpty stackName "${_stackName}" 1;
+  local _template="${2}";
+  checkNotEmpty template "${_template}" 2;
+  local _tags="${3}";
+  checkNotEmpty tags "${_tags}" 3;
+  local _parameters="${4}";
+  checkNotEmpty parameters "${_parameters}" 4;
+  local _awsProfile="${5:-}";
+  local _awsRegion="${6:-}";
 
-  requestCreateOrUpdateStack update "${_awsProfile}" "${_stackName}" "${_region}" "${_template}" "${_tags}" "${_parameters}";
+  requestCreateOrUpdateStack update "${_stackName}" "${_template}" "${_tags}" "${_parameters}" "${_awsProfile}" "${_awsRegion}";
 }
 
-# fun: requestCreateOrUpdateStack awsProfile stackName region template tags parameters
+# fun: requestCreateOrUpdateStack stackName template tags parameters awsProfile? awsRegion?
 # api: public
 # txt: Requests the creation or modification of given stack.
 # opt: action: either create or update.
-# opt: awsProfile: The AWS profile.
 # opt: stackName: The stack name.
-# opt: region: The AWS region.
 # opt: template: The template file.
 # opt: tags: The tags.
 # opt: parameters: The parameters.
+# opt: awsProfile: The AWS profile. Optional.
+# opt: awsRegion: The AWS region. Optional.
 # txt: Returns 0/${TRUE} if the stack gets deployed successfully; 1/${FALSE} otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains some output from the AWS CLI.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
-# use: if requestCreateOrUpdateStack "my-profile" "pre-1-my-stack" "eu-west-1" "stack.json" "Key=vendor:name,Value=Vendor1 Key=vendor:timestamp,Value=today" "ParameterKey=Environment,ParameterValue=test ParameterKey=AllowedCidrs,ParameterValue=0.0.0.0/0"; then
+# use: if requestCreateOrUpdateStack "pre-1-my-stack" "stack.json" "Key=vendor:name,Value=Vendor1 Key=vendor:timestamp,Value=today" "ParameterKey=Environment,ParameterValue=test ParameterKey=AllowedCidrs,ParameterValue=0.0.0.0/0"; then
 # use:   echo "pre-1-my-stack is being created";
 # use: fi
 function requestCreateOrUpdateStack() {
   local _action="${1}";
   checkNotEmpty action "${_action}" 1;
-  local _awsProfile="${2}";
-  checkNotEmpty awsProfile "${_awsProfile}" 2;
-  local _stackName="${3}";
-  checkNotEmpty stackName "${_stackName}" 3;
-  local _region="${4}";
-  checkNotEmpty region "${_region}" 4;
-  local _template="${5}";
-  checkNotEmpty template "${_template}" 5;
-  local _tags="${6}";
-  checkNotEmpty tags "${_tags}" 6;
-  local _parameters="${7}";
-  checkNotEmpty parameters "${_parameters}" 7;
+  local _stackName="${2}";
+  checkNotEmpty stackName "${_stackName}" 2;
+  local _template="${3}";
+  checkNotEmpty template "${_template}" 3;
+  local _tags="${4}";
+  checkNotEmpty tags "${_tags}" 4;
+  local _parameters="${5}";
+  checkNotEmpty parameters "${_parameters}" 5;
+  local _awsProfile="${6:-}";
+  local _awsRegion="${7:-}";
+
+  local _profile="${_awsProfile:-}";
+  if isNotEmpty "${_profile}"; then
+    _profile="--profile ${_profile}";
+  fi
+
+  local _region="${_awsRegion:-}";
+  if isNotEmpty "${_region}"; then
+    _region="--region ${_region}";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
   cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
-$(which aws) --profile ${_awsProfile} --region ${_region} cloudformation ${_action}-stack --stack-name ${_stackName} --tags ${_tags} --template-body file://${_template} --parameters ${_parameters} --capabilities CAPABILITY_NAMED_IAM 2>&1;
+$(which aws) ${_profile} ${_region} cloudformation ${_action}-stack --stack-name ${_stackName} --tags ${_tags} --template-body file://${_template} --parameters ${_parameters} --capabilities CAPABILITY_NAMED_IAM 2>&1;
 EOF
   chmod +x "${_tmpFile}";
   local _output;
@@ -434,28 +473,36 @@ EOF
   return ${_rescode};
 }
 
-# fun: requestDeleteStack awsProfile stackName environment client
+# fun: requestDeleteStack stackName awsProfile? awsRegion?
 # api: public
 # txt: Requests the deletion of given stack.
-# opt: awsProfile: The AWS profile.
 # opt: stackName: The stack name.
-# opt: region: The AWS region.
+# opt: awsProfile: The AWS profile. Optional.
+# opt: awsRegion: The AWS region. Optional.
 # txt: Returns 0/${TRUE} if the stack gets deleted successfully; 1/${FALSE} otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains some output from the AWS CLI.
 # txt: If the function returns 1/FALSE, the variable ERROR contains some error information from the AWS CLI.
-# use: if requestDeleteStack "my-profile" "pre-1-my-stack" "eu-west-1"; then
+# use: if requestDeleteStack "pre-1-my-stack"; then
 # use:   echo "pre-1-my-stack deleted successfully";
 # use: fi
 function requestDeleteStack() {
-  local _awsProfile="${1}";
-  checkNotEmpty awsProfile "${_awsProfile}" 1;
-  local _stackName="${2}";
-  checkNotEmpty stackName "${_stackName}" 2;
-  local _region="${3}";
-  checkNotEmpty region "${_region}" 3;
+  local _stackName="${1}";
+  checkNotEmpty stackName "${_stackName}" 1;
+  local _awsProfile="${2:-}";
+  local _awsRegion="${3:-}";
+
+  local _profile="${_awsProfile:-}";
+  if isNotEmpty "${_profile}"; then
+    _profile="--profile ${_profile}";
+  fi
+
+  local _region="${_awsRegion:-}";
+  if isNotEmpty "${_region}"; then
+    _region="--region ${_region}";
+  fi
 
   local _output;
-  _output="$($(which aws) --profile "${_awsProfile}" --region ${_region} cloudformation delete-stack --stack-name "${_stackName}")";
+  _output="$($(which aws) ${_profile} ${_region} cloudformation delete-stack --stack-name "${_stackName}")";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -502,7 +549,7 @@ function awsCloudformationJsonTemplateDefinesParameter() {
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
 out="\$(cat "${_template}" | jq '.Parameters | has("${_parameter}")')";
 
