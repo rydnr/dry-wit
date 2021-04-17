@@ -1487,7 +1487,7 @@ function CLI.parseNotProvidedFlags() {
             normalizeUppercase "${RESULT}";
             local _upcasedLongName="${RESULT}";
             local -n _existingVariable=${_upcasedLongName};
-            if isEmpty "${_existingVariable}"; then
+            if isEmpty "${_existingVariable:-}"; then
               declare -gx ${_upcasedLongName}="${_defaultValue}";
             fi
           fi
