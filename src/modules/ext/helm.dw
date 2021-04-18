@@ -97,7 +97,7 @@ function HELM.helmInstallOrUpgrade() {
 
   local _overrideValuesFileParam="";
   if isNotEmpty "${_overrideValuesFile}"; then
-    _overrideValuesFileParam="-f \"${_valuesFile}\"";
+    _overrideValuesFileParam="-f \"${_overrideValuesFile}\"";
   fi
 
   _result="$($(which helm) ${_namespaceParam} ${_action} "${_release}" -f "${_valuesFile}" ${_overrideValuesFileParam} ${_chartRef})";
