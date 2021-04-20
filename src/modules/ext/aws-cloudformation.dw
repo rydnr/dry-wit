@@ -223,8 +223,12 @@ function getCloudformationExport() {
   local _awsProfile="${3}";
   local _awsRegion="${4:-}";
 
-  AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}";
+  AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}" "${_awsRegion}";
   local _cacheFile="${RESULT}";
+
+  if isNotEmpty "${_awsRegion}"; then
+    _cacheFile="${_cacheFile}.${_awsRegion}";
+  fi
 
   AWS_CLOUDFORMATION.getExportsCacheExpirationInMinutes;
   local -i _expiration=${RESULT};
@@ -249,7 +253,7 @@ if [[ "x\${val}" == "x" ]]; then
 fi
 
 if [[ \${rescode} -eq 0 ]]; then
-  echo "\${val}" | tr -d '"';
+  echo "\${val}" | head -n 1 | tr -d '"';
   rescode=\$?;
 fi
 
