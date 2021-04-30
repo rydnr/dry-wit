@@ -996,10 +996,14 @@ function findModule() {
 
   local _localPath="${BASH_SOURCE[0]}";
 
+  local _dryWitPath="${HOME}/.dry-wit";
+
   local _oldIFS="${IFS}";
 
   IFS="${DWIFS}";
-  for _result in "${_modulePath}/${_module}.dw" \
+  for _result in "${_dryWitPath}/src/modules/${_module}.dw" \
+                 "${_dryWitPath}/src/modules/ext/${_module}.dw" \
+                 "${_modulePath}/${_module}.dw" \
                  "${_modulePath}/ext/${_module}.dw" \
                  "${_modulePath}/.${_module}/${_module}.dw" \
                  "${_modulePath}/.${_module}/.dw/${_module}.dw" \
@@ -1381,6 +1385,7 @@ BOOTSTRAP.setDryWitPath "${BASH_SOURCE[0]}";
 DW.ifTestRunDryWitTest;
 
 DRYWIT.main $@;
+
 if BOOTSTRAP.isNested; then
   cleanup;
 fi
