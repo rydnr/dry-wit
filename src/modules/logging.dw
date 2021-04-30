@@ -3054,6 +3054,18 @@ function isLogToFilesEnabled() {
   return ${FALSE};
 }
 
+# fun: LOGGING.getLogWarn
+# api: private
+# txt: Retrieves the LOG_WARN value.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the value of LOG_WARN.
+# use: LOGGING.getLogWarn;
+# use: local logWarn=${RESULT};
+function LOGGING.getLogWarn() {
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_WARN ${TRUE};
+}
+
 # fun: isWarnEnabled
 # api: public
 # txt: Checks whether the "warn" level is enabled.
@@ -3154,6 +3166,18 @@ function logWarnResult() {
 
     LOGGING.logStuffResult "${_outcome}" "${_message}";
   fi
+}
+
+# fun: LOGGING.getLogError
+# api: private
+# txt: Retrieves the LOG_ERROR value.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the value of LOG_ERROR.
+# use: LOGGING.getLogError;
+# use: local logError=${RESULT};
+function LOGGING.getLogError() {
+  LOGGING.getModuleName;
+  DW.getGlobalInt "${RESULT}" LOG_ERROR ${TRUE};
 }
 
 # fun: isErrorEnabled
