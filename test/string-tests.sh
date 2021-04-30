@@ -504,5 +504,23 @@ function toCamelCase_works_test() {
   Assert.isTrue ${_rescode} "toCamelCase '${_text}' failed";
   Assert.areEqual "${_expected}" "${_result}" "toCamelCase '${_text}' failed";
 }
+
+function startsWithSpace_works_test() {
+  local _text=" a";
+  startsWithSpace "${_text}";
+  local -i _rescode=$?;
+  Assert.isTrue ${_rescode} "startsWithSpace '${_text}' failed";
+
+  _text="      aa";
+  startsWithSpace "${_text}";
+  _rescode=$?;
+  Assert.isTrue ${_rescode} "startsWithSpace '${_text}' failed";
+
+  _text="a aa";
+  startsWithSpace "${_text}";
+  _rescode=$?;
+  Assert.isFalse ${_rescode} "startsWithSpace '${_text}' failed";
+}
+
 setScriptDescription "Runs all tests implemented for string.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

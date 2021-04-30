@@ -1007,4 +1007,26 @@ function stringLength() {
 
   return ${TRUE};
 }
+
+# fun: startsWithSpace text
+# api: public
+# txt: Checks whether given text starts with space.
+# opt: text: The text.
+# txt: Returns 0/${TRUE} if the text starts with space; 1/0 otherwise.
+# use: if startsWithSpace "${myVar}"; then
+# use:   echo "${myVar} starts with space";
+# use: fi
+function startsWithSpace() {
+  local _text="${@}";
+  checkNotEmpty text "${_text}" 1;
+
+  local -i _rescode;
+  if [[ "${_text# }" == "${_text}" ]]; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
