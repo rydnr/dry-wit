@@ -143,7 +143,7 @@ function ENVVAR.defineEnvVar() {
 
   ENVVAR.addEnvVarMandatory "${_varName}" "${_varMandatory}";
 
-  local _description;
+  local _description="";
   if ENVVAR.evalVarDescription "${_varName}"; then
     _description="${RESULT}";
   fi
@@ -958,7 +958,7 @@ function ENVVAR.evalVarDescription() {
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
 
-  _result="${_environmentVariablesDescriptions[${_varName}]}";
+  _result="${_environmentVariablesDescriptions[${_varName}]:-}";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
