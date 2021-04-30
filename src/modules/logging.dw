@@ -1204,8 +1204,16 @@ function LOGGING.echoLogOutcome() {
     for _i in $(seq 0 1 ${_len}); do
       IFS="${_oldIFS}";
       local _token="${_logOutcomeTokens[${_i}]}";
-      echo -n "${_token}";
-      LOGGING.logToFiles "${_token}";
+      if isEmpty "${_token}"; then
+        cat <<EOF > /tmp/dwbugs.txt
+logOutcomeTokens[${i}] is empty
+* -> _logOutcomeTokens[$*]
+@ -> _logOutcomeTokens[$@]
+EOF
+      else
+        echo -n "${_token}";
+        LOGGING.logToFiles "${_token}";
+      fi
     done
     IFS="${_oldIFS}";
   fi
