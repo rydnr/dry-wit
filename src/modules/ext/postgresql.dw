@@ -293,11 +293,11 @@ function postgresqlSchemaAlreadyExists () {
   _runme="${RESULT}";
 
   cat <<EOF > "${_runme}"
-SELECT exists(select schema_name FROM information_schema.schemata WHERE schema_name = '${_schema}');
+SELECT count(1) FROM information_schema.schemata WHERE schema_name = '${_schema}';
 EOF
 
   local _result;
-  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" "${_database}" 2>&1 | grep -q 1)";
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" "${_database}" 2>&1 | grep -v ' row' | grep -q 1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -608,6 +608,131 @@ EOF
   if contains "${_result}" "ERROR:"; then
     _rescode=${FALSE};
     export ERROR="${_result}";    
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: grantUsageOnSchemaToUser schema userName database adminUserName adminUserPassword host? port?
+# api: public
+# txt: Grants usage on given schema to a user.
+# opt: schema: The schema.
+# opt: userName: The user.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The database host. Optional. Defaults to localhost.
+# opt: port: The database port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the schema usage gets granted successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if grantUsageOnSchemaToUser my_schema guest myDb admin secret; then
+# use:   echo "guest granted usage on my_schema";
+# use: fi;
+function grantUsageOnSchemaToUser() {
+  local _schema;
+  _schema="${1}";
+  checkNotEmpty schema "${_schema}" 1;
+  local _userName;
+  _userName="${2}";
+  checkNotEmpty userName "${_userName}" 2;
+  local _database;
+  _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _adminUserName;
+  _adminUserName="${4}";
+  checkNotEmpty adminUserName "${_adminUserName}" 4;
+  local _adminUserPassword;
+  _adminUserPassword="${5}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5;
+  local _host;
+  _host="${6:-localhost}";
+  local _port;
+  _port="${7:-5432}";
+
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+GRANT USAGE ON SCHEMA ${_schema} TO ${_userName};
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" ${_database} 2>&1)";
+  _rescode=$?;
+
+  if contains "${_result}" "ERROR:"; then
+    _rescode=${FALSE};
+    export ERROR="${_result}";
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: grantAllOnSchemaToUser schema userName database adminUserName adminUserPassword host? port?
+# api: public
+# txt: Grants all permissions on given schema to a user.
+# opt: schema: The schema.
+# opt: userName: The user.
+# opt: database: The database.
+# opt: adminUserName: The admin user.
+# opt: adminUserPassword: The password of the admin user.
+# opt: host: The database host. Optional. Defaults to localhost.
+# opt: port: The database port. Optional. Defaults to 5432.
+# txt: Returns 0/TRUE if the schema usage gets granted successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if grantAllOnSchemaToUser my_schema guest myDb admin secret; then
+# use:   echo "guest granted all permissions on my_schema";
+# use: fi;
+function grantAllOnSchemaToUser() {
+  local _schema;
+  _schema="${1}";
+  checkNotEmpty schema "${_schema}" 1;
+  local _userName;
+  _userName="${2}";
+  checkNotEmpty userName "${_userName}" 2;
+  local _database;
+  _database="${3}";
+  checkNotEmpty database "${_database}" 3;
+  local _adminUserName;
+  _adminUserName="${4}";
+  checkNotEmpty adminUserName "${_adminUserName}" 4;
+  local _adminUserPassword;
+  _adminUserPassword="${5}";
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5;
+  local _host;
+  _host="${6:-localhost}";
+  local _port;
+  _port="${7:-5432}";
+
+  local -i _rescode;
+
+  local _runme;
+  createTempFile;
+  _runme="${RESULT}";
+
+  cat <<EOF > "${_runme}"
+GRANT ALL ON SCHEMA ${_schema} TO ${_userName};
+GRANT ALL ON ALL TABLES IN SCHEMA ${_schema} TO ${_userName};
+GRANT ALL ON ALL SEQUENCES IN SCHEMA ${_schema} TO ${_userName};
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA ${_schema} TO ${_userName};
+EOF
+
+  local _result;
+  _result="$(PGPASSWORD="${_adminUserPassword}" $(which psql) -h "${_host}" -p ${_port} -U "${_adminUserName}" -f "${_runme}" ${_database} 2>&1)";
+  _rescode=$?;
+
+  if contains "${_result}" "ERROR:"; then
+    _rescode=${FALSE};
+    export ERROR="${_result}";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
