@@ -3054,6 +3054,210 @@ function isLogToFilesEnabled() {
   return ${FALSE};
 }
 
+# fun: isWarnEnabled
+# api: public
+# txt: Checks whether the "warn" level is enabled.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if isWarnEnabled; then
+# use:   ...;
+# use: fi
+function isWarnEnabled() {
+  local -i _rescode;
+
+  if isQuietMode; then
+    _rescode=${FALSE};
+  else
+    LOGGING.getLogWarn;
+    _rescode=${RESULT};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isLowerThanWarnEnabled
+# api: public
+# txt: Checks whether the enabled log level is lower than "warn".
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if isLowerThanWarnEnabled; then
+# use:   ...;
+# use: fi
+function isLowerThanWarnEnabled() {
+  if isInfoEnabled || isDebugEnabled || isTraceEnabled; then
+    return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+# fun: logWarn message
+# api: public
+# txt: Logs a message as "warn".
+# opt: message: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logWarn "Operation in progress";
+function logWarn() {
+  if isWarnEnabled; then
+    checkNotEmpty message "${1}" 1;
+    LOGGING.logStuff WARN "$@";
+  fi
+}
+
+# fun: logWarnFromStdin
+# api: public
+# txt: Logs given message under the "debug" level.
+# opt: [stdin]: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logWarnFromStdin <<<"Operation in progress";
+function logWarnFromStdin() {
+  if isWarnEnabled; then
+    local _line;
+    while read _line; do
+      if isNotEmpty "${_line}"; then
+        LOGGING.logStuff WARN "${_line}";
+      fi
+    done
+  fi
+}
+
+# fun: logWarnFile file
+# api: public
+# txt: Logs the contents of a file as "warn".
+# opt: file: The file containing the text to log.
+# txt: Returns 0/TRUE always.
+# use: logWarnFile /tmp/my-log.txt;
+function logWarnFile() {
+  if isWarnEnabled; then
+    checkNotEmpty file "${1}" 1;
+    local line;
+    cat "${1}" | while IFS='' read -r line; do
+      LOGGING.logStuff WARN "${line}";
+    done
+  fi
+}
+
+# fun: logWarnResult SUCCESS|FAILURE message
+# api: public
+# txt: Logs the outcome of an operation as "warn".
+# opt: SUCCESS|FAILURE: The outcome.
+# opt: message: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logWarnResult SUCCESS "done";
+function logWarnResult() {
+  local _outcome="${1}";
+  shift;
+  local _message="${@}";
+
+  if isWarnEnabled; then
+    checkNotEmpty "SUCCESS|FAILURE" "${_outcome}" 1;
+    LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1;
+    checkNotEmpty message "${_message}" 2;
+
+    LOGGING.logStuffResult "${_outcome}" "${_message}";
+  fi
+}
+
+# fun: isErrorEnabled
+# api: public
+# txt: Checks whether the "error" level is enabled.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if isErrorEnabled; then
+# use:   ...;
+# use: fi
+function isErrorEnabled() {
+  local -i _rescode;
+
+  if isQuietMode; then
+    _rescode=${FALSE};
+  else
+    LOGGING.getLogError;
+    _rescode=${RESULT};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isLowerThanErrorEnabled
+# api: public
+# txt: Checks whether the enabled log level is lower than "error".
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if isLowerThanErrorEnabled; then
+# use:   ...;
+# use: fi
+function isLowerThanErrorEnabled() {
+  if isWarnEnabled || isInfoEnabled || isDebugEnabled || isTraceEnabled; then
+    return ${TRUE};
+  else
+    return ${FALSE};
+  fi
+}
+
+# fun: logError message
+# api: public
+# txt: Logs a message as "error".
+# opt: message: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logError "Operation in progress";
+function logError() {
+  if isErrorEnabled; then
+    checkNotEmpty message "${1}" 1;
+    LOGGING.logStuff ERROR "$@";
+  fi
+}
+
+# fun: logErrorFromStdin
+# api: public
+# txt: Logs given message under the "debug" level.
+# opt: [stdin]: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logErrorFromStdin <<<"Operation in progress";
+function logErrorFromStdin() {
+  if isErrorEnabled; then
+    local _line;
+    while read _line; do
+      if isNotEmpty "${_line}"; then
+        LOGGING.logStuff ERROR "${_line}";
+      fi
+    done
+  fi
+}
+
+# fun: logErrorFile file
+# api: public
+# txt: Logs the contents of a file as "error".
+# opt: file: The file containing the text to log.
+# txt: Returns 0/TRUE always.
+# use: logErrorFile /tmp/my-log.txt;
+function logErrorFile() {
+  if isErrorEnabled; then
+    checkNotEmpty file "${1}" 1;
+    local line;
+    cat "${1}" | while IFS='' read -r line; do
+      LOGGING.logStuff ERROR "${line}";
+    done
+  fi
+}
+
+# fun: logErrorResult SUCCESS|FAILURE message
+# api: public
+# txt: Logs the outcome of an operation as "error".
+# opt: SUCCESS|FAILURE: The outcome.
+# opt: message: The message to log.
+# txt: Returns 0/TRUE always.
+# use: logErrorResult SUCCESS "done";
+function logErrorResult() {
+  local _outcome="${1}";
+  shift;
+  local _message="${@}";
+
+  if isErrorEnabled; then
+    checkNotEmpty "SUCCESS|FAILURE" "${_outcome}" 1;
+    LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1;
+    checkNotEmpty message "${_message}" 2;
+
+    LOGGING.logStuffResult "${_outcome}" "${_message}";
+  fi
+}
+
 # fun: applyThemeIfPresent
 # api: public
 # txt: Applies a theme if present.
