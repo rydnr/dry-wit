@@ -141,21 +141,22 @@ function cacheCloudformationExportsForRegion() {
   createTempFile;
   local _tmpFile="${RESULT}";
 
-  local _profile="${_awsProfile:-}";
-  if isNotEmpty "${_profile}"; then
-    _profile="--profile ${_profile}";
+  local _profileParam="";
+  if isNotEmpty "${_awsProfile}"; then
+    _profileParam="--profile ${_awsProfile}";
   fi
 
-  local _region="${_awsRegion:-}";
-  if isNotEmpty "${_region}"; then
-    _region="--region ${_region}";
+  local _regionParam="";
+  if isNotEmpty "${_awsRegion}"; then
+    _regionParam="--region ${_awsRegion}";
   fi
 
+    logTrace -n "Refreshing exports cache for region ${_awsRegion}";
 
-  cat <<EOF > "${_tmpFile}"
+    cat <<EOF > "${_tmpFile}"
 #!/usr/bin/env bash
 
-$(which aws) ${_profile} ${_region} cloudformation list-exports --max-items 200;
+$(which aws) ${_profileParam} ${_regionParam} cloudformation list-exports --max-items 500;
 EOF
   chmod +x ${_tmpFile};
 
@@ -171,7 +172,7 @@ EOF
     cat <<EOF > "${_tmpFile}"
 #!/usr/bin/env bash
 
-$(which aws) ${_profile} ${_region} cloudformation list-exports --max-items 200 --starting-token "${_token}";
+$(which aws) ${_profileParam} ${_regionParam} cloudformation list-exports --max-items 500 --starting-token "${_token}";
 EOF
     chmod +x ${_tmpFile};
 
@@ -193,7 +194,10 @@ EOF
   jq 'reduce inputs as $i (.; .Exports += $i.Exports)' ${_files[@]} > "${_file}";
   local -i _rescode=$?;
 
-  if isFalse ${_rescode}; then
+  if isTrue ${_rescode}; then
+    logTraceResult SUCCESS "${_file}";
+  else
+    logTraceResult FAILURE "failed";
     export ERROR="${_result}";
   fi
 
@@ -225,10 +229,6 @@ function getCloudformationExport() {
 
   AWS_CLOUDFORMATION.getExportsCacheFile "${_awsProfile}" "${_awsRegion}";
   local _cacheFile="${RESULT}";
-
-  if isNotEmpty "${_awsRegion}"; then
-    _cacheFile="${_cacheFile}.${_awsRegion}";
-  fi
 
   AWS_CLOUDFORMATION.getExportsCacheExpirationInMinutes;
   local -i _expiration=${RESULT};
@@ -294,19 +294,18 @@ function listCloudformationStacks() {
   local _awsProfile="${1:-}";
   local _awsRegion="${2:-}";
 
-  local _profile="${_awsProfile:-}";
-  if isNotEmpty "${_profile}"; then
-    _profile="--profile ${_profile}";
+  local _profileParam="${_awsProfile:-}";
+  if isNotEmpty "${_awsProfile}"; then
+    _profileParam="--profile ${_awsProfile}";
   fi
 
-  local _region="${_awsRegion:-}";
-  if isNotEmpty "${_region}"; then
-    _region="--region ${_region}";
+  local _regionParam="${_awsRegion:-}";
+  if isNotEmpty "${_awsRegion}"; then
+    _regionParam="--region ${_awsRegion}";
   fi
-
 
   local _result;
-  _result="$($(which aws) ${_profile} ${_region} cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }')";
+  _result="$($(which aws) ${_profileParam} ${_regionParam} cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }')";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -336,18 +335,18 @@ function checkCloudformationStackStatus() {
   local _awsProfile="${2:-}";
   local _awsRegion="${3:-}";
 
-  local _profile="${_awsProfile:-}";
-  if isNotEmpty "${_profile}"; then
-    _profile="--profile ${_profile}";
+  local _profileParam="${_awsProfile:-}";
+  if isNotEmpty "${_awsProfile}"; then
+    _profileParam="--profile ${_awsProfile}";
   fi
 
-  local _region="${_awsRegion:-}";
-  if isNotEmpty "${_region}"; then
-    _region="--region ${_region}";
+  local _regionParam="${_awsRegion:-}";
+  if isNotEmpty "${_awsRegion}"; then
+    _regionParam="--region ${_awsRegion}";
   fi
 
   local _aux;
-  _aux="$($(which aws) ${_profile} ${_region} cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }' | grep -C 1 -- "\"${_stack}\"")";
+  _aux="$($(which aws) ${_profileParam} ${_regionParam} cloudformation list-stacks | jq '.StackSummaries[] | { StackName: .StackName, StackStatus: .StackStatus }' | grep -C 1 -- "\"${_stack}\"")";
   local -i _rescode=$?;
 
   local _result="$(echo "${_aux}" | grep StackStatus | head -n 1 | awk -F'"' '{print $4}' 2>&1)";
@@ -495,18 +494,18 @@ function requestDeleteStack() {
   local _awsProfile="${2:-}";
   local _awsRegion="${3:-}";
 
-  local _profile="${_awsProfile:-}";
-  if isNotEmpty "${_profile}"; then
-    _profile="--profile ${_profile}";
+  local _profileParam="${_awsProfile:-}";
+  if isNotEmpty "${_awsProfile}"; then
+    _profileParam="--profile ${_awsProfile}";
   fi
 
-  local _region="${_awsRegion:-}";
-  if isNotEmpty "${_region}"; then
-    _region="--region ${_region}";
+  local _regionParam="${_awsRegion:-}";
+  if isNotEmpty "${_awsRegion}"; then
+    _regionParam="--region ${_awsRegion}";
   fi
 
   local _output;
-  _output="$($(which aws) ${_profile} ${_region} cloudformation delete-stack --stack-name "${_stackName}")";
+  _output="$($(which aws) ${_profileParam} ${_regionParam} cloudformation delete-stack --stack-name "${_stackName}")";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then

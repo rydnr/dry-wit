@@ -2,11 +2,11 @@
 # api: public
 # txt: AWS ECR functions
 
-# fun: getEcrImages repository profile
+# fun: getEcrImages repository profile?
 # api: public
 # txt: Retrieves the list of ECR images.
 # opt: repository: The repository.
-# opt: profile: The AWS profile.
+# opt: profile: The AWS profile. Optional.
 # txt: Returns 0/TRUE if the name of the images was accessible; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains a list of space-separated image identifiers.
 # txt: If the function returns 1/FALSE, the variable ERROR contains more information.
@@ -16,11 +16,15 @@
 function getEcrImages() {
   local _repository="${1}";
   checkNotEmpty repository "${_repository}" 1;
-  local _profile="${2}";
-  checkNotEmpty profile "${_profile}" 2;
+  local _profile="${2:-}";
+
+  local _profileParam="";
+  if isNotEmpty "${_profile}"; then
+    _profileParam="--profile ${_profile}";
+  fi
 
   local _output;
-  _output="$($(which aws) --profile ${_profile} ecr list-images --repository "${_repository}" | jq '.imageIds[] | .imageDigest' | tr -d '"' 2>&1)";
+  _output="$($(which aws) ${_profileParam} ecr list-images --repository "${_repository}" | jq '.imageIds[] | .imageDigest' | tr -d '"' 2>&1)";
   local -i _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -32,11 +36,11 @@ function getEcrImages() {
   return ${_rescode};
 }
 
-# fun: emptyEcrRepository repository profile
+# fun: emptyEcrRepository repository profile?
 # api: public
 # txt: Empties a ECR repository.
 # opt: repository: The repository.
-# opt: profile: The AWS profile.
+# opt: profile: The AWS profile. Optional.
 # txt: Returns 0/TRUE if the repository could be emptied; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains more information.
 # use: if emptyEcrRepository "my/repository" dev; then
@@ -45,8 +49,7 @@ function getEcrImages() {
 function emptyEcrRepository() {
   local _repository="${1}";
   checkNotEmpty repository "${_repository}" 1;
-  local _profile="${2}";
-  checkNotEmpty profile "${_profile}" 2;
+  local _profile="${2:-}";
 
   local -i _rescode=${FALSE};
 
@@ -54,7 +57,6 @@ function emptyEcrRepository() {
     local _images="${RESULT}";
     if isEmpty "${_images}"; then
       _rescode=${TRUE};
-      echo "no images found in ${_repository}";
     else
       deleteEcrImages "${_repository}" "${_profile}" ${_images};
       _rescode=$?;
@@ -64,11 +66,11 @@ function emptyEcrRepository() {
   return ${_rescode};
 }
 
-# fun: deleteEcrRepository repository profile
+# fun: deleteEcrRepository repository profile?
 # api: public
 # txt: Deletes a ECR repository.
 # opt: repository: The repository.
-# opt: profile: The AWS profile.
+# opt: profile: The AWS profile. Optional.
 # txt: Returns 0/TRUE if the repository could be deleted; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains more information.
 # use: if deleteEcrRepository "my/repository" dev; then
@@ -77,17 +79,21 @@ function emptyEcrRepository() {
 function deleteEcrRepository() {
   local _repository="${1}";
   checkNotEmpty repository "${_repository}" 1;
-  local _profile="${2}";
-  checkNotEmpty profile "${_profile}" 2;
+  local _profile="${2:-}";
+
+  local _profileParam="";
+  if isNotEmpty "${_profile}"; then
+    _profileParam="--profile ${_profile}";
+  fi
 
   local -i _rescode=${FALSE};
 
   createTempFile;
   local _tmpFile="${RESULT}";
   cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
-$(which aws) --profile ${_profile} ecr delete-repository --repository-name "${_repository}";
+$(which aws) ${_profileParam} ecr delete-repository --repository-name "${_repository}";
 EOF
   chmod +x "${_tmpFile}";
 
@@ -124,6 +130,11 @@ function deleteEcrImages() {
   shift;
   checkNotEmpty image "${@}" 3;
 
+  local _profileParam="";
+  if isNotEmpty "${_profile}"; then
+    _profileParam="--profile ${_profile}";
+  fi
+
   local _images;
   local _oldIFS="${_oldIFS}";
   local _image;
@@ -131,7 +142,7 @@ function deleteEcrImages() {
   for _image in ${@}; do
     IFS="${_oldIFS}";
     if isNotEmpty "${_images}"; then
-      _images="${_images},";
+      _images="${_images} ";
     fi
     _images="${_images}imageDigest=${_image}";
   done
@@ -140,9 +151,9 @@ function deleteEcrImages() {
   createTempFile;
   local _tmpFile="${RESULT}";
   cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
-$(which aws) --profile ${_profile} ecr batch-delete-image --repository-name "${_repository}" --image-ids ${_images};
+$(which aws) ${_profileParam} ecr batch-delete-image --repository-name "${_repository}" --image-ids ${_images};
 EOF
   chmod +x "${_tmpFile}";
 
@@ -159,11 +170,11 @@ ${_output}";
   return ${_rescode};
 }
 
-# fun: ecrRepositoryAlreadyExists bucket profile
+# fun: ecrRepositoryAlreadyExists bucket profile?
 # api: public
 # txt: Checks if a repository actually exists.
 # opt: bucket: The bucket.
-# opt: profile: The AWS profile.
+# opt: profile: The AWS profile. Optional.
 # txt: Returns 0/TRUE if the ECR repository exists; 1/FALSE otherwise.
 # use: if ecrRepositoryAlreadyExists myRepository dev; then
 # use:   echo "ECR Repository myRepository exists";
@@ -171,16 +182,20 @@ ${_output}";
 function ecrRepositoryAlreadyExists() {
   local _repository="${1}";
   checkNotEmpty repository "${_repository}" 1;
-  local _profile="${2}";
-  checkNotEmpty profile "${_profile}" 2;
+  local _profile="${2:-}";
+
+  local _profileParam="";
+  if isNotEmpty "${_profile}"; then
+    _profileParam="--profile ${_profile}";
+  fi
 
   createTempFile;
   local _tmpFile="${RESULT}";
 
   cat <<EOF > "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
-aws --profile ${_profile} ecr describe-repositories | jq '.repositories' | jq '.[] | select (."repositoryName" == "${_repository}") | .repositoryName' | tr -d '"'
+aws ${_profileParam} ecr describe-repositories | jq '.repositories' | jq '.[] | select (."repositoryName" == "${_repository}") | .repositoryName' | tr -d '"'
 EOF
   chmod +x ${_tmpFile};
 
@@ -194,12 +209,12 @@ EOF
   return ${_rescode};
 }
 
-# fun: pushImageToEcrRepository image repository profile
+# fun: pushImageToEcrRepository image repository profile?
 # api: public
 # txt: Pushes a Docker image to a given ECR repository.
 # opt: image: The image.
 # opt: repository: The repository.
-# opt: profile: The AWS profile.
+# opt: profile: The AWS profile. Optional.
 # txt: Returns 0/TRUE if the image gets pushed successfully; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the logging from the push operation.
 # txt: If the function returns 1/FALSE, the variable ERROR contains more information.
@@ -211,8 +226,7 @@ function pushImageToEcrRepository() {
   checkNotEmpty image "${_image}" 1;
   local _repository="${2}";
   checkNotEmpty repository "${_repository}" 2;
-  local _profile="${3}";
-  checkNotEmpty profile "${_profile}" 3;
+  local _profile="${3:-}";
 
   local -i _rescode=${FALSE};
   local _output;
@@ -239,28 +253,31 @@ function pushImageToEcrRepository() {
   return ${_rescode};
 }
 
-# fun: ecrLogin profile
+# fun: ecrLogin profile?
 # api: public
 # txt: Performs a login into ECR.
 # opt: image: The image.
-# opt: repository: The repository.
-# opt: profile: The AWS profile.
+# opt: profile: The AWS profile. Optional.
 # txt: Returns 0/TRUE if the login succeeds; 1/FALSE otherwise.
 # txt: If the function returns 1/FALSE, the variable ERROR contains more information.
 # use: if ! ecrLogin dev; then
 # use:   echo "Could not login: ${ERROR}";
 # use: fi
 function ecrLogin() {
-  local _profile="${1}";
-  checkNotEmpty profile "${_profile}" 1;
+  local _profile="${1:-}";
+
+  local _profileParam="";
+  if isNotEmpty "${_profile}"; then
+    _profileParam="--profile ${_profile}";
+  fi
 
   local _awsLogIn;
-  _awsLogIn="$(aws --profile ${_profile} ecr get-login --no-include-email)";
+  _awsLogIn="$(aws ${_profileParam} ecr get-login --no-include-email)";
   local _output;
   createTempFile;
   local _tmpFile="${RESULT}";
   cat <<EOF >> "${_tmpFile}"
-#!/bin/bash
+#!/usr/bin/env bash
 
 ${_awsLogIn} 2> /dev/null;
 EOF
@@ -274,5 +291,4 @@ EOF
 
   return ${_rescode};
 }
-
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
