@@ -1,0 +1,30 @@
+# mod: aws-cloudtrail
+# api: public
+# txt: AWS Organizations functions
+
+DW.import aws-organizations;
+
+# fun: makeAwsOrganizationsTrustCloudTrails profile? region?
+# api: public
+# txt: Ensures CloudTrail is a trusted service for AWS organizations.
+# opt: profile: The AWS profile. Optional.
+# opt: region: The AWS region. Optional.
+# txt: Returns 0/TRUE if CloudTrail is trusted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if makeAwsOrganizationsTrustCloudTrails dev eu-west-1; then
+# use:   echo "CloudTrails trusted";
+# use: fi
+function makeAwsOrganizationsTrustCloudTrail() {
+  local _profile="${1:-}";
+  local _region="${2:-}";
+
+  local -i _rescode=${FALSE};
+
+#  if   awsOrganizationsEnableAllFeatures "${_profile}" "${_region}" \
+  if awsOrganizationsEnableServiceAccess cloudtrail.amazonaws.com "${_profile}" "${_region}"; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
