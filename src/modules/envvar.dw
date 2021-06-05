@@ -763,37 +763,6 @@ function ENVVAR.addOverriddenEnvVar() {
   fi
 }
 
-# fun: ENVVAR.isVarDeclared varName
-# api: private
-# txt: Checks if given variable is declared.
-# opt: varName: The variable to check.
-# txt: Returns 0/TRUE if the variable is indeed declared; 1/FALSE otherwise.
-# use: if ENVVAR.isVarDeclared "myVar"; then
-# use:   echo "myVar is declared";
-# use: fi
-function ENVVAR.isVarDeclared() {
-  local _varName="${1}";
-  checkNotEmpty varName "${_varName}" 1;
-
-  local -i _rescode=${FALSE};
-
-  ENVVAR.getEnvironmentVariablesVariableName;
-  local -n _envVariables=${RESULT};
-
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  for _aux in ${!_envVarVariables[@]}; do
-    IFS="${_oldIFS}";
-    if areEqual "${_aux}" "${_varName}"; then
-      _rescode=${TRUE};
-      break;
-    fi
-  done
-  IFS="${_oldIFS}";
-
-  return ${_rescode};
-}
-
 # fun: ENVVAR.appendEnvironmentVariable varName
 # api: private
 # txt: Appends a new variable to the list of defined environment variables.
@@ -804,7 +773,7 @@ function ENVVAR.appendEnvironmentVariable() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
 
-  if ! ENVVAR.isVarDeclared "${_varName}"; then
+  if ! isEnvVarDefined "${_varName}"; then
     ENVVAR.getEnvironmentVariablesVariableName;
     local -n _envVariables="${RESULT}";
     _envVariables[${#_envVariables[@]}]="${_varName}";
