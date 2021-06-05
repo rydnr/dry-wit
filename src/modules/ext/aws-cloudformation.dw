@@ -115,10 +115,7 @@ function cacheCloudformationExports() {
     _rescode=$?;
   fi
 
-  if isFalse ${_rescode}; then
-    export ERROR="${_result}";
-  fi
-
+  return ${_rescode};
 }
 
 # fun: cacheCloudformationExportsForRegion file awsProfile? awsRegion?
@@ -151,9 +148,9 @@ function cacheCloudformationExportsForRegion() {
     _regionParam="--region ${_awsRegion}";
   fi
 
-    logTrace -n "Refreshing exports cache for region ${_awsRegion}";
+  logTrace -n "Refreshing exports cache for region ${_awsRegion} in profile ${_awsProfile}";
 
-    cat <<EOF > "${_tmpFile}"
+  cat <<EOF > "${_tmpFile}"
 #!/usr/bin/env bash
 
 $(which aws) ${_profileParam} ${_regionParam} cloudformation list-exports --max-items 500;
@@ -165,37 +162,43 @@ EOF
   _result="$(${_tmpFile} > "${_file}.${_page}" 2>&1)";
   local -i _rescode=$?;
 
-  local _paginated="$(cat "${_file}.${_page}" | jq '. | has("NextToken")')";
-  while isTrue "${_paginated}"; do
-    local _token="$(cat "${_file}.${_page}" | jq '.NextToken')";
-    ((_page++));
-    cat <<EOF > "${_tmpFile}"
+  if isTrue ${_rescode}; then
+    local _paginated="$(cat -- "${_file}.${_page}" | jq '. | has("NextToken")')";
+    while isTrue "${_paginated}"; do
+      local _token="$(cat -- "${_file}.${_page}" | jq '.NextToken')";
+      ((_page++));
+      cat <<EOF > "${_tmpFile}"
 #!/usr/bin/env bash
 
 $(which aws) ${_profileParam} ${_regionParam} cloudformation list-exports --max-items 500 --starting-token "${_token}";
 EOF
-    chmod +x ${_tmpFile};
+      chmod +x ${_tmpFile};
 
-    ${_tmpFile} > "${_file}.${_page}" 2>&1;
-    _paginated="$(cat "${_file}.${_page}" | jq '. | has("NextToken")')";
+      ${_tmpFile} > "${_file}.${_page}" 2>&1;
+      _paginated="$(cat -- "${_file}.${_page}" | jq '. | has("NextToken")')";
+    done
 
-  done
-
-  local _files=();
-  local _oldIFS="${IFS}";
-  local _pageIndex;
-  IFS="${DWIFS}";
-  for _pageIndex in $(seq 0 1 ${_page}); do
+    local _files=();
+    local _oldIFS="${IFS}";
+    local -i _pageIndex;
+    IFS="${DWIFS}";
+    for _pageIndex in $(seq 0 1 ${_page}); do
+      IFS="${_oldIFS}";
+      _files+=( "${_file}.${_pageIndex}" );
+    done;
     IFS="${_oldIFS}";
-    _files+=( "${_file}.${_pageIndex}" );
-  done;
-  IFS="${_oldIFS}";
 
-  jq 'reduce inputs as $i (.; .Exports += $i.Exports)' ${_files[@]} > "${_file}";
-  local -i _rescode=$?;
+    if isGreaterThan ${_page} 0; then
+      jq 'reduce inputs as $i (.; .Exports += $i.Exports)' ${_files[@]} > "${_file}";
+      _rescode=${TRUE};
+    else
+      cp -- "${_file}.${_page}" "${_file}";
+      _rescode=${TRUE};
+    fi
+  fi
 
   if isTrue ${_rescode}; then
-    logTraceResult SUCCESS "${_file}";
+    logTraceResult SUCCESS "$(basename ${_file})";
   else
     logTraceResult FAILURE "failed";
     export ERROR="${_result}";
@@ -245,7 +248,7 @@ function getCloudformationExport() {
   cat <<EOF > "${_tmpFile}"
 #!/usr/bin/env bash
 
-val="\$(cat "${_cacheFile}" | jq '.Exports | .[] | select (."Name" == "${_name}") | .Value')";
+val="\$(cat -- "${_cacheFile}" | jq '.Exports | .[] | select (."Name" == "${_name}") | .Value')";
 rescode=\$?;
 
 if [[ "x\${val}" == "x" ]]; then
@@ -554,7 +557,7 @@ function awsCloudformationJsonTemplateDefinesParameter() {
   cat <<EOF > "${_tmpFile}"
 #!/usr/bin/env bash
 
-out="\$(cat "${_template}" | jq '.Parameters | has("${_parameter}")')";
+out="\$(cat -- "${_template}" | jq '.Parameters | has("${_parameter}")')";
 
 rescode=1;
 if [[ "x\${out}" == "xtrue" ]]; then

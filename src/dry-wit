@@ -96,7 +96,7 @@ function DW.getGlobalInt() {
   local _default="${3:-${FALSE}}";
 
   local -i _rescode=${FALSE};
-  local _result;
+  local _result="";
 
   if DW.getGlobalString "${_module}" "${_varName}"; then
     _rescode=${TRUE};
@@ -178,11 +178,11 @@ function DW.getGlobalString() {
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
     local _variableName=${RESULT};
     local -n _result=${RESULT};
-    if [[ "${_variableName}" != "${_result}" ]]; then
+    if [[ "${_variableName}" != "${_result:-}" ]]; then
       _rescode=${TRUE};
     fi
     if BOOTSTRAP.isTrue ${_rescode}; then
-      export RESULT="${_result}";
+      export RESULT="${_result:-}";
     fi
   fi
 
@@ -317,6 +317,7 @@ function DW.declareGlobalVariable() {
 # opt: module: The name of the module.
 # opt: varName: The (logical) name of the variable.
 # txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
+
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the existing global variable.
 # use: if DW.getGlobalVariableName "LOGGING" "MY_LIST"; then
 # use:   local -n _var="${RESULT}";
@@ -327,13 +328,7 @@ function DW.getGlobalVariableName() {
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
 
-  BOOTSTRAP.normalize "${_module}";
-  local _moduleUpcased="${RESULT}";
-
-  BOOTSTRAP.normalize "${_varName}";
-  local _varNameUpcased="${RESULT}";
-
-  local _result="_DW_$$_${_moduleUpcased}_${_varNameUpcased}";
+  local _result="_DW_$$_${_module^^}_${_varName^^}";
 
   export RESULT="${_result}";
 
@@ -944,7 +939,8 @@ function DW.import() {
     BOOTSTRAP.logTraceResult SUCCESS "done";
 
     BOOTSTRAP.normalize "${_module}";
-    local _normalizedModule="${RESULT}";
+    local _normalizedModule="${RESULT^^}";
+
     if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.resetState"; then
       BOOTSTRAP.logTrace -n "Resetting ${_modulePath} state";
       ${_normalizedModule}.resetState;

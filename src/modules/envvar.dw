@@ -245,10 +245,10 @@ function isEnvVarDefined() {
   ENVVAR.getEnvironmentVariablesVariableName;
   local -n _envVars=${RESULT};
 
-  if isEmpty "${!_envVars[@]}"; then
+  if isEmpty "${_envVars[@]}"; then
     _rescode=${FALSE};
   else
-    arrayContains "${_varName}" "${!_envVars[@]}";
+    arrayContains "${_varName}" "${_envVars[@]}";
     _rescode=$?;
   fi
 
@@ -273,7 +273,7 @@ function isEnvVarMandatory() {
 
   ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
-  if isNotEmpty "${_mandatoryEnvironmentVariables[*]}"; then
+  if arrayContains "${_varName}" "${!_mandatoryEnvironmentVariables[@]}"; then
     _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
   fi
 
@@ -304,7 +304,7 @@ function isEnvVarOptional() {
 
   ENVVAR.getMandatoryEnvironmentVariablesVariableName;
   local -n _mandatoryEnvironmentVariables=${RESULT};
-  if isNotEmpty "${_mandatoryEnvironmentVariables[*]}"; then
+  if arrayContains "${_varName}" "${!_mandatoryEnvironmentVariables[@]}"; then
     _varMandatory="${_mandatoryEnvironmentVariables[${_varName}]}";
   fi
 
@@ -336,7 +336,7 @@ function ENVVAR.isEnvVarReadonly() {
 
   local _varReadonly;
 
-  if isNotEmpty "${_readonlyEnvironmentVariables[*]}"; then
+  if arrayContains "${_varName}" "${!_readonlyEnvironmentVariables[@]}"; then
     _varReadonly="${_readonlyEnvironmentVariables[${_varName}]}";
   fi
 
@@ -601,7 +601,7 @@ function ENVVAR.addEnvVarCommand() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
   local _varCommand="${2}";
-  checkNotEmpty command "${_varCommand}" 1;
+  checkNotEmpty command "${_varCommand}" 2;
 
   ENVVAR.getEnvironmentVariablesCommandsVariableName;
   local -n _environmentVariablesCommands="${RESULT}";
@@ -811,8 +811,8 @@ function evalEnvVar() {
         local _defaultCommand="${RESULT}";
 
         if isNotEmpty "${_defaultCommand}"; then
-          logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND"
-          local _aux="$(set noglob; echo "${_defaultCommand}" | sh)";
+          logTrace -n "Resolving ${_varName}_DEFAULT via ${_varName}_DEFAULT_COMMAND (${_defaultCommand})"
+          local _aux="$(set noglob; echo "${_defaultCommand}" | sh 2> /dev/null)";
           if isNotEmpty "${_aux}"; then
             _defaultValue="${_aux}";
             logTraceResult SUCCESS "${_aux}";
@@ -826,7 +826,7 @@ function evalEnvVar() {
 
     if isNotEmpty "${_varValue}"; then
       while [[ "${_varValue}" =~ .*'$'.* ]]; do
-        _varValue="$(set noglob; echo "echo ${_varValue}" | sh)";
+        _varValue="$(set noglob; echo "echo ${_varValue}" | sh 2> /dev/null)";
       done
     fi
 
@@ -861,7 +861,7 @@ function ENVVAR.isVarOverridden() {
 
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
-  for _aux in ${!_overriddenEnvVarVariables[@]}; do
+  for _aux in "${!_overriddenEnvVarVariables[@]}"; do
     IFS="${_oldIFS}";
     if areEqual "${_aux}" "${_varName}"; then
       _rescode=${TRUE};
@@ -893,13 +893,13 @@ function ENVVAR.evalOverriddenVar() {
   if ENVVAR.isVarOverridden "${_varName}"; then
     ENVVAR.getOverriddenEnvironmentVariablesVariableName;
     local -n _overriddenEnvVariables=${RESULT};
-    _result="${_overriddenEnvVariables[${_varName}]}";
+    if arrayContains "${_varName}" "${!_overriddenEnvVariables[@]}"; then
+      _result="${_overriddenEnvVariables[${_varName}]}";
+      _rescode=${TRUE};
+    fi
   fi
 
-  if isEmpty "${_result}"; then
-    _rescode=${FALSE};
-  else
-    _rescode=${TRUE};
+  if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
 
@@ -926,12 +926,12 @@ function ENVVAR.evalVarCommand() {
   ENVVAR.getEnvironmentVariablesCommandsVariableName;
   local -n _environmentVariablesCommands=${RESULT};
 
-  _result="${_environmentVariablesCommands[${_varName}]}";
-
-  if isEmpty "${_result}"; then
-    _rescode=${FALSE};
-  else
+  if arrayContains "${_varName}" "${!_environmentVariablesCommands[@]}"; then
+    _result="${_environmentVariablesCommands[${_varName}]}";
     _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
 
@@ -956,14 +956,12 @@ function ENVVAR.evalVarDefault() {
   local _result;
   ENVVAR.getEnvironmentVariablesDefaultsVariableName;
   local -n _environmentVariablesDefaults=${RESULT};
-
-  _result="${_environmentVariablesDefaults[${_varName}]}";
-
-  if isEmpty "${_result}"; then
-    _rescode=${FALSE};
-    export RESULT="";
-  else
+  if arrayContains "${_varName}" "${!_environmentVariablesDefaults[@]}"; then
+    _result="${_environmentVariablesDefaults[${_varName}]}";
     _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
 
@@ -989,13 +987,12 @@ function ENVVAR.evalVarDescription() {
 
   ENVVAR.getEnvironmentVariablesDescriptionsVariableName;
   local -n _environmentVariablesDescriptions=${RESULT};
-
-  _result="${_environmentVariablesDescriptions[${_varName}]:-}";
-
-  if isEmpty "${_result}"; then
-    _rescode=${FALSE};
-  else
+  if arrayContains "${_varName}" "${!_environmentVariablesDescriptions[@]}"; then
+    _result="${_environmentVariablesDescriptions[${_varName}]:-}";
     _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
     export RESULT="${_result}";
   fi
 

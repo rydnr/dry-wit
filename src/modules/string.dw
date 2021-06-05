@@ -147,13 +147,13 @@ function normalizeUppercase() {
   local _text="${1}";
   checkNotEmpty string "${_text}" 1;
 
-  local _result="$(echo "${_text}" 2> /dev/null | tr -c '[[:alnum:]]' '_' 2> /dev/null | sed 's/_*$//g' 2> /dev/null | awk '{print toupper($0);}' 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
-    _rescode=${FALSE};
-  else
+
+  if normalize "${_text}"; then
+    export RESULT="${RESULT^^}";
     _rescode=${TRUE};
-    export RESULT="${_result}";
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
