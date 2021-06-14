@@ -32,12 +32,12 @@ function connectDockerContainerToNetwork() {
       export RESULT="${_output}";
       _rescode=${TRUE};
     else
-      _output="${ERROR}";
+      _output="${ERROR:-}";
       logDebugResult FAILURE "failed";
       _rescode=${FALSE};
     fi
   else
-    _output="${ERROR}";
+    _output="${ERROR:-}";
     logDebugResult FAILURE "false";
   fi
 

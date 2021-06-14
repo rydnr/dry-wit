@@ -17,7 +17,7 @@ function rabbitmqMigrate() {
   if RABBITMQBOOTSTRAP.acquireBootstrapLock; then
     logDebugResult SUCCESS "ok";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -30,7 +30,7 @@ function rabbitmqMigrate() {
   if isRabbitmqRunning; then
     logDebugResult SUCCESS "running";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "stopped";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -44,7 +44,7 @@ function rabbitmqMigrate() {
   if RABBITMQBOOTSTRAP.retrieveRabbitmqadminIfNeeded http://127.0.0.1:15672/cli/rabbitmqadmin /usr/local/bin/rabbitmqadmin; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -58,7 +58,7 @@ function rabbitmqMigrate() {
   if RABBITMQBOOTSTRAP.fixRabbitmqadminIfNeeded /usr/local/bin/rabbitmqadmin; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -72,7 +72,7 @@ function rabbitmqMigrate() {
   if ensureRabbitmqManagementIsEnabled "${RABBITMQ_NODENAME}"; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -90,7 +90,7 @@ function rabbitmqMigrate() {
   if setAdminUserTags; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -104,7 +104,7 @@ function rabbitmqMigrate() {
   if setAdminUserPermissions; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -122,7 +122,7 @@ function rabbitmqMigrate() {
   if setMonitoringUserTags "${ADMIN_USER_NAME}" "${ADMIN_USER_PASSWORD}"; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -136,7 +136,7 @@ function rabbitmqMigrate() {
   if setMonitoringUserPermissions; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logInfo "${_error}";
@@ -154,7 +154,7 @@ function rabbitmqMigrate() {
     if declare_virtual_hosts; then
       logDebugResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logInfo "${_error}";
@@ -171,7 +171,7 @@ function rabbitmqMigrate() {
     if declare_alternate_exchanges; then
       logDebugResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logInfo "${_error}";
@@ -188,7 +188,7 @@ function rabbitmqMigrate() {
     if rabbitmq_patch; then
       logDebugResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logInfo "${_error}";
@@ -241,7 +241,7 @@ function RABBITMQBOOTSTRAP.addAdminUserIfItDoesNotExist() {
       logDebugResult SUCCESS "done";
     else
       logDebugResult FAILURE "failed";
-      logInfo "${ERROR}";
+      logInfo "${ERROR:-}";
       RABBITMQBOOTSTRAP.annotateBootstrapFailed;
       RABBITMQBOOTSTRAP.releaseBootstrapLock;
       exitWithErrorCode CANNOT_ADD_ADMIN_USER;

@@ -77,7 +77,7 @@ function mongodbMigrate() {
   if MONGODBBOOTSTRAP.acquireBootstrapLock "${_lockFile}"; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logDebug "${_error}";
@@ -209,7 +209,7 @@ function MONGODBBOOTSTRAP.enableFreeMonitoringIfNotEnabledAlready() {
     if isTrue ${_rescode}; then
       logInfoResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -257,7 +257,7 @@ function MONGODBBOOTSTRAP.disableFreeMonitoringIfNotDisabledAlready() {
     if isTrue ${_rescode}; then
       logInfoResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -292,7 +292,7 @@ function MONGODBBOOTSTRAP.fixDatabaseFolderIfNecessary() {
     if changeFolderPermissionsRecursively "${_dbFolder}" 755; then
       logInfoResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -301,7 +301,7 @@ function MONGODBBOOTSTRAP.fixDatabaseFolderIfNecessary() {
       exitWithErrorCode CANNOT_FIX_FOLDER_PERMISSIONS;
     fi
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logDebug "${_error}";
@@ -347,7 +347,7 @@ function MONGODBBOOTSTRAP.runMongodWithLocalhostExceptionIfNecessary() {
 
     if ! waitUntilMongodIsRunning ${_startTimeout} ${_startCheckInterval}; then
       logInfo -n "Launching MongoDB with authentication disabled (localhost exception)";
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -379,7 +379,7 @@ function MONGODBBOOTSTRAP.restoreFromDump() {
   if restoreMongodbBackup "${_dumpFile}"; then
     logDebugResult SUCCESS "done";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logDebug "${_error}";
@@ -419,7 +419,7 @@ function MONGODBBOOTSTRAP.createAdminUserIfItDoesNotExist() {
     if addMongodbAdminUser "${_user}" "${_password}" "${_authenticationDatabase}"; then
       logDebugResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -432,7 +432,7 @@ function MONGODBBOOTSTRAP.createAdminUserIfItDoesNotExist() {
     if mongodbAdminUserAlreadyExists "${_user}" "${_authenticationDatabase}"; then
       logDebugResult SUCCESS "success";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -459,7 +459,7 @@ function MONGODBBOOTSTRAP.killMongodProcess() {
       logDebugResult SUCCESS "done";
     else
       logDebug -n "Killing mongod process";
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -511,7 +511,7 @@ function MONGODBBOOTSTRAP.startMongodProcess() {
 
     if ! waitUntilMongodIsRunning ${_startTimeout} ${_startCheckInterval}; then
       logDebug -n "Starting mongod process";
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -523,7 +523,7 @@ function MONGODBBOOTSTRAP.startMongodProcess() {
     logDebugResult SUCCESS "done";
   fi
   if ! isMongodRunning; then
-    logDebug "${ERROR}";
+    logDebug "${ERROR:-}";
     MONGODBBOOTSTRAP.releaseBootstrapLock "${_lockFile}";
     exitWithErrorCode MONGOD_IS_NOT_RUNNING;
   fi
@@ -566,7 +566,7 @@ function MONGODBBOOTSTRAP.addBackupRoleIfItDoesNotExist() {
     if addMongodbBackupRole "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       logDebugResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -579,7 +579,7 @@ function MONGODBBOOTSTRAP.addBackupRoleIfItDoesNotExist() {
     if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}"; then
       logInfoResult SUCCESS "exists";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "missing";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -635,7 +635,7 @@ function MONGODBBOOTSTRAP.addUserIfItDoesNotExist() {
     if addMongodbUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}"; then
       logDebugResult SUCCESS "done";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -649,7 +649,7 @@ function MONGODBBOOTSTRAP.addUserIfItDoesNotExist() {
   if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}"; then
     logDebugResult SUCCESS "success";
   else
-    local _error="${ERROR}";
+    local _error="${ERROR:-}";
     logDebugResult FAILURE "failed";
     if isNotEmpty "${_error}"; then
       logDebug "${_error}";

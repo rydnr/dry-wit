@@ -56,25 +56,39 @@ function deleteS3Bucket() {
   local _errors;
 
   if ! deleteS3BucketCors "${_bucket}" "${_profile}"; then
-    _errors="${_errors}${ERROR}\n";
+    if isNotEmpty "${ERROR:-}"; then
+      _errors="${_errors}${ERROR}\n";
+    fi
   fi
   if ! deleteS3BucketEncryption "${_bucket}" "${_profile}"; then
-    _errors="${_errors}${ERROR}\n";
+    if isNotEmpty "${ERROR:-}"; then
+      _errors="${_errors}${ERROR:-}\n";
+    fi
   fi
   if ! deleteS3BucketLifecycle "${_bucket}" "${_profile}"; then
-    _errors="${_errors}${ERROR}\n";
+    if isNotEmpty "${ERROR:-}"; then
+      _errors="${_errors}${ERROR:-}\n";
+    fi
   fi
   if ! deleteS3BucketPolicy "${_bucket}" "${_profile}"; then
-    _errors="${_errors}${ERROR}\n";
+    if isNotEmpty "${ERROR:-}"; then
+      _errors="${_errors}${ERROR}\n";
+    fi
   fi
   if ! deleteS3BucketReplication "${_bucket}" "${_profile}"; then
-    _errors="${_errors}${ERROR}\n";
+    if isNotEmpty "${ERROR:-}"; then
+      _errors="${_errors}${ERROR}\n";
+    fi
   fi
   if ! deleteS3BucketTagging "${_bucket}" "${_profile}"; then
-    _errors="${_errors}${ERROR}\n";
+    if isNotEmpty "${ERROR:-}"; then
+      _errors="${_errors}${ERROR}\n";
+    fi
   fi
   if ! deleteS3BucketWebsite "${_bucket}" "${_profile}"; then
-    _errors="${_errors}${ERROR}\n";
+    if isNotEmpty "${ERROR:-}"; then
+      _errors="${_errors}${ERROR}\n";
+    fi
   fi
 
   local _output;

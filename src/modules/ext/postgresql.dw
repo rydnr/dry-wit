@@ -175,7 +175,7 @@ function createPostgresqlUserIfNecessary() {
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -187,7 +187,7 @@ function createPostgresqlUserIfNecessary() {
     if postgresqlUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
       logDebugResult SUCCESS "exists";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "missing";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -360,7 +360,7 @@ function createPostgresqlSchemaIfNecessary() {
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -372,7 +372,7 @@ function createPostgresqlSchemaIfNecessary() {
     if postgresqlSchemaAlreadyExists "${_schema}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
       logDebugResult SUCCESS "exists";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "missing";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -537,7 +537,7 @@ function createPostgresqlDatabaseIfNecessary() {
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -549,7 +549,7 @@ function createPostgresqlDatabaseIfNecessary() {
     if postgresqlDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_host}" "${_port}"; then
       logDebugResult SUCCESS "exists";
     else
-      local _error="${ERROR}";
+      local _error="${ERROR:-}";
       logDebugResult FAILURE "missing";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
