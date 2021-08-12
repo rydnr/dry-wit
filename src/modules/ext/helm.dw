@@ -100,7 +100,7 @@ function HELM.helmInstallOrUpgrade() {
     _overrideValuesFileParam="-f \"${_overrideValuesFile}\"";
   fi
 
-  _result="$($(which helm) ${_namespaceParam} ${_action} "${_release}" -f "${_valuesFile}" ${_overrideValuesFileParam} ${_chartRef})";
+  _result="$($(which helm) -v 9 --alsologtostderr ${_namespaceParam} ${_action} "${_release}" -f "${_valuesFile}" ${_overrideValuesFileParam} ${_chartRef} > /tmp/helm.log 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then

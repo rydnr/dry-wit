@@ -86,9 +86,6 @@ function isAptCacheMissing() {
 function updateUbuntuSystem() {
 
   runCommandLongOutput /usr/bin/apt -qq -y update;
-  local -i _rescode=$?;
-
-  return ${_rescode};
 }
 
 # fun: upgradeUbuntuSystem
@@ -101,9 +98,18 @@ function updateUbuntuSystem() {
 function upgradeUbuntuSystem() {
 
   runCommandLongOutput /usr/bin/apt -qq -y upgrade;
-  local -i _rescode=$?;
+}
 
-  return ${_rescode};
+# fun: distUpgradeUbuntuSystem
+# api: public
+# txt: Updates the system via apt dist-upgrade.
+# txt: Returns 0/TRUE if the system gets upgraded; 1/FALSE otherwise.
+# use: if ! distUpgradeUbuntuSystem; then
+# use:   echo "Error upgrading system";
+# use: fi
+function distUpgradeUbuntuSystem() {
+
+  runCommandLongOutput /usr/bin/apt -qq -y dist-upgrade;
 }
 
 # fun: autoremoveUbuntuPackages
