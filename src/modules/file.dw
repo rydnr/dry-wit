@@ -855,14 +855,59 @@ function uncompress() {
 
   if isTrue ${_rescode}; then
     logDebug -n "Uncompressing ${_file}";
-    tar ${_flags} "${_file}" -C "${_destination}" 2>&1 > "${_errorOutput}";
+    tar ${_flags} "${_file}" -C "${_destination}" > "${_errorOutput}" 2>&1;
     if isTrue $?; then
-      logDebugResult "done";
+      logDebugResult SUCCESS "done";
     else
-      logDebugResult "Failed";
+      logDebugResult FAILURE "Failed";
       logDebugFile "${_errorOutput}";
       _rescode=2;
     fi
+  fi
+
+  return ${_rescode};
+}
+
+# fun: compress file sourceFilesOrFolders+
+# api: public
+# txt: Compresses given folder into a concrete file. If the extension is unknown, it creates an uncompressed tar file.
+# opt: file: The file.
+# opt: sourceFilesOrFolders: The source files or folders.
+# txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
+# use: compress "my.gz" "/tmp";
+function compress() {
+  local _file="${1}";
+  checkNotEmpty file "${_file}" 1;
+  shift;
+  local _sourceFilesOrFolders="${@}";
+  checkNotEmpty sourceFilesOrFolders "${_sourceFilesOrFolders}" 2;
+
+  local -i _rescode=${FALSE};
+
+  createTempFile;
+  local _errorOutput="${RESULT}";
+
+  local _flags;
+
+  # First, check whether we should compress using the bzip2 format.
+  if endsWith "${_file}" ".bz2"; then
+    _flags="cfj";
+    # Second try, check whether we should compress using the gzip format.
+  elif endsWith "${_file}" ".gz"; then
+    _flags="cfz";
+    # Otherwise, it can also be a standard, uncompressed tar.
+  else
+    _flags="cf";
+  fi
+
+  logDebug -n "Creating ${_file} from ${_sourceFilesOrFolders}";
+  tar ${_flags} "${_file}" "${_sourceFilesOrFolders}" > "${_errorOutput}" 2>&1;
+  _rescode=$?;
+  if isTrue ${_rescode}; then
+    logDebugResult SUCCESS "done";
+  else
+    logDebugResult FAILURE "Failed";
+    logDebugFile "${_errorOutput}";
   fi
 
   return ${_rescode};
