@@ -105,9 +105,10 @@ function enableCronEntry() {
   _cronFile="/etc/cron.d/${_name}"
 
   local -i _rescode
-  _rescode=${TRUE}
+  touch "${_cronFile}" > /dev/null 2>&1
+  _rescode=${?}
 
-  if ! fileIsWritable "${_cronFile}"; then
+  if isTrue ${_rescode} && ! fileIsWritable "${_cronFile}"; then
     _rescode=${FALSE}
   fi
 
