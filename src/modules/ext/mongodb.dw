@@ -21,7 +21,7 @@ function enableMongodbCrAuthentication() {
     _useTls=${TRUE};
   fi
   local _database="${3:-admin}";
-  
+
   local _output;
   local -i _rescode;
 
@@ -166,10 +166,10 @@ db.createRole(
 )
 EOF
   cp "${_tmpFile}" /tmp/addMongodbBackupRole.txt;
-  
+
   local _output;
   local -i _rescode;
-  
+
   if isTrue ${_useTls}; then
     _output="$(cat "${_tmpFile}" | mongo --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)";
     _rescode=$?;
@@ -233,7 +233,7 @@ EOF
   local -i _rescode;
 
   cp "${_tmpFile}" /tmp/mongodbRoleAlreadyExists.txt;
-  
+
   if isTrue ${_useTls}; then
     _output="$(cat "${_tmpFile}" | mongo --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --quiet "${_url}/${_database}")";
     _rescode=$?;
@@ -245,7 +245,7 @@ EOF
   if isEmpty "${_output}" || areEqual "${_output}" "null"; then
     _rescode=${FALSE};
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
@@ -319,7 +319,7 @@ EOF
     _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)";
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
@@ -396,7 +396,7 @@ EOF
     _output="$(cat "${_tmpFile}" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)";
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
@@ -577,7 +577,7 @@ function enableMongodbFreeMonitoring() {
     echo "${_output}" | grep -q '"url"' > /dev/null;
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     _result="$(echo "${_output}" | grep '"url"' | awk -F'"' '{print $4;}')";
     if isEmpty "${_result}"; then
@@ -632,7 +632,7 @@ function disableMongodbFreeMonitoring() {
     _output="$(echo "db.disableFreeMonitoring()" | mongo -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)";
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
@@ -728,10 +728,9 @@ function killMongod() {
     if isTrue ${_rescode}; then
       logInfoResult SUCCESS "done";
     else
-      local _error="${ERROR:-}";
       logInfoResult FAILURE "failed";
-      if isNotEmpty "${_error}"; then
-        logDebug "${_error}";
+      if isNotEmpty "${ERROR}"; then
+        logDebug "${ERROR}";
       fi
     fi
   else
@@ -759,12 +758,13 @@ function killMongod() {
 function mongoDump() {
   local _output="${1}";
   checkNotEmpty output "${_output}" 1;
-  local _url="${2:-mongodb://localhost}";
-  local _user="${3}";
-  local _pass="${4}";
-  local _authenticationDatabase="${5:-admin}";
-  local _authenticationMechanism="${6:-SCRAM-SHA1}";
-  local _maybeTls="${7}";
+  local _db="${2}";
+  local _url="${3:-mongodb://localhost}";
+  local _user="${4}";
+  local _pass="${5}";
+  local _authenticationDatabase="${6:-admin}";
+  local _authenticationMechanism="${7:-SCRAM-SHA1}";
+  local _maybeTls="${8}";
   local _useTls=${FALSE};
   if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
     _useTls=${TRUE};
@@ -777,18 +777,18 @@ function mongoDump() {
 
   if isEmpty "${_user}"; then
     if isTrue ${_useTls}; then
-      _output="$(mongodump --oplog --ssl --uri="${_url}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1)";
+      _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1)";
       _rescode=$?;
     else
-      _output="$(mongodump --oplog --uri="${_url}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1)";
+      _output="$(mongodump --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1)";
       _rescode=$?;
     fi
   else
     if isTrue ${_useTls}; then
-      _output="$(mongodump --oplog --ssl --uri="${_url}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
+      _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
       _rescode=$?;
     else
-      _output="$(mongodump --oplog --uri="${_url}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
+      _output="$(mongodump --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)";
       _rescode=$?;
     fi
   fi
@@ -1154,7 +1154,7 @@ EOF
     _output="$(echo "${_output}" | jq '. | length')"
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     if areEqual "${_output}" 0; then
       _rescode=${FALSE};
@@ -1408,7 +1408,7 @@ function mongodbDatabaseAlreadyExists() {
     _output="$(echo "show dbs" | mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")";
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
@@ -1467,7 +1467,7 @@ function createMongodbCollection() {
     _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)";
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
@@ -1575,7 +1575,7 @@ function removeMongodbCollection() {
     _output="$(mongo -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)";
     _rescode=$?;
   fi
-  
+
   if isTrue ${_rescode}; then
     export RESULT="${_output}";
   else
@@ -1625,7 +1625,7 @@ function addMongodbRoleIfNecessary() {
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 10;
   local _url="${11:-mongodb://localhost}";
   local _maybeTls="${12}";
-  
+
   logDebug -n "Checking if ${_roleName} role already exists in ${_database} database";
   if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "exists";
@@ -1637,7 +1637,7 @@ function addMongodbRoleIfNecessary() {
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1649,7 +1649,7 @@ function addMongodbRoleIfNecessary() {
     if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "exists";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "missing";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1711,7 +1711,7 @@ function addMongodbUserIfNecessary() {
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1723,7 +1723,7 @@ function addMongodbUserIfNecessary() {
     if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "success";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1764,7 +1764,7 @@ function removeMongodbUserIfNecessary() {
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7;
   local _url="${8:-mongodb://localhost}";
   local _maybeTls="${9}";
-  
+
   logDebug -n "Checking if user ${_userName} already exists in database ${_database}";
   if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
     logDebugResult SUCCESS "success";
@@ -1775,7 +1775,7 @@ function removeMongodbUserIfNecessary() {
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1785,7 +1785,7 @@ function removeMongodbUserIfNecessary() {
 
     logDebug -n "Double-checking if user ${_userName} still exists in database ${_database}";
     if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1853,7 +1853,7 @@ function addMongodbIndexIfNecessary() {
       logDebugResult SUCCESS "done";
       logTrace "${_output}";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1865,7 +1865,7 @@ function addMongodbIndexIfNecessary() {
     if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "exists";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "missing";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1923,7 +1923,7 @@ function addMongodbDatabaseIfNecessary() {
         logTrace "${_output}";
       fi
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1935,7 +1935,7 @@ function addMongodbDatabaseIfNecessary() {
     if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "success";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -1993,7 +1993,7 @@ function addMongodbCollectionIfNecessary() {
         logTrace "${_output}";
       fi
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -2005,7 +2005,7 @@ function addMongodbCollectionIfNecessary() {
     if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
       logDebugResult SUCCESS "success";
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -2061,7 +2061,7 @@ function removeMongodbCollectionIfNecessary() {
         logTrace "${_output}";
       fi
     else
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
@@ -2071,7 +2071,7 @@ function removeMongodbCollectionIfNecessary() {
 
     logDebug -n "Double-checking if collection ${_collection} is actually removed from ${_database} database";
     if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
-      local _error="${ERROR:-}";
+      local _error="${ERROR}";
       logDebugResult FAILURE "failed";
       if isNotEmpty "${_error}"; then
         logDebug "${_error}";
