@@ -71,17 +71,15 @@ function sendKillSignalToCronProcess() {
   return ${_rescode};
 }
 
-# fun: enableCronEntry name cronExpression cmd shell? user? mailTo?
+# fun: enableCronEntry name cronExpression user cmd extraLines*
 # api: public
 # txt: Enables a cron entry.
 # opt: name: The name of the entry.
 # opt: cronExpression: The cron expression.
-# opt: cmd: The command to run, including arguments and redirections.
-# opt: shell: The shell to use. Optional.
-# opt: user: The user. Optional.
-# opt: mailTo: The local user to send emails to. Optional.
+# opt: user: The user.
+# opt: extraLines: Any additional lines to include.
 # txt: Returns 0/TRUE if the entry could be enabled; 1/FALSE otherwise.
-# use: if enableCronEntry "backup" "*/5 * * * *" "/opt/backup/backup.sh"; then
+# use: if enableCronEntry "backup" "*/5 * * * *" root "/opt/backup/backup.sh"; then
 # use:   echo "backup cron enabled"
 # use: fi
 function enableCronEntry() {
@@ -92,49 +90,54 @@ function enableCronEntry() {
   local _cronExpression;
   _cronExpression="${2}";
   checkNotEmpty cronExpression "${_cronExpression}" 2
-  local _cmd;
-  _cmd="${3}";
-  checkNotEmpty cmd "${_cmd}" 3
-  local _shell;
-  _shell="${4}"
   local _user;
-  _user="${5}";
-  local _mailTo;
-  _mailTo="${6}";
+  _user="${3}";
+  checkNotEmpty user "${_user}" 3
+  local _cmd;
+  _cmd="${4}";
+  checkNotEmpty cmd "${_cmd}" 4
+  shift;
+  shift;
+  shift;
+  shift;
+  local _extraLine;
   local _cronFile;
   _cronFile="/etc/cron.d/${_name}"
 
   local -i _rescode
-  touch "${_cronFile}" > /dev/null 2>&1
-  _rescode=${?}
 
-  if isTrue ${_rescode} && ! fileIsWritable "${_cronFile}"; then
-    _rescode=${FALSE}
-  fi
+  if fileExists "${_cronFile}"; then
+    _rescode=${TRUE};
+  else
+    touch "${_cronFile}" > /dev/null 2>&1
+    _rescode=${?}
 
-  if isTrue ${_rescode}; then
-    if ! isEmpty "${_shell}"; then
-      cat <<EOF >> "${_cronFile}"
-# use /bin/sh to run commands, no matter what /etc/passwd says
-SHELL=${_shell}
-EOF
+    if isTrue ${_rescode} && ! fileIsWritable "${_cronFile}"; then
+      _rescode=${FALSE}
     fi
 
-    if ! isEmpty "${_user}"; then
-      cat <<EOF >> "${_cronFile}"
+    if isTrue ${_rescode}; then
+      if ! isEmpty "${_user}"; then
+        cat <<EOF >> "${_cronFile}"
 USER=${_user}
 EOF
-    fi
+      fi
 
-    if ! isEmpty "${_shell}"; then
+      local _oldIFS="${IFS}";
+      IFS=:;
+      for _extraLine in "${@}"; do
+        IFS="${_oldIFS}";
+        cat <<EOF >> "${_cronFile}"
+${_extraLine}
+EOF
+      done
+      IFS="${_oldIFS}";
+
       cat <<EOF >> "${_cronFile}"
-MAILTO=${_mailTo}
+${_cronExpression}	${_user}	${_cmd}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
 EOF
     fi
-
-    cat <<EOF >> "${_cronFile}"
-${_cronExpression}	${_cmd}
-EOF
   fi
 
   return ${_rescode}

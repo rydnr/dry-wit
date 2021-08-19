@@ -183,19 +183,14 @@ function configureAwsProfile() {
 
   local -i _rescode=${FALSE};
   
-  if isAwsProfileValid "${_awsProfile}"; then
+  if awsProfileExists "${_awsProfile}"; then
+    _rescode=${TRUE};
+  elif isAwsProfileValid "${_awsProfile}"; then
     AWSCLI.updateAwsProfile "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
     _rescode=$?;
   else
-    _rescode=${TRUE};
-    if awsProfileExists "${_awsProfile}"; then
-      AWSCLI.deleteAwsProfile "${_awsProfile}";
-      _rescode=$?;
-    fi
-    if isTrue ${_rescode}; then
-      AWSCLI.createAwsProfile  "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
-      _rescode=$?;
-    fi
+    AWSCLI.createAwsProfile  "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
+    _rescode=$?;
   fi
 
   return ${_rescode};
