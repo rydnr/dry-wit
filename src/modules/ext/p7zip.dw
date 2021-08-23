@@ -1,0 +1,57 @@
+# mod: p7zip
+# api: public
+# txt: p7zip-related functions.
+
+# fun: p7encrypt outputFile password inputFilesOrFolders+
+# api: public
+# txt: Encrypts with p7zip given list of files or folders, with given password.
+# opt: outputFile: The output file.
+# opt: password: The password.
+# opt: inputFilesOrFolders: The input files or folders.
+# txt: Returns 0/TRUE if the encrypted file could be created; 1/FALSE otherwise.
+# use: if p7encrypt /tmp/myfile.enc secret /tmp/myfiles/*; then
+# use:   echo "File encrypted successfully";
+# use: fi
+function p7encrypt() {
+  local _outputFile
+  _outputFile="${1}";
+  checkNotEmpty outputFile "${_outputFile}" 1
+  shift
+  local _password
+  _password="${1}"
+  checkNotEmpty password "${_password}" 2
+  shift
+
+  local -i _rescode
+  local _output
+  _output="$(7z a -p"${_password}" -mhe -r -sdel -bd -bb0 -o"$(dirname "${_outputFile}")" "${_outputFile}" $@ > /dev/null 2>&1)"
+  _rescode=$?
+
+  return ${_rescode}
+}
+
+# fun: p7decrypt inputFile password
+# api: public
+# txt: Decrypts with p7zip given list of files or folders, with given password.
+# opt: inputFile: The input file.
+# opt: password: The password.
+# txt: Returns 0/TRUE if the encrypted file could be decrypted; 1/FALSE otherwise.
+# use: if p7decrypt /tmp/myfile.enc secret; then
+# use:   echo "File decrypted successfully";
+# use: fi
+function p7decrypt() {
+  local _outputFile
+  _outputFile="${1}";
+  checkNotEmpty outputFile "${_outputFile}" 1
+  local _password
+  _password="${2}"
+  checkNotEmpty password "${_password}" 2
+
+  local -i _rescode
+  local _output
+  _output="$(7z x -p"${_password}" "${_inputFile}" > /dev/null 2>&1)"
+  _rescode=$?
+
+  return ${_rescode}
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
