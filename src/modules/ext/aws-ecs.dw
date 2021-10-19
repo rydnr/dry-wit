@@ -1,0 +1,229 @@
+# mod: aws-ecs
+# api: public
+# txt: AWS ECS functions
+
+# fun: getEcsClusters profile
+# api: public
+# txt: Retrieves the ARNs of the current ECS clusters.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the ARNs of the clusters were accessible; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains a list of space-separated cluster identifiers.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if getEcsClusters myProfile; then
+# use:   echo "Clusters: ${RESULT}";
+# use: fi
+function getEcsClusters() {
+  local _profile="${1}";
+  checkNotEmpty profile "${_profile}" 1;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ecs list-clusters --output json | jq '.clusterArns[] | .' | tr -d '"' 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getEcsCluster profile clusterName
+# api: public
+# txt: Retrieves the ARN of the ECS cluster matching given name.
+# opt: profile: The AWS profile.
+# opt: clusterName: The cluster name.
+# txt: Returns 0/TRUE if the cluster was found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the ARN of the first cluster matching given name.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if getEcsCluster myProfile "my-cluster"; then
+# use:   echo "Cluster found: ${RESULT}";
+# use: fi
+function getEcsCluster() {
+  local _profile="${1}";
+  checkNotEmpty profile "${_profile}" 1;
+  local _clusterName="${2}";
+  checkNotEmpty clusterName "${_clusterName}" 2;
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+
+  if getEcsClusters "${_profile}"; then
+    local _clusters="${RESULT}";
+    if isEmpty "${_clusters}"; then
+      _rescode=${FALSE};
+    else
+      local _oldIFS="${_oldIFS}";
+      local _cluster;
+      IFS="${DWIFS}";
+      for _cluster in ${_clusters}; do
+        IFS="${_oldIFS}";
+        if contains "${_cluster}" "${_clusterName}"; then
+          _result="${_cluster}";
+          _rescode=${TRUE};
+          break;
+        fi
+      done;
+      IFS="${_oldIFS}";
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getEcsTasks profile clusterArn
+# api: public
+# txt: Retrieves the ARNs of the current ECS tasks.
+# opt: profile: The AWS profile.
+# opt: clusterArn: The ARN of the cluster.
+# txt: Returns 0/TRUE if the ARNs of the tasks were accessible; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains a list of space-separated task identifiers.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if getEcsTasks myProfile ${clusterArn}; then
+# use:   echo "Tasks: ${RESULT}";
+# use: fi
+function getEcsTasks() {
+  local _profile="${1}";
+  checkNotEmpty profile "${_profile}" 1;
+  local _clusterArn="${2}";
+  checkNotEmpty clusterArn "${_clusterArn}" 2;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ecs list-tasks --cluster "${_clusterArn}" --output json | jq '.taskArns[] | .' | tr -d '"' 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getEcsTask profile clusterArn taskName
+# api: public
+# txt: Retrieves the ARN of the ECS cluster matching given name.
+# opt: profile: The AWS profile.
+# opt: clusterArn: The cluster ARN.
+# opt: taskName: The task name.
+# txt: Returns 0/TRUE if the task was found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the ARN of the first task matching given name.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if getEcsTask myProfile "${clusterArn}" "my-task"; then
+# use:   echo "Task found: ${RESULT}";
+# use: fi
+function getEcsTask() {
+  local _profile="${1}";
+  checkNotEmpty profile "${_profile}" 1;
+  local _clusterArn="${2}";
+  checkNotEmpty clusterArn "${_clusterArn}" 2;
+  local _taskName="${3}";
+  checkNotEmpty taskName "${_taskName}" 3;
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+
+  if getEcsTasks "${_profile}"; then
+    local _tasks="${RESULT}";
+    if isEmpty "${_tasks}"; then
+      _rescode=${FALSE};
+    else
+      local _oldIFS="${_oldIFS}";
+      local _task;
+      IFS="${DWIFS}";
+      for _task in ${_tasks}; do
+        IFS="${_oldIFS}";
+        if getEcsTaskGroup "${_profile}" "${_clusterArn}" "${_task}"; then
+          local _group="${RESULT}";
+          if contains "${_group}" "${_taskName}"; then
+            _result="${_task}";
+            _rescode=${TRUE};
+            break;
+          fi
+        fi
+      done;
+      IFS="${_oldIFS}";
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: getEcsTaskGroup profile clusterArn taskArn
+# api: public
+# txt: Retrieves the group of a given ECS task.
+# opt: profile: The AWS profile.
+# opt: clusterArn: The ARN of the cluster.
+# opt: taskArn: The ARN of the task.
+# txt: Returns 0/TRUE if the group of the task were accessible; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the task group.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if getEcsTaskGroup myProfile ${clusterArn} ${taskArn}; then
+# use:   echo "Group: ${RESULT}";
+# use: fi
+function getEcsTaskGroup() {
+  local _profile="${1}";
+  checkNotEmpty profile "${_profile}" 1;
+  local _clusterArn="${2}";
+  checkNotEmpty clusterArn "${_clusterArn}" 2;
+  local _taskArn="${3}";
+  checkNotEmpty taskArn "${_taskArn}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ecs describe-tasks --cluster "${_clusterArn}" --tasks "${_taskArn}" --output json | jq '.tasks[] | .group' | tr -d '"' 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: stopEcsTask profile clusterArn taskArn
+# api: public
+# txt: Stops given ECS task.
+# opt: profile: The AWS profile.
+# opt: clusterArn: The ARN of the cluster.
+# opt: taskArn: The ARN of the task.
+# txt: Returns 0/TRUE if the task was stopped; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if stopEcsTask myProfile ${clusterArn} ${taskArn}; then
+# use:   echo "Task stopped successfully";
+# use: fi
+function stopEcsTask() {
+  local _profile="${1}";
+  checkNotEmpty profile "${_profile}" 1;
+  local _clusterArn="${2}";
+  checkNotEmpty clusterArn "${_clusterArn}" 2;
+  local _taskArn="${3}";
+  checkNotEmpty taskArn "${_taskArn}" 3;
+
+  local _output;
+  _output="$($(which aws) --profile ${_profile} ecs stop-task --cluster "${_clusterArn}" --task "${_taskArn}" 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

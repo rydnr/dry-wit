@@ -9,29 +9,31 @@ dry-wit yourself.
 
 Basically, in order to write dry-wit scripts you'll do the following:
 
-- Copy or symlink the file 'dry-wit' in your /usr/local/bin folder.
-- Put
-#!/bin/bash /usr/local/bin/dry-wit
-as the first line of your script.
-- Write the mandatory functions:
-usage()
-checkRequirements()
-defineEnv()
-defineErrors()
-checkInput()
+- Clone this repository under ~/.dry-wit:
+  git clone https://github.com/rydnr/dry-wit $HOME/.dry-wit
+
+- Add ~/.dry-wit/src to your PATH:
+echo 'export PATH=$PATH:$HOME/.dry-wit/src' >> $HOME/.bashrc
+
+- Use this shebang in your scripts.
+#!/usr/bin/env dry-wit
+
+- Write the only mandatory function:
 main()
 
-The usage() function takes care of the documentation of the script
-itself, including parameters, flags, etc. The environment variables
-and exit codes are managed automatically for you (as long as you
-implement checkRequirements(), defineEnv() and defineErrors()).
+The main() function is the starting point of your script. You don't need to care about anything but the funcional requirements of your script.
 
-checkInput() is responsible of validating the input parameters and
-setting the global-scoped script variables. It would use the provided
-built-in features to parse flags (better than 'getopts' since it
-allows you to support both short- and long-version flags), included
-the -v[v[v]] and -h|--help flags.
+Note for Mac OS X users:
 
-The main() function is the starting point of your script. You don't
-need to care about anything but the funcional requirements of your
-script.
+- MacOS X comes with an old version of Bash. dry-wit requires Bash 4+. To use a recent version, install homebrew, then bash, and run
+chsh -s /usr/local/bin/bash
+- Additionally, dry-wit requires the following brew formulae:
+  - greadlink
+  - coreutils
+  - pidof
+  - wget
+
+brew install greadlink
+brew install coreutils
+brew install pidof
+brew install wget

@@ -1,0 +1,177 @@
+# mod: aws-route53
+# api: public
+# txt: AWS Route53 functions.
+
+# fun: deleteResourceRecordSets hostedZoneId profile
+# api: public
+# txt: Deletes the resource record sets in given hosted zone id.
+# opt: hostedZoneId: The hosted zone id.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the resource record could be removed; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if deleteResourceRecordSets ${hostedZoneId} myProfile; then
+# use:   echo "Resource record sets deleted in ${hostedZoneId}";
+# use: fi
+function deleteResourceRecordSets() {
+  local _hostedZoneId="${1}";
+  checkNotEmpty hostedZoneId "${_hostedZoneId}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  local -i _rescode;
+
+  if listResourceRecordSets "${_hostedZoneId}" "${_profile}"; then
+    local _resourceRecordSetsFile="${RESULT}";
+
+    createTempFile;
+    local _changeFile="${RESULT}";
+    cat <<EOF > "${_changeFile}"
+{
+  "Comment": "optional comment about the changes in this change batch request",
+  "Changes": [
+    {
+      "Action": "DELETE",
+      "ResourceRecordSets":
+$(cat "${_resourceRecordSetsFile}" | jq '. | .ResourceRecordSets')
+    }
+  ]
+}
+EOF
+
+    createTempFile;
+    local _tmpFile="${RESULT}";
+    cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+$(which aws) --profile ${_profile} route53 change-resource-record-sets --hosted-zone-id ${_hostedZoneId} --change-batch file://${_changeFile};
+EOF
+    chmod +x "${_tmpFile}";
+    local _output;
+    #_output="$(${_tmpFile} 2>&1)";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: listResourceRecordSets hostedZoneId profile
+# api: public
+# txt: Lists the resource record sets in given hosted zone id.
+# opt: hostedZoneId: The hosted zone id.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the resource record sets could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the path of a file with the resource record sets information.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if listResourceRecordSets ${hostedZoneId} myProfile; then
+# use:   echo "resource record sets retrieved in ${RESULT}";
+# use: fi
+function listResourceRecordSets() {
+  local _hostedZoneId="${1}";
+  checkNotEmpty hostedZoneId "${_hostedZoneId}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+$(which aws) --profile ${_profile} route53 list-resource-record-sets --hosted-zone-id ${_hostedZoneId};
+EOF
+  chmod +x "${_tmpFile}";
+  createTempFile;
+  local _outputFile="${RESULT}";
+  local _output;
+  _output="$(${_tmpFile} 2>&1 > "${_outputFile}")";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_outputFile}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: hostedZoneAlreadyExists bucket profile
+# api: public
+# txt: Checks if a DNS hosted zone actually exists.
+# opt: hostedZone: The hosted zone.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the hosted zone exists; 1/FALSE otherwise.
+# use: if hostedZoneAlreadyExists ${zone} dev; then
+# use:   echo "Hosted zone ${zone} exists";
+# use: fi
+function hostedZoneAlreadyExists() {
+  local _hostedZoneId="${1}";
+  checkNotEmpty hostedZoneId "${_hostedZoneId}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+aws --profile ${_profile} route53 list-hosted-zones | jq '.HostedZones | .[] | select (.Id" == "${_hostedZoneId}") | .Name' | tr -d '"' | tr -d ','
+EOF
+  chmod +x ${_tmpFile};
+
+  local _output;
+  _output="$(${_tmpFile})";
+  local -i _rescode=${FALSE};
+
+  if areEqual "${_output}" "${_hostedZoneId}"; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: deleteHostedZone hostedZoneId profile
+# api: public
+# txt: Deletes the hosted zone.
+# opt: hostedZoneId: The hosted zone id.
+# opt: profile: The AWS profile.
+# txt: Returns 0/TRUE if the hosted zone gets deleted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains additional information.
+# use: if deleteHostedZone ${hostedZoneId} myProfile; then
+# use:   echo "Hosted zone ${hostedZoneId} deleted";
+# use: fi
+function deleteHostedZone() {
+  local _hostedZoneId="${1}";
+  checkNotEmpty hostedZoneId "${_hostedZoneId}" 1;
+  local _profile="${2}";
+  checkNotEmpty profile "${_profile}" 2;
+
+  createTempFile;
+  local _tmpFile="${RESULT}";
+  cat <<EOF > "${_tmpFile}"
+#!/bin/bash
+
+$(which aws) --profile ${_profile} route53 delete-hosted-zone --id ${_hostedZoneId};
+EOF
+  chmod +x "${_tmpFile}";
+  createTempFile;
+  local _outputFile="${RESULT}";
+  local _output;
+  _output="$(${_tmpFile} 2>&1 > "${_outputFile}")";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_outputFile}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

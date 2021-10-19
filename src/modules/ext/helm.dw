@@ -1,0 +1,143 @@
+# mod: helm
+# api: public
+# txt: Kubernetes Helm functions
+
+# fun: helmInstall release chartRef valuesFile namespace? overrideValuesFile?
+# api: public
+# txt: Installs a new release for given chart.
+# opt: release: The name of the release.
+# opt: chartRef: The chart reference.
+# opt: valuesFile: The file with the values.
+# opt: namespace: The namespace. Optional.
+# opt: overrideValuesFile: The file with values to override. Optional.
+# txt: Returns 0/TRUE if the release gets installed successfully; 1/FALSE otherwise.
+# use: if helmInstall my-app-dev "values-dev.yaml"; then
+# use:   echo "my-app-dev installed successfully";
+# use: fi
+function helmInstall() {
+  local _release="${1}";
+  checkNotEmpty release "${_release}" 1;
+  local _chartRef="${2}";
+  checkNotEmpty "${_chartRef}" chartRef 2;
+  local _valuesFile="${3}";
+  checkNotEmpty valuesFile "${_valuesFile}" 3;
+  local _namespace="${4:-}";
+  shift;
+  shift;
+  shift;
+  shift;
+
+  HELM.helmInstallOrUpgrade install "${_release}" "${_chartRef}" "${_valuesFile}" "${_namespace}" $@;
+}
+
+# fun: helmUpgrade release chartRef valuesFile namespace? overrideValuesFile?
+# api: public
+# txt: Upgrades given release.
+# opt: release: The name of the release.
+# opt: chartRef: The chart reference.
+# opt: valuesFile: The file with the values.
+# opt: namespace: The namespace. Optional.
+# opt: overrideValuesFile: The file with values to override. Optional.
+# txt: Returns 0/TRUE if the release gets upgraded successfully; 1/FALSE otherwise.
+# use: if helmUpgrade my-app-dev "values-dev.yaml"; then
+# use:   echo "my-app-dev upgraded successfully";
+# use: fi
+function helmUpgrade() {
+  local _release="${1}";
+  checkNotEmpty release "${_release}" 1;
+  local _chartRef="${2}";
+  checkNotEmpty "${_chartRef}" chartRef 2;
+  local _valuesFile="${3}";
+  checkNotEmpty valuesFile "${_valuesFile}" 3;
+  local _namespace="${4:-}";
+  shift;
+  shift;
+  shift;
+  shift;
+
+  HELM.helmInstallOrUpgrade upgrade "${_release}" "${_chartRef}" "${_valuesFile}" "${_namespace}" $@;
+}
+
+# fun: helmInstallOrUpgrade action release chartRef valuesFile namespace? overrideValuesFile?
+# api: private
+# txt: Installs or upgrades given release.
+# opt: action: Either install or upgrade.
+# opt: release: The name of the release.
+# opt: chartRef: The chart reference.
+# opt: valuesFile: The file with the values.
+# opt: namespace: The namespace. Optional.
+# opt: overrideValuesFile: The file with values to override. Optional.
+# txt: Returns 0/TRUE if the release gets installed or upgraded successfully; 1/FALSE otherwise.
+# use: if HELM.helmInstallOrUpgrade install my-app-dev "values-dev.yaml"; then
+# use:   echo "my-app-dev installed successfully";
+# use: fi
+function HELM.helmInstallOrUpgrade() {
+  local _action="${1}";
+  checkNotEmpty action "${_action}" 1;
+  checkOneOf action "${_action}" "install upgrade" 1; 
+  local _release="${2}";
+  checkNotEmpty release "${_release}" 2;
+  local _chartRef="${3}";
+  checkNotEmpty "${_chartRef}" chartRef 3;
+  local _valuesFile="${4}";
+  checkNotEmpty valuesFile "${_valuesFile}" 4;
+  local _overrideValuesFile="";
+  local _namespace="${5:-}";
+  if isGreaterThan $# 5; then
+    _overrideValuesFile="${6}";
+  fi
+
+  local -i _rescode;
+  local _result="";
+
+  local _namespaceParam="";
+  if isNotEmpty "${_namespace}"; then
+    _namespaceParam="-n ${_namespace}";
+  fi
+
+  local _overrideValuesFileParam="";
+  if isNotEmpty "${_overrideValuesFile}"; then
+    _overrideValuesFileParam="-f \"${_overrideValuesFile}\"";
+  fi
+
+  _result="$($(which helm) -v 9 --alsologtostderr ${_namespaceParam} ${_action} "${_release}" -f "${_valuesFile}" ${_overrideValuesFileParam} ${_chartRef} > /tmp/helm.log 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: helmUninstall release namespace?
+# api: public
+# txt: Uninstalls given release.
+# opt: release: The name of the release.
+# opt: namespace: The namespace. Optional.
+# txt: Returns 0/TRUE if the release gets uninstalled successfully; 1/FALSE otherwise.
+# use: if helmUninstall my-app-dev; then
+# use:   echo "my-app-dev uninstalled successfully";
+# use: fi
+function helmUninstall() {
+  local _release="${1}";
+  checkNotEmpty release "${_release}" 1;
+  local _namespace="${2:-}";
+
+   local _namespaceParam="";
+  if isNotEmpty "${_namespace}"; then
+    _namespaceParam="-n ${_namespace}";
+  fi
+
+  local _result;
+  local -i _rescode;
+  _result="$($(which helm) ${_namespaceParam} uninstall "${_release}")";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

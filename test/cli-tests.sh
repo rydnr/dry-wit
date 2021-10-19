@@ -1,4 +1,4 @@
-#!/bin/bash dry-wit
+#!/usr/bin/env dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
@@ -176,37 +176,37 @@ function usage_does_not_print_too_many_empty_lines_test() {
 }
 
 function checkInput_checks_mandatory_flags_test() {
-  addCommandLineFlag "file" "f" "The file to read" MANDATORY NO_ARGUMENT;
-  (checkInput > /dev/null)
+  addCommandLineFlag file f "The file to read" MANDATORY NO_ARGUMENT;
+  (checkInput > /dev/null);
   local -i _rescode=$?;
   local _result="$(checkInput)";
-  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory flag is missing";
+  Assert.isFalse ${_rescode} "checkInput didn't exit when a mandatory flag is missing";
   Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
-  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+  Assert.contains "${_result}" "file is mandatory" "checkInput didn't exit with an error message";
 }
 
 function checkInput_checks_flags_with_arguments_test() {
-  addCommandLineFlag "file" "f" "The file to read" MANDATORY EXPECTS_ARGUMENT;
-  (checkInput -f > /dev/null)
+  addCommandLineFlag file f "The file to read" MANDATORY EXPECTS_ARGUMENT;
+  (checkInput -f > /dev/null);
   local -i _rescode=$?;
   local _result="$(checkInput -f)";
-  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory flag is missing";
+  Assert.isFalse ${_rescode} "checkInput didn't exit when a mandatory flag is missing";
   Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
-  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+  Assert.contains "${_result}" "file expects an argument" "checkInput didn't exit with an error message";
 }
 
 function checkInput_checks_mandatory_parameters_test() {
-  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
-  (checkInput > /dev/null)
+  addCommandLineParameter file "The file to read" MANDATORY SINGLE;
+  (checkInput > /dev/null);
   local -i _rescode=$?;
   local _result="$(checkInput)";
-  Assert.isFalse ${_rescode} "checkInput didn't exited when a mandatory parameter is missing";
+  Assert.isFalse ${_rescode} "checkInput didn't exit when a mandatory parameter is missing";
   Assert.isNotEmpty "${_result}" "checkInput didn't return anything";
-  Assert.contains "${_result}" "Error" "checkInput didn't exited with an error message";
+  Assert.contains "${_result}" "file is mandatory" "checkInput didn't exit with an error message";
 }
 
 function checkInput_does_not_complain_with_no_flags_and_one_parameter_test() {
-  addCommandLineParameter "file" "The file to read" MANDATORY SINGLE;
+  addCommandLineParameter file "The file to read" MANDATORY SINGLE;
   local _result="$(checkInput "/tmp/1.txt")";
   Assert.isEmpty "${_result}" "checkInput returned something";
 }
@@ -347,15 +347,15 @@ function empty_default_values_for_optional_flags_are_allowed_test() {
 }
 
 function flags_whose_values_contain_spaces_are_supported_test() {
-  addCommandLineFlag "myFlag" "pe" "A flag" OPTIONAL EXPECTS_ARGUMENT "";
+  addCommandLineFlag myFlag pe "A flag" OPTIONAL EXPECTS_ARGUMENT "";
   parseInput -pe 'with spaces';
   Assert.areEqual 'with spaces' "${MY_FLAG}" "Flags with spaces are not correctly parsed";
 
-  addCommandLineFlag "versionFlag" "vf" "A flag" OPTIONAL EXPECTS_ARGUMENT "version 1";
+  addCommandLineFlag versionFlag vf "A flag" OPTIONAL EXPECTS_ARGUMENT "version 1";
   parseInput -vf 'with spaces';
   Assert.areEqual 'with spaces' "${VERSION_FLAG}" "Flags with spaces are not correctly parsed";
 
-  addCommandLineFlag "anotherVersionFlag" "avf" "Another flag" OPTIONAL EXPECTS_ARGUMENT "version 2";
+  addCommandLineFlag anotherVersionFlag avf "Another flag" OPTIONAL EXPECTS_ARGUMENT "version 2";
   parseInput -vf 'with spaces' -avf 'another flag with spaces';
   Assert.areEqual 'with spaces' "${VERSION_FLAG}" "Flags with spaces are not correctly parsed";
   Assert.areEqual 'another flag with spaces' "${ANOTHER_VERSION_FLAG}" "Flags with spaces are not correctly parsed";
@@ -377,6 +377,28 @@ function any_dw_flag_is_ignored_test() {
   _result="$(checkInput -DW:${_flag})";
   Assert.isTrue $? "-DW:${_flag} is not ignored";
   Assert.isEmpty "${_result}" "-DW:${_flag} is not ignored";
+}
+
+function ARGS_variable_does_not_get_overwritten_test() {
+  addCommandLineFlag "userId" "u" "The user id" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineFlag "userName" "U" "The user name" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineFlag "groupId" "g" "The group id" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineFlag "groupName" "G" "The group name" OPTIONAL EXPECTS_ARGUMENT ""
+  addCommandLineParameter "folder" "The folder where the command should run" MANDATORY SINGLE
+  addCommandLineParameter "command" "The command to run" MANDATORY SINGLE
+  addCommandLineParameter "args" "The command arguments" OPTIONAL MULTIPLE
+  local _expected;
+  _expected="one two";
+  parseInput -pe /tmp cmd ${_expected};
+  Assert.areEqual "${_expected}" "${ARGS}" "ARGS variable not set or its value is not correct";
+}
+
+function parameters_with_multiple_values_test() {
+  addCommandLineParameter "folders" "The folders" MANDATORY MULTIPLE
+  local _expected;
+  _expected="one two";
+  parseInput -pe ${_expected};
+  Assert.areEqual "${_expected}" "${FOLDERS}" "FOLDERS variable not set or its value is not correct";
 }
 
 declare -ig commandLineFlagCheckingCallbackCalled=${FALSE};

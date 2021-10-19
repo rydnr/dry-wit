@@ -8,7 +8,9 @@
 # opt: first: The first value.
 # opt: second: The second value.
 # txt: Returns 0/TRUE if both values are equal; 1/FALSE otherwise.
-# use: if areEqual "${param}" "${expected}"; then echo "param equals expected (${param})"; fi
+# use: if areEqual "${param}" "${expected}"; then
+# use:   echo "param equals expected (${param})";
+# use: fi
 function areEqual() {
   local _first="${1}";
   local _second="${2}";
@@ -37,10 +39,13 @@ function areEqual() {
 # opt: first: The first value.
 # opt: second: The second value.
 # txt: Returns 0/TRUE if both values aren't equal; 1/FALSE otherwise.
-# use: if areEqual "${param}" "${expected}"; then echo "param (${param}) and expected ${expected} are not equal"; fi
+# use: if areEqual "${param}" "${expected}"; then
+# use:   echo "param (${param}) and expected ${expected} are not equal";
+# use: fi
 function areNotEqual() {
   local _first="${1}";
   local _second="${2}";
+
   local -i _rescode;
 
   if areEqual "${_first}" "${_second}"; then
@@ -57,14 +62,18 @@ function areNotEqual() {
 # txt: Checks whether given value is defined.
 # opt: var: The variable to check.
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+# use: if isDefined "${MYVAR}"; then
+# use:   echo "MYVAR is defined";
+# use: fi
 function isDefined() {
   local -i rescode;
+
   if [ -z ${1+x} ]; then
     rescode=${TRUE};
   else
     rescode=${FALSE};
   fi
+
   return ${rescode};
 }
 
@@ -73,11 +82,13 @@ function isDefined() {
 # txt: Checks whether given value is empty.
 # opt: value: The value to check.
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# use: if isEmpty "${MYVAR}"; then echo "MYVAR is empty"; fi
+# use: if isEmpty "${MYVAR}"; then
+# use:   echo "MYVAR is empty";
+# use: fi
 function isEmpty() {
   local -i rescode;
 
-  if [ -z "${1}" ]; then
+  if [ -z "${1:-}" ]; then
     rescode=${TRUE};
   else
     rescode=${FALSE};
@@ -91,17 +102,21 @@ function isEmpty() {
 # txt: Checks whether given value is false.
 # opt: value: The value.
 # txt: Returns 0/TRUE if the value is false; 1/FALSE otherwise.
-# use: if isFalse "${MYVAR}"; then ...; fi
+# use: if isFalse "${MYVAR}"; then
+# use:   ...;
+# use: fi
 function isFalse() {
-  local -i rescode;
   checkNotEmpty value "${1}" 1;
 
+  local -i _rescode;
+
   if isTrue $*; then
-    rescode=${FALSE};
+    _rescode=${FALSE};
   else
-    rescode=${TRUE};
+    _rescode=${TRUE};
   fi
-  return ${rescode};
+
+  return ${_rescode};
 }
 
 # fun: isFunctionDefined functionName
@@ -109,14 +124,15 @@ function isFalse() {
 # txt: Checks if a given function is defined.
 # opt: functionName: The function name.
 # txt: Returns 0/TRUE if the function is defined; 1/FALSE otherwise.
-# use: if functionDefined "readFile"; then readFile ...; fi
+# use: if functionDefined "readFile"; then
+# use:   readFile ...;
+# use: fi
 function isFunctionDefined() {
   local _function="${1}";
   checkNotEmpty functionName "${_function}" 1;
-  local -i _rescode;
 
   type "${_function}" 2> /dev/null | grep -q 'function';
-  _rescode=$?;
+  local -i _rescode=$?;
 
   return ${_rescode};
 }
@@ -126,17 +142,25 @@ function isFunctionDefined() {
 # txt: Checks whether given value is not empty.
 # opt: value: The value to check.
 # txt: Returns 0/TRUE if the value is not empty; 1/FALSE otherwise.
-# use: if isNotEmpty "${MYVAR}"; then echo "MYVAR is not empty"; fi
+# use: if isNotEmpty "${MYVAR}"; then
+# use:  echo is not empty";
+# use: fi
 function isNotEmpty() {
-  local -i rescode;
+  local _value;
+  local -i _rescode;
 
-  if isEmpty "${1}"; then
-    rescode=${FALSE};
+  if isGreaterThan $# 0; then
+    _value="${1}";
+    if isEmpty "${_value}"; then
+      _rescode=${FALSE};
+    else
+      _rescode=${TRUE};
+    fi
   else
-    rescode=${TRUE};
+    _rescode=${FALSE};
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: isNotZero value
@@ -144,18 +168,20 @@ function isNotEmpty() {
 # txt: Checks whether given value is not zero.
 # opt: value: The value.
 # txt: Returns 0/TRUE if the value is zero; 1/FALSE otherwise.
-# use: if isNotZero "${MYVAR}"; then ...; fi
+# use: if isNotZero "${MYVAR}"; then
+# use:   ...;
+# use: fi
 function isNotZero() {
   local _value="${1}";
-  local  -i rescode;
+  local  -i _rescode;
 
   if [[ ${_value} -ne 0 ]]; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
   else
-    rescode=${FALSE};
+    _rescode=${FALSE};
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: isTrue value
@@ -163,25 +189,27 @@ function isNotZero() {
 # txt: Checks whether given value is true.
 # opt: value: The value.
 # txt: Returns 0/TRUE if the value is true; 1/FALSE otherwise.
-# use: if isTrue "${MYVAR}"; then ...; fi
+# use: if isTrue "${MYVAR}"; then
+# use:   ...;
+# use: fi
 function isTrue() {
   local _value="${1}";
   #  checkNotEmpty "value" "${_value}" 1;
 
-  local  -i rescode;
+  local  -i _rescode;
   if isZero ${_value}; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
   elif [ "${_value}" == "${TRUE}" ]; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
   elif [ "${_value}" == TRUE ]; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
   elif [ "${_value}" == "true" ]; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
   else
-    rescode=${FALSE};
+    _rescode=${FALSE};
   fi
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: isVariableDefined var
@@ -189,23 +217,26 @@ function isTrue() {
 # txt: Checks whether given variable is defined.
 # opt: var: The variable value to check.
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# use: if isDefined "${MYVAR}"; then echo "MYVAR is defined"; fi
+# use: if isDefined "${MYVAR}"; then
+# use:  echo "MYVAR is defined";
+# use: fi
 function isVariableDefined() {
   local _var="${1}";
-  local -i rescode;
+
+  local -i _rescode;
   #  set +o nounset  # allow unset variables
   #  eval "[ -v \${$1} ] 2> /dev/null"
   #  eval "[ -v ${1} ] 2> /dev/null"
   checkNotEmpty "var" "${_var}" 1
 
   if [ -v "${_var}" ]; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
   else
-    rescode=${FALSE};
+    _rescode=${FALSE};
   fi
   #  set -o nounset  # terminate on any unset variable
 
-  return ${rescode};
+  return ${_rescode};
 }
 
 # fun: isZero value
@@ -213,18 +244,20 @@ function isVariableDefined() {
 # txt: Checks whether given value is zero.
 # opt: value: The value.
 # txt: Returns 0/TRUE: if the value is zero; 1/FALSE otherwise.
-# use: if isZero "${MYVAR}"; then ...; fi
+# use: if isZero "${MYVAR}"; then
+# use:   ...;
+# use: fi
 function isZero() {
-  local _value="${1}";
-  local  -i rescode;
+  local _value="${1:-}";
+  local  -i _rescode;
 
   if isEmpty "${_value}"; then
-    rescode=${FALSE};
+    _rescode=${FALSE};
   elif [[ "${_value}" == "0" ]]; then
-    rescode=${TRUE};
+    _rescode=${TRUE};
   else
-    rescode=${FALSE};
+    _rescode=${FALSE};
   fi
-  return ${rescode};
+  return ${_rescode};
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

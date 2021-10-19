@@ -42,7 +42,6 @@ function DRYWIT.addMissingDependencyError() {
   checkNotEmpty dependency "${_dependency}" 1;
 
   normalizeUppercase "${_dependency}_NOT_INSTALLED";
-
   local _constant="${RESULT}";
 
   addError "${_constant}" "${_dependency} is not installed";
@@ -54,35 +53,43 @@ function DRYWIT.addMissingDependencyError() {
 # txt: Returns 0/TRUE always.
 # use: cleanup;
 function cleanup() {
-  local -i _deletedCount=0;
-  local -i _notDeletedCount=0;
-  local _deleted;
-  local _notDeleted;
-  local -i _success;
   local _oldIFS="${IFS}";
-  local _i;
 
-  getCleanupFilesVariableName;
+  FILE.getCleanupFilesVariableName;
   local -n _cleanupFiles=${RESULT};
 
-  if [ "${#_cleanupFiles}" != "0" ]; then
+  if isGreaterThan ${#_cleanupFiles[@]} 0; then
     setLogCategory "post-process";
 
     logTrace -n "Cleaning up temporary files";
 
+    local -i _deletedCount=0;
+    local -i _notDeletedCount=0;
+    local _deleted="";
+    local _notDeleted="";
+
     IFS="${DWIFS}";
+    local _i;
     for _i in ${_cleanupFiles[@]}; do
       IFS="${_oldIFS}";
-      rm -rf ${_i} > /dev/null 2>&1;
+      rm -rf "${_i}" > /dev/null 2>&1;
       if isTrue $?; then
-        _deleted="${_deleted} ${_i}";
+        if isNotEmpty "${_deleted}"; then
+          _deleted="${_deleted} ";
+        fi
+        _deleted="${_deleted}${_i}";
         _deletedCount=$((_deletedCount + 1));
       else
-        _notDeleted="${_notDeleted} ${_i}";
+        if isNotEmpty "${_notDeleted}"; then
+          _notDeleted="${_notDeleted} ";
+        fi
+        _notDeleted="${_notDeleted}${_i}";
         _notDeletedCount=$((_notDeletedCount + 1));
       fi
     done
     IFS="${_oldIFS}";
+
+    local -i _success=${FALSE};
 
     if isZero ${_notDeletedCount}; then
       _success=${TRUE};
@@ -114,12 +121,13 @@ function cleanup() {
 # opt: scriptFile: The script file. Optional.
 # txt: Returns 0/TRUE if the function is missing; 1/FALSE otherwise.
 # use: if isFunctionMissing "myFunc" "myScript.sh"; then
-#        echo "myFunc is not defined in myScript.sh";
-#      fi
+# use:   echo "myFunc is not defined in myScript.sh";
+# use: fi
 function isFunctionMissing() {
   local _function="${1}";
   checkNotEmpty funcName "${_function}" 1;
   local _script="${2}";
+
   local -i _rescode;
 
   if isFunctionPresent "${_function}" "${_script}"; then
@@ -138,47 +146,56 @@ function isFunctionMissing() {
 # opt: scriptFile: The script file. Optional.
 # txt: Returns 0/TRUE if the function is found; 1/FALSE otherwise.
 # use: if isFunctionPresent "myFunc" "myScript.sh"; then
-#        echo "myFunc is defined in myScript.sh";
-#      fi
+# use:   echo "myFunc is defined in myScript.sh";
+# use: fi
 function isFunctionPresent() {
   local _function="${1}";
   checkNotEmpty funcName "${_function}" 1;
-
-  local _scriptName="${2}";
-  local -i _rescode;
-  local _inc;
+  local _scriptName="";
+  if isGreaterThan $# 1; then
+    _scriptName="${2}";
+  fi
+  
   local _oldIFS="${IFS}";
-
 
   if isEmpty "${_scriptName}"; then
     DW.getScriptName;
     _scriptName="${RESULT}";
   fi
 
-  DW.getScriptFolder;
-  local _scriptFolder="${RESULT}";
+  local -i _rescode=${FALSE};
+  
+  if isMacOSX; then
+    command type -t "${_function}" 2> /dev/null | grep -q 'function'
+    _rescode=$?;
+  else
+    type "${_function}" 2> /dev/null | grep -q 'function'
+    _rescode=$?;
+  fi
 
-  type ${_function} 2> /dev/null | grep -q 'function'
-  _rescode=$?;
   if isFalse ${_rescode}; then
     if isNotEmpty "${_scriptName}"; then
-      grep " ${_function}()" "${_scriptName}" > /dev/null 2>&1;
+      grep -q " ${_function} *()" "${_scriptName}" > /dev/null 2>&1;
       _rescode=$?;
     fi
   fi
   if isFalse ${_rescode}; then
-    if isNotEmpty "${_script}"; then
+    if isNotEmpty "${_scriptName}"; then
+      DW.getScriptFolder;
+      local _scriptFolder="${RESULT}";
+
       IFS="${DWIFS}";
-      echo "In isFunctionPresent/basename"
-      for _inc in "./$(basename ${_scriptName} .sh).inc.sh" \
-                    "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh"; do
+      local _inc;
+      for _inc in "${BASH_SOURCE[0]}/$(basename ${_scriptName} .sh).inc.sh" \
+                  "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh" \
+                  "./$(basename ${_scriptName} .sh).inc.sh"; do
         IFS="${_oldIFS}";
         if [ -e "${_inc}" ]; then
           isFunctionPresent "${_function}" "${_inc}";
           _rescode=$?;
-	        if isTrue ${_rescode}; then
+          if isTrue ${_rescode}; then
             break;
-	        fi
+          fi
         fi
       done
       IFS="${_oldIFS}";
@@ -198,18 +215,24 @@ function isFunctionPresent() {
 function DRYWIT.checkDependency() {
   local _req="${1}";
   checkNotEmpty name "${_req}" 1;
-  local _errorCode="${2}";
+  local _errorCode="";
+  if isGreaterThan $# 1; then
+    _errorCode="${2}";
 
-  if isEmpty "${_errorCode}"; then
-    normalizeUppercase "${_req}_NOT_INSTALLED";
-    _errorCode="${RESULT}";
+    if isEmpty "${_errorCode}"; then
+      normalizeUppercase "${_req}_NOT_INSTALLED";
+      _errorCode="${RESULT}";
+    fi
   fi
-
+  
   which ${_req} > /dev/null 2>&1;
-  rescode=$?;
-  if isFalse ${rescode}; then
+  local -i _rescode=$?;
+
+  if isFalse ${_rescode}; then
     exitWithErrorCode ${_errorCode};
   fi
+
+  return ${_rescode};
 }
 
 # fun: DRYWIT.checkScript script
@@ -221,9 +244,10 @@ function DRYWIT.checkDependency() {
 function DRYWIT.checkScript() {
   local _script="${1}";
   checkNotEmpty script "${_script}" 1;
-  local _v;
-  local _f;
   local _oldIFS="${IFS}";
+
+  getLogCategory;
+  local _oldCategory="${RESULT}";
 
   setLogCategory "sanity-check";
   logTrace -n "Checking mandatory constants";
@@ -232,6 +256,7 @@ function DRYWIT.checkScript() {
   local -n _errorMessages=${RESULT};
 
   IFS="${DWIFS}";
+  local _v;
   for _v in ${_errorMessages[@]}; do
     IFS="${_oldIFS}";
     if [ -z "${_v}" ]; then
@@ -240,17 +265,8 @@ function DRYWIT.checkScript() {
   done
   IFS="${_oldIFS}";
   logTraceResult SUCCESS "${DONE}";
-  logTrace -n "Checking mandatory functions";
-  IFS="${DWIFS}";
-  for _f in main; do
-    IFS="${_oldIFS}";
-    isFunctionPresent ${_f} ${_script};
-    if isFalse $?; then
-      exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f};
-    fi
-  done
-  IFS="${_oldIFS}";
-  logTraceResult SUCCESS "${DONE}";
+
+  setLogCategory "${_oldCategory}";
 }
 
 # fun: DRYWIT.defineDryWitRequirements
@@ -274,14 +290,16 @@ function DRYWIT.main() {
   local _scriptName="${RESULT}";
   DW.getScriptPath;
   local _scriptPath="${RESULT}";
-  local _absolutePath;
   retrieveAbsolutePath "${_scriptPath}";
-  _absolutePath="${RESULT}";
+  local _absolutePath="${RESULT}";
 
   # first argument is the script name.
   shift;
 
   source "${_scriptPath}" $@;
+
+  disableExitOnErrorOption;
+  local _bashOpts="${RESULT}";
 
   DRYWIT.setup "${_scriptName}";
 
@@ -325,50 +343,60 @@ function DRYWIT.main() {
     fi
   fi
 
+  applyThemeIfPresent;
+
   if isHelpFlagProvided; then
     printHelp;
+  elif isFunctionPresent main "${_scriptName}"; then
+    setLogCategory "";
+
+    restoreBashOptions "${_bashOpts}";
+    main ${BASH_ARGV[@]};
+    setLogCategory "";
   else
-    setLogCategory "";
-    main;
-    setLogCategory "";
+    echo "Invalid ${_scriptName} script: main function is mandatory in dry-wit scripts";
+    exit 255;
   fi
 }
 
 # fun: DRYWIT.retrieveSettingsFiles
 # api: private
 # txt: Retrieves the settings files.
+# txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains a space-separated list of settings files.
 # use: DRYWIT.retrieveSettingsFiles; echo "settings files: ${RESULT}";
 function DRYWIT.retrieveSettingsFiles() {
-  local _f;
-  local _d;
   local _result="";
-  local _oldIFS="${IFS}";
-
   local -A _doneAlready=();
 
   DW.getScriptPath;
   local _scriptPath="${RESULT}";
   DW.getScriptFolder;
   local _scriptFolder="${RESULT}";
-
+  
+  local _oldIFS="${IFS}";
   IFS="${DWIFS}";
+  local _f;
   for _f in "$(basename ${_scriptPath} .sh).inc.sh" ".$(basename ${_scriptPath} .sh).inc.sh"; do
+    local _d;
     for _d in "${_scriptFolder}" "."; do
       IFS="${_oldIFS}";
       retrieveAbsolutePath "${_d}/${_f}";
-      if [ -e "${RESULT}" ] && [ "${_doneAlready[${RESULT}]}" != "${TRUE}" ]; then
+      local _path="${RESULT}";
+      if [ -e "${_path}" ] && [ "${_doneAlready[${_path}]}" != "${TRUE}" ]; then
         if isNotEmpty "${_result}"; then
           _result="${_result} ";
         fi
-        _result="${_result}${RESULT}";
-        _doneAlready["${RESULT}"]=${TRUE};
+        _result="${_result}${_path}";
+        _doneAlready["${_path}"]=${TRUE};
       fi
     done
   done
   IFS="${_oldIFS}";
 
   export RESULT="${_result}";
+
+  return ${TRUE};
 }
 
 # fun: DRYWIT.setup
@@ -377,15 +405,14 @@ function DRYWIT.retrieveSettingsFiles() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.setup;
 function DRYWIT.setup() {
-  DRYWIT.trapSignals;
-  local _f;
-  local _files;
-  local _oldIFS="${IFS}";
+#  DRYWIT.trapSignals;
 
   DRYWIT.retrieveSettingsFiles;
-  _files="${RESULT}"
+  local _files="${RESULT}"
 
+  local _oldIFS="${IFS}";
   IFS="${DWIFS}";
+  local _f;
   for _f in ${_files}; do
     IFS="${_oldIFS}";
     sourceFileIfExists "${_f}";

@@ -1,0 +1,186 @@
+# mod: ubuntu
+# api: public
+# txt: Ubuntu-specific functions.
+
+DW.import command;
+
+# fun: retrieveVersion package
+# api: public
+# txt: Retrieves the version of given package.
+# opt: package: The package.
+# txt: Returns 0/TRUE if the version could be retrieved; 1/FALSE otherwise.
+# txt: If the function succeeds, the variable RESULT contains the version.
+# use: if retrieveVersion wget; then
+# use:   echo "Version: ${RESULT}";
+# use: fi
+function retrieveVersion() {
+  local _package="${1}";
+  checkNotEmpty package "${_package}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _result="$(dpkg -p ${_package} 2> /dev/null | grep -e '^Version: ' | cut -d' ' -f2)";
+  if isNotEmpty "${_result}"; then
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: installUbuntuPackage package
+# api: public
+# txt: Installs given package.
+# opt: package: The package to install.
+# opt: extraArgs: Extra arguments. Optional.
+# txt: Returns 0/TRUE if the package is installed; 1/FALSE otherwise.
+# use: if installUbuntuPackage wget; then
+# use:   ...
+# use: fi
+function installUbuntuPackage() {
+  local _package="${1}";
+  checkNotEmpty package "${_package}" 1;
+  shift;
+  local _extraArgs="${@}";
+
+  runCommandLongOutput "/usr/bin/apt-get -qq install -y ${_extraArgs} --no-install-recommends ${_package}";
+  local -i _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: isAptCacheMissing
+# api: public
+# txt: Checks whether the APT cache is missing.
+# txt: Returns 0/TRUE if the cache is missing; 1/FALSE otherwise.
+# use: if isAptCacheMissing; then
+# use:   echo "APT cache is missing";
+# use: fi
+function isAptCacheMissing() {
+  local -i _rescode;
+  local _cacheFolder="/var/lib/apt/lists";
+
+  local -i _aux;
+
+  if folderExists "${_cacheFolder}"; then
+    local -i _aux=$(ls ${_cacheFolder} > /dev/null | wc -l);
+    if isEqualTo ${_aux}; then
+      _rescode=${TRUE};
+    else
+      _rescode=${FALSE};
+    fi
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: updateUbuntuSystem
+# api: public
+# txt: Updates the system via apt update.
+# txt: Returns 0/TRUE if the system gets updated; 1/FALSE otherwise.
+# use: if ! updateUbuntuSystem; then
+# use:   echo "Error updating system";
+# use: fi
+function updateUbuntuSystem() {
+
+  runCommandLongOutput /usr/bin/apt -qq -y update;
+}
+
+# fun: upgradeUbuntuSystem
+# api: public
+# txt: Updates the system via apt upgrade.
+# txt: Returns 0/TRUE if the system gets upgraded; 1/FALSE otherwise.
+# use: if ! upgradeUbuntuSystem; then
+# use:   echo "Error upgrading system";
+# use: fi
+function upgradeUbuntuSystem() {
+
+  runCommandLongOutput /usr/bin/apt -qq -y upgrade;
+}
+
+# fun: distUpgradeUbuntuSystem
+# api: public
+# txt: Updates the system via apt dist-upgrade.
+# txt: Returns 0/TRUE if the system gets upgraded; 1/FALSE otherwise.
+# use: if ! distUpgradeUbuntuSystem; then
+# use:   echo "Error upgrading system";
+# use: fi
+function distUpgradeUbuntuSystem() {
+
+  runCommandLongOutput /usr/bin/apt -qq -y dist-upgrade;
+}
+
+# fun: autoremoveUbuntuPackages
+# api: public
+# txt: Removes unused packages from the system.
+# txt: Returns 0/TRUE if the packages gets removed; 1/FALSE otherwise.
+# use: if autoremoveUbuntuPackages; then
+# use:   ...
+# use: fi
+function autoremoveUbuntuPackages() {
+
+  runCommandLongOutput /usr/bin/apt-get -qq remove --purge -y;
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    runCommandLongOutput /usr/bin/apt-get -qq autoremove;
+    _rescode=$?;
+  fi
+
+  return ${_rescode};
+}
+
+# fun: cleanUbuntuSystem
+# api: public
+# txt: Cleans up the system.
+# txt: Returns 0/TRUE if the system gets cleaned; 1/FALSE otherwise.
+# use: if cleanUbuntuSystem; then
+# use:   echo "Ubuntu system cleaned up";
+# use: fi
+function cleanUbuntuSystem() {
+
+  runCommandLongOutput /usr/bin/apt-get -qq clean;
+  local -i _rescode=$?;
+
+  # TODO: Fix automatic temporary file cleanup.
+  rm -f /.system-update.sh.??????????;
+  rm -f /.system-cleanup.sh.??????????;
+  rm -f /.pkg-install.sh.??????????;
+
+  local _oldIFS="${IFS}";
+  local _locale;
+  IFS="${DWIFS}";
+  for _locale in $(find /usr/share/i18n/locales/); do
+    IFS="${_oldIFS}";
+    if arrayDoesNotContain "$(basename ${_locale})" "${PINNED_LOCALES}"; then
+      rm -f "${_locale}" 2> /dev/null;
+    fi
+  done;
+  IFS="${_oldIFS}";
+
+  return ${_rescode};
+}
+
+# fun: pinUbuntuPackage
+# api: public
+# txt: Marks a package as sticky, so that it doesn't get automatically removed assuming it's not used.
+# opt: package: The package to pin.
+# txt: Returns 0/TRUE always, but can exit if the package cannot be pinned.
+# use: if pinUbuntuPackage wget; then
+# use:   echo "wget pinned";
+# use: fi
+function pinUbuntuPackage() {
+  local _package="${1}";
+  checkNotEmpty package "${_package}" 1;
+
+  runCommandLongOutput /usr/bin/apt-mark hold ${_package};
+  local -i _rescode=$?;
+
+  return ${_rescode};
+}
+
+# env: PINNED_LOCALES: The pinned locales.
+defineEnvVar PINNED_LOCALES MANDATORY "The pinned locales" "en_US es_ES es_ES@euro";
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

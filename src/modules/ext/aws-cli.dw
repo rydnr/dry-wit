@@ -1,0 +1,281 @@
+# mod: aws-cli
+# api: public
+# txt: AWS CLI functions
+
+# fun: retrieveAwsCliFromProfileAndRegion awsProfile awsRegion
+# api: public
+# txt: Retrieves the AWS command-line.
+# opt: awsProfile: The AWS profile.
+# opt: awsRegion: The AWS region.
+# txt: Returns 0/TRUE if the AWS CLI could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the path and common flags for AWS CLI.
+# use: if retrieveAwsCliFromProfileAndRegion "contestia-dev" "us-east-1"; then
+# use:   echo "AWS CLI -> ${RESULT}";
+# use: fi
+function retrieveAwsCliFromProfileAndRegion () {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  local _awsRegion="${2}";
+  checkNotEmpty awsRegion "${_awsRegion}" 2;
+  local -i _rescode;
+
+  local _result="$(which aws) --profile ${_awsProfile} --region ${_awsRegion}";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveAwsRegionForProfile awsProfile
+# api: public
+# txt: Retrieves the default region for given profile.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the region could be found for given profile; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the region.
+# use: if retrieveAwsRegionForProfile ${awsProfile}; then
+# use:   echo "region: ${RESULT}";
+# use: fi
+function retrieveAwsRegionForProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  local _result;
+  _result="$(sed -n "/^[ \t]*\[profile ${_awsProfile}\]/,/\[/s/^[ \t]*region[ \t]*=[ \t]*//p" ~/.aws/config)";
+  local -i _rescode=$?;
+
+  if    isTrue ${_rescode} \
+     && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveAwsAccessKeyIdForProfile awsProfile
+# api: public
+# txt: Retrieves the AWS access key id for given profile.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the access key id could be found for given profile; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the access key id.
+# use: if retrieveAwsAccessKeyIdForProfile ${awsProfile}; then
+# use:   echo "AWS access key id: ${RESULT}";
+# use: fi
+function retrieveAwsAccessKeyIdForProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  local _result;
+  _result="$(sed -n "/^[ \t]*\[${_awsProfile}\]/,/\[/s/^[ \t]*aws_access_key_id[ \t]*=[ \t]*//p" ~/.aws/credentials)";
+  local -i _rescode=$?;
+
+  if    isTrue ${_rescode} \
+     && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: retrieveAwsSecretAccessKeyForProfile awsProfile
+# api: public
+# txt: Retrieves the AWS secret access key for given profile.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the secret access key could be found for given profile; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the secret access key.
+# use: if retrieveAwsSecretAccessKeyForProfile ${awsProfile}; then
+# use:   echo "AWS secret access key retrieved"; # value in RESULT
+# use: fi
+function retrieveAwsSecretAccessKeyForProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+
+  local _result;
+  _result="$(sed -n "/^[ \t]*\[${_awsProfile}\]/,/\[/s/^[ \t]*aws_secret_access_key[ \t]*=[ \t]*//p" ~/.aws/credentials)";
+  local -i _rescode=$?;
+
+  if    isTrue ${_rescode} \
+     && isNotEmpty "${_result}"; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: isAwsProfileValid awsProfile
+# api: public
+# txt: Checks if given AWS profile is valid.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the AWS profile is valid; 1/FALSE otherwise.
+# use: if isAwsProfileValid "contestia-dev"; then
+# use:   echo "AWS Profile is valid";
+# use: fi
+function isAwsProfileValid() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  
+  local -i _rescode;
+
+  local _result="$($(which aws) --profile ${_awsProfile} secretsmanager 2>&1)";
+  _rescode=$?;
+  
+  if isTrue ${_rescode} && isNotEmpty "${_result}" && contains "${_result}" "The config profile (${_awsProfile}) could not be found"; then
+    _rescode=${FALSE};
+  fi
+  
+  return ${_rescode};
+}
+
+# fun: awsProfileExists awsProfile
+# api: public
+# txt: Checks if given AWS profile exists.
+# opt: awsProfile: The AWS profile.
+# txt: Returns 0/TRUE if the AWS profile exists; 1/FALSE otherwise.
+# use: if awsProfileExists "contestia-dev"; then
+# use:   echo "AWS Profile exists";
+# use: fi
+function awsProfileExists() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  
+  local -i _rescode=${FALSE};
+
+  if    fileExists "${HOME}/.aws/config" \
+     && fileExists "${HOME}/.aws/credentials"; then
+
+    grep -q -e "^\[\s*profile\s\+${_awsProfile}\s*]" "${HOME}/.aws/config";
+    _rescode=$?;
+
+    if isTrue ${_rescode}; then
+      grep -q -e "^\[\s*${_awsProfile}\s*]" "${HOME}/.aws/credentials";
+      _rescode=$?;
+    fi
+  fi
+  
+  return ${_rescode};
+}
+
+# fun: configureAwsProfile awsProfile awsAccessKeyId awsSecretAccessKey awsRegion outputFormat
+# api: public
+# txt: Configures the AWS CLI.
+# opt: awsProfile: The name AWS profile.
+# opt: awsAccessKeyId: The AWS access key id.
+# opt: awsSecretAccessKey: The AWS secret access key.
+# opt: awsRegion: The AWS region.
+# opt: outputFormat: The output format.
+# txt: Returns 0/TRUE if the AWS profile gets configured successfully; 1/FALSE otherwise.
+# use: if configureAwsProfile ${awsProfile} ${awsAccessKeyId} ${awsSecretAccessKey} ${awsRegion} ${outputFormat}; then
+# use:   echo "${awsProfile} configured successfully";
+# use: fi
+function configureAwsProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  local _awsAccessKeyId="${2}";
+  checkNotEmpty awsAccessKeyId "${_awsAccessKeyId}" 2;
+  local _awsSecretAccessKey="${3}";
+  checkNotEmpty awsSecretAccessKey "${_awsSecretAccessKey}" 3;
+  local _awsRegion="${4}";
+  checkNotEmpty awsRegion "${_awsRegion}" 4;
+  local _outputFormat="${5}";
+  checkNotEmpty outputFormat "${_outputFormat}" 5;
+
+  local -i _rescode=${FALSE};
+  
+  if awsProfileExists "${_awsProfile}"; then
+    _rescode=${TRUE};
+  elif isAwsProfileValid "${_awsProfile}"; then
+    AWSCLI.updateAwsProfile "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
+    _rescode=$?;
+  else
+    AWSCLI.createAwsProfile  "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
+    _rescode=$?;
+  fi
+
+  return ${_rescode};
+}
+
+
+# fun: createAwsProfile awsProfile awsAccessKeyId awsSecretAccessKey awsRegion outputFormat
+# api: private
+# txt: Creates a new AWS profile.
+# opt: awsProfile: The name AWS profile.
+# opt: awsAccessKeyId: The AWS access key id.
+# opt: awsSecretAccessKey: The AWS secret access key.
+# opt: awsRegion: The AWS region.
+# opt: outputFormat: The output format.
+# txt: Returns 0/TRUE if the AWS profile gets created successfully; 1/FALSE otherwise.
+# use: if AWSCLI.createAwsProfile ${awsProfile} ${awsAccessKeyId} ${awsSecretAccessKey} ${awsRegion} ${outputFormat}; then
+# use:   echo "${awsProfile} created successfully";
+# use: fi
+function AWSCLI.createAwsProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  local _awsAccessKeyId="${2}";
+  checkNotEmpty awsAccessKeyId "${_awsAccessKeyId}" 2;
+  local _awsSecretAccessKey="${3}";
+  checkNotEmpty awsSecretAccessKey "${_awsSecretAccessKey}" 3;
+  local _awsRegion="${4}";
+  checkNotEmpty awsRegion "${_awsRegion}" 4;
+  local _outputFormat="${5}";
+  checkNotEmpty outputFormat "${_outputFormat}" 5;
+
+  local -i _rescode=${FALSE};
+
+  mkdir -p ${HOME}/.aws 2> /dev/null;
+  
+  cat <<EOF >> ${HOME}/.aws/config
+[profile ${_awsProfile}]
+region = ${_awsRegion}
+output = ${_outputFormat}
+EOF
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    cat <<EOF >> ${HOME}/.aws/credentials
+[${_awsProfile}]
+aws_access_key_id = ${_awsAccessKeyId}
+aws_secret_access_key = ${_awsSecretAccessKey}
+EOF
+    _rescode=$?;
+  fi
+  
+  return ${_rescode};
+}
+
+# fun: AWSCLI.updateAwsProfile awsProfile awsAccessKeyId awsSecretAccessKey awsRegion outputFormat
+# api: private
+# txt: Updates a AWS profile.
+# opt: awsProfile: The name AWS profile.
+# opt: awsAccessKeyId: The AWS access key id.
+# opt: awsSecretAccessKey: The AWS secret access key.
+# opt: awsRegion: The AWS region.
+# opt: outputFormat: The output format.
+# txt: Returns 0/TRUE if the AWS profile gets updated successfully; 1/FALSE otherwise.
+# use: if AWSCLI.updateAwsProfile ${awsProfile} ${awsAccessKeyId} ${awsSecretAccessKey} ${awsRegion} ${outputFormat}; then
+# use:   echo "${awsProfile} updated successfully";
+# use: fi
+function AWSCLI.updateAwsProfile() {
+  local _awsProfile="${1}";
+  checkNotEmpty awsProfile "${_awsProfile}" 1;
+  local _awsAccessKeyId="${2}";
+  checkNotEmpty awsAccessKeyId "${_awsAccessKeyId}" 2;
+  local _awsSecretAccessKey="${3}";
+  checkNotEmpty awsSecretAccessKey "${_awsSecretAccessKey}" 3;
+  local _awsRegion="${4}";
+  checkNotEmpty awsRegion "${_awsRegion}" 4;
+  local _outputFormat="${5}";
+  checkNotEmpty outputFormat "${_outputFormat}" 5;
+
+  local -i _rescode=${FALSE};
+
+  sed -i "s/^\[\s*profile\s\+${_awsProfile}\s*\]/\[profile ${_awsProfile}-$$\]/g" "${HOME}/.aws/config";
+  sed -i "s/^\[\s*${_awsProfile}\s*\]/\[${_awsProfile}-$$\]/g" "${HOME}/.aws/credentials";
+  AWSCLI.createAwsProfile "${_awsProfile}" "${_awsAccessKeyId}" "${_awsSecretAccessKey}" "${_awsRegion}" "${_outputFormat}";
+  _rescode=$?;
+  
+  return ${_rescode};
+
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -1,4 +1,4 @@
-#!/bin/bash dry-wit
+#!/usr/bin/env dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
@@ -59,5 +59,27 @@ EOF
   fi
 }
 
+function fileContains_works_test() {
+  createTempFile;
+  local _tempFile="${RESULT}";
+
+  cat <<EOF > "${_tempFile}"
+MY_KEY=my value
+EOF
+
+  fileContains "${_tempFile}" MY_KEY;
+  Assert.isTrue $? "fileContains failed";
+
+  fileContains "${_tempFile}" "my value";
+  Assert.isTrue $? "fileContains failed";
+
+  fileContains "${_tempFile}" "MY_KEY=my value";
+  Assert.isTrue $? "fileContains failed";
+
+  fileContains "${_tempFile}" "MY_KEY=my other value";
+  Assert.isFalse $? "fileContains failed";
+}
+
+# test metadata
 setScriptDescription "Runs all tests implemented for file.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

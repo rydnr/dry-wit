@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # (c) 2008-today Automated Computing Machinery, S.L.
 #
 #    This file is part of dry-wit.
@@ -24,7 +24,8 @@
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
-# use: BOOTSTRAP.getModuleName; echo "Module: ${RESULT}";
+# use: BOOTSTRAP.getModuleName;
+# use: echo "Module: ${RESULT}";
 function BOOTSTRAP.getModuleName() {
   export RESULT="BOOTSTRAP";
   return ${TRUE};
@@ -38,7 +39,9 @@ function BOOTSTRAP.getModuleName() {
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE if it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then echo "ONE_THOUSAND variable name: ${RESULT}"; fi
+# use: if DW.declareGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then
+# use:   echo "ONE_THOUSAND variable name: ${RESULT}";
+# use: fi
 function DW.declareGlobalInt() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -46,7 +49,7 @@ function DW.declareGlobalInt() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
-  DW.declareGlobalVariable "${_module}" "${_varName}" "int" "${_value}";
+  DW.declareGlobalVariable "${_module}" "${_varName}" int "${_value}";
 }
 
 # fun: DW.setGlobalInt module varName value
@@ -56,7 +59,9 @@ function DW.declareGlobalInt() {
 # opt: varName: The name of the variable.
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable was previously declared; 1/FALSE if it doesn't exist already.
-# use: if DW.setGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then echo "ONE_THOUSAND variable now is ${RESULT}"; fi
+# use: if DW.setGlobalInt "LOGGING" "ONE_THOUSAND" 1000; then
+# use:   echo "ONE_THOUSAND variable now is ${RESULT}";
+# use: fi
 function DW.setGlobalInt() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -64,10 +69,11 @@ function DW.setGlobalInt() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
-  if ! DW.declareGlobalInt "${_module}" "${_varName}" "${_value}"; then
-    DW.buildGlobalVariableName "${_module}" "${_varName}";
+  if DW.getGlobalVariableName "${_module}" "${_varName}"; then
     local -n _variable="${RESULT}";
-    _variable=${_value};
+    _variable="${_value}";
+  else
+    DW.declareGlobalInt "${_module}" "${_varName}" ${_value};
   fi
 }
 
@@ -76,24 +82,35 @@ function DW.setGlobalInt() {
 # txt: Retrieves the value of a global integer variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
 # opt: varName: The name of the variable.
+# opt: default: The default value if the variable is not defined. Optional.
 # txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the variable value.
-# use: if DW.getGlobalInt "LOGGING" "ONE_THOUSAND"; then echo "ONE_THOUSAND=${RESULT}"; fi
+# use: if DW.getGlobalInt "LOGGING" "ONE_THOUSAND"; then
+# use:   echo "ONE_THOUSAND=${RESULT}";
+# use: fi
 function DW.getGlobalInt() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
+  local _default="${3:-${FALSE}}";
+
   local -i _rescode=${FALSE};
-  local _result;
+  local _result="";
 
   if DW.getGlobalString "${_module}" "${_varName}"; then
-    _result="${RESULT}";
     _rescode=${TRUE};
+    if BOOTSTRAP.isEmpty "${RESULT}"; then
+      _result=${_default};
+    else
+      _result=${RESULT};
+    fi
   fi
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if BOOTSTRAP.isTrue ${_rescode}; then
     export RESULT="${_result}";
+  else
+    export RESULT="";
   fi
 
   return ${_rescode};
@@ -107,7 +124,9 @@ function DW.getGlobalInt() {
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalString "LOGGING" "MY_STRING" "test"; then echo "MY_STRING variable: ${RESULT}"; fi
+# use: if DW.declareGlobalString "LOGGING" "MY_STRING" "test"; then
+# use:   echo "MY_STRING variable: ${RESULT}";
+# use: fi
 function DW.declareGlobalString() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -115,7 +134,7 @@ function DW.declareGlobalString() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
-  DW.declareGlobalVariable "${_module}" "${_varName}" "string" "${_value}";
+  DW.declareGlobalVariable "${_module}" "${_varName}" string "${_value}";
 }
 
 # fun: DW.setGlobalString module varName value
@@ -125,7 +144,9 @@ function DW.declareGlobalString() {
 # opt: varName: The name of the variable.
 # opt: value: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable was previously declared; 1/FALSE if it doesn't exist already.
-# use: if DW.setGlobalString "LOGGING" "MY_STRING" "text"; then echo "MY_STRING variable now is ${RESULT}"; fi
+# use: if DW.setGlobalString "LOGGING" "MY_STRING" "text"; then
+# use:   echo "MY_STRING variable now is ${RESULT}";
+# use: fi
 function DW.setGlobalString() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -133,11 +154,7 @@ function DW.setGlobalString() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   local _value="${3}";
 
-  if ! DW.declareGlobalString "${_module}" "${_varName}" "${_value}"; then
-    DW.buildGlobalVariableName "${_module}" "${_varName}";
-    local -n _variable="${RESULT}";
-    _variable="${_value}";
-  fi
+  DW.declareGlobalString "${_module}" "${_varName}" "${_value}";
 }
 
 # fun: DW.getGlobalString module varName
@@ -147,23 +164,30 @@ function DW.setGlobalString() {
 # opt: varName: The name of the variable.
 # txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the variable value.
-# use: if DW.getGlobalString "LOGGING" "MY_STRING"; then echo "MY_STRING=${RESULT}"; fi
+# use: if DW.getGlobalString "LOGGING" "MY_STRING"; then
+# use:   echo "MY_STRING=${RESULT}";
+# use: fi
 function DW.getGlobalString() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
+
   local -i _rescode=${FALSE};
-  local _result;
 
   if DW.getGlobalVariableName "${_module}" "${_varName}"; then
-    local _aux="${RESULT}";
-    local -n _result="${RESULT}";
-    _rescode=${TRUE};
+    local _variableName=${RESULT};
+    local -n _result=${RESULT};
+    if [[ "${_variableName}" != "${_result:-}" ]]; then
+      _rescode=${TRUE};
+    fi
+    if BOOTSTRAP.isTrue ${_rescode}; then
+      export RESULT="${_result:-}";
+    fi
   fi
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
-    export RESULT="${_result}";
+  if BOOTSTRAP.isFalse ${_rescode}; then
+    export RESULT="";
   fi
 
   return ${_rescode};
@@ -177,7 +201,9 @@ function DW.getGlobalString() {
 # opt: values*: The initial values. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalArray "LOGGING" "MY_LIST" "a" "b" "c"; then echo "MY_LIST variable: ${RESULT}"; fi
+# use: if DW.declareGlobalArray "LOGGING" "MY_LIST" "a" "b" "c"; then
+# use:   echo "MY_LIST variable: ${RESULT}";
+# use: fi
 function DW.declareGlobalArray() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -185,7 +211,7 @@ function DW.declareGlobalArray() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   shift;
   shift;
-  DW.declareGlobalVariable "${_module}" "${_varName}" "array" ${@};
+  DW.declareGlobalVariable "${_module}" "${_varName}" array ${@};
 }
 
 # fun: DW.declareGlobalMap module varName values*
@@ -196,7 +222,9 @@ function DW.declareGlobalArray() {
 # opt: values: The initial values. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalMap "LOGGING" "MY_ASSOCIATIVE_ARRAY"; then local -n map=${RESULT}; fi
+# use: if DW.declareGlobalMap "LOGGING" "MY_ASSOCIATIVE_ARRAY"; then
+# use:   local -n map=${RESULT};
+# use: fi
 function DW.declareGlobalMap() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
@@ -204,7 +232,7 @@ function DW.declareGlobalMap() {
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
   shift;
   shift;
-  DW.declareGlobalVariable "${_module}" "${_varName}" "map" ${@};
+  DW.declareGlobalVariable "${_module}" "${_varName}" map ${@};
 }
 
 # fun: DW.declareGlobalVariable module varName varType initialValue
@@ -212,58 +240,72 @@ function DW.declareGlobalMap() {
 # txt: Declares a global variable. Its name depends on the nesting level.
 # opt: module: The name of the module.
 # opt: varName: The name of the variable.
-# opt: varType: Either "int", "array" or "string".
+# opt: varType: Either int, array, string or map.
 # opt: initialValue: The initial value. Optional.
 # txt: Returns 0/TRUE if the variable gets declared; 1/FALSE it already exists.
 # txt: The variable RESULT contains the new or the existing global variable name.
-# use: if DW.declareGlobalVariable "LOGGING" "MY_LIST" "array"; then echo "MY_LIST variable name: ${RESULT}"; fi
+# use: if DW.declareGlobalVariable "LOGGING" "MY_LIST" "array"; then
+# use:   echo "MY_LIST variable name: ${RESULT}";
+# use: fi
 function DW.declareGlobalVariable() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
-  local _varName="${2}";
+  shift;
+  local _varName="${1}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local _varType="${3}";
+  shift;
+  local _varType="${1}";
   BOOTSTRAP.checkNotEmpty varType "${_varType}" 3;
-  local _initialValue="${4}";
   shift;
-  shift;
-  shift;
-  local -i _rescode;
+  local _initialValue="${@:-}";
 
   DW.getGlobalVariableName "${_module}" "${_varName}";
-  _rescode=$?;
+  local -i _rescode=$?;
   local _aux="${RESULT}";
 
-  if [ ${_rescode} -eq ${TRUE} ]; then
+  if BOOTSTRAP.isTrue ${_rescode}; then
     unset "${_aux}";
+    local -i _initialValueProvided;
+    if BOOTSTRAP.isEmpty "${_initialValue}"; then
+      _initialValueProvided=${FALSE};
+    else
+      _initialValueProvided=${TRUE};
+    fi
+
     case "${_varType}" in
-      "int") if BOOTSTRAP.isEmpty "${_initialValue}"; then
-               declare -agx "${_aux}";
-             else
-               declare -agx "${_aux}"=${_initialValue};
-             fi
-             _rescode=$?;
-             ;;
-      "array") eval "declare -agx ${_aux}";
-               _rescode=$?;
-               if ! BOOTSTRAP.isEmpty "${_initialValue}"; then
-                 local -n _tmp=${_aux};
-                 _tmp=( $@ );
-               fi
-               ;;
-      "map") eval "declare -Agx ${_aux}";
-             _rescode=$?;
-             ;;
-      *) if BOOTSTRAP.isEmpty "${_initialValue}"; then
-           declare -gx "${_aux}";
-         else
-           declare -gx "${_aux}"="${_initialValue}";
-         fi
-         _rescode=$?;
-         ;;
+      int)
+        if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+          declare -igx "${_aux}"=${_initialValue};
+        else
+          declare -igx "${_aux}";
+        fi
+        _rescode=$?;
+        ;;
+      array)
+        declare -agx "${_aux}";
+        _rescode=$?;
+        if BOOTSTRAP.isTrue ${_rescode}; then
+          local -n _tmp=${_aux};
+          if BOOTSTRAP.isTrue ${_initialValueProvided}; then
+            _tmp=( ${@} );
+            _rescode=$?;
+          else
+            _tmp=();
+            _rescode=$?;
+          fi
+        fi
+        ;;
+      map)
+        declare -Agx "${_aux}";
+        _rescode=$?;
+        ;;
+      *)
+        declare -gx "${_aux}"="${_initialValue}";
+        _rescode=$?;
+        ;;
     esac
   else
-    echo "DW.getGlobalVariableName ${_module} ${_varName} returned 1. Please fill-in a bug report."
+    BOOTSTRAP.logDebug "DW.getGlobalVariableName ${_module} ${_varName} returned 1. Please fill-in a bug report (https://github.com/rydnr/dry-wit)"
   fi
 
   return ${_rescode};
@@ -275,47 +317,22 @@ function DW.declareGlobalVariable() {
 # opt: module: The name of the module.
 # opt: varName: The (logical) name of the variable.
 # txt: Returns 0/TRUE if the variable exists; 1/FALSE otherwise.
+
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the existing global variable.
-# use: if DW.getGlobalVariableName "LOGGING" "MY_LIST"; then local -n _var="${RESULT}"; fi
+# use: if DW.getGlobalVariableName "LOGGING" "MY_LIST"; then
+# use:   local -n _var="${RESULT}";
+# use: fi
 function DW.getGlobalVariableName() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local _varName="${2}";
   BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local -i _rescode;
 
-  DW.buildGlobalVariableName "${_module}" "${_varName}";
-  _rescode=$?;
-
-  return ${_rescode};
-}
-
-# fun: DW.buildGlobalVariableName module varName
-# api: public
-# txt: Retrieves the name of a global variable. Its name depends on the nesting level. It might not yet exist.
-# opt: module: The name of the module.
-# opt: varName: The (logical) name of the variable.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the name of the global variable.
-# use: DW.buildGlobalVariableName "LOGGING" "MY_LIST"; echo "variable name: ${RESULT}";
-function DW.buildGlobalVariableName() {
-  local _module="${1}";
-  BOOTSTRAP.checkNotEmpty module "${_module}" 1;
-  local _varName="${2}";
-  BOOTSTRAP.checkNotEmpty varName "${_varName}" 2;
-  local -i _rescode;
-
-  BOOTSTRAP.toUpper "${_module}";
-  local _moduleUpcased="${RESULT}";
-
-  BOOTSTRAP.toUpper "${_varName}";
-  local _varNameUpcased="${RESULT}";
-
-  local _result="_DW_${_moduleUpcased}_${_varNameUpcased}_${DW_SCRIPT_INDEX}";
+  local _result="_DW_$$_${_module^^}_${_varName^^}";
 
   export RESULT="${_result}";
 
-  return ${_rescode};
+  return ${TRUE};
 }
 
 # fun: DW.getScriptName
@@ -323,27 +340,27 @@ function DW.buildGlobalVariableName() {
 # txt: Retrieves the name of the script.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the script.
-# use: DW.getScriptName; echo "Script name: ${RESULT}";
+# use: DW.getScriptName;
+# use: echo "Script name: ${RESULT}";
 function DW.getScriptName() {
-  local -i _rescode=${FALSE};
-  local _result;
+  BOOTSTRAP.getModuleName;
+  DW.getGlobalString "${RESULT}" SCRIPT_NAME;
+}
+
+# fun: BOOTSTRAP.setScriptName name
+# api: public
+# txt: Annotates the name of the script.
+# opt: name: The script name.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setScriptName "myScript";
+function BOOTSTRAP.setScriptName() {
+  local _name="${1}";
+  BOOTSTRAP.checkNotEmpty name "${_name}" 1;
 
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
+  local _module="${RESULT}";
 
-  if DW.getGlobalString "${_moduleName}" SCRIPT_NAME; then
-    _result="${RESULT}";
-    if [[ -n "${_result}" ]]; then
-      _result="${SCRIPT_NAME}";
-    fi
-  fi
-
-  if [[ -n "${_result}" ]]; then
-    _rescode=${TRUE};
-    export RESULT="${_result}";
-  fi
-
-  return ${_rescode};
+  DW.declareGlobalString "${_module}" SCRIPT_NAME "${_name}";
 }
 
 # fun: DW.getScriptPath
@@ -351,11 +368,55 @@ function DW.getScriptName() {
 # txt: Retrieves the path of the script.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the path of the script.
-# use: DW.getScriptPath; echo "Script path: ${RESULT}";
+# use: DW.getScriptPath;
+# use: echo "Script path: ${RESULT}";
 function DW.getScriptPath() {
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" SCRIPT_PATH;
+  DW.getGlobalString "${RESULT}" SCRIPT_PATH;
+}
+
+# fun: BOOTSTRAP.setScriptPath path
+# api: public
+# txt: Annotates the path of the script.
+# opt: path: The script path.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setScriptPath "myScript";
+function BOOTSTRAP.setScriptPath() {
+  local _path="${1}";
+  BOOTSTRAP.checkNotEmpty path "${_path}" 1;
+
+  BOOTSTRAP.getModuleName;
+  local _module="${RESULT}";
+
+  DW.declareGlobalString "${_module}" SCRIPT_PATH "${_path}";
+}
+
+# fun: DW.getDryWitPath
+# api: public
+# txt: Retrieves the path of dry-wit.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the path of dry-wit.
+# use: DW.getDryWitPath;
+# use: echo "dry-wit path: ${RESULT}";
+function DW.getDryWitPath() {
+  BOOTSTRAP.getModuleName;
+  DW.getGlobalString "${RESULT}" DRYWIT_PATH;
+}
+
+# fun: BOOTSTRAP.setDryWitPath path
+# api: public
+# txt: Annotates the path of dry-wit.
+# opt: path: The path.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setDryWitPath "myScript";
+function BOOTSTRAP.setDryWitPath() {
+  local _path="${1}";
+  BOOTSTRAP.checkNotEmpty path "${_path}" 1;
+
+  BOOTSTRAP.getModuleName;
+  local _module="${RESULT}";
+
+  DW.declareGlobalString "${_module}" DRYWIT_PATH "${_path}";
 }
 
 # fun: DW.getScriptFolder
@@ -363,11 +424,27 @@ function DW.getScriptPath() {
 # txt: Retrieves the folder of the script.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the folder of the script.
-# use: DW.getScriptFolder; echo "Script folder: ${RESULT}";
+# use: DW.getScriptFolder;
+# use: echo "Script folder: ${RESULT}";
 function DW.getScriptFolder() {
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" SCRIPT_FOLDER;
+  DW.getGlobalString "${RESULT}" SCRIPT_FOLDER;
+}
+
+# fun: BOOTSTRAP.setScriptFolder folder
+# api: public
+# txt: Annotates the folder of the script.
+# opt: folder: The script folder.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setScriptFolder "myScript";;
+function BOOTSTRAP.setScriptFolder() {
+  local _folder="${1}";
+  BOOTSTRAP.checkNotEmpty folder "${_folder}" 1;
+
+  BOOTSTRAP.getModuleName;
+  local _module="${RESULT}";
+
+  DW.declareGlobalString "${_module}" SCRIPT_FOLDER "${_folder}";
 }
 
 # fun: BOOTSTRAP.exitWithError label message
@@ -401,8 +478,8 @@ function BOOTSTRAP.checkNotEmpty() {
   if [ -z "${_name}" ]; then
     BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
-  local _value="${2}";
 
+  local _value="${2}";
   if [ -z "${_value}" ]; then
     BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
   fi
@@ -413,18 +490,20 @@ function BOOTSTRAP.checkNotEmpty() {
   fi
 }
 
-# fun: BOOTSTRAP.isEmpty name
+# fun: BOOTSTRAP.isEmpty value
 # api: private
 # txt: A fail-safe version of isEmpty.
-# opt: name: The parameter name.
+# opt: value: The parameter value.
 # txt: Returns 0/TRUE if the value is empty; 1/FALSE otherwise.
-# use: BOOTSTRAP.isEmpty "${value}";
+# use: if BOOTSTRAP.isEmpty "${value}"; then
+# use:   echo "value is empty";
+# use: fi
 function BOOTSTRAP.isEmpty() {
-  local _name="${1}";
+  local _value="${1}";
   local -i _rescode;
 
-  if [ -z "${_name}" ]; then
-    _rescode=${TRUE}
+  if [[ -z "${_value}" ]]; then
+    _rescode=${TRUE};
   else
     _rescode=${FALSE};
   fi
@@ -432,15 +511,60 @@ function BOOTSTRAP.isEmpty() {
   return ${_rescode};
 }
 
+# fun: BOOTSTRAP.isTrue value
+# api: private
+# txt: A version of isTrue prior to loading check.dw.
+# opt: value: The parameter value.
+# txt: Returns 0/TRUE if the value is true; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isTrue ${value}; then
+# use:   echo "...";
+# use: fi
+function BOOTSTRAP.isTrue() {
+  local _value="${1}";
+  local -i _rescode;
+
+  if [[ "${_value}" == "${TRUE}" ]]; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: BOOTSTRAP.isFalse value
+# api: private
+# txt: A version of isFalse prior to loading check.dw.
+# opt: value: The parameter value.
+# txt: Returns 0/TRUE if the value is false; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isFalse ${value}; then
+# use:   echo "...";
+# use: fi
+function BOOTSTRAP.isFalse() {
+  local _value="${1}";
+  local -i _rescode;
+
+  if BOOTSTRAP.isTrue "${_value}"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
 # fun: BOOTSTRAP.isDebugEnabled
 # api: private
-# txt: A fail-safe version of isDebugEnabled.
+# txt: Checks if bootstrap debug is enabled.
 # txt: Returns 0/TRUE if DEBUG logging is enabled; 1/FALSE otherwise.
-# use: if BOOTSTRAP.isDebugEnabled; then ...; fi
+# use: if BOOTSTRAP.isDebugEnabled; then
+# use:   echo "Debug enabled";
+# use: fi
 function BOOTSTRAP.isDebugEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
+  local _flag;
   IFS="${DWIFS}";
   for _flag in ${BASH_ARGV[@]}; do
     IFS="${_oldIFS}";
@@ -456,18 +580,45 @@ function BOOTSTRAP.isDebugEnabled() {
 
 # fun: BOOTSTRAP.isTraceEnabled
 # api: private
-# txt: A fail-safe version of isTraceEnabled.
-# txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
-# use: if BOOTSTRAP.isTraceEnabled; then ...; fi
+# txt: Checks if bootstrap tracing is enabled.
+# txt: Returns 0/TRUE if tracing is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isTraceEnabled; then
+# use:   echo "Tracing enabled";
+# use: fi
 function BOOTSTRAP.isTraceEnabled() {
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
-  local _flag;
 
+  local _flag;
   IFS="${DWIFS}";
   for _flag in ${BASH_ARGV[@]}; do
     IFS="${_oldIFS}";
     if [ "${_flag}" == "-DW:vv" ]; then
+	    _rescode=${TRUE};
+	    break;
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  return ${_rescode};
+}
+
+# fun: BOOTSTRAP.isXtraceEnabled
+# api: private
+# txt: Checks if extreme tracing is enabled.
+# txt: Returns 0/TRUE if tracing is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isXtraceEnabled; then
+# use:   echo "Extreme tracing enabled";
+# use: fi
+function BOOTSTRAP.isXtraceEnabled() {
+  local -i _rescode=${FALSE};
+  local _oldIFS="${IFS}";
+
+  local _flag;
+  IFS="${DWIFS}";
+  for _flag in ${BASH_ARGV[@]}; do
+    IFS="${_oldIFS}";
+    if [ "${_flag}" == "-DW:xv" ]; then
 	    _rescode=${TRUE};
 	    break;
     fi
@@ -486,24 +637,21 @@ function BOOTSTRAP.isTraceEnabled() {
 # use: BOOTSTRAP.logDebug "Processing file ${file}";
 function BOOTSTRAP.logDebug() {
   local _message="${1}";
+  local -i _newline=0;
+  local -i _position=1;
+
   if [ "${_message}" == "-n" ]; then
     _newline=1;
     _message="${2}";
     _position=2;
   fi
   BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
-  local -i _newline=0;
-  local -i _position=1;
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTrace is loaded.
-  if BOOTSTRAP.isFunctionDefined "logDebug"; then
-    logDebug $@;
-  elif BOOTSTRAP.isDebugEnabled; then
-    if [ ${_newline} -eq 0 ]; then
+  if BOOTSTRAP.isDebugEnabled; then
+    if BOOTSTRAP.isTrue ${_newline}; then
       command echo "[dry-wit:bootstrap] ${_message}";
     else
-      command echo "[dry-wit:bootstrap] ${_message} ... ";
+      command echo -n "[dry-wit:bootstrap] ${_message} ... ";
     fi
   fi
 }
@@ -517,24 +665,21 @@ function BOOTSTRAP.logDebug() {
 # use: BOOTSTRAP.logTrace "Processing file ${file}";
 function BOOTSTRAP.logTrace() {
   local _message="${1}";
+  local -i _newline=0;
+  local -i _position=1;
+
   if [ "${_message}" == "-n" ]; then
     _newline=1;
     _message="${2}";
     _position=2;
   fi
   BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
-  local -i _newline=0;
-  local -i _position=1;
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTrace is loaded.
-  if BOOTSTRAP.isFunctionDefined "logTrace"; then
-    logTrace $@;
-  elif BOOTSTRAP.isTraceEnabled; then
-    if [ ${_newline} -eq 0 ]; then
+  if BOOTSTRAP.isTraceEnabled; then
+    if BOOTSTRAP.isTrue ${_newline}; then
       command echo "[dry-wit:bootstrap] ${_message}";
     else
-      command echo "[dry-wit:bootstrap] ${_message} ... ";
+      command echo -n "[dry-wit:bootstrap] ${_message} ... ";
     fi
   fi
 }
@@ -543,19 +688,20 @@ function BOOTSTRAP.logTrace() {
 # api: private
 # txt: A fail-safe version of logDebugResult.
 # opt: outcome: The outcome.
-# opt: message: The message.
+# opt: message: The message. Optional.
 # txt: Returns 0/TRUE always.
-# use: BOOTSTRAP.logDebugResult SUCCESS "done"
+# use: BOOTSTRAP.logDebugResult SUCCESS "done";
 function BOOTSTRAP.logDebugResult() {
   local _outcome="${1}";
   BOOTSTRAP.checkNotEmpty outcome "${_outcome}" 1;
   local _outcomeMessage="${2}";
-  BOOTSTRAP.checkNotEmpty outcomeMessage "${_outcomeMessage}" 2;
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTraceResult is loaded.
-  if BOOTSTRAP.isFunctionDefined "logDebugResult"; then
-    logDebugResult ${_outcome} "${_outcomeMessage}";
+  if BOOTSTRAP.isEmpty "${_outcomeMessage}"; then
+    _outcomeMessage="unset";
+  fi
+
+  if BOOTSTRAP.isDebugEnabled; then
+    command echo "[${_outcomeMessage}]";
   fi
 }
 
@@ -563,18 +709,19 @@ function BOOTSTRAP.logDebugResult() {
 # api: private
 # txt: A fail-safe version of logTraceResult.
 # opt: outcome: The outcome.
-# opt: message: The message.
+# opt: message: The message. Optional.
 # use: BOOTSTRAP.logTraceResult SUCCESS "done"
 function BOOTSTRAP.logTraceResult() {
   local _outcome="${1}";
   BOOTSTRAP.checkNotEmpty outcome "${_outcome}" 1;
   local _outcomeMessage="${2}";
-  BOOTSTRAP.checkNotEmpty outcomeMessage "${_outcomeMessage}" 2;
 
-  ## Needed since this function is used in bootstrapping, and could be loaded before
-  ## logTraceResult is loaded.
-  if BOOTSTRAP.isFunctionDefined "logTraceResult"; then
-    logTraceResult ${_outcome} "${_outcomeMessage}";
+  if BOOTSTRAP.isEmpty "${_outcomeMessage}"; then
+    _outcomeMessage="unset";
+  fi
+
+  if BOOTSTRAP.isTraceEnabled; then
+    command echo "[${_outcomeMessage}]";
   fi
 }
 
@@ -587,10 +734,9 @@ function BOOTSTRAP.logTraceResult() {
 function BOOTSTRAP.isFunctionDefined() {
   local _function="${1}";
   BOOTSTRAP.checkNotEmpty name "${_function}" 1;
-  local -i _rescode;
 
   type "${_function}" 2> /dev/null | grep -q 'function';
-  _rescode=$?;
+  local -i _rescode=$?;
 
   return ${_rescode};
 }
@@ -605,12 +751,12 @@ function BOOTSTRAP.isFunctionDefined() {
 function BOOTSTRAP.arrayContains() {
   local _item="${1}";
   local _array="${2}";
-  local _aux;
   local -i _rescode=${FALSE};
   local _oldIFS="${IFS}";
 
-  BOOTSTRAP.checkNotEmpty "item" "${_item}" 1;
+  BOOTSTRAP.checkNotEmpty item "${_item}" 1;
 
+  local _aux;
   IFS="${DWIFS}";
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
@@ -635,8 +781,23 @@ function BOOTSTRAP.toUpper() {
   local _text="${1}";
   BOOTSTRAP.checkNotEmpty text "${_text}" 1;
 
-  local result=$(echo "${_text}" | awk '{print toupper($0);}');
-  export RESULT="${result}";
+  local _result=$(echo "${_text}" | awk '{print toupper($0);}');
+  export RESULT="${_result}";
+}
+
+# fun: BOOTSTRAP.toLower text
+# api: public
+# txt: Converts given string to lower case.
+# opt: text: The string to convert.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the string in lower case.
+# use: local _text="abc"; toLower "${_text}"; local _lowcased="${RESULT}";
+function BOOTSTRAP.toLower() {
+  local _text="${1}";
+  BOOTSTRAP.checkNotEmpty text "${_text}" 1;
+
+  local _result=$(echo "${_text}" | awk '{print tolower($0);}');
+  export RESULT="${_result}";
 }
 
 # fun: BOOTSTRAP.normalize text
@@ -659,14 +820,16 @@ function BOOTSTRAP.normalize() {
 # txt: Downloads given module.
 # opt: module: The module name.
 # txt: Returns 0/TRUE if the module is downloaded; 1/FALSE otherwise.
-# use:  if downloadModule "fibonacci"; then echo "fibonacci module downloaded"; fi
+# use: if downloadModule "fibonacci"; then
+# use:   echo "fibonacci module downloaded";
+# use: fi
 function downloadModule() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local -i _rescode;
   local _result="";
 
-  BOOTSTRAP.getModulePath;
+  getModulePath;
   local _modulePath="${RESULT}";
   mkdir -p "${_modulePath}";
 
@@ -676,21 +839,20 @@ function downloadModule() {
   BOOTSTRAP.logDebug -n "Downloading ${_moduleUrl}/${_module}.dw to ${_moduleUrl}/${_module}.dw";
   curl -s "${_moduleUrl}/${_module}.dw" > "${_modulePath}/${_module}.dw";
   _rescode=$?;
-  if [[ ${_rescode} -eq ${TRUE} ]]; then
-    BOOTSTRAP.logDebugResult SUCCESS "done";
+  if BOOTSTRAP.isTrue ${_rescode}; then
     export RESULT="${_modulePath}/${_module}.dw";
   else
     rm -f "${_modulePath}/${_module}.dw";
     curl -s "${_moduleUrl}/ext/${_module}.dw" > "${_modulePath}/ext/${_module}.dw";
     _rescode=$?;
-  fi
 
-  if [[ ${_rescode} -eq ${TRUE} ]]; then
-    BOOTSTRAP.logDebugResult SUCCESS "done";
-    export RESULT="${_modulePath}/ext/${_module}.dw";
-  else
-    rm -f "${_modulePath}/ext/${_module}.dw";
-    BOOTSTRAP.logDebugResult FAILURE "failed";
+    if BOOTSTRAP.isTrue ${_rescode}; then
+      BOOTSTRAP.logDebugResult SUCCESS "done";
+      export RESULT="${_modulePath}/ext/${_module}.dw";
+    else
+      rm -f "${_modulePath}/ext/${_module}.dw";
+      BOOTSTRAP.logDebugResult FAILURE "failed";
+    fi
   fi
 
   return ${_rescode};
@@ -708,24 +870,39 @@ function BOOTSTRAP.getBootstrapModulesVariableName() {
   DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
 }
 
+# fun: BOOTSTRAP.getEssentialModulesVariableName
+# api: private
+# txt: Retrieves the name of the variable containing the essential modules.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the name of the variable with the essential modules.
+# use: BOOTSTRAP.getEssentialModulesVariableName; local -n essentialModules=${RESULT};
+function BOOTSTRAP.getEssentialModulesVariableName() {
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalVariableName "${_moduleName}" ESSENTIAL_MODULES;
+}
+
 # fun: BOOTSTRAP.bootstrap
 # txt: Bootstraps dry-wit.
 # txt: Returns always 0/TRUE.
 # use: BOOTSTRAP.bootstrap;
 function BOOTSTRAP.bootstrap() {
-  local _module;
   local _modulePath;
   local _oldIFS="${IFS}";
-  IFS="${_oldIFS}";
 
-  BOOTSTRAP.getBootstrapModulesVariableName;
-  local -n _bootstrapModules=${RESULT};
-
+  local _module;
   IFS=${DWIFS};
-  for _module in ${_bootstrapModules[@]}; do
+  for _module in ${_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}; do
     IFS="${_oldIFS}";
     DW.import "${_module}";
-  done
+  done;
+  IFS="${_oldIFS}";
+
+  IFS=${DWIFS};
+  for _module in ${_DW_BOOTSTRAP_EXTRA_MODULES[@]}; do
+    IFS="${_oldIFS}";
+    DW.import "${_module}";
+  done;
   IFS="${_oldIFS}";
 }
 
@@ -739,33 +916,38 @@ function DW.import() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
 
-  local _modulePath;
-
-  if findModule "${_module}"; then
-    _modulePath="${RESULT}";
-  elif downloadModule "${_module}"; then
-    _modulePath="${RESULT}";
-  else
-    echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?"
-    exit 1;
-  fi
-
   BOOTSTRAP.getImportedModulesVariableName;
-  local -n _importedModules=${RESULT};
+  local _importedModulesVariableName="${RESULT}";
+  local -n _importedModules=${_importedModulesVariableName};
 
-  if    BOOTSTRAP.isEmpty "${_importedModules[@]}" \
-      || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[@]}"; then
+  if    BOOTSTRAP.isEmpty "${_importedModules[*]}" \
+     || ! BOOTSTRAP.arrayContains "${_module}" "${_importedModules[*]}"; then
+
+    local _modulePath;
+
+    if findModule "${_module}"; then
+      _modulePath="${RESULT}";
+    elif BOOTSTRAP.isOnlineMode && downloadModule "${_module}"; then
+      _modulePath="${RESULT}";
+    else
+      echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?";
+      exit 1;
+    fi
+
     BOOTSTRAP.logTrace -n "Loading ${_modulePath}";
     source "${_modulePath}";
     BOOTSTRAP.logTraceResult SUCCESS "done";
 
     BOOTSTRAP.normalize "${_module}";
-    local _normalizedModule="${RESULT}";
+    local _normalizedModule="${RESULT^^}";
+
     if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.resetState"; then
+      BOOTSTRAP.logTrace -n "Resetting ${_modulePath} state";
       ${_normalizedModule}.resetState;
       BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
     if BOOTSTRAP.isFunctionDefined "${_normalizedModule}.defaultState"; then
+      BOOTSTRAP.logTrace -n "Restoring ${_modulePath} default state";
       ${_normalizedModule}.defaultState;
       BOOTSTRAP.logTraceResult SUCCESS "done";
     fi
@@ -780,11 +962,11 @@ function DW.import() {
 # api: private
 # txt: Retrieves the name of the variable containing the imported modules.
 # txt: Returns 0/TRUE always.
-# use: BOOTSTRAP.getImportedModulesVariableName; local -n importedModules=${RESULT};
+# use: BOOTSTRAP.getImportedModulesVariableName;
+# use: local -n importedModules=${RESULT};
 function BOOTSTRAP.getImportedModulesVariableName() {
   BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" IMPORTED_MODULES;
+  DW.getGlobalVariableName "${RESULT}" IMPORTED_MODULES;
 }
 
 # fun: findModule module
@@ -792,23 +974,57 @@ function BOOTSTRAP.getImportedModulesVariableName() {
 # txt: Finds given module locally.
 # opt: module: The name of the module.
 # txt: Returns 0/TRUE if the module is found; 1/FALSE otherwise.
-# use: if findModule "fibonacci"; then DW.import fibonacci; fi
+# use: if findModule "fibonacci"; then
+# use:   DW.import fibonacci;
+# use: fi
 function findModule() {
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
+
+  local _result;
   local -i _rescode=${FALSE};
 
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" MODULE_PATH;
+  getModulePath;
   local _modulePath="${RESULT}";
 
-  if [[ -e "${_modulePath}/${_module}.dw" ]]; then
-    _rescode=${TRUE};
-    export RESULT="${_modulePath}/${_module}.dw";
-  elif [[ -e "${_modulePath}/ext/${_module}.dw" ]]; then
-    _rescode=${TRUE};
-    export RESULT="${_modulePath}/ext/${_module}.dw";
+  DW.getScriptPath;
+  local _scriptPath="${RESULT}";
+
+  local _localPath="${BASH_SOURCE[0]}";
+
+  local _dryWitPath="${HOME}/.dry-wit";
+
+  local _oldIFS="${IFS}";
+
+  IFS="${DWIFS}";
+  for _result in "${_dryWitPath}/src/modules/${_module}.dw" \
+                 "${_dryWitPath}/src/modules/ext/${_module}.dw" \
+                 "${_modulePath}/${_module}.dw" \
+                 "${_modulePath}/ext/${_module}.dw" \
+                 "${_modulePath}/.${_module}/${_module}.dw" \
+                 "${_modulePath}/.${_module}/.dw/${_module}.dw" \
+                 "$(dirname ${_scriptPath})/${_module}.dw" \
+                 "$(dirname ${_scriptPath})/.dw/${_module}.dw" \
+                 "$(dirname ${_scriptPath})/.${_module}/${_module}.dw" \
+                 "$(dirname ${_scriptPath})/.${_module}/.dw/${_module}.dw" \
+                 "${_localPath}/${_module}.dw" \
+                 "${_localPath}/.dw/${_module}.dw" \
+                 "${_localPath}/${_module}/${_module}.dw" \
+                 "${_localPath}/${_module}/.dw/${_module}.dw"; do
+    IFS="${_oldIFS}";
+    BOOTSTRAP.logTrace -n "Checking if ${_result} exists";
+    if [[ -e "${_result}" ]]; then
+      _rescode=${TRUE};
+      BOOTSTRAP.logTraceResult SUCCESS "true";
+      break;
+    else
+      BOOTSTRAP.logTraceResult FAILURE "false";
+    fi
+  done
+  IFS="${_oldIFS}";
+
+  if BOOTSTRAP.isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};
@@ -820,7 +1036,9 @@ function findModule() {
 # opt: text: The text.
 # opt: substring: The substring to check.
 # txt: Returns 0/TRUE if the text ends with the substring; 1/FALSE otherwise.
-# use: if BOOTSTRAP.endsWith "${text}" "c"; then echo "${text} ends with c"; fi
+# use: if BOOTSTRAP.endsWith "${text}" "c"; then
+# use:   echo "${text} ends with c";
+# use: fi
 function BOOTSTRAP.endsWith() {
   local _container="${1}";
   BOOTSTRAP.checkNotEmpty text "${_container}" 1;
@@ -842,7 +1060,9 @@ function BOOTSTRAP.endsWith() {
 # api: private
 # txt: Checks whether the initialization has already been done.
 # txt: Returns 0/TRUE if the initialization was done; 1/FALSE otherwise.
-# use: if DW.initialized; then echo "Initialized already"; fi
+# use: if DW.initialized; then
+# use:   echo "Initialized already";
+# use: fi
 function DW.initialized() {
   local -i _rescode;
 
@@ -855,21 +1075,72 @@ function DW.initialized() {
   return ${_rescode};
 
 }
-# fun: DW.nested
+
+# fun: BOOTSTRAP.setNested flag
+# api: private
+# txt: Checks whether this script is running within another dry-wit script.
+# opt: flag: The nested flag.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setNested ${FALSE};
+function BOOTSTRAP.setNested() {
+  local _flag="${1}";
+  BOOTSTRAP.checkNotEmpty flag "${_flag}" 1;
+
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.declareGlobalString "${_moduleName}" NESTED "${_flag}";
+}
+
+# fun: BOOTSTRAP.isNested
 # api: private
 # txt: Checks whether this script is running within another dry-wit script.
 # txt: Returns 0/TRUE if this script is nested within another dry-wit; 1/FALSE otherwise.
-# use: if DW.nested; then echo "Nesting detected"; fi
-function DW.nested() {
+# use: if BOOTSTRAP.isNested; then
+# use:   echo "Nesting detected";
+# use: fi
+function BOOTSTRAP.isNested() {
   local -i _rescode;
 
-  if ! DW.initialized; then
-    _rescode=${FALSE};
-  else
+  BOOTSTRAP.getModuleName;
+  local _moduleName="${RESULT}";
+  DW.getGlobalString "${_moduleName}" NESTED;
+
+  if BOOTSTRAP.isTrue "${RESULT}"; then
     _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
   fi
 
   return ${_rescode};
+}
+
+# fun: DW.initScriptName scriptArgs*
+# api: private
+# txt: Initializes the script name stuff.
+# opt: scriptArgs: The script arguments.
+# txt: Returns 0/TRUE always.
+# use: DW.initScriptName $*;
+function DW.initScriptName() {
+  local _scriptName;
+  local _scriptPath;
+  local _scriptFolder;
+  if [ "$1" == "" ]; then
+    _scriptName="$(basename "${0}" 2>&1)";
+    _scriptPath="${0}";
+    _scriptFolder="$(dirname "${0}" 2>&1)";
+  else
+    _scriptName="$(basename "${1}" 2>&1)";
+    _scriptPath="${1}";
+    _scriptFolder="$(dirname "${1}" 2>&1)";
+    shift;
+  fi
+  if [ "${_scriptFolder}" == "." ]; then
+    _scriptFolder="${PWD}";
+  fi
+
+  BOOTSTRAP.setScriptName "${_scriptName}";
+  BOOTSTRAP.setScriptPath "${_scriptPath}";
+  BOOTSTRAP.setScriptFolder "${_scriptFolder}";
 }
 
 # fun: DW.init
@@ -878,57 +1149,21 @@ function DW.nested() {
 # use: DW.init
 function DW.init() {
 
-  if DW.initialized; then
-    DW_SCRIPT_INDEX=$((DW_SCRIPT_INDEX+1));
-  fi
+  DW.initScriptName $@;
 
-  local _scriptName;
-  local _scriptPath;
-  local _scriptFolder;
-  if [ "$1" == "" ]; then
-    _scriptName="${0}";
-    _scriptPath="${0}";
-    _scriptFolder="$(dirname "${0}")";
-  else
-    _scriptName="${1}";
-    _scriptPath="${1}";
-    _scriptFolder="$(dirname "${1}")";
-    shift;
-  fi
-  if [ "${_scriptFolder}" == "." ]; then
-    _scriptFolder="${PWD}";
-  fi
-
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" SCRIPT_NAME "${_scriptName}";
-  DW.declareGlobalString "${_moduleName}" SCRIPT_PATH "${_scriptPath}";
-  DW.declareGlobalString "${_moduleName}" SCRIPT_FOLDER "${_scriptFolder}";
-  declare -igx DW_INITIALIZED=0;
+  declare -igx DW_INITIALIZED=${TRUE};
 }
 
-function DW.isTest() {
+function DW.ifTestRunDryWitTest() {
   DW.getScriptName;
   local _scriptName="${RESULT}";
 
   if [[ -n ${_scriptName} ]]; then
     if    BOOTSTRAP.endsWith "${_scriptName}" "-tests.sh" \
-        || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
+       || BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
       source $(which dry-wit-test) "${_scriptName}" $@;
     fi
   fi
-}
-
-# fun: BOOTSTRAP.getImportedModulesVariableName
-# api: private
-# txt: Retrieves the name of the variable with the imported variables.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the variable name.
-# use: BOOTSTRAP.getImportedModulesVariableName; local -n importedModules=${RESULT}
-function BOOTSTRAP.getImportedModulesVariableName() {
-  BOOTSTRAP.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalVariableName "${_moduleName}" IMPORTED_MODULES;
 }
 
 # fun: BOOTSTRAP.getModuleTag
@@ -936,11 +1171,25 @@ function BOOTSTRAP.getImportedModulesVariableName() {
 # txt: Retrieves the module tag.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module tag.
-# use: BOOTSTRAP.getModuleTag; echo "module tag: ${RESULT}"
+# use: BOOTSTRAP.getModuleTag;
+# use: echo "module tag: ${RESULT}";
 function BOOTSTRAP.getModuleTag() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
   DW.getGlobalString "${_moduleName}" MODULE_TAG;
+}
+
+# fun: BOOTSTRAP.setModuleTag tag
+# api: private
+# txt: Specifies the module tag.
+# opt: tag: The module tag.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setModuleTag "${HOME}/.dry-wit/src/modules";
+function BOOTSTRAP.setModuleTag() {
+  local _tag="${1}";
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" MODULE_TAG "${_tag}";
 }
 
 # fun: BOOTSTRAP.getModuleUrl
@@ -948,23 +1197,89 @@ function BOOTSTRAP.getModuleTag() {
 # txt: Retrieves the url of the modules.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module url.
-# use: BOOTSTRAP.getModuleUrl; echo "module url: ${RESULT}"
+# use: BOOTSTRAP.getModuleUrl;
+# use: echo "module url: ${RESULT}";
 function BOOTSTRAP.getModuleUrl() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
   DW.getGlobalString "${_moduleName}" MODULE_URL;
 }
 
-# fun: BOOTSTRAP.getModulePath
+# fun: BOOTSTRAP.setModuleUrl url
 # api: private
+# txt: Specifies the module url.
+# opt: url: The module url.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setModuleUrl "https://raw.githubusercontent.com/rydnr/dry-wit/master/src/modules";
+function BOOTSTRAP.setModuleUrl() {
+  local _url="${1}";
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" MODULE_URL "${_url}";
+}
+
+# fun: getModulePath
+# api: public
 # txt: Retrieves the module path.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the module path.
-# use: BOOTSTRAP.getModulePath; echo "module path: ${RESULT}"
-function BOOTSTRAP.getModulePath() {
+# use: getModulePath;
+# use: echo "module path: ${RESULT}";
+function getModulePath() {
+  BOOTSTRAP.getModuleName;
+  DW.getGlobalString "${RESULT}" MODULE_PATH;
+}
+
+# fun: BOOTSTRAP.setModulePath path
+# api: private
+# txt: Specifies the module path.
+# opt: path: The module path.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setModulePath "${HOME}/.dry-wit/src/modules";
+function BOOTSTRAP.setModulePath() {
+  local _path="${1}";
+  BOOTSTRAP.checkNotEmpty path "${_path}" 1;
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" MODULE_PATH "${_path}";
+}
+
+# fun: BOOTSTRAP.setOnlineMode mode
+# api: private
+# txt: Specifies whether to attempt to download missing modules from the Internet.
+# opt: mode: The flag.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.setOnlineMode ${FALSE};
+function BOOTSTRAP.setOnlineMode() {
+  local _mode="${1}";
+  BOOTSTRAP.checkNotEmpty mode "${_mode}" 1;
+
+  BOOTSTRAP.getModuleName;
+  DW.declareGlobalString "${RESULT}" ONLINE_MODE "${_mode}";
+}
+
+# fun: BOOTSTRAP.isOnlineMode
+# api: private
+# txt: Retrieves whether attempting to download missing modules from the Internet is enabled.
+# txt: Returns 0/TRUE if online mode is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.isOnlineMode; then
+# use:   echo "Online mode enabled";
+# use: fi
+function BOOTSTRAP.isOnlineMode() {
+  local -i _rescode;
+
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" MODULE_PATH;
+
+  DW.getGlobalString "${_moduleName}" ONLINE_MODE;
+
+  if BOOTSTRAP.isTrue "${RESULT}"; then
+    _rescode=${TRUE};
+  else
+    _rescode=${FALSE};
+  fi
+
+  return ${_rescode};
 }
 
 # env: TRUE: A synomim for 0.
@@ -976,6 +1291,38 @@ declare -igx FALSE=1;
 # env: DWIFS: The IFS used by dry-wit.
 declare -gx DWIFS=$' \t\n';
 
+# fun: BOOTSTRAP.declareModules
+# api: private
+# txt: Declares the essential and extra modules.
+# txt: Returns 0/TRUE always.
+# use: BOOTSTRAP.declareModules;
+function BOOTSTRAP.declareModules() {
+  # env: _DW_BOOTSTRAP_ESSENTIAL_MODULES: The modules included in the bootstrap process.
+  declare -agx _DW_BOOTSTRAP_ESSENTIAL_MODULES;
+
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=bash-options;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=check;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=stdlib;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=number;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=string;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=array;
+  _DW_BOOTSTRAP_ESSENTIAL_MODULES[${#_DW_BOOTSTRAP_ESSENTIAL_MODULES[@]}]=envvar;
+
+  # env: _DW_BOOTSTRAP_EXTRA_MODULES: The modules included in the bootstrap process.
+  declare -agx _DW_BOOTSTRAP_EXTRA_MODULES;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=constant;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=color;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=debug;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=echo;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=logging;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=error;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=file;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=dw-plumbing;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=term;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=cli;
+  _DW_BOOTSTRAP_EXTRA_MODULES[${#_DW_BOOTSTRAP_EXTRA_MODULES[@]}]=package;
+}
+
 # fun: BOOTSTRAP.resetState
 # api: private
 # txt: Resets the module state.
@@ -985,66 +1332,57 @@ function BOOTSTRAP.resetState() {
   BOOTSTRAP.getModuleName;
   local _moduleName="${RESULT}";
 
-  # env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
-  DW.declareGlobalArray "${_moduleName}" BOOTSTRAP_MODULES;
-  DW.getGlobalVariableName "${_moduleName}" BOOTSTRAP_MODULES;
-  local -n _bootstrapModules=${RESULT};
-  _bootstrapModules[${#_bootstrapModules[@]}]=check;
-  _bootstrapModules[${#_bootstrapModules[@]}]=stdlib;
-  _bootstrapModules[${#_bootstrapModules[@]}]=number;
-  _bootstrapModules[${#_bootstrapModules[@]}]=string;
-  _bootstrapModules[${#_bootstrapModules[@]}]=array;
-  _bootstrapModules[${#_bootstrapModules[@]}]=envvar;
-  _bootstrapModules[${#_bootstrapModules[@]}]=color;
-  _bootstrapModules[${#_bootstrapModules[@]}]=constant;
-  _bootstrapModules[${#_bootstrapModules[@]}]=logging;
-  _bootstrapModules[${#_bootstrapModules[@]}]=error;
-  _bootstrapModules[${#_bootstrapModules[@]}]=file;
-  _bootstrapModules[${#_bootstrapModules[@]}]=dw-plumbing;
-  _bootstrapModules[${#_bootstrapModules[@]}]=term;
-  _bootstrapModules[${#_bootstrapModules[@]}]=echo;
-  _bootstrapModules[${#_bootstrapModules[@]}]=cli;
-  _bootstrapModules[${#_bootstrapModules[@]}]=debug;
-  _bootstrapModules[${#_bootstrapModules[@]}]=package;
-
   # env: IMPORTED_MODULES: The modules eventually imported in the bootstrap process.
   DW.declareGlobalArray "${_moduleName}" IMPORTED_MODULES;
 
   local _moduleTag="master";
 
   # env: MODULE_TAG: The dry-wit git tag used to download modules from github.
-  DW.declareGlobalString "${_moduleName}" MODULE_TAG "${_moduleTag}";
+  BOOTSTRAP.setModuleTag "${_moduleTag}";
 
   # env: MODULE_URL: The url to download dry-wit modules.
-  DW.declareGlobalString "${_moduleName}" MODULE_URL "https://raw.githubusercontent.com/rydnr/dry-wit/${_moduleTag}/src/modules";
+  BOOTSTRAP.setModuleUrl "https://raw.githubusercontent.com/rydnr/dry-wit/${_moduleTag}/src/modules";
 
   # env: MODULE_PATH: Where to download dry-wit modules.
-  DW.declareGlobalString "${_moduleName}" MODULE_PATH "${HOME:-/root}/.dry-wit/src/modules"
+  BOOTSTRAP.setModulePath "${HOME:-/root}/.dry-wit/src/modules";
 
-  BOOTSTRAP.getModulePath;
+  # env: ONLINE_MODE: Whether to attempt downloading missing modules from the Internet.
+  BOOTSTRAP.setOnlineMode ${FALSE};
 }
 
-#set -o errexit  # terminate on any unhandled error
-#set -o nounset  # terminate on any unset variable
-set -o pipefail # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
-#set -o xtrace   # trace what gets executed
+BOOTSTRAP.declareModules;
 
-if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
-  return;
+#set -o errexit;  # terminate on any unhandled error
+#set -o nounset;  # terminate on any unset variable
+#set -o pipefail; # In a pipe, the exit status of the last command that threw a non-zero exit code is returned.
+
+if BOOTSTRAP.isXtraceEnabled; then
+  set -o xtrace;   # trace what gets executed
 fi
 
-if [ -z ${DW_SCRIPT_INDEX+x} ]; then
-  declare -igx DW_SCRIPT_INDEX=0;
+if [ ! -z ${SKIP_LOADING_DRY_WIT+x} ]; then
+  exit 0;
+fi
+
+if DW.initialized; then
+  BOOTSTRAP.setNested ${TRUE};
+else
+  BOOTSTRAP.setNested ${FALSE};
 fi
 
 DW.init $@;
 
 BOOTSTRAP.resetState;
+
 BOOTSTRAP.bootstrap;
 
-DW.isTest;
+BOOTSTRAP.setDryWitPath "${BASH_SOURCE[0]}";
+
+DW.ifTestRunDryWitTest;
+
 DRYWIT.main $@;
-if ! DW.nested; then
+
+if BOOTSTRAP.isNested; then
   cleanup;
 fi
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

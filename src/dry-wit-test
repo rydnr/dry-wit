@@ -1,4 +1,4 @@
-#!/bin/bash dry-wit
+#!/usr/bin/env dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 # mod: dry-wit-test
@@ -457,7 +457,7 @@ function DRYWITTEST.logErrorReasons() {
 
   if [ ${_count} -gt 0 ]; then
     IFS=$' \t\n';
-    for _i in $(seq 0 $((_count-1))); do
+    for _i in $(seq 0 1 $((_count-1))); do
       IFS="${_oldIFS}";
       _error="${TEST_ERROR_MESSAGES[${_test}:${_i}]}";
       evalConstant "${_error}" "${_error}";
@@ -488,7 +488,7 @@ function DRYWITTEST.logFailureReasons() {
 
   if [ ${_count} -gt 0 ]; then
     IFS="${DWIFS}";
-    for _i in $(seq 0 $((_count-1))); do
+    for _i in $(seq 0 1 $((_count-1))); do
       IFS="${_oldIFS}";
       _error="${TEST_FAILURE_MESSAGES[${_test}:${_i}]}";
       evalConstant "${_error}" "${_error}";
@@ -520,7 +520,7 @@ function DRYWITTEST.logFailedAssertions() {
 
   if [ ${_count} -gt 0 ]; then
     IFS="${DWIFS}";
-    for _i in $(seq 0 $((_count-1))); do
+    for _i in $(seq 0 1 $((_count-1))); do
       IFS="${_oldIFS}";
       _lineNumber="${TEST_ASSERTION_LINE_NUMBERS[${_test}:${_i}]}";
       _error="${TEST_ASSERTION_FAILURE_MESSAGES[${_test}:${_i}]}";
@@ -581,7 +581,7 @@ function DRYWITTEST.logTestSummary() {
   else
     logInfo -n "${_testDescription}: errors";
     logInfoResult FAILURE "${_errors}";
-    logError "${_testDescription}";
+    logInfo "${_testDescription}";
   fi
 }
 
@@ -614,14 +614,16 @@ function DRYWITTEST.dwtest() {
   IFS=${DWIFS};
   for _t in ${_tests}; do
     IFS="${_oldIFS}";
-    humanReadableTest "${_t}";
-    logInfo -n "${RESULT}";
-    if runTest "${_t}"; then
-      logInfoResult SUCCESS "pass";
-      _passed=$((_passed+1));
-    else
-      logInfoResult FAILURE "failed";
-      _failed=$((_failed+1));
+    if isNotEmpty "${_t}"; then
+      humanReadableTest "${_t}";
+      logInfo -n " ${RESULT}";
+      if runTest "${_t}"; then
+        logInfoResult SUCCESS "pass";
+        _passed=$((_passed+1));
+      else
+        logInfoResult FAILURE "failed";
+        _failed=$((_failed+1));
+      fi
     fi
   done
   IFS="${_oldIFS}";
@@ -807,18 +809,27 @@ function Assert.isEmpty() {
 # txt: Asserts given value is not empty.
 # opt: value: The value.
 # opt: message: The error message.
-# txt: Returns 0/TRUE always.
+# txt: Returns 0/TRUE if the assert passed; 1/FALSE otherwise.
 # use: Assert.isNotEmpty "${testValue}" "testValue is empty";
 function Assert.isNotEmpty() {
   local _value="${1}";
   local _message="${2}";
+
+  local -i _rescode=${FALSE};
+
+  if isEmpty "${_message}"; then
+    _message="${1}";
+  fi
   checkNotEmpty message "${_message}" 2;
 
-  if isNotEmpty "${_value}"; then
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
-  else
+  if isEmpty "${_value}"; then
     DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_message}" "(value is empty)";
+  else
+    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    _rescode=${TRUE};
   fi
+
+  return ${_rescode};
 }
 
 # fun: Assert.functionExists functionName message
@@ -876,16 +887,23 @@ function Assert.pass() {
 # use: Assert.contains "sample text" "sample" "'sample text' does not contain 'sample'";
 function Assert.contains() {
   local _text="${1}";
-  checkNotEmpty text "${_text}" 1;
   local _substring="${2}";
-  checkNotEmpty substring "${_substring}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if contains "${_text}" "${_substring}"; then
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  if Assert.isNotEmpty "${_text}" "Empty text passed to Assert.contains"; then
+    checkNotEmpty substring "${_substring}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if contains "${_text}" "${_substring}"; then
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    else
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_substring}')";
+    fi
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_substring}')";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' is empty)";
   fi
 }
 
@@ -899,16 +917,24 @@ function Assert.contains() {
 # use: Assert.doesNotContain "sample text" "sample" "'sample text' does not contain 'sample'";
 function Assert.doesNotContain() {
   local _text="${1}";
-  checkNotEmpty text "${_text}" 1;
   local _substring="${2}";
-  checkNotEmpty substring "${_substring}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if contains "${_text}" "${_substring}"; then
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_substring}')";
+  if Assert.isNotEmpty "${_text}" "Empty text passed to Assert.doesNotContain"; then
+    checkNotEmpty text "${_text}" 1;
+    checkNotEmpty substring "${_substring}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if contains "${_text}" "${_substring}"; then
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' contains '${_substring}')";
+    else
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    fi
   else
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' is empty)";
   fi
 }
 
@@ -922,16 +948,23 @@ function Assert.doesNotContain() {
 # use: Assert.fileContains "/tmp/debug.log" "TESTING" "/tmp/debug.log doesn't contain TESTING";
 function Assert.fileContains() {
   local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
   local _text="${2}";
-  checkNotEmpty text "${_text}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if grep -q "${_text}" "${_file}" 2> /dev/null; then
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+  if Assert.isNotEmpty "${_file}" "Empty file provided to Assert.fileContains"; then
+    checkNotEmpty text "${_text}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if grep -q "${_text}" "${_file}" 2> /dev/null; then
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    else
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    fi
   else
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_file}' is empty)";
   fi
 }
 
@@ -945,16 +978,24 @@ function Assert.fileContains() {
 # use: Assert.fileDoesNotContain "/tmp/debug.log" "TESTING" "/tmp/debug.log contains TESTING";
 function Assert.fileDoesNotContain() {
   local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
   local _text="${2}";
-  checkNotEmpty text "${_text}" 2;
   local _errorMessage="${3}";
-  checkNotEmpty errorMessage "${_errorMessage}" 3;
 
-  if grep -q "${_text}" "${_file}" 2> /dev/null; then
-    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+  if Assert.isNotEmpty "${_file}"; then
+    checkNotEmpty file "${_file}" 1;
+    checkNotEmpty text "${_text}" 2;
+    checkNotEmpty errorMessage "${_errorMessage}" 3;
+
+    if grep -q "${_text}" "${_file}" 2> /dev/null; then
+      DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_text}' does not contain '${_actual}')";
+    else
+      DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    fi
   else
-    DRYWITTEST.addTestAssertionSuccess "${FUNCNAME[1]}";
+    if isEmpty "${_errorMessage}"; then
+      _errorMessage="${2}";
+    fi
+    DRYWITTEST.addTestAssertionFailure "${FUNCNAME[1]}" "${_errorMessage}" "('${_file}' is empty)";
   fi
 }
 
@@ -1016,7 +1057,7 @@ function Assert.arrayDoesNotContain() {
 # txt: Returns 0/TRUE if the Subject-under-test is found; 1/FALSE otherwise.
 # use: DRYWITTEST.sourceSUT;
 function DRYWITTEST.sourceSUT() {
-  local -i _rescode=${TRUE};
+  local -i _rescode=${FALSE};
   local _sutFilename;
   local _sutFilePath;
   DW.getScriptName;
@@ -1025,9 +1066,10 @@ function DRYWITTEST.sourceSUT() {
 
   if endsWith "${_scriptName}" "bootstrap-tests.sh"; then
     _bootstrapException=${TRUE};
+    _rescode=${TRUE};
   fi
 
-  if isFalse ${_bootstrapException}; then
+  if isFalse ${_rescode}; then
     if removeSuffix "${_scriptName}" "-tests.sh"; then
       _sutFilename="${RESULT}.sh";
     elif removeSuffix "${_scriptName}" "-test.sh"; then
@@ -1036,27 +1078,43 @@ function DRYWITTEST.sourceSUT() {
       _sutFilename="${_scriptName}";
     fi
 
-     if removeSuffix "${_sutFilename}" ".sh"; then
-       _sutFilename="${RESULT}.dw";
-     fi
+    if removeSuffix "${_sutFilename}" ".sh"; then
+      _sutFilename="${RESULT}.dw";
+    fi
 
-     if fileExists "$(dirname $0)/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/${_sutFilename}";
-     elif fileExists "$(dirname $0)/../src/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/../src/${_sutFilename}";
-     elif fileExists "$(dirname $0)/../src/modules/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/../src/modules/${_sutFilename}";
-     elif fileExists "$(dirname $0)/../../src/modules/ext/${_sutFilename}"; then
-       _sutFilePath="$(dirname $0)/../../src/modules/ext/${_sutFilename}";
-     else
-       logInfo -n "Could not find out the folder of the sut for $(dirname $0)/${_sutFilename}";
-       logInfoResult FAILURE "failed";
-       _rescode=${FALSE};
-     fi
+    local _oldIFS="${IFS}";
+    IFS="${DWIFS}";
+    local _folder;
+    for _folder in "${BASH_SOURCE[0]}" "$(dirname $0)" "."; do
+      IFS="${_oldIFS}";
+      if fileExists "${_folder}/${_sutFilename}"; then
+        _sutFilePath="${_folder}/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      elif fileExists "${_folder}/../src/${_sutFilename}"; then
+        _sutFilePath="${_folder}/../src/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      elif fileExists "${_folder}/../src/modules/${_sutFilename}"; then
+        _sutFilePath="${_folder}/../src/modules/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      elif fileExists "${_folder}/../../src/modules/ext/${_sutFilename}"; then
+        _sutFilePath="${_folder}/../../src/modules/ext/${_sutFilename}";
+        _rescode=${TRUE};
+        break;
+      fi
+    done
+    IFS="${_oldIFS}";
 
-     if isTrue ${_rescode}; then
-       source "${_sutFilePath}";
-     fi
+    if isFalse ${_rescode}; then
+      logInfo -n "Retrieving the SUT (subject under test) ${_sutFilename}";
+      logInfoResult NEUTRAL "missing";
+    fi
+
+    if isTrue ${_rescode}; then
+      source "${_sutFilePath}";
+    fi
   fi
 
   return ${_rescode};
@@ -1073,8 +1131,11 @@ function humanReadableTest() {
   local _test="${1}";
   checkNotEmpty test "${_test}" 1;
 
-  removeSuffix "${_test}" "_test";
-  replaceAll "${RESULT}" "_" " ";
+  if removeSuffix "${_test}" "_test"; then
+    if replaceAll "${RESULT}" "_" " "; then
+      uncapitalize "${RESULT}";
+    fi
+  fi
 
   return ${TRUE};
 }

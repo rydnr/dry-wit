@@ -15,6 +15,7 @@ function connectDockerContainerToNetwork() {
   checkNotEmpty container "${_container}" 1;
   local _network="${2}";
   checkNotEmpty network "${_network}" 2;
+
   local -i _rescode;
   local _output;
 
@@ -31,14 +32,17 @@ function connectDockerContainerToNetwork() {
       export RESULT="${_output}";
       _rescode=${TRUE};
     else
-      _output="${RESULT}";
+      _output="${ERROR:-}";
       logDebugResult FAILURE "failed";
-      export RESULT="${_output}";
       _rescode=${FALSE};
     fi
   else
-    _output="${RESULT}";
+    _output="${ERROR:-}";
     logDebugResult FAILURE "false";
+  fi
+
+  if isFalse ${_rescode}; then
+    export ERROR="${_output}";
   fi
 
   return ${_rescode};
@@ -51,6 +55,7 @@ function connectDockerContainerToNetwork() {
 # opt: container: The container name.
 # opt: containerFolder: The target location.
 # txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some error information.
 # use: if copyToDockerContainer "my-file" "container" "/tmp"; then echo "my-file copied to container:/tmp successfully"; fi
 function copyToDockerContainer() {
   local _file="${1}";
@@ -59,14 +64,14 @@ function copyToDockerContainer() {
   checkNotEmpty container "${_containerName}" 2;
   local _targetLocation="${3}";
   checkNotEmpty containerFolder "${_targetLocation}" 3;
+
   local -i _rescode;
-  local _output;
 
-  _output="$(docker cp "${_file}" "${_containerName}":"${_targetLocation}")";
-  _rescode=$?;
-
-  if isFalse ${_rescode}; then
-    export RESULT="${_output}";
+  local _output="$(docker cp "${_file}" "${_containerName}":"${_targetLocation}" 2> /dev/null || echo "$$.ERROR.$$")";
+  if areEqual "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
   fi
 
   return ${_rescode};
@@ -77,12 +82,13 @@ function copyToDockerContainer() {
 # txt: Creates a Docker network.
 # opt: network: The network name.
 # txt: Returns 0/TRUE if the network was created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some information about the error.
 # use: if createDockerNetwork bridge; then echo "bridge network created"; fi
 function createDockerNetwork() {
   local _network="${1}";
   checkNotEmpty network "${_network}" 1;
+
   local -i _rescode;
-  local _output;
 
   if ! dockerNetworkExists ${_network}; then
     if dockerCommand network create ${_network}; then
@@ -103,17 +109,20 @@ function createDockerNetwork() {
 # opt: command: The Docker command.
 # opt: args: The command arguments (if any).
 # txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
-# use: if dockerCommand create -v /config --name config busybox; then echo "config container created successfully"; fi
+# use: if dockerCommand create -v /config --name config busybox; then
+# use:   echo "config container created successfully";
+# use: fi
 function dockerCommand() {
   local _args="${@}";
   checkNotEmpty command "${_args}" 1;
-  local -i _rescode;
-  local _output;
 
-  _output="$(docker ${_args} 2>&1)"
-  _rescode=$?;
-  if isFalse ${_rescode}; then
-    export RESULT="${_output}";
+  local -i _rescode;
+
+  local _output="$(docker ${_args} 2> /dev/null || echo "$$.ERROR.$$")";
+  if areEqual "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
   fi
 
   return ${_rescode};
@@ -129,12 +138,20 @@ function dockerCommand() {
 function dockerContainerExists() {
   local _name="${1}";
   checkNotEmpty name "${_name}" 1;
-  local _result;
+
   local -i _rescode;
 
-  _result="$(docker ps -a --no-trunc --filter name=^/${_name}$ -q)";
-  if isEmpty "${_result}"; then
+  local _result="$(docker ps -a --no-trunc --filter name=^/${_name}$ -q 2> /dev/null || echo "$$.ERROR.$$")";
+  if areEqual "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  if    isFalse ${_rescode} \
+     || isEmpty "${_result}"; then
+    _rescode=${FALSE};
+    export ERROR="docker ps -a --no-trunc --filter name=^/${_name}$ -q failed or returned nothing";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -148,15 +165,21 @@ function dockerContainerExists() {
 # txt: Checks if given network exists.
 # opt: network: The network name.
 # txt: Returns 0/TRUE if the network exists; 0/FALSE otherwise.
-# use: if dockerNetworkExists "bridge"; then echo "'bridge' network already exists"; fi
+# use: if dockerNetworkExists "bridge"; then
+# use:   echo "'bridge' network already exists";
+# use: fi
 function dockerNetworkExists() {
   local _name="${1}";
   checkNotEmpty name "${_name}" 1;
   local _result;
   local -i _rescode;
 
-  docker network inspect ${_name} > /dev/null 2>&1;
-  _rescode=$?;
+  local _output="$(docker network inspect ${_name} 2> /dev/null || echo "$$.ERROR.$$")";
+  if areEqual "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
 
   return ${_rescode};
 }
@@ -166,20 +189,21 @@ function dockerNetworkExists() {
 # txt: Checks if a container is running.
 # opt: container: the container name.
 # txt: Returns 0/TRUE if the container is running; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains some error information.
 # use: if isDockerContainerRunning mysql; then echo "mysql is running"; fi
 function isDockerContainerRunning() {
   local _containerName="${1}";
   checkNotEmpty container "${_containerName}" 1;
-  local _status;
+
   local -i _rescode;
 
   ## Note: docker is a requirement of the caller script, not dry-wit.
-  _status="$(docker inspect ${_containerName} -f '{{json .State.Running}}' 2>&1)";
+  local _status="$(docker inspect ${_containerName} -f '{{json .State.Running}}' 2>&1)";
 
   if [[ "${_status}" == "true" ]]; then
     _rescode=${TRUE};
   else
-    export RESULT="${_status}";
+    export ERROR="${_status}";
     _rescode=${FALSE};
   fi
 
@@ -195,8 +219,8 @@ function isDockerContainerRunning() {
 function removeDockerNetwork() {
   local _network="${1}";
   checkNotEmpty network "${_network}" 1;
+
   local -i _rescode;
-  local _output;
 
   if dockerNetworkExists ${_network}; then
     if dockerCommand network rm ${_network}; then
@@ -217,18 +241,23 @@ function removeDockerNetwork() {
 # opt: container: The container name.
 # txt: Returns 0/TRUE if the container status could be obtained; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the status.
-# use: if retrieveDockerContainerStatus mysql; then echo "mysql's status is ${RESULT}"; fi
+# use: if retrieveDockerContainerStatus mysql; then
+# use:   echo "mysql's status is ${RESULT}";
+# use: fi
 function retrieveDockerContainerStatus() {
   local _containerName="${1}";
   checkNotEmpty container "${_containerName}" 1;
-  local _result;
+
   local -i _rescode;
 
   ## Note: docker is a requirement of the caller script, not dry-wit.
-  _result="$(docker inspect ${_containerName} -f {{json .State.Status}})";
-  _rescode=$?;
-
-  export RESULT="${_result}";
+  local _result="$(docker inspect ${_containerName} -f {{json .State.Status}} 2>&1 || echo "$$.ERROR.$$")";
+  if areEqual "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+    export RESULT="${_result}";
+  fi
 
   return ${_rescode};
 }
@@ -243,20 +272,22 @@ function retrieveDockerContainerStatus() {
 function retrievePortsFromDockerfile() {
   local _dockerfile="${1}";
   checkNotEmpty dockerfile "${_dockerfile}" 1;
-  local -a _result=();
-  local -i _rescode=${FALSE};
-  local _aux;
-  local _single;
-  local _oldIFS="${IFS}";
 
+  local -a _result=();
+
+  local -i _rescode=${FALSE};
+
+  local _oldIFS="${IFS}";
   IFS=$'\n';
+  local _aux;
   for _aux in $(grep EXPOSE "${_dockerfile}" | cut -d' ' -f 2- | sed -e 's/^ \+//g'); do
     IFS=$' ';
-    for p in ${_aux}; do
+    local _p;
+    for _p in ${_aux}; do
       IFS="${_oldIFS}";
       _rescode=${TRUE};
-      if ! arrayContains "${p}" "${_result[@]}"; then
-        _result[${#_result[@]}]="${p}";
+      if ! arrayContains "${_p}" "${_result[@]}"; then
+        _result[${#_result[@]}]="${_p}";
       fi
     done
     IFS="${_oldIFS}";

@@ -7,38 +7,15 @@
 # txt: Checks a required package is installed.
 # opt: program: The program name.
 # txt: Returns 0/TRUE if given program is available in the PATH; 1/FALSE otherwise.
-# use: if ! isInstalled "ifconfig"; then echo "ifconfig is not available"; fi
+# use: if ! isInstalled "ifconfig"; then
+# use:   echo "ifconfig is not available";
+# use: fi
 function isInstalled() {
   local _req="${1}";
-  local -i _rescode;
-
-  checkNotEmpty "candidate" "{_req}" 1;
+  checkNotEmpty candidate "{_req}" 1;
 
   which ${_req} > /dev/null 2>&1;
-  _rescode=$?;
-
-  return ${_rescode};
-}
-
-# fun: retrieveVersion package
-# api: public
-# txt: Retrieves the version of given package.
-# opt: package: The package.
-# txt: Returns 0/TRUE if the version could be retrieved; 1/FALSE otherwise.
-# txt: If the function succeeds, the variable RESULT contains the version.
-# use: if retrieveVersion wget; then echo "Version: ${RESULT}"; fi
-function retrieveVersion() {
-  local _package="${1}";
-  checkNotEmpty package "${_package}" 1;
-
-  local _result;
-  local -i _rescode=${FALSE};
-
-  _result="$(dpkg -p ${_package} 2> /dev/null | grep -e '^Version: ' | cut -d' ' -f2)";
-  if isNotEmpty "${_result}"; then
-    _rescode=${TRUE};
-    export RESULT="${_result}";
-  fi
+  local -i _rescode=$?;
 
   return ${_rescode};
 }

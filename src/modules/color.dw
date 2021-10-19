@@ -21,8 +21,7 @@ function COLOR.getModuleName() {
 # use: getSuccessColor; echo "success color: ${RESULT}";
 function getSuccessColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" SUCCESS_COLOR;
+  DW.getGlobalString "${RESULT}" SUCCESS_COLOR;
 }
 
 # fun: setSuccessColor color
@@ -36,8 +35,7 @@ function setSuccessColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" SUCCESS_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" SUCCESS_COLOR "${_color}";
 }
 
 # fun: getFailureColor
@@ -48,8 +46,7 @@ function setSuccessColor() {
 # use: getFailureColor; echo "failure color: ${RESULT}";
 function getFailureColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" FAILURE_COLOR;
+  DW.getGlobalString "${RESULT}" FAILURE_COLOR;
 }
 
 # fun: setFailureColor color
@@ -63,8 +60,32 @@ function setFailureColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" FAILURE_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" FAILURE_COLOR "${_color}";
+}
+
+# fun: getNeutralColor
+# api: public
+# txt: Retrieves the color used to represent neutral.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the color.
+# use: getNeutralColor; echo "neutral color: ${RESULT}";
+function getNeutralColor() {
+  COLOR.getModuleName;
+  DW.getGlobalString "${RESULT}" NEUTRAL_COLOR;
+}
+
+# fun: setNeutralColor color
+# api: public
+# txt: Specifies the color to use to represent neutral.
+# opt: color: The color for neutral.
+# txt: Returns 0/TRUE always.
+# use: setNeutralColor GREEN;
+function setNeutralColor() {
+  local _color="${1}";
+  checkNotEmpty color "${_color}" 1;
+
+  COLOR.getModuleName;
+  DW.declareGlobalString "${RESULT}" NEUTRAL_COLOR "${_color}";
 }
 
 # fun: getInProgressColor
@@ -75,8 +96,7 @@ function setFailureColor() {
 # use: getInProgressColor; echo "In-progress color: ${RESULT}";
 function getInProgressColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" IN_PROGRESS_COLOR;
+  DW.getGlobalString "${RESULT}" IN_PROGRESS_COLOR;
 }
 
 # fun: setInProgressColor color
@@ -90,8 +110,7 @@ function setInProgressColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" IN_PROGRESS_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" IN_PROGRESS_COLOR "${_color}";
 }
 
 # fun: getNoColor
@@ -102,8 +121,21 @@ function setInProgressColor() {
 # use: getNoColor; echo "No color: ${RESULT}";
 function getNoColor() {
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.getGlobalString "${_moduleName}" NO_COLOR;
+  DW.getGlobalString "${RESULT}" NO_COLOR;
+  local _noColor="${RESULT}";
+  if isEmpty "${_noColor}"; then
+    export RESULT=GRAY;
+  fi
+}
+
+# fun: getNoColorVariableName
+# api: public
+# txt: Retrieves the name of the variable containing the value to use when we don't want to use colored logging.
+# txt: Returns 0/TRUE always.
+# txt: The RESULT variable contains the value for no color.
+# use: getNoColor; echo "No color: ${RESULT}";
+function getNoColorName() {
+  COLOR.getColorName NO_COLOR;
 }
 
 # fun: setNoColor color
@@ -117,8 +149,7 @@ function setNoColor() {
   checkNotEmpty color "${_color}" 1;
 
   COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalString "${_moduleName}" NO_COLOR "${_color}";
+  DW.declareGlobalString "${RESULT}" NO_COLOR "${_color}";
 }
 
 # fun: buildColor name foreground background
@@ -128,87 +159,170 @@ function setNoColor() {
 # opt: foreground: The foreground value.
 # opt: background: The background value.
 # txt: Returns 0/TRUE always.
-#      Exports [COLOR]_FG, [COLOR]_BG, LIGHT_[COLOR]_FG, UNDERSCORE_[COLOR]_FG, BLINK_[COLOR]_FG and CONCEALED_[COLOR]_FG variables.
+# txt: Exports [COLOR]_FG, [COLOR]_BG, LIGHT_[COLOR]_FG, UNDERSCORE_[COLOR]_FG, BLINK_[COLOR]_FG and CONCEALED_[COLOR]_FG variables.
 # use: buildColor "GREEN" "32" "42";
 function buildColor() {
   local _color="${1}";
-  checkNotEmpty name "${_color}" 1;
+  checkNotEmpty color "${_color}" 1;
+
   local _fgValue="${2}";
   checkNotEmpty foreground "${_fgValue}" 2;
+
   local _bgValue="${3}";
   checkNotEmpty background "${_bgValue}" 3;
+
   local result="";
 
-  upvar "${_color}" "\033[0;${_fgValue}m";
-  declare -gx "${_color}";
-  upvar "${_color}_FG" "\033[0;${_fgValue}m";
-  declare -gx "${_color}_FG";
-  upvar "${_color}_BG" "\033[${_bgValue}m";
-  declare -gx "${_color}_BG";
-  upvar "LIGHT_${_color}_FG" "\033[1;${_fgValue}m";
-  declare -gx "LIGHT_${_color}_FG";
-  upvar "UNDERSCORE_${_color}_FG" "\033[4;${_fgValue}m";
-  declare -gx "UNDERSCORE_${_color}_FG";
-  upvar "BLINK_${_color}_FG" "\033[5;${_fgValue}m";
-  declare -gx "BLINK_${_color}_FG";
-  upvar "INVERSE_${_color}_FG" "\033[7;${_fgValue}m";
-  declare -gx "INVERSE_${_color}_FG";
-  upvar "CONCEALED_${_color}_FG" "\033[8;${_fgValue}m";
-  declare -gx "CONCEALED_${_color}_FG";
+  declare -gx "${_color}"="\033[0;${_fgValue}m";
+  declare -gx "${_color}_FG"="\033[0;${_fgValue}m";
+  declare -gx "${_color}_BG"="\033[${_bgValue}m";
+  declare -gx "LIGHT_${_color}_FG"="\033[1;${_fgValue}m";
+  declare -gx "UNDERSCORE_${_color}_FG"="\033[4;${_fgValue}m";
+  declare -gx "BLINK_${_color}_FG"="\033[5;${_fgValue}m";
+  declare -gx "INVERSE_${_color}_FG"="\033[7;${_fgValue}m";
+  declare -gx "CONCEALED_${_color}_FG"="\033[8;${_fgValue}m";
 }
 
 # fun: allowsColors
 # api: public
-# txt: Checks whether the terminal allows colors or not.
-# txt: Returns 0/TRUE if the terminal supports colors; 1/FALSE otherwise.
-# use: if allowsColors; then ...; fi
+# txt: Checks whether the terminal allows colors or not. If the variable ENABLE_COLOR is ${FALSE}, colors are disabled.
+# txt: Returns 0/TRUE if the terminal supports colors and ENABLE_COLOR is ${TRUE}; 1/FALSE otherwise.
+# use: if allowsColors; then
+# use:   ...
+# use: fi
 function allowsColors() {
   local -i _rescode;
 
-  $(tput colors > /dev/null 2>&1);
-  if isTrue $?; then
-    _colors=$(tput colors);
-    if [ ${_colors} -ge 8 ]; then
-      env | grep -e '^_=' | grep env > /dev/null 2>&1;
-      if isTrue $?; then
-        _rescode=${TRUE};
+  local -i _disableColors=${TRUE};
+  if isTrue "${ENABLE_COLOR}"; then
+    _disableColors=${FALSE};
+  fi
+
+  if isFalse ${_disableColors}; then
+    COLOR.getCachedAllowsColors;
+    local _cachedResult="${RESULT}";
+
+    if isEmpty "${_cachedResult}"; then
+      local _colors="$(tput colors 2>&1)";
+      if isNotEmpty "${_colors}"; then
+        if isGreaterOrEqualTo "${_colors}" 8; then
+          #          env | grep -e '^_=' | grep env > /dev/null 2>&1;
+          #          if isTrue $?; then
+          _rescode=${TRUE};
+          #          else
+          #            _rescode=${FALSE};
+          #          fi
+        else
+          _rescode=${FALSE};
+        fi
       else
         _rescode=${FALSE};
-      fi
+      fi;
+      COLOR.setCachedAllowsColors "${_rescode}";
     else
-      _rescode=${FALSE};
+      _rescode=${_cachedResult};
     fi
   else
     _rescode=${FALSE};
-  fi;
+  fi
 
   return ${_rescode};
 }
 
-# fun: getColor name defaultColor?
+# fun: COLOR.getCachedAllowsColors
+# api: private
+# txt: Retrieves the cached value of calling allowsColors.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT is empty if there's no cached value, otherwise contains the cached value.
+# use: COLOR.getCachedAllowsColors;
+# use: if isEmpty "${RESULT}"; then
+# use:   echo "Colors allowed value not yet cached";
+# use: fi
+function COLOR.getCachedAllowsColors() {
+  COLOR.getModuleName;
+  DW.getGlobalInt "${RESULT}" CACHED_ALLOWS_COLORS -1;
+
+  if areEqual "${RESULT}" -1; then
+    export RESULT="";
+  fi
+}
+
+# fun: COLOR.setCachedAllowsColors flag
+# api: private
+# txt: Specifies the cached value of calling allowsColors.
+# txt: Returns 0/TRUE if colors are allowed; 1/FALSE otherwise.
+# use: if COLOR.getCachedAllowsColors; then
+# use:   echo "Colors allowed";
+# use: fi
+function COLOR.setCachedAllowsColors() {
+  local _flag="${1}";
+  checkNotEmpty flag "${_flag}" 1;
+
+  COLOR.getModuleName;
+  DW.setGlobalInt "${RESULT}" CACHED_ALLOWS_COLORS ${_flag};
+}
+
+# fun: getColorEscapeCode name defaultColor?
 # api: public
 # txt: Retrieves the color for given name.
 # opt: name: The color name.
 # opt: defaultColor: The fallback color. Optional.
-# txt: Returns 0/TRUE always.
-# txt: The variable RESULT contains the color value.
-# use: getColor RED;
-function getColor() {
-  local _colorConstant="${1}";
-  checkNotEmpty name "${_colorConstant}" 1;
-  local _defaultColor="${2}";
-  if isEmpty "${_defaultColor}"; then
+# txt: Returns 0/TRUE if the color is defined; 1/FALSE otherwise.
+# txt: The variable RESULT contains the color value, or the default if not defined.
+# use: getColorEscapeCode RED;
+function getColorEscapeCode() {
+  local _colorSymbol="${1}";
+  checkNotEmpty name "${_colorSymbol}" 1;
+
+  local _defaultColorSymbol="${2}";
+  if isEmpty "${_defaultColorSymbol}"; then
     getNoColor;
-    _defaultColor="${RESULT}";
+   _defaultColorSymbol="${RESULT}";
   fi
   local _result;
+  local -i _rescode;
 
   if allowsColors; then
-    evalConstant "${_colorConstant}" "${_defaultColor}";
-    _result="${RESULT}";
+    if    isNotEmpty "${_colorSymbol}" \
+       && evalConstant "${_colorSymbol}"; then
+       _result="${RESULT}";
+    elif   isNotEmpty "${_defaultColorSymbol}" \
+        && evalConstant "${_defaultColorSymbol}"; then
+      _result="${RESULT}";
+#    else
+#      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol} (variable: ${_colorVariableName}) (default: ${_defaultColorVariableName})";
+    fi
   fi
 
-  export RESULT="${_result}";
+  if isEmpty "${_result}"; then
+    _result="${_defaultColorSymbol}";
+    _rescode=${FALSE};
+  else
+    _rescode=${TRUE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: COLOR.getColorName symbol
+# api: private
+# txt: Retrieves the color name associated to given symbol.
+# opt: symbol: The color symbol.
+# txt: Returns 0/TRUE if the symbol is known; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the color name.
+# use: if getColorName GRAY; then
+# use:   echo "color name: ${RESULT}";
+# use: fi
+function COLOR.getColorName() {
+  local _symbol="${1}";
+  checkNotEmpty symbol "${_symbol}" 1;
+
+  COLOR.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" "${_symbol}";
 }
 
 # fun: resetColor
@@ -218,15 +332,10 @@ function getColor() {
 # use: resetColor;
 function resetColor() {
   getNoColor;
-  getColor "${RESULT}";
-  echo -en "${RESULT}";
+  if getColorEscapeCode "${RESULT}"; then
+    echo -en "${RESULT}";
+  fi
 }
-
-#for c in "BLACK" "BLACK_B" "RED" "RED_B" "RED_S" "GREEN" "GREEN_B" "YELLOW" "YELLOW_B" "BLUE" "BLUE_B" "MAGENTA" "MAGENTA_B" "CYAN" "CYAN_B" "GREY" "WHITE" "WHITE_B" "NO_COLOR"; do
-#  upvars -a1 "${c}_TPUT" "";
-#  upvar "${c}" "";
-#  ${c}_TPUT=();
-#done
 
 # fun: COLOR.resetState
 # api: private
@@ -234,22 +343,52 @@ function resetColor() {
 # txt: Returns 0/TRUE always.
 # use: COLOR.resetState
 function COLOR.resetState() {
-  COLOR.getModuleName;
-  local _moduleName="${RESULT}";
-
-  buildColor NO_COLOR "0" "0";
-  buildColor BLACK "30" "0";
-  buildColor RED "31" "41";
-  buildColor GREEN "32" "42";
-  buildColor YELLOW "33" "43";
-  buildColor BLUE "34" "44";
-  buildColor MAGENTA "35" "45";
-  buildColor CYAN "36" "46";
-  buildColor GRAY "37" "47";
-
-  setSuccessColor GREEN;
-  setFailureColor RED;
-  setInProgressColor BLUE;
-  setNoColor GRAY;
+  if allowsColors; then
+    setSuccessColor GREEN;
+    setFailureColor RED;
+    setNeutralColor YELLOW;
+    setInProgressColor BLUE;
+    setNoColor GRAY;
+  fi
 }
+
+if allowsColors && isEmpty "${VOID}"; then
+  # env: VOID: No color.
+  buildColor VOID 0 0;
+  # env: BLACK: Black color.
+  buildColor BLACK 30 0;
+  # env: RED: Red color.
+  buildColor RED 31 41;
+  # env: GREEN: Green color.
+  buildColor GREEN 32 42;
+  # env: YELLOW: Yellow color.
+  buildColor YELLOW 33 43;
+  # env: BLUE: Blue color.
+  buildColor BLUE 34 44;
+  # env: MAGENTA: Magenta color.
+  buildColor MAGENTA 35 45;
+  # env: CYAN: Cyan color.
+  buildColor CYAN 36 46;
+  # env: GRAY: Gray color.
+  buildColor GRAY 37 47;
+  # env: BRIGHT_BLACK: Bright black color.
+  buildColor BRIGHT_BLACK 90 100;
+  # env: BRIGHT_RED: Bright red color.
+  buildColor BRIGHT_RED 91 101;
+  # env: BRIGHT_GREEN: Bright green color.
+  buildColor BRIGHT_GREEN 92 102;
+  # env: BRIGHT_YELLOW: Bright yellow color.
+  buildColor BRIGHT_YELLOW 93 103;
+  # env: BRIGHT_BLUE: Bright blue color.
+  buildColor BRIGHT_BLUE 94 104;
+  # env: BRIGHT_MAGENTA: Bright magenta color.
+  buildColor BRIGHT_MAGENTA 95 105;
+  # env: BRIGHT_CYAN: Bright cyan color.
+  buildColor BRIGHT_CYAN 96 106;
+  # env: WHITE: White color.
+  buildColor WHITE 97 107;
+fi
+
+# env: ENABLE_COLOR: Whether to enable colors when logging. Defaults to ${FALSE}.
+defineEnvVar ENABLE_COLOR MANDATORY "Whether to enable colors when logging" ${FALSE};
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

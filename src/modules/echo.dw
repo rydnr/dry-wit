@@ -2,32 +2,32 @@
 # api: public
 # txt: Functions related to displaying text to stdout.
 
-# fun: echoColorizedText text keyword? defaultColor?
+# fun: echoColorizedText text keyword? defaultColorName?
 # api: public
 # txt: Echoes given text, colorized.
 # opt: text: The text to colorize.
 # opt: keyword: The keyword (0 -> success; 1 -> failure; other -> try to infer from the text). Optional.
-# opt: defaultColor: The default color. Optional.
+# opt: defaultColorName: The default color. Optional.
 # txt: Returns 0/TRUE always.
 # use: echoColorizeText "done" SUCCESS;
 function echoColorizedText() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
   local _keyword="${2}";
-  local _defaultColor="${3}";
-  if isEmpty "${_defaultColor}"; then
+  local _defaultColorName="${3}";
+  if isEmpty "${_defaultColorName}"; then
     getNoColor;
-    _defaultColor="${RESULT}";
+    _defaultColorName="${RESULT}";
   fi
-  local _color="";
 
   if allowsColors; then
-    getColor ${_defaultColor};
-    _undefinedColor="${RESULT}";
+
+    local _color;
+
     getSuccessColor;
-    _successColor="${RESULT}";
+    local _successColor="${RESULT}";
     getFailureColor;
-    _failureColor="${RESULT}";
+    local _failureColor="${RESULT}";
     case ${_keyword} in
       ${SUCCESS}) _color="${_successColor}";
                   ;;
@@ -38,12 +38,14 @@ function echoColorizedText() {
          elif isFailureKeyword "${_text}"; then
            _color="${_failureColor}";
          else
-           _color="${_undefinedColor}";
+           _color="${_defaultColorName}";
          fi
          ;;
     esac
+    echoColorizedTextWithColor -n "${_color}" "${_text}";
+  else
+    echo -n "${_text}";
   fi
-  echoColorizedTextWithColor -n "${_color}" "${_text}";
 }
 
 # fun: echoColorizedTextWithColor [-n]? colorName text
@@ -67,17 +69,14 @@ function echoColorizedTextWithColor() {
   local _text="${2}";
   checkNotEmpty text "${_text}" 2;
 
-  evalConstant "${_colorName}";
-  local _color="${RESULT}";
-
   allowsColors;
   local -i _allowsColors=$?;
 
   if isTrue ${_allowsColors}; then
     if isTrue ${_flagMinusN}; then
-      echoInColor -n "${_color}" "${_text}";
+      echoInColor -n "${_colorName}" "${_text}";
     else
-      echoInColor "${_color}" "${_text}";
+      echoInColor "${_colorName}" "${_text}";
     fi
     resetColor;
   elif isTrue ${_flagMinusN}; then
@@ -105,20 +104,20 @@ function echoInColor() {
   fi
   local _color="${1}";
   checkNotEmpty colorName "${_color}" 1;
+
   local _text="${2}";
   checkNotEmpty text "${_text}" 2;
+
   local _colorAux="";
-  local _inColor=${FALSE};
+  local -i _inColor=${FALSE};
   local _noColor;
   if allowsColors; then
-    if isVariableDefined "${_color}"; then
-      _inColor=${TRUE};
-      getColor "${_color}";
-      _colorAux="${RESULT}";
-      getNoColor;
-      getColor "${RESULT}";
-      _noColor="${RESULT}";
-    fi
+    _inColor=${TRUE};
+    getColorEscapeCode "${_color}";
+    _colorAux="${RESULT}";
+    getNoColor;
+    getColorEscapeCode "${RESULT}";
+    _noColor="${RESULT}";
   fi
 
   if isTrue ${_flagMinusN}; then

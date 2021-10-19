@@ -7,7 +7,8 @@
 # txt: Retrieves the name of the module.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the name of the module.
-# use: LOCALE.getModuleName; echo "Module: ${RESULT}";
+# use: LOCALE.getModuleName;
+# use: echo "Module: ${RESULT}";
 function LOCALE.getModuleName() {
   export RESULT="LOCALE";
   return ${TRUE};
@@ -19,7 +20,9 @@ function LOCALE.getModuleName() {
 # opt: locale: The locale identifier.
 # opt: encoding: The file encoding.
 # txt: Returns 0/TRUE if the locale is supported; 1/FALSE otherwise.
-# use: if isLocaleSupported "en_US" "UTF-8"; then echo "en_US with UTF-8 is supported"; fi
+# use: if isLocaleSupported "en_US" "UTF-8"; then
+# use:   echo "en_US with UTF-8 is supported";
+# use: fi
 function isLocaleSupported() {
   local _locale="${1}";
   checkNotEmpty locale "${_locale}" 1;
@@ -50,10 +53,13 @@ function isLocaleSupported() {
 # txt: Checks if the locale file is available.
 # opt: locale: The locale.
 # txt: Returns 0/TRUE if the locale file exists; 1/FALSE otherwise.
-# use: if isLocaleFileAvailable "en_US"; then echo "English-US is available"; fi
+# use: if isLocaleFileAvailable "en_US"; then
+# use:   echo "English-US is available";
+# use: fi
 function isLocaleFileAvailable() {
   local _locale="${1}";
   checkNotEmpty locale "${_locale}" 1;
+
   local -i _rescode;
 
   if [ -f ${AVAILABLE_LOCALES_FOLDER}/${_locale} ]; then
@@ -71,16 +77,17 @@ function isLocaleFileAvailable() {
 # opt: locale: the locale.
 # opt: enocding: the encoding.
 # txt: Returns 0/TRUE if the locale requires the encoding suffix; 1/FALSE otherwise.
-# use: if localeRequiresEncodingSuffix "${locale}" "${encoding}"; then localeDefinition="${locale}.${encoding}"; fi
+# use: if localeRequiresEncodingSuffix "${locale}" "${encoding}"; then
+# use:   localeDefinition="${locale}.${encoding}";
+# use: fi
 function localeRequiresEncodingSuffix() {
   local _locale="${1}";
   checkNotEmpty locale "${_locale}" 1;
   local _encoding="${2}";
   checkNotEmpty encoding "${_encoding}" 2;
-  local -i _rescode;
 
   grep "${_locale}.${_encoding} ${_encoding}" "${SUPPORTED_LOCALES_FILE}" > /dev/null 2>&1;
-  _rescode=$?;
+  local -i _rescode=$?;
 
   return ${_rescode};
 }
@@ -92,14 +99,16 @@ function localeRequiresEncodingSuffix() {
 # opt: encoding: The encoding.
 # txt: Returns 0/TRUE if the language is supported; 1/FALSE otherwise.
 # txt: The variable RESULT contains the supported locales if the funcion returns 0/TRUE.
-# use: if isLocaleAvailableInLanguageFile "en_US" "UTF-8"; then echo "Supported English locales: ${RESULT}"; fi
+# use: if isLocaleAvailableInLanguageFile "en_US" "UTF-8"; then
+# use:   echo "Supported English locales: ${RESULT}";
+# use: fi
 function isLocaleAvailableInLanguageFile() {
   local _locale="$1";
   checkNotEmpty locale "${_locale}" 1;
   local _encoding="$2";
   checkNotEmpty encoding "${_encoding}" 2;
+
   local -i _rescode;
-  local _language;
 
   if isLocaleFileAvailable "${_locale}"; then
     if localeRequiresEncodingSuffix "${_locale}" "${_encoding}"; then

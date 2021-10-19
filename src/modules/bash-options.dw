@@ -1,0 +1,360 @@
+# mod: bash-options
+# api: public
+# txt: Functions to deal with Bash options.
+
+# fun: restoreBashOptions previousOptions
+# api: public
+# txt: Restores the previous options.
+# txt: Returns 0/TRUE always.
+# use: local _options=$-;
+# use: ...
+# use: restoreBashOptions "${_options}";
+function restoreBashOptions() {
+  local _previousOptions="${1}";
+  local _index;
+
+  local _oldIFS="${IFS}";
+  IFS="${DWIFS}";
+  for (( _index=0; _index<${#_previousOptions}; _index++ )); do
+    IFS="${_oldIFS}";
+    set -${_previousOptions:${_index}:1};
+  done
+  IFS="${_oldIFS}";
+}
+
+# fun: enableBraceExpansionOption
+# api: public
+# txt: Enables the brace-expansion (B) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableBraceExpansionOption;
+# use: _flags="${RESULT}";
+function enableBraceExpansionOption() {
+  local _bashFlags=$-;
+  set -B;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableBraceExpansionOption
+# api: public
+# txt: Disables the brace-expansion (B) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableBraceExpansionOption;
+# use: _flags="${RESULT}";
+function disableBraceExpansionOption() {
+  local _bashFlags=$-;
+  set +B;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enablePreventOverwrittingFilesByRedirectionOption
+# api: public
+# txt: Enables the exit-on-error (e) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enablePreventOverwrittingFilesByRedirectionOption;
+# use: _flags="${RESULT}";
+function enablePreventOverwrittingFilesByRedirectionOption() {
+  local _bashFlags=$-;
+  set -C;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disablePreventOverwrittingFilesByRedirectionOption
+# api: public
+# txt: Disables the exit-on-error (e) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disablePreventOverwrittingFilesByRedirectionOption;
+# use: _flags="${RESULT}";
+function disablePreventOverwrittingFilesByRedirectionOption() {
+  local _bashFlags=$-;
+  set +C;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableExitOnErrorOption
+# api: public
+# txt: Enables the exit-on-error (e) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableExitOnErrorOption;
+# use: _flags="${RESULT}";
+function enableExitOnErrorOption() {
+  local _bashFlags=$-;
+  set -e;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableExitOnErrorOption
+# api: public
+# txt: Disables the exit-on-error (e) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableExitOnErrorOption;
+# use: _flags="${RESULT}";
+function disableExitOnErrorOption() {
+  local _bashFlags=$-;
+  set +e;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableFilenameExpansionOption
+# api: public
+# txt: Enables the filename expansion (globbing) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableFilenameExpansionOption;
+# use: _flags="${RESULT}";
+function enableFilenameExpansionOption() {
+  local _bashFlags=$-;
+  set +f;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableFilenameExpansionOption
+# api: public
+# txt: Disables the filename expansion (globbing) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableFilenameExpansionOption;
+# use: _flags="${RESULT}";
+function disableFilenameExpansionOption() {
+  local _bashFlags=$-;
+  set -f;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableNoExecOption
+# api: public
+# txt: Enables the no-exec (n) option, i.e., do not execute commands.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableNoExecOption;
+# use: _flags="${RESULT}";
+function enableNoExecOption() {
+  local _bashFlags=$-;
+  set -n;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableNoExecOption
+# api: public
+# txt: Disables the no-exec (n) option, i.e., do not execute commands.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableNoExecOption;
+# use: _flags="${RESULT}";
+function disableNoExecOption() {
+  local _bashFlags=$-;
+  set +n;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enablePosixCompliantOption
+# api: public
+# txt: Enables the POSIX compliant option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enablePosixCompliantOption;
+# use: _flags="${RESULT}";
+function enablePosixCompliantOption() {
+  local _bashFlags=$-;
+  set -o posix;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disablePosixCompliantOption
+# api: public
+# txt: Disables the POSIX compliant option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disablePosixCompliantOption;
+# use: _flags="${RESULT}";
+function disablePosixCompliantOption() {
+  local _bashFlags=$-;
+  set +o posix;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enablePipefailOption
+# api: public
+# txt: Enables the pipefail option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enablePipefailOption;
+# use: _flags="${RESULT}";
+function enablePipefailOption() {
+  local _bashFlags=$-;
+  set -o pipefail;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disablePipefailOption
+# api: public
+# txt: Disables the POSIX compliant option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disablePipefailOption;
+# use: _flags="${RESULT}";
+function disablePipefailOption() {
+  local _bashFlags=$-;
+  set +o pipefail;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableRunAsSuidOption
+# api: public
+# txt: Enables the option to run the script as "suid".
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableRunAsSuidOption;
+# use: _flags="${RESULT}";
+function enableRunAsSuidOption() {
+  local _bashFlags=$-;
+  set -p;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableRunAsSuidOption
+# api: public
+# txt: Disables the option causing the script to be run as "suid".
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableRunAsSuidOption;
+# use: _flags="${RESULT}";
+function disableRunAsSuidOption() {
+  local _bashFlags=$-;
+  set +p;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableRestrictedModeOption
+# api: public
+# txt: Disables the option to run the script in restricted mode.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableRestrictedModeOption;
+# use: _flags="${RESULT}";
+function enableRestrictedModeOption() {
+  local _bashFlags=$-;
+  set -r;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableRestrictedModeOption
+# api: public
+# txt: Disables the option causing the script to be run in restricted mode.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableRestrictedModeOption;
+# use: _flags="${RESULT}";
+function disableRestrictedModeOption() {
+  local _bashFlags=$-;
+  set +r;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableCheckUnsetVariablesOption
+# api: public
+# txt: Enables the unset-variables check (u) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableCheckUnsetVariablesOption;
+# use: _flags="${RESULT}";
+function enableCheckUnsetVariablesOption() {
+  local _bashFlags=$-;
+  set -u;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableCheckUnsetVariablesOption
+# api: public
+# txt: Disables the unset-variables check (u) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableCheckUnsetVariablesOption;
+# use: _flags="${RESULT}";
+function disableCheckUnsetVariablesOption() {
+  local _bashFlags=$-;
+  set +u;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableVerboseOption
+# api: public
+# txt: Enables the verbose (v) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableVerboseOption;
+# use: _flags="${RESULT}";
+function enableVerboseOption() {
+  local _bashFlags=$-;
+  set -v;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableVerboseOption
+# api: public
+# txt: Disables the verbose (v) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableVerboseOption;
+# use: _flags="${RESULT}";
+function disableVerboseOption() {
+  local _bashFlags=$-;
+  set +v;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: enableTraceOption
+# api: public
+# txt: Enables the trace (v) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: enableTraceOption;
+# use: _flags="${RESULT}";
+function enableTraceOption() {
+  local _bashFlags=$-;
+  set -x;
+
+  export RESULT="${_bashFlags}";
+}
+
+# fun: disableTraceOption
+# api: public
+# txt: Disables the trace (v) option.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the previous set flags, to restore them afterwards.
+# use: disableTraceOption;
+# use: _flags="${RESULT}";
+function disableTraceOption() {
+  local _bashFlags=$-;
+  set +x;
+
+  export RESULT="${_bashFlags}";
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

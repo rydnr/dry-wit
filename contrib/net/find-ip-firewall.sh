@@ -209,7 +209,7 @@ function retrieve_last_ip_for_ip_and_netmask() {
   local _aux=();
   local _last;
   local _result;
-  for i in $(seq 0 3); do
+  for i in $(seq 0 1 3); do
     _negatedNetmaskBlock=$((255-${_netmaskBlocks[${i}]}));
     _aux[${i}]=$((${_ipBlocks[${i}]} | ${_negatedNetmaskBlock}));
   done
@@ -298,7 +298,7 @@ function convert_binary_to_ip() {
   local _aux;
   local _shifts=(24 16 8 0);
   local _masks=(4278190080 16711680 65280 255);
-  for _i in $(seq 0 3); do
+  for _i in $(seq 0 1 3); do
     _aux="$((${_decimal} & ${_masks[${_i}]}))";
     _result="${_result}.$((${_aux} >> ${_shifts[${_i}]}))";
   done
@@ -353,7 +353,7 @@ function build_ip_list() {
   _firstDecimal="${RESULT}";
   convert_binary_to_decimal "${_lastBinary}";
   _lastDecimal="${RESULT}";
-  for i in $(seq ${_firstDecimal} ${_lastDecimal}); do
+  for i in $(seq ${_firstDecimal} 1 ${_lastDecimal}); do
     convert_decimal_to_binary "${i}";
     convert_binary_to_ip "${RESULT}";
     _currentIp="${RESULT}";

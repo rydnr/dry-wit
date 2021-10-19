@@ -1,0 +1,81 @@
+# mod: aws-organizations
+# api: public
+# txt: AWS Organizations functions
+
+# fun: awsOrganizationsEnableAllFeatures profile? region?
+# api: public
+# txt: Enables all features.
+# opt: profile: The AWS profile. Optional.
+# opt: region: The AWS region. Optional.
+# txt: Returns 0/TRUE if the features were enabled; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if awsOrganizationsEnableAllFeatures dev eu-west-1; then
+# use:   echo "All features enabled";
+# use: fi
+function awsOrganizationsEnableAllFeatures() {
+  local _profile="${1:-}";
+  local _region="${2:-}";
+
+  local _profileParam="";
+  if isNotEmpty "${_profile}"; then
+    _profileParam="--profile ${_profile}";
+  fi
+
+  local _regionParam="";
+  if isNotEmpty "${_region}"; then
+    _regionParam="--region ${_region}";
+  fi
+
+  local _output;
+  _output="$($(which aws) ${_profileParam} ${_regionParam} organizations enable-all-features 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: awsOrganizationsEnableServiceAccess service profile? region?
+# api: public
+# txt: Enables all features.
+# opt: service: The service to grant access.
+# opt: profile: The AWS profile. Optional.
+# opt: region: The AWS region. Optional.
+# txt: Returns 0/TRUE if given service can access the AWS Organizations; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if awsOrganizationsEnableServiceAccess cloudtrail.amazonaws.com dev eu-west-1; then
+# use:   echo "CloudTrail access granted";
+# use: fi
+function awsOrganizationsEnableServiceAccess() {
+  local _service="${1}";
+  checkNotEmpty service "${_service}" 1;
+  local _profile="${2:-}";
+  local _region="${3:-}";
+
+  local _profileParam="";
+  if isNotEmpty "${_profile}"; then
+    _profileParam="--profile ${_profile}";
+  fi
+
+  local _regionParam="";
+  if isNotEmpty "${_region}"; then
+    _regionParam="--region ${_region}";
+  fi
+
+  local _output;
+  _output="$($(which aws) ${_profileParam} ${_regionParam} organizations enable-aws-service-access --service-principal ${_service} 2>&1)";
+  local -i _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}";
+  else
+    export ERROR="${_output}";
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

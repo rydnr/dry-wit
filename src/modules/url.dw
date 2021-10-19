@@ -8,7 +8,7 @@
 # opt: url: The url to encode.
 # txt: Prints the encoded url to stdout.
 # use: local encoded="$(urlEncode 'http://www.example.com')";
-#      echo "URL encoded: ${encoded}";
+# use: echo "URL encoded: ${encoded}";
 function urlEncode() {
   local _text="$1";
   checkNotEmpty url "${_text}" 1;
@@ -48,7 +48,9 @@ function urlEncode() {
 # opt: index: The 0-based index of the segment to extract.
 # txt: Returns 0/TRUE if the segment was extracted; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the requested segment.
-# use: if extractPathSegmentFromUrl "http://acme.com/context/post" 0; then echo "First segment: ${RESULT}"; fi
+# use: if extractPathSegmentFromUrl "http://acme.com/context/post" 0; then
+# use:   echo "First segment: ${RESULT}";
+# use: fi
 function extractPathSegmentFromUrl() {
   local _url="${1}";
   checkNotEmpty url "${_url}" 1;
@@ -59,8 +61,43 @@ function extractPathSegmentFromUrl() {
 
   if splitAndExtract "${_url}" "/" $((_index + 2)); then
     _rescode=${TRUE};
+    _result="${RESULT}";
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
   fi
 
   return ${_rescode};
 }
+
+# fun: urlIsUp url
+# api: public
+# txt: Checks whether given url is up.
+# opt: url: The URL to check.
+# txt: Returns 0/TRUE if the url is up; 1/FALSE otherwise.
+# use: if urlIsUp "${url}"; then
+# use:   echo "${url} is up";
+# use: fi
+function urlIsUp() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+
+  local -i _rescode=${FALSE};
+
+  which curl > /dev/null 2>&1;
+  if isTrue $?; then
+    $(which curl) -q "${_url}" > /dev/null 2>&1;
+    _rescode=$?;
+  else
+    which wget > /dev/null 2>&1;
+    if isTrue $?; then
+      $(which wget) -q "${_url}" > /dev/null 2>&1;
+      _rescode=$?;
+    fi
+  fi
+
+  return ${_rescode};
+}
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

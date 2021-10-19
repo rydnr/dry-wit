@@ -14,8 +14,6 @@ typeset -A rescode_cache;
 # use: cache findPrimeNumbers 100000 # takes a long time
 #      cache findPrimeNumbers 100000 # returns instantly
 function cache() {
-  local IFS='
-  ';
   local _key="$*";
   checkNotEmpty function "${_key}" 1;
   local -i _rescode;
@@ -33,7 +31,9 @@ function cache() {
     _rescode=${rescode_cache["${_key}"]};
     _result="${result_cache[${_key}]}";
   fi
+
   export RESULT="${_result}";
+
   return ${_rescode};
 }
 
@@ -45,9 +45,7 @@ function cache() {
 # txt: Returns 0/TRUE always.
 # use: uncache findPrimeNumbers 100000
 function uncache() {
-  local IFS='
-  ';
-  unset result_cache["$*"]
-  unset rescode_cache["$*"]
+  unset result_cache["$*"];
+  unset rescode_cache["$*"];
 }
-#
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

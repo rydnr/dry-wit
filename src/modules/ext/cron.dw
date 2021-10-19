@@ -1,0 +1,145 @@
+# mod: cron
+# api: public
+# txt: Cron module.
+
+# fun: isCronRunning cronPath?
+# api: public
+# txt: Checks if the cron process is running.
+# opt: cronPath: The location of the executable. Optional. Defaults to /usr/sbin/cron.
+# txt: Returns 0/TRUE if the process is running; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the process id of the cron process.
+# use: if isCronRunning; then
+# use:   echo "Cron process running: ${RESULT}";
+# use: fi
+function isCronRunning() {
+  local _cronPath="${1}";
+  if isEmpty "${_cronPath}"; then
+    _cronPath="/usr/sbin/cron";
+  fi
+
+  local -i _rescode=${FALSE};
+  local _result="";
+
+  if firstPidMatching "${_cronPath}"; then
+    _result="${RESULT}";
+    _rescode=${TRUE};
+  fi
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: sendSignalToCronProcess signal?
+# api: public
+# txt: Sends a signal to the cron process.
+# opt: signal: The signal to send. Optional. If omitted, the TERM signal is sent.
+# txt: Returns 0/TRUE if the cron process was running and kill command returned 0; 1/FALSE otherwise.
+# use: if sendSignalToCronProcess; then
+# use:   echo "Cron process killed";
+# use: fi
+function sendKillSignalToCronProcess() {
+  local _signal="${1}";
+
+  local -i _rescode=${FALSE};
+
+  if isCronRunning; then
+    _rescode=${TRUE};
+    local _oldIFS="${IFS}";
+    local _pid;
+    local _aux;
+    IFS="${DWIFS}";
+    for _pid in ${RESULT}; do
+      if isEmpty "${_signal}"; then
+        kill ${_pid};
+      else
+        kill -${_signal} ${_pid};
+      fi
+      _aux=$?;
+      if isFalse ${_aux}; then
+        _rescode=${FALSE};
+      fi
+    done
+  fi
+
+  return ${_rescode};
+}
+
+# fun: enableCronEntry name cronExpression user cmd extraLines*
+# api: public
+# txt: Enables a cron entry.
+# opt: name: The name of the entry.
+# opt: cronExpression: The cron expression.
+# opt: user: The user.
+# opt: extraLines: Any additional lines to include.
+# txt: Returns 0/TRUE if the entry could be enabled; 1/FALSE otherwise.
+# use: if enableCronEntry "backup" "*/5 * * * *" root "/opt/backup/backup.sh"; then
+# use:   echo "backup cron enabled"
+# use: fi
+function enableCronEntry() {
+
+  local _name;
+  _name="${1}"
+  checkNotEmpty name "${_name}" 1
+  local _cronExpression;
+  _cronExpression="${2}";
+  checkNotEmpty cronExpression "${_cronExpression}" 2
+  local _user;
+  _user="${3}";
+  checkNotEmpty user "${_user}" 3
+  local _cmd;
+  _cmd="${4}";
+  checkNotEmpty cmd "${_cmd}" 4
+  shift;
+  shift;
+  shift;
+  shift;
+  local _extraLine;
+  local _cronFile;
+  _cronFile="/etc/cron.d/${_name}"
+
+  local -i _rescode
+
+  if fileExists "${_cronFile}"; then
+    _rescode=${TRUE};
+  else
+    touch "${_cronFile}" > /dev/null 2>&1
+    _rescode=${?}
+
+    if isTrue ${_rescode} && ! fileIsWritable "${_cronFile}"; then
+      _rescode=${FALSE}
+    fi
+
+    if isTrue ${_rescode}; then
+      if ! isEmpty "${_user}"; then
+        cat <<EOF >> "${_cronFile}"
+USER=${_user}
+EOF
+      fi
+
+      local _oldIFS="${IFS}";
+      IFS=:;
+      for _extraLine in "${@}"; do
+        IFS="${_oldIFS}";
+        cat <<EOF >> "${_cronFile}"
+${_extraLine}
+EOF
+      done
+      IFS="${_oldIFS}";
+
+      cat <<EOF >> "${_cronFile}"
+${_cronExpression}	${_user}	${_cmd}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
+EOF
+    fi
+  fi
+
+  return ${_rescode}
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

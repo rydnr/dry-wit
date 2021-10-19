@@ -1,4 +1,4 @@
-#!/bin/bash dry-wit
+#!/usr/bin/env dry-wit
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
@@ -9,8 +9,6 @@ function DRYWIT.retrieveSettingsFiles_works_test() {
   local _f;
   local _oldIFS="${IFS}";
   local -a _toDelete=();
-
-  DW.import dw-plumbing;
 
   IFS="${DWIFS}";
   DW.getScriptPath;
@@ -49,6 +47,18 @@ function DRYWIT.retrieveSettingsFiles_works_test() {
     done
     IFS="${_oldIFS}";
   fi
+}
+
+function cleanup_deletes_temporary_files_test() {
+  createTempFile;
+  local _tempFile="${RESULT}";
+
+  touch "${_tempFile}";
+  cleanup;
+  fileExists "${_tempFile}";
+  local -i _fileExists=$?;
+
+  Assert.isFalse ${_fileExists} "Temporary file ${_tempFile} was not cleaned up when calling cleanup";
 }
 
 setScriptDescription "Runs all tests implemented for dw-plumbing.dw";

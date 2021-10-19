@@ -8,21 +8,24 @@
 # opt: element: The element to check.
 # opt: array: The array (passed as "${array[@]}").
 # txt: Returns 0/TRUE if the element is present in the array; 1/FALSE otherwise.
-# use: a=("one" "two" "three" "other number")
-#      if arrayContains "other number" "${a[@]}"; then ...; fi
+# use: a=("one" "two" "three" "other number");
+# use: if arrayContains "other number" "${a[@]}"; then
+# use:   echo "${a[@]} contains 'other number';
+# use: fi
 function arrayContains() {
   local _item="${1}";
+  checkNotEmpty item "${_item}" 1;
+
   shift;
   local _array="${@}";
-  local _aux;
-  local -i _rescode=${FALSE};
-  local _oldIFS="${IFS}";
-
-  checkNotEmpty "item" "${_item}" 1;
-
   # array can be empty.
 
+  local -i _rescode=${FALSE};
+
+  local _oldIFS="${IFS}";
+
   IFS="${DWIFS}";
+  local _aux;
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
 
@@ -42,8 +45,10 @@ function arrayContains() {
 # opt: element: The element to check.
 # opt: array: The array (passed as "${array[@]}").
 # txt: Returns 0/TRUE if the element is not present in the array; 1/FALSE Otherwise.
-# use: a=("one" "two" "three" "other number")
-#      if arrayDoesNotContain "four" "${a[@]}"; then ...; fi
+# use: a=("one" "two" "three" "other number");
+# use: if arrayDoesNotContain "four" "${a[@]}"; then
+# use:   echo "${a[@]} does not contain 'four'";
+# use: fi
 function arrayDoesNotContain() {
   local _item="${1}";
   checkNotEmpty item "${_item}" 1;
@@ -51,7 +56,7 @@ function arrayDoesNotContain() {
   local _array="${@}";
   checkNotEmpty array "${_array}" 2;
 
-  local -i _rescode=${FALSE};
+  local -i _rescode;
 
   if arrayContains "${_item}" "${_array}"; then
     _rescode=${FALSE};
@@ -69,7 +74,9 @@ function arrayDoesNotContain() {
 # txt: array: The array (passed as "${array[@]}")
 # txt: Returns 0/TRUE if the item was found in the array; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the index of the item.
-# use: if getIndexOfItemInArray "a" "a b c"; then echo "Index of 'a': ${RESULT}"; then
+# use: if getIndexOfItemInArray "a" "a b c"; then
+# use:   echo "Index of 'a': ${RESULT}";
+# use: fi
 function getIndexOfItemInArray() {
   local _item="${1}";
   checkNotEmpty item "${_item}" 1;
@@ -77,13 +84,14 @@ function getIndexOfItemInArray() {
   local _array="${@}";
   checkNotEmpty array "${_array}" 2;
 
+  local _oldIFS="${IFS}";
+
   local -i _rescode=${FALSE};
   local -i _result;
 
-  local -i _i=0;
-
-  local _oldIFS="${IFS}";
   IFS="${DWIFS}";
+  local _arrayItem;
+  local -i _i=0;
   for _arrayItem in ${_array[@]}; do
     IFS="${_oldIFS}";
     if areEqual "${_item}" "${_arrayItem}"; then
@@ -111,12 +119,12 @@ function getIndexOfItemInArray() {
 function clearAssociativeArray() {
   local _arrayName="${1}";
   checkNotEmpty arrayName "${_arrayName}" 1;
-  local _key;
 
   declare -n _directArray="${_arrayName}";
 
   local _oldIFS="${IFS}";
   IFS="${DWIFS}";
+  local _key;
   for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
     unset _directArray[${_key}];
@@ -131,24 +139,23 @@ function clearAssociativeArray() {
 # opt: separator: The separator to use.
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the resulting string.
-# use: A=(a b c); flattenArray A "x"; echo "A->${RESULT}" # axbxc
+# use: A=(a b c);
+# use: flattenArray A "x";
+# use: echo "A->${RESULT}" # axbxc
 function flattenArray() {
   local _arrayName="${1}";
   checkNotEmpty arrayName "${_arrayName}" 1;
   local _separator="${2}";
   checkNotEmpty separator "${_separator}" 2;
   local _result="";
-  local _aux;
-  local _len;
   local _oldIFS="${IFS}";
-  local -i _i;
 
-  _aux="$(echo "\${#${_arrayName}[@]}")";
-  _len=$((-1+$(eval echo "${_aux}")));
-  _oldIFS="${IFS}";
+  local _aux="$(echo "\${#${_arrayName}[@]}")";
+  local -i _len=$((-1+$(eval echo "${_aux}")));
 
   IFS="${DWIFS}";
-  for _i in $(seq 0 ${_len}); do
+  local -i _i;
+  for _i in $(seq 0 1 ${_len}); do
     IFS="${_oldIFS}";
     _aux="$(echo "\${${_arrayName}[${_i}]}")";
     _item=$(eval echo "${_aux}");
@@ -170,24 +177,24 @@ function flattenArray() {
 # opt: callback: The name of the callback function.
 # txt: Returns 0/TRUE always.
 # use: function process_code() {
-#        echo "Code: ${1}, description: ${2}";
-#      }
-#      ...
-#      forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
+# use:   echo "Code: ${1}, description: ${2}";
+# use: }
+# use: ...
+# use: forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
 function forEachAssociativeArrayEntryDo() {
   local _arrayName="${1}";
   checkNotEmpty arrayName "${_arrayName}" 1;
   local _callback="${2}";
   checkFunctionPresent callback "${_callback}" 2;
-  local _key;
+
   local _oldIFS="${IFS}";
 
   declare -n _directArray="${_arrayName}";
 
   IFS="${DWIFS}";
+  local _key;
   for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
-
     ${_callback} "${_key}" "${_directArray[${_key}]}";
   done
   IFS="${_oldIFS}";
@@ -198,7 +205,9 @@ function forEachAssociativeArrayEntryDo() {
 # txt: Checks whether given array is empty.
 # opt: arrayName: The name of the array.
 # txt: Returns 0/TRUE if the array is empty; 1/FALSE otherwise.
-# use: if isArrayEmpty array; then ...; fi
+# use: if isArrayEmpty array; then
+# use:   echo "array is empty";
+# use: fi
 function isArrayEmpty() {
   local _arrayName="${1}";
   local -i _rescode;
@@ -219,18 +228,20 @@ function isArrayEmpty() {
 # txt: Returns 0/TRUE always.
 # txt: The variable RESULT contains the list of the keys, wrapped in double quotes.
 # use: myMapping=([foo]=bar [with spaces]="with spaces");
-#      retrieveAssociativeArrayKeys myMapping;
-#      for key in ${RESULT}; do ...; done
+# use: retrieveAssociativeArrayKeys myMapping;
+# use: for key in ${RESULT}; do
+# use:   ...;
+# use: done
 function retrieveAssociativeArrayKeys() {
   local _arrayName="${1}";
   checkNotEmpty arrayName "${_arrayName}" 1;
-  local _key;
   local _result;
   local _oldIFS="${IFS}";
 
   declare -n _directArray="${_arrayName}";
 
   IFS="${DWIFS}";
+  local _key;
   for _key in "${!_directArray[@]}"; do
     IFS="${_oldIFS}";
     if isNotEmpty "${_result}"; then
@@ -245,69 +256,36 @@ function retrieveAssociativeArrayKeys() {
   return ${TRUE};
 }
 
-# fun: nth array nth
+# fun: nth nth array
 # api: public
 # txt: Retrieves the nth element of given array.
-# opt: array: The array.
 # opt: nth: The index.
+# opt: arrayName: The destination array.
 # txt: Returns 0/TRUE if the element could be retrieved; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the nth element.
-# use: nth "${myArray}" 0; echo "First element: ${RESULT}";
+# use: nth 0 myArray; echo "First element: ${RESULT}";
 function nth() {
-  local _array="${1}";
-  checkNotEmpty array "${_array}" 1;
-  local _nth="${2}";
-  checkNumber nth "${_nth}" 2;
+  local _nth="${1}";
+  checkNumber nth "${_nth}" 1;
+  local _arrayName="${2}";
+  checkNotEmpty arrayName "${_arrayName}" 2;
+
   local _result;
-  local _item;
-  local -i _index=0;
-  local _oldIFS="${IFS}";
   local -i _rescode=${FALSE};
-  local _aux;
-  local -i _arrayLogic=${FALSE};
 
-  if isGreaterOrEqualTo ${_nth} 0; then
-    local _tmp="${_array}";
-    if endsWith "${_tmp}" " "; then
-      if countMatchesOfCharsInString " " "${_tmp}"; then
-        if isGreaterThan "${RESULT}" 1; then
-          _tmp="${_tmp%% *}";
-          _arrayLogic=${TRUE};
-        elif isGreatherThan ${_nth} 0; then
-          _rescode=${FALSE};
-        else
-          _rescode=${TRUE};
-          _result="${_tmp}";
-        fi
-      fi
-    elif endsWith "${_tmp}" ' "'; then
-      if countMatchesOfCharsInString " " "${_tmp}"; then
-        if isGreaterThan "${RESULT}" 1; then
-          if countMatchesOfCharsInString '"' "${_tmp}"; then
-            _arrayLogic=${TRUE};
-            if isLessThan "${RESULT}" 2; then
-              _rescode=${TRUE};
-              _tmp="${_tmp% \"}";
-            fi
-          fi
-        elif isGreaterThan ${_nth} 0; then
-          _rescode=${TRUE};
-          _result="";
-        else
-          _rescode=${TRUE};
-          _result="${_tmp% \"}";
-        fi
-      fi
-    else
-      _arrayLogic=${TRUE};
-    fi
+  local -n _nthArray=${_arrayName};
 
-    if isTrue ${_arrayLogic}; then
-      declare -a _aux="($(echo "${_tmp}" 2> /dev/null))";
-      _rescode=$?;
-      if isTrue ${_rescode} && isLessThan ${_nth} "${#_aux[@]}"; then
-        _result=${_aux[${_nth}]};
-        _rescode=${TRUE};
+  if isLessOrEqualTo ${_nth} ${#_nthArray[@]}; then
+    _result="${_nthArray[${_nth}]}";
+    _rescode=${TRUE};
+    if isNotEmpty "${_result}"; then
+      if removeSurrounding "${_result}" '"'; then
+        _result="${RESULT}";
+      fi
+      if isNotEmpty "${_result}"; then
+        if removeSuffix "${_result}" " *"; then
+          _result="${RESULT}";
+        fi
       fi
     fi
   fi
