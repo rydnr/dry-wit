@@ -9,8 +9,8 @@
 # txt: The variable RESULT contains the name of the module.
 # use: FILE.getModuleName; echo "Module: ${RESULT}";
 function FILE.getModuleName() {
-  export RESULT="FILE";
-  return ${TRUE};
+  export RESULT="FILE"
+  return ${TRUE}
 }
 
 # fun: addFileToCleanup file
@@ -20,13 +20,13 @@ function FILE.getModuleName() {
 # txt: Returns 0/TRUE always.
 # use: addFileToCleanup "/tmp/my-log.txt";
 function addFileToCleanup() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
 
-  FILE.getCleanupFilesVariableName;
-  local -n _cleanupFiles=${RESULT};
+  FILE.getCleanupFilesVariableName
+  local -n _cleanupFiles=${RESULT}
 
-  _cleanupFiles[${#_cleanupFiles[@]}]="${_file}";
+  _cleanupFiles[${#_cleanupFiles[@]}]="${_file}"
 }
 
 # fun: createTempFile
@@ -38,20 +38,20 @@ function addFileToCleanup() {
 # use:   echo "Temp file: ${RESULT}";
 # use: fi
 function createTempFile() {
-  local -i _rescode;
+  local -i _rescode
 
-  local _result;
+  local _result
 
   if createTempFileNoCleanup; then
-    _result="${RESULT}";
-    addFileToCleanup "${_result}";
-    _rescode=${TRUE};
-    export RESULT="${_result}";
+    _result="${RESULT}"
+    addFileToCleanup "${_result}"
+    _rescode=${TRUE}
+    export RESULT="${_result}"
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: folderAllowsExec folder
@@ -63,23 +63,23 @@ function createTempFile() {
 # use:   echo "/tmp does not allow executing files";
 # use: fi
 function folderAllowsExec() {
-  local _folder="${1}";
-  checkNotEmpty folder "${_folder}" 1;
+  local _folder="${1}"
+  checkNotEmpty folder "${_folder}" 1
 
-  local _file="${_folder}/.check.sh.$$";
+  local _file="${_folder}/.check.sh.$$"
 
-  cat <<EOF > "${_file}"
-#!/bin/bash
+  cat <<EOF >"${_file}"
+#!/usr/bin/env bash
 
 echo -n "";
 EOF
-  chmod +x "${_file}";
-  "${_file}" 2> /dev/null;
-  local -i _rescode=$?;
+  chmod +x "${_file}"
+  "${_file}" 2>/dev/null
+  local -i _rescode=$?
 
-  rm -f "${_file}";
+  rm -f "${_file}"
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: createTempFileNoCleanup
@@ -89,40 +89,40 @@ EOF
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
 # use: if createTempFileNoCleanup; then echo "Temp file: ${RESULT}"; fi
 function createTempFileNoCleanup() {
-  local -i _rescode=${FALSE};
-  local -i _execAllowed=${FALSE};
+  local -i _rescode=${FALSE}
+  local -i _execAllowed=${FALSE}
 
-  local _dirname="$(dirname '${_scriptName}')";
+  local _dirname="$(dirname '${_scriptName}')"
   if areEqual "${_dirname#\.\.}" "${_dirname}"; then
-    _dirname="$PWD/${_dirname#\.}";
+    _dirname="$PWD/${_dirname#\.}"
   else
-    _dirname="$PWD/../${_dirname#\.\.}";
+    _dirname="$PWD/../${_dirname#\.\.}"
   fi
 
   if folderAllowsExec "${_dirname}"; then
-    _execAllowed=${TRUE};
+    _execAllowed=${TRUE}
   else
-    _dirname="$(dirname $(mktemp -u))";
+    _dirname="$(dirname $(mktemp -u))"
     if folderAllowsExec "${_dirname}"; then
-      _execAllowed=${TRUE};
+      _execAllowed=${TRUE}
     else
-      _dirname="${PWD}";
+      _dirname="${PWD}"
     fi
   fi
 
-  DW.getScriptName;
-  local _scriptName="${RESULT}";
-  local _prefix="$(echo \"${_scriptName}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')";
+  DW.getScriptName
+  local _scriptName="${RESULT}"
+  local _prefix="$(echo \"${_scriptName}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')"
 
   if isTrue ${_execAllowed}; then
-    FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX";
-    _rescode=$?;
+    FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX"
+    _rescode=$?
   else
-    FILE.mktempFile ".${_prefix}.XXXXXXXXXX";
-    _rescode=$?;
+    FILE.mktempFile ".${_prefix}.XXXXXXXXXX"
+    _rescode=$?
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: createTempFolder parent? prefix?
@@ -136,49 +136,49 @@ function createTempFileNoCleanup() {
 # use:   echo "New folder: ${RESULT}";
 # use: fi
 function createTempFolder() {
-  local _dirname="${1}";
-  local _prefix="${2}";
+  local _dirname="${1}"
+  local _prefix="${2}"
 
-  local _result;
+  local _result
 
-  DW.getScriptName;
-  local _scriptName="${RESULT}";
+  DW.getScriptName
+  local _scriptName="${RESULT}"
 
   if isEmpty "${_dirname}"; then
-    _dirname="$(dirname ${_scriptName})";
+    _dirname="$(dirname ${_scriptName})"
     if [ "${_dirname#\.\.}" == "${_dirname}" ]; then
-      _dirname="${PWD}/${_dirname#\.}";
+      _dirname="${PWD}/${_dirname#\.}"
     else
-      _dirname="${PWD}/../${_dirname#\.\.}";
+      _dirname="${PWD}/../${_dirname#\.\.}"
     fi
   fi
 
   if isEmpty "${_prefix}"; then
-    _prefix="${_scriptName}";
+    _prefix="${_scriptName}"
   fi
-  _prefix="$(echo "${_prefix}" | awk -F"/" '{print $NF;}')";
+  _prefix="$(echo "${_prefix}" | awk -F"/" '{print $NF;}')"
 
-  FILE.mktempFolder "${_dirname}" ".${_prefix}.XXXXXX";
-  local -i _rescode=$?;
+  FILE.mktempFolder "${_dirname}" ".${_prefix}.XXXXXX"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    _result="${RESULT}";
+    _result="${RESULT}"
   else
-    FILE.mktempFolder "${PWD}" ".${_prefix}.XXXXXX";
-    _rescode=$?;
+    FILE.mktempFolder "${PWD}" ".${_prefix}.XXXXXX"
+    _rescode=$?
     if isTrue ${_rescode}; then
-      _result="${RESULT}";
+      _result="${RESULT}"
     fi
   fi
 
   if isTrue ${_rescode}; then
-    addFileToCleanup "${_result}";
-    export RESULT="${_result}";
+    addFileToCleanup "${_result}"
+    export RESULT="${_result}"
   else
-    export RESULT="";
+    export RESULT=""
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: FILE.mktempFile baseFolder format
@@ -192,27 +192,27 @@ function createTempFolder() {
 # use:   ...;
 # use: fi
 function FILE.mktempFile() {
-  local _baseFolder="${1}";
-  checkNotEmpty baseFolder "${_baseFolder}" 1;
+  local _baseFolder="${1}"
+  checkNotEmpty baseFolder "${_baseFolder}" 1
   local _format="${2}"
-  checkNotEmpty format "${_format}" 2;
+  checkNotEmpty format "${_format}" 2
 
-  local -i _rescode;
-  local _result;
+  local -i _rescode
+  local _result
 
   if isMacOSX; then
     _result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
-    _rescode=$?;
+    _rescode=$?
   else
     _result="$(mktemp -p ${_baseFolder} -t ${_format})"
-    _rescode=$?;
+    _rescode=$?
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: FILE.mktempFolder baseFolder format
@@ -226,26 +226,26 @@ function FILE.mktempFile() {
 # use:   ...;
 # use: fi
 function FILE.mktempFolder() {
-  local _baseFolder="${1}";
-  checkNotEmpty baseFolder "${_baseFolder}" 1;
+  local _baseFolder="${1}"
+  checkNotEmpty baseFolder "${_baseFolder}" 1
   local _format="${2}"
-  checkNotEmpty format "${_format}" 2;
-  local -i _rescode;
-  local _result;
+  checkNotEmpty format "${_format}" 2
+  local -i _rescode
+  local _result
 
   if isMacOSX; then
     _result="$(TMPDIR="${_baseFolder}" mktemp -d -t ${_format})"
-    _rescode=$?;
+    _rescode=$?
   else
     _result="$(mktemp -p ${_baseFolder} -d -t ${_format})"
-    _rescode=$?;
+    _rescode=$?
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: fileExists file
@@ -257,13 +257,13 @@ function FILE.mktempFolder() {
 # use:   ...;
 # use: fi
 function fileExists() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
 
   if [[ -e ${_file} ]]; then
-    return ${TRUE};
+    return ${TRUE}
   else
-    return ${FALSE};
+    return ${FALSE}
   fi
 }
 
@@ -276,13 +276,13 @@ function fileExists() {
 # use:   ...;
 # use: fi
 function folderExists() {
-  local _folder="${1}";
-  checkNotEmpty folder "${_folder}" 1;
+  local _folder="${1}"
+  checkNotEmpty folder "${_folder}" 1
 
   if [[ -d ${_folder} ]]; then
-    return ${TRUE};
+    return ${TRUE}
   else
-    return ${FALSE};
+    return ${FALSE}
   fi
 }
 
@@ -295,13 +295,13 @@ function folderExists() {
 # use:   ...;
 # use: fi
 function fileIsNotEmpty() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
 
   if [[ -s ${_file} ]]; then
-    return ${TRUE};
+    return ${TRUE}
   else
-    return ${FALSE};
+    return ${FALSE}
   fi
 }
 
@@ -314,13 +314,13 @@ function fileIsNotEmpty() {
 # use:   ...;
 # use: fi
 function fileIsReadable() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
 
   if [[ -r ${_file} ]]; then
-    return ${TRUE};
+    return ${TRUE}
   else
-    return ${FALSE};
+    return ${FALSE}
   fi
 }
 
@@ -333,13 +333,13 @@ function fileIsReadable() {
 # use:   ...;
 # use: fi
 function fileIsRegularFile() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
 
   if [[ -f ${_file} ]]; then
-    return ${TRUE};
+    return ${TRUE}
   else
-    return ${FALSE};
+    return ${FALSE}
   fi
 }
 
@@ -352,13 +352,13 @@ function fileIsRegularFile() {
 # use:   ...;
 # use: fi
 function fileIsWritable() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
 
   if [[ -w ${_file} ]]; then
-    return ${TRUE};
+    return ${TRUE}
   else
-    return ${FALSE};
+    return ${FALSE}
   fi
 }
 
@@ -371,13 +371,13 @@ function fileIsWritable() {
 # use:   ...;
 # use: fi
 function folderIsWritable() {
-  local _folder="${1}";
-  checkNotEmpty folder "${_folder}" 1;
+  local _folder="${1}"
+  checkNotEmpty folder "${_folder}" 1
 
   if [[ -w ${_folder} ]]; then
-    return ${TRUE};
+    return ${TRUE}
   else
-    return ${FALSE};
+    return ${FALSE}
   fi
 }
 
@@ -390,39 +390,39 @@ function folderIsWritable() {
 # txt: The variable RESULT contains the distance.
 # use: findFolderDistance "/home/myuser/a/b/c" "/home/myuser/a/b/d/e";
 function findFolderDistance() {
-  local _pathA="$1";
-  checkNotEmpty folderA "${_pathA}" 1;
-  local _pathB="$2";
-  checkNotEmpty folderB "${_pathB}" 2;
-  local -i _result=-1;
+  local _pathA="$1"
+  checkNotEmpty folderA "${_pathA}" 1
+  local _pathB="$2"
+  checkNotEmpty folderB "${_pathB}" 2
+  local -i _result=-1
 
-  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
-  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
-  local _max=$((_maxA));
+  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}')
+  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}')
+  local _max=$((_maxA))
   if [ $((_max)) -lt $((_maxB)) ]; then
-    _max=$((_maxB));
+    _max=$((_maxB))
   fi
 
-  local _index=$((_max));
-  local _indexA=$((_maxA));
-  local _indexB=$((_maxB));
-  local _auxA;
-  local _auxB;
+  local _index=$((_max))
+  local _indexA=$((_maxA))
+  local _indexB=$((_maxB))
+  local _auxA
+  local _auxB
 
   while [ $((_index)) -gt 0 ]; do
-    _indexA=$((_maxA-_max+_index));
-    _indexB=$((_maxB-_max+_index));
-    if    [ $((_indexA)) -eq 0 ] \
-            || [ $((_indexB)) -eq 0 ]; then
-      result=$((_max-_index));
-      break;
+    _indexA=$((_maxA - _max + _index))
+    _indexB=$((_maxB - _max + _index))
+    if [ $((_indexA)) -eq 0 ] ||
+      [ $((_indexB)) -eq 0 ]; then
+      result=$((_max - _index))
+      break
     fi
-    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_indexA} '{printf("%s", $indx);}');
-    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_indexB} '{printf("%s", $indx);}');
-    _index=$((_index-1));
+    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_indexA} '{printf("%s", $indx);}')
+    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_indexB} '{printf("%s", $indx);}')
+    _index=$((_index - 1))
     if [ "${_auxA}" != "${_auxB}" ]; then
-      _result=${TRUE};
-      break;
+      _result=${TRUE}
+      break
     fi
   done
 
@@ -432,7 +432,7 @@ function findFolderDistance() {
   #    _result=${TRUE};
   #  fi
 
-  export RESULT="${_result}";
+  export RESULT="${_result}"
 }
 
 # fun: findGreatestCommonParentFolder folderA folderB
@@ -444,39 +444,38 @@ function findFolderDistance() {
 # txt: The variable RESULT contains the parent folder.
 # use: findGreatestCommonParentFolder ${HOME}/a/b/c ${HOME}/a/b/d/e;
 function findGreatestCommonParentFolder() {
-  local _pathA="$1";
-  checkNotEmpty folderA "${_pathA}" 1;
-  local _pathB="$2";
-  checkNotEmpty folderB "${_pathB}" 2;
-  local _result="";
+  local _pathA="$1"
+  checkNotEmpty folderA "${_pathA}" 1
+  local _pathB="$2"
+  checkNotEmpty folderB "${_pathB}" 2
+  local _result=""
 
-  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}');
-  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}');
-  local _max=$((_maxA));
+  local _maxA=$(echo "${_pathA}" | awk -F"/" '{print NF;}')
+  local _maxB=$(echo "${_pathB}" | awk -F"/" '{print NF;}')
+  local _max=$((_maxA))
   if [ $((_max)) -lt $((_maxB)) ]; then
-    _max=$((_maxB));
+    _max=$((_maxB))
   fi
 
-  local _index=1;
-  local _auxA;
-  local _auxB;
+  local _index=1
+  local _auxA
+  local _auxB
 
   while [ $((_index)) -le $((_max)) ]; do
-    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
-    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}');
-    _index=$((_index+1));
+    _auxA=$(echo "${_pathA}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}')
+    _auxB=$(echo "${_pathB}" | awk -F"/" -vindx=${_index} '{printf("%s", $indx);}')
+    _index=$((_index + 1))
     if [ "${_auxA}" == "${_auxB}" ]; then
-      _result="${_result}/${_auxA}";
+      _result="${_result}/${_auxA}"
     else
-      break;
+      break
     fi
   done
 
-  _result=$(echo "${_result}" | sed 's ^/  g');
+  _result=$(echo "${_result}" | sed 's ^/  g')
 
-  export RESULT="${_result}";
+  export RESULT="${_result}"
 }
-
 
 # fun: findInPath file
 # api: public
@@ -485,25 +484,25 @@ function findGreatestCommonParentFolder() {
 # txt: Prints the file path via (stdin).
 # use: local path="$(findInPath myFile)";
 function findInPath() {
-  checkNotEmpty file "${1}" 1;
-  local _result="";
-  local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')";
-  local _path;
+  checkNotEmpty file "${1}" 1
+  local _result=""
+  local _paths="$(echo \"$PATH:.\" | awk -F":" '{for(i=1;i<=NF;i++) print $i;}')"
+  local _path
 
-  local _oldIFS="${IFS}";
+  local _oldIFS="${IFS}"
 
-  IFS="${DWIFS}";
-  local _path;
+  IFS="${DWIFS}"
+  local _path
   for _path in $_paths; do
-    IFS="${_oldIFS}";
+    IFS="${_oldIFS}"
     if [ -f "${_path}/$1" ]; then
-      _result="${_path}/$1";
-      break;
+      _result="${_path}/$1"
+      break
     fi
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 
-  echo ${_result};
+  echo ${_result}
 }
 
 # fun: findRelativePathBetweenFolders folderA folderB
@@ -525,35 +524,35 @@ function findRelativePathBetweenFolders() {
   # 3) Find out the distance from A to A* -> d
   # 4) Replace the greatest 'd' parent folders with '..' in A -> P*
   # 5) Result=P*/B*
-  local _pathA="$1";
-  checkNotEmpty folderA "${_pathA}" 1;
-  local _pathB="$2";
-  checkNotEmpty folderB "${_pathB}" 2;
-  local _pathBb;
-  local _d;
-  local _p;
-  local result;
+  local _pathA="$1"
+  checkNotEmpty folderA "${_pathA}" 1
+  local _pathB="$2"
+  checkNotEmpty folderB "${_pathB}" 2
+  local _pathBb
+  local _d
+  local _p
+  local result
 
-  findGreatestCommonParentFolder "${_pathA}" "${_pathB}";
-  local _parent="${RESULT}";
+  findGreatestCommonParentFolder "${_pathA}" "${_pathB}"
+  local _parent="${RESULT}"
 
-  local _pathAb="${_pathA#${_parent}}";
-  _pathAb="${_pathAb#/}";
-  local _pathBb="${_pathB#${_parent}}";
-  _pathBb="${_pathBb#/}";
+  local _pathAb="${_pathA#${_parent}}"
+  _pathAb="${_pathAb#/}"
+  local _pathBb="${_pathB#${_parent}}"
+  _pathBb="${_pathBb#/}"
 
-  findFolderDistance "${_pathA}" "${_pathAb}";
-  local _d="${RESULT}";
+  findFolderDistance "${_pathA}" "${_pathAb}"
+  local _d="${RESULT}"
 
-  replaceNLeftmostTokens "${_pathA}" ".." ${_d} "/";
-  local _p="${RESULT}";
-  local _aux=$(echo ${_pathA} | awk -F"/" '{print NF;};');
-  replaceNRightmostTokens "${_p}" "" $((_aux-_d-1)) "/";
-  _p="${RESULT}";
+  replaceNLeftmostTokens "${_pathA}" ".." ${_d} "/"
+  local _p="${RESULT}"
+  local _aux=$(echo ${_pathA} | awk -F"/" '{print NF;};')
+  replaceNRightmostTokens "${_p}" "" $((_aux - _d - 1)) "/"
+  _p="${RESULT}"
 
-  local _result="${_p}/${_pathBb}";
+  local _result="${_p}/${_pathBb}"
 
-  export RESULT="${_result}";
+  export RESULT="${_result}"
 }
 
 # fun: isExecutable fileOrFolder
@@ -565,18 +564,18 @@ function findRelativePathBetweenFolders() {
 # use:   cd /tmp;
 # use: fi
 function isExecutable() {
-  local _fileOrFolder="${1}";
-  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+  local _fileOrFolder="${1}"
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
   if fileExists "${_fileOrFolder}" && [[ -x "${_fileOrFolder}" ]]; then
-    _rescode=${TRUE};
+    _rescode=${TRUE}
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: folderExistsAndIsNotASymlink folder
@@ -588,22 +587,22 @@ function isExecutable() {
 # use:   ...;
 # use: fi
 function folderExistsAndIsNotASymlink() {
-  local _folder="${1}";
-  checkNotEmpty folder "${_folder}" 1;
+  local _folder="${1}"
+  checkNotEmpty folder "${_folder}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
   if folderExists "${_folder}"; then
     if isSymlink "${_folder}"; then
-      _rescode=${FALSE};
+      _rescode=${FALSE}
     else
-      _rescode=${TRUE};
+      _rescode=${TRUE}
     fi
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: isMacOSX
@@ -614,15 +613,15 @@ function folderExistsAndIsNotASymlink() {
 # use:   echo "I'm running on a MacOSX";
 # use: fi
 function isMacOSX() {
-  local -i _rescode;
+  local -i _rescode
 
   if [ "$(uname -s)" == "Darwin" ]; then
-    _rescode=${TRUE};
+    _rescode=${TRUE}
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: isSymlink path
@@ -634,18 +633,18 @@ function isMacOSX() {
 # use:   ...;
 # use: fi
 function isSymlink() {
-  local _path="${1}";
-  checkNotEmpty path "${_path}" 1;
+  local _path="${1}"
+  checkNotEmpty path "${_path}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
   if [ -L "${_path}" ]; then
-    _rescode=${TRUE};
+    _rescode=${TRUE}
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: readConfFile file
@@ -657,35 +656,35 @@ function isSymlink() {
 # use:   echo "/tmp/app.conf read successfully";
 # use: fi
 function readConfFile() {
-  local _confFile="${1}";
-  checkNotEmpty file "${_confFile}" 1;
+  local _confFile="${1}"
+  checkNotEmpty file "${_confFile}" 1
 
-  local -i _rescode=${TRUE};
+  local -i _rescode=${TRUE}
 
   if [ ! -e "${_confFile}" ]; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    local _actualConfFile="${_confFile}";
+    local _actualConfFile="${_confFile}"
 
-    createTempFile;
-    _rescode=$?;
-    _actualConfFile="${RESULT}";
+    createTempFile
+    _rescode=$?
+    _actualConfFile="${RESULT}"
 
     if isTrue ${_rescode}; then
-      grep -v '^#' "${_confFile}" | sed 's ${\(.*\)} _dollar{\1}_ g' \
-        | sed 's ^\(.*\)=\(.*\) echo\ -n\ \1\ |\ tr\ \[:lower:\]\ \[:upper:]\;\ echo\ -n\ =\;\ echo\ \2 g' \
-        | sh \
-        | sed 's _dollar{\(.*\)}_ ${\1} g' \
-        | sed 's_^\(.*\)=\(.*\)$_\1=\2; logTrace \1=\${\1};_ g' \
-        | sed 's_^_export _g' > "${_actualConfFile}";
+      grep -v '^#' "${_confFile}" | sed 's ${\(.*\)} _dollar{\1}_ g' |
+        sed 's ^\(.*\)=\(.*\) echo\ -n\ \1\ |\ tr\ \[:lower:\]\ \[:upper:]\;\ echo\ -n\ =\;\ echo\ \2 g' |
+        sh |
+        sed 's _dollar{\(.*\)}_ ${\1} g' |
+        sed 's_^\(.*\)=\(.*\)$_\1=\2; logTrace \1=\${\1};_ g' |
+        sed 's_^_export _g' >"${_actualConfFile}"
 
-      source "${_actualConfFile}";
+      source "${_actualConfFile}"
     fi
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: readLink param*
@@ -698,24 +697,24 @@ function readConfFile() {
 # use:   echo "readlink result: ${RESULT}"
 # use: fi
 function readLink() {
-  checkNotEmpty param "${1}" 1;
+  checkNotEmpty param "${1}" 1
 
-  local -i _rescode;
-  local _result;
+  local -i _rescode
+  local _result
 
   if isMacOSX; then
-    _result="$(greadlink $@)";
-    _rescode=$?;
+    _result="$(greadlink $@)"
+    _rescode=$?
   else
-    _result="$(readlink $@)";
-    _rescode=$?;
+    _result="$(readlink $@)"
+    _rescode=$?
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: removeExtension fileName
@@ -726,15 +725,15 @@ function readLink() {
 # txt: The variable RESULT contains the file name, without the extension.
 # use: removeExtension "myfile.sh" # -> RESULT="myfile";
 function removeExtension() {
-  local _file="${1}";
-  checkNotEmpty fileName "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty fileName "${_file}" 1
 
-  local _result="$(basename ${_file}$)";
-  _result="${_result%.*}";
+  local _result="$(basename ${_file}$)"
+  _result="${_result%.*}"
 
-  export RESULT="${_result}";
+  export RESULT="${_result}"
 
-  return ${TRUE};
+  return ${TRUE}
 }
 
 # fun: retrieveAbsolutePath relativePath
@@ -747,12 +746,12 @@ function removeExtension() {
 # use:   echo "absolute path: ${RESULT}";
 # use: fi
 function retrieveAbsolutePath() {
-  local _relativePath="${1}";
-  checkNotEmpty relativePath "${_relativePath}" 1;
+  local _relativePath="${1}"
+  checkNotEmpty relativePath "${_relativePath}" 1
 
-  readLink -f "${_relativePath}";
+  readLink -f "${_relativePath}"
 
-  return $?;
+  return $?
 }
 
 # fun: retrieveFreeDiskSpaceUnderFolder folder
@@ -764,34 +763,34 @@ function retrieveAbsolutePath() {
 # use:   echo "/tmp -> ${RESULT}";
 # use: fi
 function retrieveFreeDiskSpaceUnderFolder() {
-  local _folder="$1";
-  checkNotEmpty folder "${_folder}" 1;
+  local _folder="$1"
+  checkNotEmpty folder "${_folder}" 1
 
-  local _result;
+  local _result
 
-  local -i _rescode=${FALSE};
-  local _aux="${_folder}";
+  local -i _rescode=${FALSE}
+  local _aux="${_folder}"
 
   if [ -d "${_folder}" ]; then
-    while isNotEmpty "${_aux}" -a areNotEqual "${_aux}" "/" && \
-        ! mountpoint -q "${_aux}"; do
-      _aux="${_aux%/*}";
-    done;
+    while isNotEmpty "${_aux}" -a areNotEqual "${_aux}" "/" &&
+      ! mountpoint -q "${_aux}"; do
+      _aux="${_aux%/*}"
+    done
 
-    mountpoint -q "${_aux}";
-    _rescode=$?;
+    mountpoint -q "${_aux}"
+    _rescode=$?
 
     if isTrue ${_rescode}; then
-      _result="$(df | grep " ${_aux}$" | awk '{print $4;}')";
-      _rescode=$?;
+      _result="$(df | grep " ${_aux}$" | awk '{print $4;}')"
+      _rescode=$?
     fi
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: sourceFileIfExists file
@@ -801,23 +800,23 @@ function retrieveFreeDiskSpaceUnderFolder() {
 # txt: Returns 0/TRUE if the file is sourced; 1/FALSE otherwise.
 # use: sourceFileIfExists "/tmp/my-env";
 function sourceFileIfExists() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
 
-  local -i _rescode=${FALSE};
+  local -i _rescode=${FALSE}
 
   if fileExists "${_file}"; then
-    local _filePath="$(realpath "${_file}")";
-    logTrace -n "Reading ${_filePath}";
-    _rescode=${TRUE};
-    source "${_filePath}";
-    logTraceResult SUCCESS "done";
+    local _filePath="$(realpath "${_file}")"
+    logTrace -n "Reading ${_filePath}"
+    _rescode=${TRUE}
+    source "${_filePath}"
+    logTraceResult SUCCESS "done"
   else
-    logTrace -n "Reading ${_file}";
-    logTraceResult SUCCESS "not found";
+    logTrace -n "Reading ${_file}"
+    logTraceResult SUCCESS "not found"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: uncompress file outputFolder
@@ -828,44 +827,44 @@ function sourceFileIfExists() {
 # txt: Returns 0/TRUE if the file is uncompressed successfully; 1/FALSE if the format of the file is invalid; and 2 if there's some other error when uncompressing the file.
 # use: uncompress "my.zip" "/tmp";
 function uncompress() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  local _destination="${2}";
-  checkNotEmpty outputFolder "${_destination}" 2;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+  local _destination="${2}"
+  checkNotEmpty outputFolder "${_destination}" 2
 
-  local -i _rescode=${TRUE};
+  local -i _rescode=${TRUE}
 
-  createTempFile;
-  local _errorOutput="${RESULT}";
+  createTempFile
+  local _errorOutput="${RESULT}"
 
-  local _flags;
+  local _flags
 
   # First, check whether the bundle is compressed bzip2 format.
-  if file "${_file}" | cut -d ":" -f 2 | grep bzip2 > /dev/null 2>&1; then
-    _flags="xfj";
+  if file "${_file}" | cut -d ":" -f 2 | grep bzip2 >/dev/null 2>&1; then
+    _flags="xfj"
     # Second try: check whether the bundle is compressed gzip format.
   elif file "${_file}" | cut -d ":" -f 2 | grep gzip /dev/null 2>&1; then
-    _flags="xfz";
+    _flags="xfz"
     # Otherwise, it can also be a standard, uncompressed tar.
   elif file "${_file}" | cut -d ":" -f 2 | grep tar /dev/null 2>&1; then
-    _flags="xf";
+    _flags="xf"
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    logDebug -n "Uncompressing ${_file}";
-    tar ${_flags} "${_file}" -C "${_destination}" > "${_errorOutput}" 2>&1;
+    logDebug -n "Uncompressing ${_file}"
+    tar ${_flags} "${_file}" -C "${_destination}" >"${_errorOutput}" 2>&1
     if isTrue $?; then
-      logDebugResult SUCCESS "done";
+      logDebugResult SUCCESS "done"
     else
-      logDebugResult FAILURE "Failed";
-      logDebugFile "${_errorOutput}";
-      _rescode=2;
+      logDebugResult FAILURE "Failed"
+      logDebugFile "${_errorOutput}"
+      _rescode=2
     fi
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: compress file sourceFilesOrFolders+
@@ -876,41 +875,41 @@ function uncompress() {
 # txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
 # use: compress "my.gz" "/tmp";
 function compress() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  shift;
-  local _sourceFilesOrFolders="${@}";
-  checkNotEmpty sourceFilesOrFolders "${_sourceFilesOrFolders}" 2;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+  shift
+  local _sourceFilesOrFolders="${@}"
+  checkNotEmpty sourceFilesOrFolders "${_sourceFilesOrFolders}" 2
 
-  local -i _rescode=${FALSE};
+  local -i _rescode=${FALSE}
 
-  createTempFile;
-  local _errorOutput="${RESULT}";
+  createTempFile
+  local _errorOutput="${RESULT}"
 
-  local _flags;
+  local _flags
 
   # First, check whether we should compress using the bzip2 format.
   if endsWith "${_file}" ".bz2"; then
-    _flags="cfj";
+    _flags="cfj"
     # Second try, check whether we should compress using the gzip format.
   elif endsWith "${_file}" ".gz"; then
-    _flags="cfz";
+    _flags="cfz"
     # Otherwise, it can also be a standard, uncompressed tar.
   else
-    _flags="cf";
+    _flags="cf"
   fi
 
-  logDebug -n "Creating ${_file} from ${_sourceFilesOrFolders}";
-  tar ${_flags} "${_file}" "${_sourceFilesOrFolders}" > "${_errorOutput}" 2>&1;
-  _rescode=$?;
+  logDebug -n "Creating ${_file} from ${_sourceFilesOrFolders}"
+  tar ${_flags} "${_file}" "${_sourceFilesOrFolders}" >"${_errorOutput}" 2>&1
+  _rescode=$?
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
+    logDebugResult SUCCESS "done"
   else
-    logDebugResult FAILURE "Failed";
-    logDebugFile "${_errorOutput}";
+    logDebugResult FAILURE "Failed"
+    logDebugFile "${_errorOutput}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: replaceVariablesInFile file output variables+
@@ -924,69 +923,72 @@ function compress() {
 # use:   ...
 # use: fi
 function replaceVariablesInFile() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  local _output="${2}";
-  checkNotEmpty output "${_output}" 2;
-  shift;
-  shift;
-  local _variables="${@}";
-  checkNotEmpty variables "${_variables}" 3;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+  local _output="${2}"
+  checkNotEmpty output "${_output}" 2
+  shift
+  shift
+  local _variables="${@}"
+  checkNotEmpty variables "${_variables}" 3
 
-  local -i _rescode=${TRUE};
+  local -i _rescode=${TRUE}
 
-  local _env;
-  local _envsubstDecl;
+  local _env
+  local _envsubstDecl
 
-  keyValueSplit "${_variables}";
-  local _splittedVariables="${RESULT}";
+  keyValueSplit "${_variables}"
+  local _splittedVariables="${RESULT}"
 
-  local _oldIFS="${IFS}";
-  IFS=$'\n';
-  local _pair;
+  local _oldIFS="${IFS}"
+  IFS=$'\n'
+  local _pair
   for _pair in ${_splittedVariables}; do
-    IFS="${_oldIFS}";
-    local _key;
+    IFS="${_oldIFS}"
+    local _key
     if extractKeyInPair "${_pair}"; then
-      _key="${RESULT}";
+      _key="${RESULT}"
     else
-      _rescode=${FALSE};
-      break;
+      _rescode=${FALSE}
+      break
     fi
 
-    local _value;
+    local _value
     if extractValueInPair "${_pair}"; then
-      _value="${RESULT}";
+      _value="${RESULT}"
       if isNotEmpty "${_value}"; then
         if removeSurrounding "${_value}" '"'; then
-          _value="${RESULT}";
+          _value="${RESULT}"
         fi
         if replaceAll "${_value}" '"' '\"'; then
-          _value="${RESULT}";
+          _value="${RESULT}"
         fi
       fi
     else
-      _rescode=${FALSE};
-      break;
+      _rescode=${FALSE}
+      break
     fi
 
     if isNotEmpty "${_env}"; then
-      _env="${_env} ";
+      _env="${_env} "
     fi
-    _env="${_env}${_key}=\"${_value}\"";
+    _env="${_env}${_key}=\"${_value}\""
     if isNotEmpty "${_envsubstDecl}"; then
-      _envsubstDecl="${_envsubstDecl} ";
+      _envsubstDecl="${_envsubstDecl} "
     fi
-    _envsubstDecl=$(echo -n "${_envsubstDecl}$"; echo -n "{${_key}}");
+    _envsubstDecl=$(
+      echo -n "${_envsubstDecl}$"
+      echo -n "{${_key}}"
+    )
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 
   if isTrue ${_rescode}; then
-    echo "${_env} envsubst '${_envsubstDecl}' < ${_file}" | sh > "${_output}";
-    _rescode=$?;
+    echo "${_env} envsubst '${_envsubstDecl}' < ${_file}" | sh >"${_output}"
+    _rescode=$?
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: changeFilePermissions file permissions
@@ -999,12 +1001,12 @@ function replaceVariablesInFile() {
 # use:   echo "Permissions changed";
 # use: fi
 function changeFilePermissions() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  local _permissions="${2}";
-  checkNotEmpty permissions "${_permissions}" 2;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+  local _permissions="${2}"
+  checkNotEmpty permissions "${_permissions}" 2
 
-  chmod ${_permissions} ${_file} > /dev/null 2>&1;
+  chmod ${_permissions} ${_file} >/dev/null 2>&1
 }
 
 # fun: getOwnerOfFileOrFolder fileOrFolder
@@ -1017,23 +1019,23 @@ function changeFilePermissions() {
 # use:   echo "owner of /tmp: ${RESULT}";
 # use: fi
 function getOwnerOfFileOrFolder() {
-  local _fileOrFolder="${1}";
-  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+  local _fileOrFolder="${1}"
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
   if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
-    local _output;
-    _output="$(ls -ld "${_fileOrFolder}" | awk '{print $4;}')";
-    _rescode=$?;
+    local _output
+    _output="$(ls -ld "${_fileOrFolder}" | awk '{print $4;}')"
+    _rescode=$?
     if isTrue ${_rescode}; then
-      export RESULT="${_output}";
+      export RESULT="${_output}"
     fi
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: getOwnerIdOfFileOrFolder fileOrFolder
@@ -1046,23 +1048,26 @@ function getOwnerOfFileOrFolder() {
 # use:   echo "owner id of /tmp: ${RESULT}";
 # use: fi
 function getOwnerIdOfFileOrFolder() {
-  local _fileOrFolder="${1}";
-  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+  local _fileOrFolder="${1}"
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
   if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
-    local _output;
-    _output="$(grep -e '^$(ls -ld "${_fileOrFolder}" | awk '{print $4;}'):' /etc/passwd | cut -d':' -f 3)";
-    _rescode=$?;
+    local _output
+    _output="$(
+      grep -e '^$(ls -ld "${_fileOrFolder}" | awk '{print $4
+      }'):' /etc/passwd | cut -d':' -f 3
+    )"
+    _rescode=$?
     if isTrue ${_rescode}; then
-      export RESULT="${_output}";
+      export RESULT="${_output}"
     fi
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: getGroupOfFileOrFolder fileOrFolder
@@ -1075,23 +1080,23 @@ function getOwnerIdOfFileOrFolder() {
 # use:   echo "group of /tmp: ${RESULT}";
 # use: fi
 function getGroupOfFileOrFolder() {
-  local _fileOrFolder="${1}";
-  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+  local _fileOrFolder="${1}"
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
   if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
-    local _output;
-    _output="$(ls -ld "${_fileOrFolder}" | awk '{print $5;}')";
-    _rescode=$?;
+    local _output
+    _output="$(ls -ld "${_fileOrFolder}" | awk '{print $5;}')"
+    _rescode=$?
     if isTrue ${_rescode}; then
-      export RESULT="${_output}";
+      export RESULT="${_output}"
     fi
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: getGroupIdOfFileOrFolder fileOrFolder
@@ -1104,23 +1109,26 @@ function getGroupOfFileOrFolder() {
 # use:   echo "group id of /tmp: ${RESULT}";
 # use: fi
 function getGroupIdOfFileOrFolder() {
-  local _fileOrFolder="${1}";
-  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1;
+  local _fileOrFolder="${1}"
+  checkNotEmpty fileOrFolder "${_fileOrFolder}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
   if fileExists "${_fileOrFolder}" || folderExists "${_fileOrFolder}"; then
-    local _output;
-    _output="$(grep -e '^$(ls -ld "${_fileOrFolder}" | awk '{print $5;}'):' /etc/group | cut -d':' -f 3)";
-    _rescode=$?;
+    local _output
+    _output="$(
+      grep -e '^$(ls -ld "${_fileOrFolder}" | awk '{print $5
+      }'):' /etc/group | cut -d':' -f 3
+    )"
+    _rescode=$?
     if isTrue ${_rescode}; then
-      export RESULT="${_output}";
+      export RESULT="${_output}"
     fi
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: changeFolderPermissionsRecursively folder permissions
@@ -1131,12 +1139,12 @@ function getGroupIdOfFileOrFolder() {
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
 # use: if changeFolderPermissionsRecursively /tmp/ 0700; then echo "Permissions changed"; fi
 function changeFolderPermissionsRecursively() {
-  local _folder="${1}";
-  checkNotEmpty folder "${_folder}" 1;
-  local _permissions="${2}";
-  checkNotEmpty permissions "${_permissions}" 2;
+  local _folder="${1}"
+  checkNotEmpty folder "${_folder}" 1
+  local _permissions="${2}"
+  checkNotEmpty permissions "${_permissions}" 2
 
-  chmod -R ${_permissions} ${_folder} > /dev/null 2>&1;
+  chmod -R ${_permissions} ${_folder} >/dev/null 2>&1
 }
 
 # fun: changeOwnerOfFile file user group? ownership?
@@ -1151,18 +1159,18 @@ function changeFolderPermissionsRecursively() {
 # use:   echo "Ownership changed";
 # use: fi
 function changeOwnerOfFile() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  local _user="${2}";
-  checkNotEmpty user "${_user}" 2;
-  local _group="${3}";
-  local _ownership="${_user}";
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+  local _user="${2}"
+  checkNotEmpty user "${_user}" 2
+  local _group="${3}"
+  local _ownership="${_user}"
 
   if isNotEmpty "${_group}"; then
-    _ownership="${_ownership}:${_group}";
+    _ownership="${_ownership}:${_group}"
   fi
 
-  chown "${_ownership}" "${_file}" > /dev/null 2>&1;
+  chown "${_ownership}" "${_file}" >/dev/null 2>&1
 }
 
 # fun: changeOwnerOfFolderRecursively dir user group?
@@ -1176,18 +1184,18 @@ function changeOwnerOfFile() {
 # use:   echo "Ownership changed";
 # use: fi
 function changeOwnerOfFolderRecursively() {
-  local _dir="${1}";
-  checkNotEmpty dir "${_dir}" 1;
-  local _user="${2}";
-  checkNotEmpty user "${_user}" 2;
-  local _group="${3}";
-  local _ownership="${_user}";
+  local _dir="${1}"
+  checkNotEmpty dir "${_dir}" 1
+  local _user="${2}"
+  checkNotEmpty user "${_user}" 2
+  local _group="${3}"
+  local _ownership="${_user}"
 
   if isNotEmpty "${_group}"; then
-    _ownership="${_ownership}:${_group}";
+    _ownership="${_ownership}:${_group}"
   fi
 
-  chown -R "${_ownership}" "${_dir}" > /dev/null 2>&1;
+  chown -R "${_ownership}" "${_dir}" >/dev/null 2>&1
 }
 
 # fun: FILE.getCleanupFilesVariableName
@@ -1198,8 +1206,8 @@ function changeOwnerOfFolderRecursively() {
 # use: FILE.getCleanupFilesVariableName;
 # use: local -n cleanupFiles=${RESULT};
 function FILE.getCleanupFilesVariableName() {
-  FILE.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" CLEANUP_FILES;
+  FILE.getModuleName
+  DW.getGlobalVariableName "${RESULT}" CLEANUP_FILES
 }
 
 # fun: truncateFiles folder regex
@@ -1210,15 +1218,15 @@ function FILE.getCleanupFilesVariableName() {
 # use:   ...
 # use: fi
 function truncateFiles() {
-  local _folder="${1}";
-  checkNotEmpty folder "${_folder}" 1;
-  local _regex="${2}";
-  checkNotEmpty regex "${_regex}" 2;
+  local _folder="${1}"
+  checkNotEmpty folder "${_folder}" 1
+  local _regex="${2}"
+  checkNotEmpty regex "${_regex}" 2
 
   find "${_folder}" -type f -name "${_regex}" -exec bash -c 'echo > {}' \;
-  local -i _rescode=$?;
+  local -i _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: fileContains file text
@@ -1231,22 +1239,22 @@ function truncateFiles() {
 # use:   echo "${USER} in /etc/passwd";
 # use: fi
 function fileContains() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  local _text="${2}";
-  checkNotEmpty text "${_text}" 2;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+  local _text="${2}"
+  checkNotEmpty text "${_text}" 2
 
-  local _output;
-  _output="$(grep --color=none "${_text}" "${_file}" 2>&1)";
-  local -i _rescode=$?;
+  local _output
+  _output="$(grep --color=none "${_text}" "${_file}" 2>&1)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_output}";
+    export RESULT="${_output}"
   else
-    export ERROR="${_output}";
+    export ERROR="${_output}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: fileModifiedInLastXMinutes file minutes
@@ -1259,21 +1267,21 @@ function fileContains() {
 # use:   echo "File ${file} modified in last 3 minutes";
 # use: fi
 function fileModifiedInLastXMinutes() {
-  local _file="${1}";
-  checkNotEmpty file "${_file}" 1;
-  local _minutes="${2}";
-  checkNotEmpty minutes "${_minutes}" 2;
-  checkNumber minutes "${_minutes}" 2;
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+  local _minutes="${2}"
+  checkNotEmpty minutes "${_minutes}" 2
+  checkNumber minutes "${_minutes}" 2
 
-  local -i _rescode;
+  local -i _rescode
 
-  if [ $(stat -c %Y "${_file}") -ge $(( $(date +%s) - 60*${_minutes} )) ]; then
-    _rescode=${TRUE};
+  if [ $(stat -c %Y "${_file}") -ge $(($(date +%s) - 60 * ${_minutes})) ]; then
+    _rescode=${TRUE}
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: FILE.resetState
@@ -1282,8 +1290,8 @@ function fileModifiedInLastXMinutes() {
 # txt: Returns 0/TRUE always.
 # use: FILE.resetState;
 function FILE.resetState() {
-  FILE.getModuleName;
+  FILE.getModuleName
   # env: CLEANUP_FILES: The temporary files to cleanup.
-  DW.declareGlobalArray "${RESULT}" CLEANUP_FILES;
+  DW.declareGlobalArray "${RESULT}" CLEANUP_FILES
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
