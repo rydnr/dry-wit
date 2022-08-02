@@ -12,30 +12,30 @@
 # use:   ...;
 # use: fi
 function runCommand() {
-  local _command;
-  _command="$(echo $@ | sed 's_\n_ _g')";
-  checkNotEmpty command "${_command}" 1;
+  local _command
+  _command="$(echo $@ | sed 's_\n_ _g')"
+  checkNotEmpty command "${_command}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
-  getLogCategory;
-  local _previousLogCategory="${RESULT}";
+  getLogCategory
+  local _previousLogCategory="${RESULT}"
   if ! areEqual "${_previousLogCategory}" "${_command}"; then
-    setLogCategory "${_previousLogCategory}:(${_command})";
+    setLogCategory "${_previousLogCategory}:(${_command})"
   fi
 
-  logDebug "${_command}";
-  local _result;
-  _result=$($@ 2>&1);
-  _rescode=$?;
+  logDebug "${_command}"
+  local _result
+  _result=$($@ 2>&1)
+  _rescode=$?
 
-  export RESULT="${_result}";
+  export RESULT="${_result}"
 
   if ! areEqual "${_previousLogCategory}" "${_command}"; then
-    setLogCategory "${_previousLogCategory}";
+    setLogCategory "${_previousLogCategory}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runCommandAsUidAndGid uid gid folder command+
@@ -50,47 +50,47 @@ function runCommand() {
 # use:   echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
 # use: fi
 function runCommandAsUidAndGid() {
-  local _uid;
-  _uid="${1}";
-  checkNotEmpty uid "${_uid}" 1;
-  local _gid;
-  _gid="${2}";
-  checkNotEmpty gid "${_gid}" 2;
-  local _folder;
-  _folder="${3}";
-  checkNotEmpty folder "${_folder}" 3;
-  local _command;
-  _command="${4}";
-  checkNotEmpty command "${_command}" 4;
-  shift;
-  shift;
-  shift;
-  shift;
+  local _uid
+  _uid="${1}"
+  checkNotEmpty uid "${_uid}" 1
+  local _gid
+  _gid="${2}"
+  checkNotEmpty gid "${_gid}" 2
+  local _folder
+  _folder="${3}"
+  checkNotEmpty folder "${_folder}" 3
+  local _command
+  _command="${4}"
+  checkNotEmpty command "${_command}" 4
+  shift
+  shift
+  shift
+  shift
 
-  local -i _rescode;
-  _rescode=${FALSE};
+  local -i _rescode
+  _rescode=${FALSE}
 
   if isInstalled gosu; then
-    runCommandAsUidAndGidUsing gosu "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUidAndGidUsing gosu "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled runuser; then
-    runCommandAsUidAndGidUsing runuser "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUidAndGidUsing runuser "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled chpst; then
-    runCommandAsUidAndGidUsing chpst "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUidAndGidUsing chpst "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled setpriv; then
-    runCommandAsUidAndGidUsing setpriv "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUidAndGidUsing setpriv "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled setuidgid; then
-    runCommandAsUidAndGidUsing setuidgid "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUidAndGidUsing setuidgid "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   else
-    runCommandAsUidAndGidUsing su "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUidAndGidUsing su "${_uid}" "${_gid}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runCommandAsUidGid uid gid folder command+
@@ -106,23 +106,23 @@ function runCommandAsUidAndGid() {
 # use:   echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
 # use: fi
 function runCommandAsUidGid() {
-  local _uid;
-  _uid="${1}";
-  checkNotEmpty uid "${_uid}" 1;
-  local _gid;
-  _gid="${2}";
-  checkNotEmpty gid "${_gid}" 2;
-  local _folder;
-  _folder="${3}";
-  checkNotEmpty folder "${_folder}" 3;
-  local _command;
-  _command="${4}";
-  checkNotEmpty command "${_command}" 4;
-  shift;
-  shift;
-  shift;
-  shift;
-  runCommandAsUidAndGid "${_uid}" "${_gid}" "${_folder}" "${_command}" $@;
+  local _uid
+  _uid="${1}"
+  checkNotEmpty uid "${_uid}" 1
+  local _gid
+  _gid="${2}"
+  checkNotEmpty gid "${_gid}" 2
+  local _folder
+  _folder="${3}"
+  checkNotEmpty folder "${_folder}" 3
+  local _command
+  _command="${4}"
+  checkNotEmpty command "${_command}" 4
+  shift
+  shift
+  shift
+  shift
+  runCommandAsUidAndGid "${_uid}" "${_gid}" "${_folder}" "${_command}" $@
 }
 
 # fun: runCommandAsUidAndGidUsing uid gid folder command+
@@ -138,36 +138,36 @@ function runCommandAsUidGid() {
 # use:   echo "ls -ltrhia run successfully as uid 1000, gid 100, on /tmp";
 # use: fi
 function runCommandAsUidAndGidUsing() {
-  local _variant;
-  _variant="${1}";
-  checkNotEmpty variant "${_variant}" 1;
-  local _uid;
-  _uid="${2}";
-  checkNotEmpty uid "${_uid}" 2;
-  local _gid;
-  _gid="${3}";
-  checkNotEmpty gid "${_gid}" 3;
-  local _folder;
-  _folder="${4}";
-  checkNotEmpty folder "${_folder}" 4;
-  local _command;
-  _command="${5}";
-  checkNotEmpty command "${_command}" 5;
-  shift;
-  shift;
-  shift;
-  shift;
-  shift;
+  local _variant
+  _variant="${1}"
+  checkNotEmpty variant "${_variant}" 1
+  local _uid
+  _uid="${2}"
+  checkNotEmpty uid "${_uid}" 2
+  local _gid
+  _gid="${3}"
+  checkNotEmpty gid "${_gid}" 3
+  local _folder
+  _folder="${4}"
+  checkNotEmpty folder "${_folder}" 4
+  local _command
+  _command="${5}"
+  checkNotEmpty command "${_command}" 5
+  shift
+  shift
+  shift
+  shift
+  shift
 
-  DW.import user;
-  retrieveUserFromUid "${_uid}";
-  local _user;
-  _user="${RESULT}";
-  retrieveGroupFromGid "${_gid}";
-  local _group;
-  _group="${RESULT}";
+  DW.import user
+  retrieveUserFromUid "${_uid}"
+  local _user
+  _user="${RESULT}"
+  retrieveGroupFromGid "${_gid}"
+  local _group
+  _group="${RESULT}"
 
-  runCommandAsUserAndGroupUsing "${_variant}" "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
+  runCommandAsUserAndGroupUsing "${_variant}" "${_user}" "${_group}" "${_folder}" "${_command}" ${@}
 }
 
 # fun: runCommandAsUserAndGroup user group folder command+
@@ -182,47 +182,47 @@ function runCommandAsUidAndGidUsing() {
 # use:   echo "/tmp/my-script.sh run successfully as myself/users, on /tmp";
 # use: fi
 function runCommandAsUserAndGroup() {
-  local _user;
-  _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _group;
-  _group="${2}";
-  checkNotEmpty group "${_group}" 2;
-  local _folder;
-  _folder="${3}";
-  checkNotEmpty folder "${_folder}" 3;
-  local _command;
-  _command="${4}";
-  checkNotEmpty command "${_command}" 4;
-  shift;
-  shift;
-  shift;
-  shift;
-  
-  local -i _rescode;
-  _rescode=${FALSE};
+  local _user
+  _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _group
+  _group="${2}"
+  checkNotEmpty group "${_group}" 2
+  local _folder
+  _folder="${3}"
+  checkNotEmpty folder "${_folder}" 3
+  local _command
+  _command="${4}"
+  checkNotEmpty command "${_command}" 4
+  shift
+  shift
+  shift
+  shift
+
+  local -i _rescode
+  _rescode=${FALSE}
 
   if isInstalled gosu; then
-    runCommandAsUserAndGroupUsing gosu "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUserAndGroupUsing gosu "${_user}" "${_group}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled runuser; then
-    runCommandAsUserAndGroupUsing runuser "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUserAndGroupUsing runuser "${_user}" "${_group}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled chpst; then
-    runCommandAsUserAndGroupUsing chpst "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUserAndGroupUsing chpst "${_user}" "${_group}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled setpriv; then
-    runCommandAsUserAndGroupUsing setpriv "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUserAndGroupUsing setpriv "${_user}" "${_group}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   elif isInstalled setuidgid; then
-    runCommandAsUserAndGroupUsing setuidgid "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUserAndGroupUsing setuidgid "${_user}" "${_group}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   else
-    runCommandAsUserAndGroupUsing su "${_user}" "${_group}" "${_folder}" "${_command}" ${@};
-    _rescode=$?;
+    runCommandAsUserAndGroupUsing su "${_user}" "${_group}" "${_folder}" "${_command}" ${@}
+    _rescode=$?
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runCommandAsUserAndGroupUsing user group folder command+
@@ -238,43 +238,43 @@ function runCommandAsUserAndGroup() {
 # use:   echo "ls -ltrhia run successfully as myself/users, on /tmp";
 # use: fi
 function runCommandAsUserAndGroupUsing() {
-  local _variant;
-  _variant="${1}";
-  checkNotEmpty variant "${_variant}" 1;
-  local _user;
-  _user="${2}";
-  checkNotEmpty user "${_user}" 2;
-  local _group;
-  _group="${3}";
-  checkNotEmpty group "${_group}" 3;
-  local _folder;
-  _folder="${4}";
-  checkNotEmpty folder "${_folder}" 4;
-  local _command;
-  _command="${5}";
-  checkNotEmpty command "${_command}" 5;
-  shift;
-  shift;
-  shift;
-  shift;
-  shift;
-  local _args;
-  _args="${@}";
-  local -i _rescode;
-  _rescode=${FALSE};
+  local _variant
+  _variant="${1}"
+  checkNotEmpty variant "${_variant}" 1
+  local _user
+  _user="${2}"
+  checkNotEmpty user "${_user}" 2
+  local _group
+  _group="${3}"
+  checkNotEmpty group "${_group}" 3
+  local _folder
+  _folder="${4}"
+  checkNotEmpty folder "${_folder}" 4
+  local _command
+  _command="${5}"
+  checkNotEmpty command "${_command}" 5
+  shift
+  shift
+  shift
+  shift
+  shift
+  local _args
+  _args="${@}"
+  local -i _rescode
+  _rescode=${FALSE}
 
-  local _exports;
-  _exports="$(export)";
-  
-  local _line;
-  _line="${_command//$'\n'/ } ${_args//$'\n'/ }";
-  createTempFile;
-  local _runme;
-  _runme="${RESULT}";
+  local _exports
+  _exports="$(export)"
 
-  chmod a+x ${_folder};
+  local _line
+  _line="${_command//$'\n'/ } ${_args//$'\n'/ }"
+  createTempFile
+  local _runme
+  _runme="${RESULT}"
 
-  cat << EOF > "${_runme}";
+  chmod a+x ${_folder}
+
+  cat <<EOF >"${_runme}"
 #!/usr/bin/env bash
 
 ${_exports};
@@ -283,48 +283,49 @@ HOME="$(eval echo ~${_user})";
 cd ${_folder};
 ${_line};
 EOF
-  chmod a+r "${_runme}";
-  chown ${_user}:${_group} "${_runme}";
-  chmod a+x "${_runme}";
+  chmod a+r "${_runme}"
+  chown ${_user}:${_group} "${_runme}"
+  chmod a+x "${_runme}"
 
   case "${_variant}" in
     gosu)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (gosu)";
-      runScriptAsUserAndGroupUsingGosu "${_user}" "${_group}" "${_runme}";
-      _rescode=$?;
+      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (gosu)"
+      runScriptAsUserAndGroupUsingGosu "${_user}" "${_group}" "${_runme}"
+      _rescode=$?
       ;;
-    
+
     runuser)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (runuser)";
-      runScriptAsUserAndGroupUsingRunuser "${_user}" "${_group}" "${_runme}";
-      _rescode=$?;
+      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (runuser)"
+      runScriptAsUserAndGroupUsingRunuser "${_user}" "${_group}" "${_runme}"
+      _rescode=$?
       ;;
-    
+
     chpst)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (chpst)";
-      runScriptAsUserAndGroupUsingChpst "${_user}" "${_group}" "${_runme}";
-      _rescode=$?;
+      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (chpst)"
+      runScriptAsUserAndGroupUsingChpst "${_user}" "${_group}" "${_runme}"
+      _rescode=$?
       ;;
-    
+
     setpriv)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setpriv)";
-      runScriptAsUserAndGroupUsingSetpriv "${_user}" "${_group}" "${_runme}";
-      _rescode=$?;
+      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setpriv)"
+      runScriptAsUserAndGroupUsingSetpriv "${_user}" "${_group}" "${_runme}"
+      _rescode=$?
       ;;
-    
+
     setuidgid)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setuidgid)";
-      runScriptAsUserAndGroupUsingSetuidgid "${_user}" "${_group}" "${_runme}";
-      _rescode=$?;
+      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setuidgid)"
+      runScriptAsUserAndGroupUsingSetuidgid "${_user}" "${_group}" "${_runme}"
+      _rescode=$?
       ;;
-    
+
     *)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (su)";
-      runScriptAsUserAndGroupUsingSu "${_user}" "${_group}" "${_runme}";
-      _rescode=$?;
+      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (su)"
+      runScriptAsUserAndGroupUsingSu "${_user}" "${_group}" "${_runme}"
+      _rescode=$?
+      ;;
   esac
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runScriptAsUserAndGroupUsingGosu user group script
@@ -338,25 +339,25 @@ EOF
 # use:   echo "/tmp/my-script.sh run successfully as myself/users, on /tmp";
 # use: if
 function runScriptAsUserAndGroupUsingGosu() {
-  local _user;
-  _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _group;
-  _group="${2}";
-  checkNotEmpty group "${_group}" 2;
-  local _script;
-  _script="${3}";
-  checkNotEmpty script "${_script}" 3;
+  local _user
+  _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _group
+  _group="${2}"
+  checkNotEmpty group "${_group}" 2
+  local _script
+  _script="${3}"
+  checkNotEmpty script "${_script}" 3
 
-  local -i _rescode;
+  local -i _rescode
 
-  checkReq gosu GOSU_NOT_INSTALLED;
+  checkReq gosu GOSU_NOT_INSTALLED
 
-  exec 2>&1;
-  gosu ${_user}:${_group} "${_script}";
-  _rescode=$?;
+  exec 2>&1
+  gosu ${_user}:${_group} "${_script}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runScriptAsUserAndGroupUsingChpst user group script
@@ -370,24 +371,24 @@ function runScriptAsUserAndGroupUsingGosu() {
 # use:   echo "/tmp/my-script.sh run successfully as myself/users, on /tmp";
 # use: if
 function runScriptAsUserAndGroupUsingChpst() {
-  local _user;
-  _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _group;
-  _group="${2}";
-  checkNotEmpty group "${_group}" 2;
-  local _script;
-  _script="${3}";
-  checkNotEmpty script "${_script}" 3;
+  local _user
+  _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _group
+  _group="${2}"
+  checkNotEmpty group "${_group}" 2
+  local _script
+  _script="${3}"
+  checkNotEmpty script "${_script}" 3
 
-  checkReq chpst CHPST_NOT_INSTALLED;
-  local -i _rescode;
+  checkReq chpst CHPST_NOT_INSTALLED
+  local -i _rescode
 
-  exec 2>&1;
-  chpst -u ${_user}:${_group} "${_script}";
-  _rescode=$?;
+  exec 2>&1
+  chpst -u ${_user}:${_group} "${_script}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runScriptAsUserAndGroupUsingRunuser user group script
@@ -401,28 +402,28 @@ function runScriptAsUserAndGroupUsingChpst() {
 # use:   echo "/tmp/my-script.sh run successfully as myself/users, on /tmp";
 # use: if
 function runScriptAsUserAndGroupUsingRunuser() {
-  local _user;
-  _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _group;
-  _group="${2}";
-  checkNotEmpty group "${_group}" 2;
-  local _script;
-  _script="${3}";
-  checkNotEmpty script "${_script}" 3;
+  local _user
+  _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _group
+  _group="${2}"
+  checkNotEmpty group "${_group}" 2
+  local _script
+  _script="${3}"
+  checkNotEmpty script "${_script}" 3
 
-  checkReq runuser RUNUSER_NOT_INSTALLED;
+  checkReq runuser RUNUSER_NOT_INSTALLED
 
-  cp "${_script}" /tmp/last-script.sh;
-  
-  local -i _rescode;
+  cp "${_script}" /tmp/last-script.sh
 
-  echo "Running runuser -u ${_user} -g ${_group} ${_script}";
-  exec 2>&1;
-  runuser -u ${_user} -g ${_group} "${_script}";
-  _rescode=$?;
+  local -i _rescode
 
-  return ${_rescode};
+  echo "Running runuser -u ${_user} -g ${_group} ${_script}"
+  exec 2>&1
+  runuser -u ${_user} -g ${_group} "${_script}"
+  _rescode=$?
+
+  return ${_rescode}
 }
 
 # fun: runScriptAsUserAndGroupUsingSetpriv user group script
@@ -436,39 +437,39 @@ function runScriptAsUserAndGroupUsingRunuser() {
 # use:   echo "/tmp/my-script.sh run successfully as myself/users, on /tmp";
 # use: if
 function runScriptAsUserAndGroupUsingSetpriv() {
-  local _user;
-  _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _group;
-  _group="${2}";
-  checkNotEmpty group "${_group}" 2;
-  local _script;
-  _script="${3}";
-  checkNotEmpty script "${_script}" 3;
+  local _user
+  _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _group
+  _group="${2}"
+  checkNotEmpty group "${_group}" 2
+  local _script
+  _script="${3}"
+  checkNotEmpty script "${_script}" 3
 
-  checkReq setpriv SETPRIV_NOT_INSTALLED;
+  checkReq setpriv SETPRIV_NOT_INSTALLED
 
-  DW.import user;
-  local _uid;
+  DW.import user
+  local _uid
   if retrieveUidFromUser "${_user}"; then
-    _uid="${RESULT}";
+    _uid="${RESULT}"
   else
-    _uid="${_user}";
+    _uid="${_user}"
   fi
-  local _gid;
+  local _gid
   if retrieveGidFromGroup "${_group}"; then
-    _gid="${RESULT}";
+    _gid="${RESULT}"
   else
-    _gid="${_group}";
+    _gid="${_group}"
   fi
 
-  local -i _rescode;
+  local -i _rescode
 
-  exec 2>&1;
-  setpriv --reuid=${_uid} --regid=${_gid} --keep-groups "${_script}";
-  _rescode=$?;
+  exec 2>&1
+  setpriv --reuid=${_uid} --regid=${_gid} --keep-groups "${_script}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runScriptAsUserAndGroupUsingSetuidgid user group folder script
@@ -482,25 +483,25 @@ function runScriptAsUserAndGroupUsingSetpriv() {
 # use:   echo "/tmp/my-script.sh run successfully as myself/users, on /tmp";
 # use: if
 function runScriptAsUserAndGroupUsingSetuidgid() {
-  local _user;
-  _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _group;
-  _group="${2}";
-  checkNotEmpty group "${_group}" 2;
-  local _script;
-  _script="${3}";
-  checkNotEmpty script "${_script}" 3;
+  local _user
+  _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _group
+  _group="${2}"
+  checkNotEmpty group "${_group}" 2
+  local _script
+  _script="${3}"
+  checkNotEmpty script "${_script}" 3
 
-  checkReq setuidgid SETUIDGID_NOT_INSTALLED;
+  checkReq setuidgid SETUIDGID_NOT_INSTALLED
 
-  local -i _rescode;
+  local -i _rescode
 
-  exec 2>&1;
-  setuidgid ${_user} "${_script}";
-  _rescode=$?;
+  exec 2>&1
+  setuidgid ${_user} "${_script}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runScriptAsUserAndGroupUsingSu user group script
@@ -514,25 +515,25 @@ function runScriptAsUserAndGroupUsingSetuidgid() {
 # use:   echo "/tmp/my-script.sh run successfully as myself/users, on /tmp";
 # use: if
 function runScriptAsUserAndGroupUsingSu() {
-  local _user;
-  _user="${1}";
-  checkNotEmpty user "${_user}" 1;
-  local _group;
-  _group="${2}";
-  checkNotEmpty group "${_group}" 2;
-  local _script;
-  _script="${3}";
-  checkNotEmpty script "${_script}" 3;
+  local _user
+  _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _group
+  _group="${2}"
+  checkNotEmpty group "${_group}" 2
+  local _script
+  _script="${3}"
+  checkNotEmpty script "${_script}" 3
 
-  checkReq su SU_NOT_INSTALLED;
+  checkReq su SU_NOT_INSTALLED
 
-  local -i _rescode;
+  local -i _rescode
 
-  exec 2>&1;
-  su -c "${_script}" ${_user};
-  _rescode=$?;
+  exec 2>&1
+  su -c "${_script}" ${_user}
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: runCommandLongOutput command
@@ -543,38 +544,40 @@ function runScriptAsUserAndGroupUsingSu() {
 # TODO: find out why this fails. result gets modified externally in the getLogCategory/setLogCategory/logDebug block
 # use: if runCommandLongOutput "nmap -Pn"; then ...; fi
 function runCommandLongOutput() {
-  local _command;
-  _command="$(echo $@ | sed 's_\n_ _g')";
-  checkNotEmpty command "${_command}" 1;
+  local _command
+  _command="$(echo $@ | sed 's_\n_ _g')"
+  checkNotEmpty command "${_command}" 1
 
-  local -i _rescode;
-  local _result;
+  local -i _rescode
+  local _result
 
-  createTempFile;
-  _result="${RESULT}";
+  createTempFile
+  _result="${RESULT}"
 
-  local _previousLogCategory;
-  getLogCategory;
-  _previousLogCategory="${RESULT}";
-  setLogCategory "${_previousLogCategory}*";
+  local _previousLogCategory
+  getLogCategory
+  _previousLogCategory="${RESULT}"
+  setLogCategory "${_previousLogCategory}*"
 
-  logDebug "${_command}";
+  logDebug "${_command}"
 
+  local _cmd="${1}"
+  shift
   if isDebugEnabled; then
-    $@ 2>&1 | tee "${_result}" | logDebugFromStdin;
-    _rescode=${PIPESTATUS[0]};
+    "${_cmd}" $@ 2>&1 | tee "${_result}" | logDebugFromStdin
+    _rescode=${PIPESTATUS[0]}
   else
-    $@ > "${_result}" 2>&1;
-    _rescode=$?;
+    "${_cmd}" $@ >"${_result}" 2>&1
+    _rescode=$?
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  setLogCategory "${_previousLogCategory}";
+  setLogCategory "${_previousLogCategory}"
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # errors

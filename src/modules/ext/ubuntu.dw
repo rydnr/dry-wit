@@ -2,7 +2,7 @@
 # api: public
 # txt: Ubuntu-specific functions.
 
-DW.import command;
+DW.import command
 
 # fun: retrieveVersion package
 # api: public
@@ -14,18 +14,18 @@ DW.import command;
 # use:   echo "Version: ${RESULT}";
 # use: fi
 function retrieveVersion() {
-  local _package="${1}";
-  checkNotEmpty package "${_package}" 1;
+  local _package="${1}"
+  checkNotEmpty package "${_package}" 1
 
-  local -i _rescode=${FALSE};
+  local -i _rescode=${FALSE}
 
-  local _result="$(dpkg -p ${_package} 2> /dev/null | grep -e '^Version: ' | cut -d' ' -f2)";
+  local _result="$(dpkg -p ${_package} 2>/dev/null | grep -e '^Version: ' | cut -d' ' -f2)"
   if isNotEmpty "${_result}"; then
-    _rescode=${TRUE};
-    export RESULT="${_result}";
+    _rescode=${TRUE}
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: installUbuntuPackage package
@@ -38,15 +38,15 @@ function retrieveVersion() {
 # use:   ...
 # use: fi
 function installUbuntuPackage() {
-  local _package="${1}";
-  checkNotEmpty package "${_package}" 1;
-  shift;
-  local _extraArgs="${@}";
+  local _package="${1}"
+  checkNotEmpty package "${_package}" 1
+  shift
+  local _extraArgs="${@}"
 
-  runCommandLongOutput "/usr/bin/apt-get -qq install -y ${_extraArgs} --no-install-recommends ${_package}";
-  local -i _rescode=$?;
+  runCommandLongOutput "/usr/bin/apt-get" -qq install -y ${_extraArgs} --no-install-recommends ${_package}
+  local -i _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: isAptCacheMissing
@@ -57,23 +57,23 @@ function installUbuntuPackage() {
 # use:   echo "APT cache is missing";
 # use: fi
 function isAptCacheMissing() {
-  local -i _rescode;
-  local _cacheFolder="/var/lib/apt/lists";
+  local -i _rescode
+  local _cacheFolder="/var/lib/apt/lists"
 
-  local -i _aux;
+  local -i _aux
 
   if folderExists "${_cacheFolder}"; then
-    local -i _aux=$(ls ${_cacheFolder} > /dev/null | wc -l);
+    local -i _aux=$(ls ${_cacheFolder} >/dev/null | wc -l)
     if isEqualTo ${_aux}; then
-      _rescode=${TRUE};
+      _rescode=${TRUE}
     else
-      _rescode=${FALSE};
+      _rescode=${FALSE}
     fi
   else
-    _rescode=${TRUE};
+    _rescode=${TRUE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateUbuntuSystem
@@ -85,7 +85,7 @@ function isAptCacheMissing() {
 # use: fi
 function updateUbuntuSystem() {
 
-  runCommandLongOutput /usr/bin/apt -qq -y update;
+  runCommandLongOutput /usr/bin/apt -qq -y update
 }
 
 # fun: upgradeUbuntuSystem
@@ -97,7 +97,7 @@ function updateUbuntuSystem() {
 # use: fi
 function upgradeUbuntuSystem() {
 
-  runCommandLongOutput /usr/bin/apt -qq -y upgrade;
+  runCommandLongOutput /usr/bin/apt -qq -y upgrade
 }
 
 # fun: distUpgradeUbuntuSystem
@@ -109,7 +109,7 @@ function upgradeUbuntuSystem() {
 # use: fi
 function distUpgradeUbuntuSystem() {
 
-  runCommandLongOutput /usr/bin/apt -qq -y dist-upgrade;
+  runCommandLongOutput /usr/bin/apt -qq -y dist-upgrade
 }
 
 # fun: autoremoveUbuntuPackages
@@ -121,15 +121,15 @@ function distUpgradeUbuntuSystem() {
 # use: fi
 function autoremoveUbuntuPackages() {
 
-  runCommandLongOutput /usr/bin/apt-get -qq remove --purge -y;
-  local -i _rescode=$?;
+  runCommandLongOutput /usr/bin/apt-get -qq remove --purge -y
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    runCommandLongOutput /usr/bin/apt-get -qq autoremove;
-    _rescode=$?;
+    runCommandLongOutput /usr/bin/apt-get -qq autoremove
+    _rescode=$?
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: cleanUbuntuSystem
@@ -141,26 +141,26 @@ function autoremoveUbuntuPackages() {
 # use: fi
 function cleanUbuntuSystem() {
 
-  runCommandLongOutput /usr/bin/apt-get -qq clean;
-  local -i _rescode=$?;
+  runCommandLongOutput /usr/bin/apt-get -qq clean
+  local -i _rescode=$?
 
   # TODO: Fix automatic temporary file cleanup.
-  rm -f /.system-update.sh.??????????;
-  rm -f /.system-cleanup.sh.??????????;
-  rm -f /.pkg-install.sh.??????????;
+  rm -f /.system-update.sh.??????????
+  rm -f /.system-cleanup.sh.??????????
+  rm -f /.pkg-install.sh.??????????
 
-  local _oldIFS="${IFS}";
-  local _locale;
-  IFS="${DWIFS}";
+  local _oldIFS="${IFS}"
+  local _locale
+  IFS="${DWIFS}"
   for _locale in $(find /usr/share/i18n/locales/); do
-    IFS="${_oldIFS}";
+    IFS="${_oldIFS}"
     if arrayDoesNotContain "$(basename ${_locale})" "${PINNED_LOCALES}"; then
-      rm -f "${_locale}" 2> /dev/null;
+      rm -f "${_locale}" 2>/dev/null
     fi
-  done;
-  IFS="${_oldIFS}";
+  done
+  IFS="${_oldIFS}"
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: pinUbuntuPackage
@@ -172,15 +172,15 @@ function cleanUbuntuSystem() {
 # use:   echo "wget pinned";
 # use: fi
 function pinUbuntuPackage() {
-  local _package="${1}";
-  checkNotEmpty package "${_package}" 1;
+  local _package="${1}"
+  checkNotEmpty package "${_package}" 1
 
-  runCommandLongOutput /usr/bin/apt-mark hold ${_package};
-  local -i _rescode=$?;
+  runCommandLongOutput /usr/bin/apt-mark hold ${_package}
+  local -i _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # env: PINNED_LOCALES: The pinned locales.
-defineEnvVar PINNED_LOCALES MANDATORY "The pinned locales" "en_US es_ES es_ES@euro";
+defineEnvVar PINNED_LOCALES MANDATORY "The pinned locales" "en_US es_ES es_ES@euro"
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

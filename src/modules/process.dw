@@ -12,27 +12,27 @@
 # use:   echo "bash pid: ${RESULT}";
 # use: fi
 function isRunning() {
-  local _filePath="${1}";
-  checkNotEmpty filePath "${_filePath}" 1;
+  local _filePath="${1}"
+  checkNotEmpty filePath "${_filePath}" 1
 
-  local -i _rescode=${FALSE};
-  local _result;
-  local _fileName="$(basename "${_filePath}")";
+  local -i _rescode=${FALSE}
+  local _result
+  local _fileName="$(basename "${_filePath}")"
 
   if firstPidMatching "${_fileName}"; then
-    _result="${RESULT}";
-    _rescode=${TRUE};
+    _result="${RESULT}"
+    _rescode=${TRUE}
   fi
-  
+
   if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: halt seconds?
@@ -42,11 +42,11 @@ function isRunning() {
 # txt: Doesn't return.
 # use: halt;
 function halt() {
-  local _seconds="${1:-100}";
+  local _seconds="${1:-100}"
 
   while isTrue ${TRUE}; do
-    sleep ${_seconds};
-  done;
+    sleep ${_seconds}
+  done
 }
 
 # fun: pidsMatching processName
@@ -58,29 +58,33 @@ function halt() {
 # use:   echo "my-script.sh : ${RESULT}";
 # use: fi
 function pidsMatching() {
-  local _processName="${1}";
-  checkNotEmpty processName "${_processName}" 1;
+  local _processName="${1}"
+  checkNotEmpty processName "${_processName}" 1
 
-  local -i _rescode=${FALSE};
-  local _result;
+  local -i _rescode=${FALSE}
+  local _result
 
   if isMacOSX; then
-    _result="$(ps -ax | grep -v grep | grep "${_processName}")";
-    _rescode=$?;
+    _result="$(command ps -ax 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command cut -d' ' -f 1)"
+    _rescode=$?
   else
-    _result="$(pidof -x "${_processName}")";
-    _rescode=$?;
+    _result="$(command pidof "${_processName}" 2>/dev/null)"
+    _rescode=$?
+    if isFalse ${_rescode}; then
+      _result="$(command ps -ef 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command cut -d' ' -f 1)"
+      _rescode=$?
+    fi
   fi
 
   if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: firstPidMatching processName
@@ -92,38 +96,38 @@ function pidsMatching() {
 # use:   echo "my-script.sh : ${RESULT}";
 # use: fi
 function firstPidMatching() {
-  local _processName="${1}";
-  checkNotEmpty processName "${_processName}" 1;
+  local _processName="${1}"
+  checkNotEmpty processName "${_processName}" 1
 
-  local -i _rescode=${FALSE};
-  local _result;
-  local _pids;
+  local -i _rescode=${FALSE}
+  local _result
+  local _pids
 
   if pidsMatching "${_processName}"; then
-    _pids="${RESULT}";
+    _pids="${RESULT}"
   fi
 
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
+  local _oldIFS="${IFS}"
+  IFS="${DWIFS}"
   for _pid in ${_pids}; do
-    IFS="${_oldIFS}";
-    _result="${_pid}";
+    IFS="${_oldIFS}"
+    _result="${_pid}"
     if isNotEmpty "${_result}"; then
-      _rescode=${TRUE};
-      break;
+      _rescode=${TRUE}
+      break
     fi
   done
-  IFS="${_oldIFS}";
-  
+  IFS="${_oldIFS}"
+
   if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: anotherProcessAlreadyRunning
@@ -134,28 +138,28 @@ function firstPidMatching() {
 # use:   echo "Another process already running";
 # use: fi
 function anotherProcessAlreadyRunning() {
-  local -i _rescode=${FALSE};
-  local _ownPid=$$;
-  local _pid;
+  local -i _rescode=${FALSE}
+  local _ownPid=$$
+  local _pid
 
-  DW.getScriptPath;
-  local _scriptPath="${RESULT}";
+  DW.getScriptPath
+  local _scriptPath="${RESULT}"
 
-  local _pids="";
+  local _pids=""
 
   if pidsMatching "${_scriptPath}"; then
-    _pids="${RESULT}";
+    _pids="${RESULT}"
   fi
 
   if isNotEmpty "${_pids}"; then
     for _pid in ${_pids}; do
       if ! areEqual "${_pid}" "${_ownPid}"; then
-        _rescode=${TRUE};
-        break;
+        _rescode=${TRUE}
+        break
       fi
     done
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

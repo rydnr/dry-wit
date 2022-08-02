@@ -16,5 +16,20 @@ function runCommandAsUidGid_works_test() {
   local _result="${RESULT}";
   Assert.isTrue $? "runCommandAsUidGid 'ls' was silent";
 }
+
+function runCommandLongOutput_works_with_spaces_test() {
+  createTempFolder;
+  local _tmpFolder="${RESULT}/with spaces";
+  mkdir -p "${_tmpFolder}";
+  local _tmpScript="${_tmpFolder}/test.sh"
+  cat <<EOF > "${_tmpScript}"
+#!/usr/bin/env bash
+echo -n ""
+EOF
+  chmod +x "${_tmpScript}";
+  runCommandLongOutput "${_tmpScript}";
+  Assert.isTrue $? "runCommandLongOutput failed for a command with spaces"
+}
+
 setScriptDescription "Runs all tests implemented for command.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
