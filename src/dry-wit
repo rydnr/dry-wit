@@ -31,6 +31,7 @@ function BOOTSTRAP.getModuleName() {
   return ${TRUE};
 }
 
+<<<<<<< HEAD
 # fun: DW.declareGlobalInt module varName value
 # api: public
 # txt: Declares a global integer variable. Its name depends on the nesting level.
@@ -111,8 +112,35 @@ function DW.getGlobalInt() {
     export RESULT="${_result}";
   else
     export RESULT="";
+=======
+if [ "${SKIP_LOADING_DRY_WIT}" != "" ]; then
+  return
+fi
+
+# env: DRY_WIT_SCRIPT_PATH: The path of the script.
+declare -gx DRY_WIT_SCRIPT_PATH="${1}"
+# env: DRY_WIT_SCRIPT_FOLDER: The folder of the script.
+declare -gx DRY_WIT_SCRIPT_FOLDER="$(dirname "${DRY_WIT_SCRIPT_PATH}")"
+
+# env: DWIFS: The IFS used by dry-wit.
+declare -gx DWIFS=$' \t\n'
+
+# env: TRUE: A synomim for 0.
+export TRUE=0
+
+# env: FALSE: A synomim for 1.
+export FALSE=1
+
+if [ "${SCRIPT_NAME}" == "" ]; then
+  if [ "$1" != "" ]; then
+    declare -gx SCRIPT_NAME="$(basename $1)"
+    shift
+  else
+    declare -gx SCRIPT_NAME="$0"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 
+<<<<<<< HEAD
   return ${_rescode};
 }
 
@@ -448,10 +476,46 @@ function BOOTSTRAP.setScriptFolder() {
 }
 
 # fun: BOOTSTRAP.exitWithError label message
+=======
+# env: __DRYWIT_BOOTSTRAP_MODULES: The modules included in the bootstrap process.
+declare -ag __DRYWIT_BOOTSTRAP_MODULES=(
+  "stdlib"
+  "string"
+  "color"
+  "array"
+  "check"
+  "envvar"
+  "constant"
+  "error"
+  "term"
+  "echo"
+  "logging"
+  "cli"
+  "usage"
+  "dw-plumbing"
+  "file"
+  "debug"
+)
+
+# env: __DRYWIT_IMPORTED_MODULES: The modules eventually imported in the bootstrap process.
+declare -agx __DRYWIT_IMPORTED_MODULES
+
+# env: DRYWIT_MODULE_TAG: The dry-wit git tag used to download modules from github.
+export DRYWIT_MODULE_TAG="master"
+
+# env: DRYWIT_MODULE_URL: The url to download dry-wit modules.
+export DRYWIT_MODULE_URL="https://raw.githubusercontent.com/rydnr/dry-wit/${DRYWIT_MODULE_TAG}/src/modules"
+
+# env: DRYWIT_MODULE_PATH: Where to download dry-wit modules.
+export DRYWIT_MODULE_PATH="${HOME}/.dry-wit/src/modules"
+
+# fun: BOOTSTRAP.failsafeExitWithError
+>>>>>>> c0ee7e4 (Minor bug fix.)
 # api: private
 # txt: A fail-safe version of exitWithError.
 # opt: label: The error label.
 # opt: message: The error message.
+<<<<<<< HEAD
 # use: BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'name' cannot be empty";
 function BOOTSTRAP.exitWithError() {
   local _label="${1}";
@@ -459,9 +523,18 @@ function BOOTSTRAP.exitWithError() {
 
   if BOOTSTRAP.isFunctionDefined "exitWithError"; then
     exitWithError "${_label}" "${_message}";
+=======
+# use: BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'name' cannot be empty";
+function BOOTSTRAP.failsafeExitWithError() {
+  local _label="${1}"
+  local _message="${2}"
+
+  if BOOTSTRAP.failsafeIsFunctionDefined "exitWithError"; then
+    exitWithError "${_label}" "${_message}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   else
-    echo "${_message}";
-    exit 1;
+    echo "${_message}"
+    exit 1
   fi
 }
 
@@ -472,20 +545,35 @@ function BOOTSTRAP.exitWithError() {
 # opt: value: The parameter value.
 # opt: index: The parameter index.
 # txt: Exits if the parameter value is empty.
+<<<<<<< HEAD
 # use: BOOTSTRAP.checkNotEmpty module "${module}" 1
 function BOOTSTRAP.checkNotEmpty() {
   local _name="${1}";
   if [ -z "${_name}" ]; then
     BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
+=======
+# use: BOOTSTRAP.failsafeCheckNotEmply module "${module}" 1
+function BOOTSTRAP.failsafeCheckNotEmpty() {
+  local _name="${1}"
+  if [ -z "${_name}" ]; then
+    BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'name' (1) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"
+  fi
+  local _value="${2}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
 
   local _value="${2}";
   if [ -z "${_value}" ]; then
+<<<<<<< HEAD
     BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}";
+=======
+    BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'${_name}' (${_value}) cannot be empty when calling ${FUNCNAME[1]}. Review ${FUNCNAME[2]}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 
-  local _index="${3}";
+  local _index="${3}"
   if [ -z "${_index}" ]; then
+<<<<<<< HEAD
     BOOTSTRAP.exitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}";
   fi
 }
@@ -527,6 +615,9 @@ function BOOTSTRAP.isTrue() {
     _rescode=${TRUE};
   else
     _rescode=${FALSE};
+=======
+    BOOTSTRAP.failsafeExitWithError UNACCEPTABLE_API_CALL "'index' (3) cannot be empty when calling ${FUNCNAME[0]}. Review ${FUNCNAME[1]}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 
   return ${_rescode};
@@ -557,6 +648,7 @@ function BOOTSTRAP.isFalse() {
 # api: private
 # txt: Checks if bootstrap debug is enabled.
 # txt: Returns 0/TRUE if DEBUG logging is enabled; 1/FALSE otherwise.
+<<<<<<< HEAD
 # use: if BOOTSTRAP.isDebugEnabled; then
 # use:   echo "Debug enabled";
 # use: fi
@@ -574,12 +666,34 @@ function BOOTSTRAP.isDebugEnabled() {
     fi
   done
   IFS="${_oldIFS}";
+=======
+# use: if BOOTSTRAP.failsafeIsDebugEnabled; then ...; fi
+function BOOTSTRAP.failsafeIsDebugEnabled() {
+  local -i _rescode=${FALSE}
+  local _oldIFS="${IFS}"
 
-  return ${_rescode};
+  if BOOTSTRAP.failsafeIsFunctionDefined "isDebugEnabled"; then
+    isDebugEnabled
+    _rescode=$?
+  else
+    IFS="${DWIFS}"
+    for _flag in ${BASH_ARGV[@]}; do
+      IFS="${_oldIFS}"
+      if [ "${_flag}" == "-v" ]; then
+        _rescode=${TRUE}
+        break
+      fi
+    done
+    IFS="${_oldIFS}"
+  fi
+>>>>>>> c0ee7e4 (Minor bug fix.)
+
+  return ${_rescode}
 }
 
 # fun: BOOTSTRAP.isTraceEnabled
 # api: private
+<<<<<<< HEAD
 # txt: Checks if bootstrap tracing is enabled.
 # txt: Returns 0/TRUE if tracing is enabled; 1/FALSE otherwise.
 # use: if BOOTSTRAP.isTraceEnabled; then
@@ -626,6 +740,31 @@ function BOOTSTRAP.isXtraceEnabled() {
   IFS="${_oldIFS}";
 
   return ${_rescode};
+=======
+# txt: A fail-safe version of isTraceEnabled.
+# txt: Returns 0/TRUE if TRACE logging is enabled; 1/FALSE otherwise.
+# use: if BOOTSTRAP.failsafeIsTraceEnabled; then ...; fi
+function BOOTSTRAP.failsafeIsTraceEnabled() {
+  local -i _rescode=${FALSE}
+  local _oldIFS="${IFS}"
+
+  if BOOTSTRAP.failsafeIsFunctionDefined "isTraceEnabled"; then
+    isTraceEnabled
+    _rescode=$?
+  else
+    IFS="${DWIFS}"
+    for _flag in ${BASH_ARGV[@]}; do
+      IFS="${_oldIFS}"
+      if [ "${_flag}" == "-vv" ]; then
+        _rescode=${TRUE}
+        break
+      fi
+    done
+    IFS="${_oldIFS}"
+  fi
+
+  return ${_rescode}
+>>>>>>> c0ee7e4 (Minor bug fix.)
 }
 
 # fun: BOOTSTRAP.logDebug [-n]? message
@@ -633,25 +772,47 @@ function BOOTSTRAP.isXtraceEnabled() {
 # txt: A fail-safe version of logDebug.
 # opt: -n: Whether to omit a newline. Optional.
 # opt: message: The message.
+<<<<<<< HEAD
 # txt: Returns 0/TRUE always.
 # use: BOOTSTRAP.logDebug "Processing file ${file}";
 function BOOTSTRAP.logDebug() {
   local _message="${1}";
   local -i _newline=0;
   local -i _position=1;
+=======
+# use: BOOTSTRAP.failsafeLogDebug "Processing file ${file}";
+function BOOTSTRAP.failsafeLogDebug() {
+  local _message="${1}"
+  local -i _newline=0
+  local -i _position=1
+>>>>>>> c0ee7e4 (Minor bug fix.)
 
   if [ "${_message}" == "-n" ]; then
-    _newline=1;
-    _message="${2}";
-    _position=2;
+    _newline=1
+    _message="${2}"
+    _position=2
   fi
   BOOTSTRAP.checkNotEmpty message "${_message}" ${_position};
 
+<<<<<<< HEAD
   if BOOTSTRAP.isDebugEnabled; then
     if BOOTSTRAP.isTrue ${_newline}; then
       command echo "[dry-wit:bootstrap] ${_message}";
     else
       command echo -n "[dry-wit:bootstrap] ${_message} ... ";
+=======
+  BOOTSTRAP.failsafeCheckNotEmpty "message" "${_message}" ${_position}
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## logTrace is loaded.
+  if BOOTSTRAP.failsafeIsFunctionDefined "logDebug"; then
+    logDebug $@
+  elif BOOTSTRAP.failsafeIsDebugEnabled; then
+    if [ ${_newline} -eq 0 ]; then
+      command echo "[dry-wit:bootstrap] ${_message}"
+    else
+      command echo "[dry-wit:bootstrap] ${_message} ... "
+>>>>>>> c0ee7e4 (Minor bug fix.)
     fi
   fi
 }
@@ -661,6 +822,7 @@ function BOOTSTRAP.logDebug() {
 # txt: A fail-safe version of logTrace.
 # opt: -n: Whether to omit a newline. Optional.
 # opt: message: The message.
+<<<<<<< HEAD
 # txt: Returns 0/TRUE always.
 # use: BOOTSTRAP.logTrace "Processing file ${file}";
 function BOOTSTRAP.logTrace() {
@@ -680,6 +842,31 @@ function BOOTSTRAP.logTrace() {
       command echo "[dry-wit:bootstrap] ${_message}";
     else
       command echo -n "[dry-wit:bootstrap] ${_message} ... ";
+=======
+# use: BOOTSTRAP.failsafeLogTrace "Processing file ${file}";
+function BOOTSTRAP.failsafeLogTrace() {
+  local _message="${1}"
+  local -i _newline=0
+  local -i _position=1
+
+  if [ "${_message}" == "-n" ]; then
+    _newline=1
+    _message="${2}"
+    _position=2
+  fi
+
+  BOOTSTRAP.failsafeCheckNotEmpty "message" "${_message}" ${_position}
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## logTrace is loaded.
+  if BOOTSTRAP.failsafeIsFunctionDefined "logTrace"; then
+    logTrace $@
+  elif BOOTSTRAP.failsafeIsTraceEnabled; then
+    if [ ${_newline} -eq 0 ]; then
+      command echo "[dry-wit:bootstrap] ${_message}"
+    else
+      command echo "[dry-wit:bootstrap] ${_message} ... "
+>>>>>>> c0ee7e4 (Minor bug fix.)
     fi
   fi
 }
@@ -688,6 +875,7 @@ function BOOTSTRAP.logTrace() {
 # api: private
 # txt: A fail-safe version of logDebugResult.
 # opt: outcome: The outcome.
+<<<<<<< HEAD
 # opt: message: The message. Optional.
 # txt: Returns 0/TRUE always.
 # use: BOOTSTRAP.logDebugResult SUCCESS "done";
@@ -702,6 +890,21 @@ function BOOTSTRAP.logDebugResult() {
 
   if BOOTSTRAP.isDebugEnabled; then
     command echo "[${_outcomeMessage}]";
+=======
+# opt: message: The message.
+# use: BOOTSTRAP.failsafeLogDebugResult SUCCESS "done"
+function BOOTSTRAP.failsafeLogDebugResult() {
+  local _outcome="${1}"
+  local _outcomeMessage="${2}"
+
+  BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1
+  BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## logTraceResult is loaded.
+  if BOOTSTRAP.failsafeIsFunctionDefined "logDebugResult"; then
+    logDebugResult ${_outcome} "${_outcomeMessage}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 }
 
@@ -709,6 +912,7 @@ function BOOTSTRAP.logDebugResult() {
 # api: private
 # txt: A fail-safe version of logTraceResult.
 # opt: outcome: The outcome.
+<<<<<<< HEAD
 # opt: message: The message. Optional.
 # use: BOOTSTRAP.logTraceResult SUCCESS "done"
 function BOOTSTRAP.logTraceResult() {
@@ -722,6 +926,21 @@ function BOOTSTRAP.logTraceResult() {
 
   if BOOTSTRAP.isTraceEnabled; then
     command echo "[${_outcomeMessage}]";
+=======
+# opt: message: The message.
+# use: BOOTSTRAP.failsafeLogTraceResult SUCCESS "done"
+function BOOTSTRAP.failsafeLogTraceResult() {
+  local _outcome="${1}"
+  local _outcomeMessage="${2}"
+
+  BOOTSTRAP.failsafeCheckNotEmpty "outcome" "${_outcome}" 1
+  BOOTSTRAP.failsafeCheckNotEmpty "outcomeMessage" "${_outcomeMessage}" 2
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## logTraceResult is loaded.
+  if BOOTSTRAP.failsafeIsFunctionDefined "logTraceResult"; then
+    logTraceResult ${_outcome} "${_outcomeMessage}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 }
 
@@ -730,6 +949,7 @@ function BOOTSTRAP.logTraceResult() {
 # txt: A fail-safe version of isFunctionDefined.
 # opt: name: The function name.
 # txt: Returns 0/TRUE if the function is defined; 1/FALSE otherwise.
+<<<<<<< HEAD
 # use: if BOOTSTRAP.isFunctionDefined "readFile"; then echo "readFile defined"; fi
 function BOOTSTRAP.isFunctionDefined() {
   local _function="${1}";
@@ -737,8 +957,19 @@ function BOOTSTRAP.isFunctionDefined() {
 
   type "${_function}" 2> /dev/null | grep -q 'function';
   local -i _rescode=$?;
+=======
+# use: if BOOTSTRAP.failsafeIsFunctionDefined "readFile"; then echo "readFile defined"; fi
+function BOOTSTRAP.failsafeIsFunctionDefined() {
+  local _function="${1}"
+  local -i _rescode
 
-  return ${_rescode};
+  BOOTSTRAP.failsafeCheckNotEmpty "function" "${_function}" 1
+
+  type "${_function}" 2>/dev/null | grep -q 'function'
+  _rescode=$?
+>>>>>>> c0ee7e4 (Minor bug fix.)
+
+  return ${_rescode}
 }
 
 # fun: BOOTSTRAP.arrayContains item array
@@ -747,6 +978,7 @@ function BOOTSTRAP.isFunctionDefined() {
 # opt: array: The array (passed as "${array[@]}".
 # opt: element: The element to check.
 # txt: Returns 0/TRUE: If the element is present in the array; 1/FALSE otherwise.
+<<<<<<< HEAD
 # use: a=("one" "two" "three" "other number"); if BOOTSTRAP.arrayContains "${a[@]}" "other number"; then ...; fi
 function BOOTSTRAP.arrayContains() {
   local _item="${1}";
@@ -760,14 +992,28 @@ function BOOTSTRAP.arrayContains() {
   IFS="${DWIFS}";
   for _aux in ${_array}; do
     IFS="${_oldIFS}";
+=======
+# use: a=("one" "two" "three" "other number"); if BOOTSTRAP.failsafeArrayContains "${a[@]}" "other number"; then ...; fi
+function BOOTSTRAP.failsafeArrayContains() {
+  local _array="${1}"
+  local _item="${2}"
+  local _aux
+  local -i _rescode=${FALSE}
+  local _oldIFS="${IFS}"
+
+  IFS="${DWIFS}"
+  for _aux in ${_array}; do
+    IFS="${_oldIFS}"
+    BOOTSTRAP.failsafeCheckNotEmpty "item" "${_item}" 2
+>>>>>>> c0ee7e4 (Minor bug fix.)
     if [[ "${_aux}" == "${_item}" ]]; then
-      _rescode=${TRUE};
-      break;
+      _rescode=${TRUE}
+      break
     fi
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: BOOTSTRAP.toUpper text
@@ -824,6 +1070,7 @@ function BOOTSTRAP.normalize() {
 # use:   echo "fibonacci module downloaded";
 # use: fi
 function downloadModule() {
+<<<<<<< HEAD
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
   local -i _rescode;
@@ -853,9 +1100,27 @@ function downloadModule() {
       rm -f "${_modulePath}/ext/${_module}.dw";
       BOOTSTRAP.logDebugResult FAILURE "failed";
     fi
+=======
+  local _module="${1}"
+  local -i _rescode
+  local _result=""
+
+  BOOTSTRAP.failsafeCheckNotEmpty "module" "${_module}" 1
+
+  mkdir -p "${DRYWIT_MODULE_PATH}"
+
+  BOOTSTRAP.failsafeLogDebug -n "Downloading ${DRYWIT_MODULE_URL}/${_module}.dw to ${DRYWIT_MODULE_PATH}/${_module}.dw"
+  curl -s "${DRYWIT_MODULE_URL}/${_module}.dw" >"${DRYWIT_MODULE_PATH}/${_module}.dw"
+  _rescode=$?
+  if [[ ${_rescode} -eq ${TRUE} ]]; then
+    BOOTSTRAP.failsafeLogDebugResult SUCCESS "done"
+    export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw"
+  else
+    BOOTSTRAP.failsafeLogDebugResult FAILURE "failed"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: BOOTSTRAP.getBootstrapModulesVariableName
@@ -887,6 +1152,7 @@ function BOOTSTRAP.getEssentialModulesVariableName() {
 # txt: Returns always 0/TRUE.
 # use: BOOTSTRAP.bootstrap;
 function BOOTSTRAP.bootstrap() {
+<<<<<<< HEAD
   local _modulePath;
   local _oldIFS="${IFS}";
 
@@ -904,6 +1170,19 @@ function BOOTSTRAP.bootstrap() {
     DW.import "${_module}";
   done;
   IFS="${_oldIFS}";
+=======
+  local _module
+  local _modulePath
+  local _oldIFS="${IFS}"
+  IFS="${_oldIFS}"
+
+  IFS=${DWIFS}
+  for _module in ${__DRYWIT_BOOTSTRAP_MODULES[*]}; do
+    IFS="${_oldIFS}"
+    DW.import "${_module}"
+  done
+  IFS="${_oldIFS}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
 }
 
 # fun: DW.import module
@@ -913,6 +1192,7 @@ function BOOTSTRAP.bootstrap() {
 # txt: Returns 0/TRUE always. If the module cannot be imported, exits.
 # use: DW.import logging;
 function DW.import() {
+<<<<<<< HEAD
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
 
@@ -955,6 +1235,28 @@ function DW.import() {
     _importedModules[${#_importedModules[@]}]="${_module}";
   else
     BOOTSTRAP.logTrace "Skipping ${_module} since it's already imported";
+=======
+  local _module="${1}"
+
+  ## Needed since this function is used in bootstrapping, and could be loaded before
+  ## checkNotEmpty is loaded.
+  BOOTSTRAP.failsafeCheckNotEmpty "module" "${_module}" 1
+
+  if findModule "${_module}"; then
+    _modulePath="${RESULT}"
+  elif downloadModule "${_module}"; then
+    _modulePath="${RESULT}"
+  else
+    echo "ERROR: Required module ${_module}.dw not found. Is it correctly spelled?"
+    exit 1
+  fi
+
+  if ! BOOTSTRAP.failsafeArrayContains "${__DRYWIT_IMPORTED_MODULES[*]}" "${_module}"; then
+    BOOTSTRAP.failsafeLogTrace -n "Loading ${_modulePath}"
+    source "${_modulePath}"
+    BOOTSTRAP.failsafeLogTraceResult SUCCESS "done"
+    __DRYWIT_IMPORTED_MODULES[${#__DRYWIT_IMPORTED_MODULES[@]}]="${_module}"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 }
 
@@ -978,6 +1280,7 @@ function BOOTSTRAP.getImportedModulesVariableName() {
 # use:   DW.import fibonacci;
 # use: fi
 function findModule() {
+<<<<<<< HEAD
   local _module="${1}";
   BOOTSTRAP.checkNotEmpty module "${_module}" 1;
 
@@ -1051,11 +1354,20 @@ function BOOTSTRAP.endsWith() {
     _rescode=${FALSE};
   else
     _rescode=${TRUE};
+=======
+  local _module="${1}"
+  local -i _rescode=${FALSE}
+
+  if [[ -e "${DRYWIT_MODULE_PATH}/${_module}.dw" ]]; then
+    _rescode=${TRUE}
+    export RESULT="${DRYWIT_MODULE_PATH}/${_module}.dw"
+>>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
+<<<<<<< HEAD
 # fun: DW.initialized
 # api: private
 # txt: Checks whether the initialization has already been done.
@@ -1386,3 +1698,16 @@ if BOOTSTRAP.isNested; then
   cleanup;
 fi
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
+=======
+BOOTSTRAP.bootstrap
+
+if endsWith "${SCRIPT_NAME}" "-tests.sh" ||
+  endsWith "${SCRIPT_NAME}" "-test.sh"; then
+  source $(which dry-wit-test) "${SCRIPT_NAME}" $@
+fi
+
+DRYWIT.main "${SCRIPT_NAME}" $@
+
+cleanup
+#
+>>>>>>> c0ee7e4 (Minor bug fix.)
