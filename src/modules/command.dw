@@ -420,7 +420,7 @@ function runScriptAsUserAndGroupUsingRunuser() {
 
   echo "Running runuser -u ${_user} -g ${_group} ${_script}"
   exec 2>&1
-  runuser -u ${_user} -g ${_group} "${_script}"
+  sudo runuser -u ${_user} -g ${_group} "${_script}"
   _rescode=$?
 
   return ${_rescode}

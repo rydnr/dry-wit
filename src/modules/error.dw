@@ -2,7 +2,6 @@
 # api: public
 # txt: Functions related to declaring and using errors.
 
-<<<<<<< HEAD
 # fun: ERROR.getModuleName
 # api: private
 # txt: Retrieves the name of the module.
@@ -10,12 +9,9 @@
 # txt: The variable RESULT contains the name of the module.
 # use: ERROR.getModuleName; echo "Module: ${RESULT}";
 function ERROR.getModuleName() {
-  export RESULT="ERROR";
-  return ${TRUE};
+  export RESULT="ERROR"
+  return ${TRUE}
 }
-=======
-DW.import envvar
->>>>>>> c0ee7e4 (Minor bug fix.)
 
 # fun: addError label message
 # api: public
@@ -25,35 +21,20 @@ DW.import envvar
 # txt: Returns 0/TRUE always.
 # use: addError INVALID_NAME "The name is not valid";
 function addError() {
-<<<<<<< HEAD
-  local _label="${1}";
-  checkNotEmpty label "${_label}" 1;
-
-  local _message="${2}";
-  checkNotEmpty message "${_message}" 2;
-
-  normalizeUppercase "${_label}";
-  local _normalizedLabel="${RESULT}";
-
-  if isErrorUndefined "${_normalizedLabel}"; then
-    appendErrorMessage "${_normalizedLabel}";
-    ERROR.getModuleName;
-    DW.setGlobalString "${RESULT}" "${_normalizedLabel}" "${_message}";
-  fi
-=======
   local _label="${1}"
-  local _message="${2}"
-  local _normalizedLabel
+  checkNotEmpty label "${_label}" 1
 
-  checkNotEmpty "label" "${_label}" 1
-  checkNotEmpty "message" "${_message}" 2
+  local _message="${2}"
+  checkNotEmpty message "${_message}" 2
 
   normalizeUppercase "${_label}"
-  _normalizedLabel="${RESULT}"
-  appendErrorMessage "${_normalizedLabel}"
-  declare -gx "${_normalizedLabel}"="${_message}"
-  debugEcho "${_normalizedLabel} -> ${_message}"
->>>>>>> c0ee7e4 (Minor bug fix.)
+  local _normalizedLabel="${RESULT}"
+
+  if isErrorUndefined "${_normalizedLabel}"; then
+    appendErrorMessage "${_normalizedLabel}"
+    ERROR.getModuleName
+    DW.setGlobalString "${RESULT}" "${_normalizedLabel}" "${_message}"
+  fi
 }
 
 # fun: appendErrorMessage error
@@ -63,20 +44,12 @@ function addError() {
 # txt: Returns 0/TRUE always.
 # use: appendErrorMessage "item";
 function appendErrorMessage() {
-<<<<<<< HEAD
-  local _error="${1}";
-  checkNotEmpty error "${_error}" 1;
-
-  ERROR.getErrorMessagesVariableName;
-  local -n _errorMessages=${RESULT};
-  _errorMessages[${#_errorMessages[@]}]="${_error}";
-=======
   local _error="${1}"
+  checkNotEmpty error "${_error}" 1
 
-  checkNotEmpty "error" "${_error}" 1
-
-  __DW_ERROR_MESSAGES[${#__DW_ERROR_MESSAGES[@]}]="${_error}"
->>>>>>> c0ee7e4 (Minor bug fix.)
+  ERROR.getErrorMessagesVariableName
+  local -n _errorMessages=${RESULT}
+  _errorMessages[${#_errorMessages[@]}]="${_error}"
 }
 
 # fun: exitWithError label message
@@ -86,32 +59,17 @@ function appendErrorMessage() {
 # opt: message: The error message.
 # use: exitWithError UNKNOWN_OPTION "Unknown option";
 function exitWithError() {
-<<<<<<< HEAD
-  local _label="${1}";
-  checkNotEmpty label "${_label}" 1;
-  shift;
-  local _message="${@}";
-  checkNotEmpty message "${_message}" 2;
-
-  if isErrorUndefined "${_label}"; then
-    addError "${_label}" "${_message}";
-  fi
-
-  exitWithErrorCode "${_label}";
-=======
   local _label="${1}"
+  checkNotEmpty label "${_label}" 1
   shift
   local _message="${@}"
-  local -i _rescode
-
-  checkNotEmpty "label" "${_label}" 1
+  checkNotEmpty message "${_message}" 2
 
   if isErrorUndefined "${_label}"; then
     addError "${_label}" "${_message}"
   fi
 
   exitWithErrorCode "${_label}"
->>>>>>> c0ee7e4 (Minor bug fix.)
 }
 
 # fun: exitWithErrorCode label
@@ -120,42 +78,21 @@ function exitWithError() {
 # opt: label: The error label.
 # use: exitWithErrorCode UNKNOWN_OPTION;
 function exitWithErrorCode() {
-<<<<<<< HEAD
-  local _label="${1}";
-  checkNotEmpty label "${_label}" 1;
-  shift;
-
-  if isLogLineOpen; then
-    getLastLogLevel;
-    local _level="${RESULT:-INFO}";
-    logResult "${_level}" FAILURE "aborted";
-  fi
-
-  printErrorMessage "${_label}" "$@";
-  local -i _rescode=$?;
-  cleanup;
-
-  exit ${_rescode};
-=======
   local _label="${1}"
+  checkNotEmpty label "${_label}" 1
   shift
-  local _level
-  local -i _rescode
-
-  checkNotEmpty "label" "${_label}" 1
 
   if isLogLineOpen; then
-    getLogLevel
-    _level="${RESULT}"
+    getLastLogLevel
+    local _level="${RESULT:-INFO}"
     logResult "${_level}" FAILURE "aborted"
   fi
 
   printErrorMessage "${_label}" "$@"
-  _rescode=$?
+  local -i _rescode=$?
   cleanup
 
   exit ${_rescode}
->>>>>>> c0ee7e4 (Minor bug fix.)
 }
 
 # fun: isErrorDefined label
@@ -167,25 +104,15 @@ function exitWithErrorCode() {
 # use:   echo "INVALID_NAME already defined";
 # use: fi
 function isErrorDefined() {
-<<<<<<< HEAD
-  local _label="${1}";
-  checkNotEmpty label "${_label}" 1;
-
-  local -i _rescode;
-
-  ERROR.getErrorMessagesVariableName;
-  local -n _errorMessages=${RESULT};
-  if isNotEmpty "${_errorMessages[@]}" && arrayContains "${_label}" "${_errorMessages[@]}"; then
-    _rescode=${TRUE};
-=======
   local _label="${1}"
+  checkNotEmpty label "${_label}" 1
+
   local -i _rescode
 
-  checkNotEmpty "label" "${_label}" 1
-
-  if isNotEmpty "${__DW_ERROR_MESSAGES[*]}" && arrayContains "${__DW_ERROR_MESSAGES[*]}" "${_label}"; then
+  ERROR.getErrorMessagesVariableName
+  local -n _errorMessages=${RESULT}
+  if isNotEmpty "${_errorMessages[@]}" && arrayContains "${_label}" "${_errorMessages[@]}"; then
     _rescode=${TRUE}
->>>>>>> c0ee7e4 (Minor bug fix.)
   else
     _rescode=${FALSE}
   fi
@@ -202,17 +129,10 @@ function isErrorDefined() {
 # use:   addError INVALID_NAME "The name is not valid";
 # use: fi
 function isErrorUndefined() {
-<<<<<<< HEAD
-  local _label="${1}";
-  checkNotEmpty label "${_label}" 1;
-
-  local -i _rescode;
-=======
   local _label="${1}"
-  local -i _rescode
+  checkNotEmpty label "${_label}" 1
 
-  checkNotEmpty "label" "${_label}" 1
->>>>>>> c0ee7e4 (Minor bug fix.)
+  local -i _rescode
 
   if isErrorDefined "${_label}"; then
     _rescode=${FALSE}
@@ -232,155 +152,64 @@ function isErrorUndefined() {
 # use:   ...;
 # use: fi
 function printErrorMessage() {
-<<<<<<< HEAD
-  local _label="${1}";
-  checkNotEmpty label "${_label}" 1;
-  shift;
-
-  local -i _rescode=${TRUE};
-
-  local _message="";
-
-  #  set +o nounset  # allow unset variables
-
-  ERROR.getBuiltInErrorsVariableName;
-  local -n _builtinErrors=${RESULT};
-
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  local _builtinError;
-  for _builtinError in ${_builtinErrors[@]}; do
-    IFS="${_oldIFS}";
-    _rescode=$((_rescode+1));
-    if areEqual "${_builtinError}" "${_label}"; then
-      _message="${_builtinError}";
-      break;
-    fi;
-=======
   local _label="${1}"
+  checkNotEmpty label "${_label}" 1
   shift
-  local -i rescode=${TRUE}
-  local _message
-  local _error
-  local -i _interruption=${TRUE}
-  local _i
-  local _oldIFS="${IFS}"
+
+  local -i _rescode=${TRUE}
+
+  local _message=""
 
   #  set +o nounset  # allow unset variables
 
-  checkNotEmpty "label" "${_label}" 1
+  ERROR.getBuiltInErrorsVariableName
+  local -n _builtinErrors=${RESULT}
 
+  local _oldIFS="${IFS}"
   IFS="${DWIFS}"
-  for _i in ${__DW_BUILTIN_ERRORS[@]}; do
+  local _builtinError
+  for _builtinError in ${_builtinErrors[@]}; do
     IFS="${_oldIFS}"
-    rescode=$((rescode + 1))
-    debugEcho "error_message (${rescode}): ${_i}"
-    if areEqual "${_i}" "${_label}"; then
-      _message="${_i}"
+    _rescode=$((_rescode + 1))
+    if areEqual "${_builtinError}" "${_label}"; then
+      _message="${_builtinError}"
       break
     fi
->>>>>>> c0ee7e4 (Minor bug fix.)
   done
   IFS="${_oldIFS}"
 
   # TODO set -o nounset  # disallow unset variables
 
-  ERROR.getErrorMessagesVariableName;
-  local -n _errorMessages=${RESULT};
+  ERROR.getErrorMessagesVariableName
+  local -n _errorMessages=${RESULT}
 
   if isEmpty "${_message}"; then
     # IFS issue
     #    rescode=${TRUE};
-<<<<<<< HEAD
-    IFS="${DWIFS}";
-    local _errorMessage;
-    for _errorMessage in ${_errorMessages[@]}; do
-      IFS="${_oldIFS}";
-      _rescode=$((_rescode+1));
-      if areEqual "${_errorMessage}" "${_label}"; then
-        _message="${_errorMessage}";
-        break;
-      fi;
-=======
     IFS="${DWIFS}"
-    for _i in ${__DW_ERROR_MESSAGES[@]}; do
+    local _errorMessage
+    for _errorMessage in ${_errorMessages[@]}; do
       IFS="${_oldIFS}"
-      rescode=$((rescode + 1))
-      if areEqual "${_i}" "${_label}"; then
-        _message="${_i}"
+      _rescode=$((_rescode + 1))
+      if areEqual "${_errorMessage}" "${_label}"; then
+        _message="${_errorMessage}"
         break
       fi
->>>>>>> c0ee7e4 (Minor bug fix.)
     done
   fi
   IFS="${_oldIFS}"
 
   if isEmpty "${_message}"; then
-<<<<<<< HEAD
-    _error="Error ${_label}, but no error message defined. Fix this script";
-    _rescode=-1;
-  else
-    ERROR.getModuleName;
-    DW.getGlobalString "${RESULT}" "${_label}";
-    _error="${RESULT}";
-=======
     _error="Error ${_label}, but no error message defined. Fix this script"
-    rescode=-1
+    _rescode=-1
   else
-    _error="$(echo ${_message} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)"
->>>>>>> c0ee7e4 (Minor bug fix.)
+    ERROR.getModuleName
+    DW.getGlobalString "${RESULT}" "${_label}"
+    _error="${RESULT}"
   fi
 
   if [ ${#@} -gt 0 ]; then
     if [ ${#@} -gt 1 ]; then
-<<<<<<< HEAD
-      _error="$(cat <<EOF
-${_error}
-$@
-EOF
-)";
-    else
-      _error="${_error} $@";
-    fi
-  fi
-
-  local -i _mainFound=${FALSE};
-  local _callStack="";
-
-  IFS="${DWIFS}";
-  local -i _callStackIndex;
-  local _bashFlags=$-;
-  set +u;
-  for _callStackIndex in $(seq 3 1 ${#FUNCNAME[@]}); do
-    IFS="${_oldIFS}";
-    if isNotEmpty "${FUNCNAME[${_callStackIndex}]}"; then
-      if isFalse ${_mainFound}; then
-        if    startsWith "${FUNCNAME[${_callStackIndex}]}" "CHECK." \
-           || startsWith "${FUNCNAME[${_callStackIndex}]}" "DRYWIT."; then
-#           || startsWith "${FUNCNAME[${_callStackIndex}]}" "LOGGING."; then
-          continue;
-        fi
-        if isNotEmpty "${_callStack}"; then
-          _callStack="->${_callStack}";
-        fi
-        _callStack="${FUNCNAME[${_callStackIndex}]}${_callStack}";
-      fi
-      if areEqual "${FUNCNAME[${_callStackIndex}]}" "main"; then
-        _mainFound=${TRUE};
-      fi
-    fi
-  done
-  IFS="${_oldIFS}";
-
-  if [[ "${_bashFlags}" =~ u ]]; then
-    set -u;
-  else
-    set +u;
-  fi
-  
-  if isNotEmpty "${_callStack}"; then
-    _callStack=" (${_callStack})";
-=======
       _error="$(
         cat <<EOF
 ${_error}
@@ -390,23 +219,53 @@ EOF
     else
       _error="${_error} $@"
     fi
->>>>>>> c0ee7e4 (Minor bug fix.)
   fi
-  _error="${_error}${_callStack}";
+
+  local -i _mainFound=${FALSE}
+  local _callStack=""
+
+  IFS="${DWIFS}"
+  local -i _callStackIndex
+  local _bashFlags=$-
+  set +u
+  for _callStackIndex in $(seq 3 1 ${#FUNCNAME[@]}); do
+    IFS="${_oldIFS}"
+    if isNotEmpty "${FUNCNAME[${_callStackIndex}]}"; then
+      if isFalse ${_mainFound}; then
+        if startsWith "${FUNCNAME[${_callStackIndex}]}" "CHECK." ||
+          startsWith "${FUNCNAME[${_callStackIndex}]}" "DRYWIT."; then
+          #           || startsWith "${FUNCNAME[${_callStackIndex}]}" "LOGGING."; then
+          continue
+        fi
+        if isNotEmpty "${_callStack}"; then
+          _callStack="->${_callStack}"
+        fi
+        _callStack="${FUNCNAME[${_callStackIndex}]}${_callStack}"
+      fi
+      if areEqual "${FUNCNAME[${_callStackIndex}]}" "main"; then
+        _mainFound=${TRUE}
+      fi
+    fi
+  done
+  IFS="${_oldIFS}"
+
+  if [[ "${_bashFlags}" =~ u ]]; then
+    set -u
+  else
+    set +u
+  fi
+
+  if isNotEmpty "${_callStack}"; then
+    _callStack=" (${_callStack})"
+  fi
+  _error="${_error}${_callStack}"
 
   if isDebugEnabled; then
-<<<<<<< HEAD
-    printUsage;
+    printUsage
   fi
 
-  ERROR.printError "${_error}";
-  return ${_rescode};
-=======
-    printUsage "${SCRIPT_NAME}"
-  fi
   ERROR.printError "${_error}"
-  return ${rescode}
->>>>>>> c0ee7e4 (Minor bug fix.)
+  return ${_rescode}
 }
 
 # fun: printExitValues
@@ -415,61 +274,39 @@ EOF
 # txt: Returns 0/TRUE always.
 # use: printExitValues;
 function printExitValues() {
-<<<<<<< HEAD
-=======
-  local -i i=0
-  local -i j=0
-  local _oldIFS="${IFS}"
->>>>>>> c0ee7e4 (Minor bug fix.)
 
   if isTraceEnabled; then
     cat <<EOF
 Exit values:
   0: No error.
 EOF
-<<<<<<< HEAD
-    ERROR.getBuiltInErrorsVariableName;
-    local -n _builtinErrors=${RESULT};
+    ERROR.getBuiltInErrorsVariableName
+    local -n _builtinErrors=${RESULT}
 
-    ERROR.getModuleName;
-    local _moduleName="${RESULT}";
+    ERROR.getModuleName
+    local _moduleName="${RESULT}"
 
-    local _oldIFS="${IFS}";
+    local _oldIFS="${IFS}"
 
     if [ ${#_builtinErrors[@]} -gt 0 ]; then
-      IFS=$"${DWIFS}";
-      local _i;
+      IFS=$"${DWIFS}"
+      local _i
       for ((_i = 0; _i < ${#_builtinErrors[@]}; _i++)); do
-        DW.getGlobalString "${_moduleName}" "${_builtinErrors[${_i}]}";
-        echo "  $((_i+1)): ${RESULT}.";
+        DW.getGlobalString "${_moduleName}" "${_builtinErrors[${_i}]}"
+        echo "  $((_i + 1)): ${RESULT}."
       done
     fi
-    ERROR.getErrorMessagesVariableName;
-    local -n _errorMessages=${RESULT};
+    ERROR.getErrorMessagesVariableName
+    local -n _errorMessages=${RESULT}
     if [ ${#_errorMessages[@]} -gt 0 ]; then
-      IFS=$"${DWIFS}";
-      local _j;
+      IFS=$"${DWIFS}"
+      local _j
       for ((_j = 0; _j < ${#_errorMessages[@]}; _j++)); do
-        DW.getGlobalString "${_moduleName}" "${_errorMessages[${_j}]}";
-        echo "  $((_j+_i+1)): ${RESULT}.";
-      done
-    fi
-    IFS="${_oldIFS}";
-=======
-    if [ ${#__DW_BUILTIN_ERRORS[@]} -gt 0 ]; then
-      IFS=$"${DWIFS}"
-      for ((i = 0; i < ${#__DW_BUILTIN_ERRORS[@]}; i++)); do
-        echo "  $((i + 1)): $(echo ${__DW_BUILTIN_ERRORS[$i]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)."
-      done
-    fi
-    if [ ${#__DW_ERROR_MESSAGES[@]} -gt 0 ]; then
-      IFS=$"${DWIFS}"
-      for ((j = 0; j < ${#__DW_ERROR_MESSAGES[@]}; j++)); do
-        echo "  $((j + i + 1)): $(echo ${__DW_ERROR_MESSAGES[$j]} | awk -v dollar="$" '{printf("echo %s{%s}\n", dollar, $0);}' | sh)."
+        DW.getGlobalString "${_moduleName}" "${_errorMessages[${_j}]}"
+        echo "  $((_j + _i + 1)): ${RESULT}."
       done
     fi
     IFS="${_oldIFS}"
->>>>>>> c0ee7e4 (Minor bug fix.)
   fi
 }
 
@@ -480,11 +317,10 @@ EOF
 # txt: Returns 0/TRUE always.
 # use: ERROR.printError "My error message.";
 function ERROR.printError() {
-<<<<<<< HEAD
-  DW.getScriptName;
-  local _scriptName="${RESULT}";
+  DW.getScriptName
+  local _scriptName="${RESULT}"
 
-  echo "${_scriptName}: $@.";
+  echo "${_scriptName}: $@."
 }
 
 # fun: ERROR.getBuiltInErrorsVariableName
@@ -494,8 +330,8 @@ function ERROR.printError() {
 # use: ERROR.getBuiltInErrorsVariableName;
 # use: local -n builtinErrors=${RESULT};
 function ERROR.getBuiltInErrorsVariableName() {
-  ERROR.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" BUILTIN_ERRORS;
+  ERROR.getModuleName
+  DW.getGlobalVariableName "${RESULT}" BUILTIN_ERRORS
 }
 
 # fun: ERROR.getErrorMessagesVariableName
@@ -505,8 +341,8 @@ function ERROR.getBuiltInErrorsVariableName() {
 # use: ERROR.getErrorMessagesVariableName;
 # use: local -n errorMessages=${RESULT};
 function ERROR.getErrorMessagesVariableName() {
-  ERROR.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" ERROR_MESSAGES;
+  ERROR.getModuleName
+  DW.getGlobalVariableName "${RESULT}" ERROR_MESSAGES
 }
 
 # fun: ERROR.appendBuiltInError error
@@ -516,14 +352,14 @@ function ERROR.getErrorMessagesVariableName() {
 # txt: Returns 0/TRUE always.
 # use: ERROR.appendBuiltInError "error";
 function ERROR.appendBuiltInError() {
-  local _error="${1}";
-  checkNotEmpty error "${_error}" 1;
+  local _error="${1}"
+  checkNotEmpty error "${_error}" 1
 
-  ERROR.getBuiltInErrorsVariableName;
-  local -n _builtinErrors=${RESULT};
+  ERROR.getBuiltInErrorsVariableName
+  local -n _builtinErrors=${RESULT}
 
   if isEmpty "${_builtinErrors[@]}" || arrayDoesNotContain "${_error}" "${_builtinErrors[@]}"; then
-    _builtinErrors[${#_builtinErrors[@]}]="${_error}";
+    _builtinErrors[${#_builtinErrors[@]}]="${_error}"
   fi
 }
 
@@ -535,17 +371,17 @@ function ERROR.appendBuiltInError() {
 # txt: Returns 0/TRUE always.
 # use: ERROR.addBuiltInError INVALID_OPTION "Option unrecognized";
 function ERROR.addBuiltInError() {
-  local _errorName="${1}";
-  checkNotEmpty name "${_errorName}" 1;
-  local _message="${2}";
-  checkNotEmpty message "${_message}" 2;
+  local _errorName="${1}"
+  checkNotEmpty name "${_errorName}" 1
+  local _message="${2}"
+  checkNotEmpty message "${_message}" 2
 
-  toUpper "${_errorName}";
-  local _upcasedErrorName="${RESULT}";
+  toUpper "${_errorName}"
+  local _upcasedErrorName="${RESULT}"
 
-  ERROR.appendBuiltInError "${_upcasedErrorName}";
-  ERROR.getModuleName;
-  DW.declareGlobalString "${RESULT}" "${_upcasedErrorName}" "${_message}";
+  ERROR.appendBuiltInError "${_upcasedErrorName}"
+  ERROR.getModuleName
+  DW.declareGlobalString "${RESULT}" "${_upcasedErrorName}" "${_message}"
 }
 
 # fun: ERROR.defineBuiltInErrorMessages
@@ -554,13 +390,13 @@ function ERROR.addBuiltInError() {
 # txt: Returns 0/TRUE always.
 # use: ERROR.defineBuiltInErrorMessages;
 function ERROR.defineBuiltInErrorMessages() {
-  ERROR.addBuiltInError SCRIPT_INTERRUPTED "User interruption";
-  ERROR.addBuiltInError MISSING_MANDATORY_VARIABLES "Script not complete, since it doesn't define all mandatory variables";
-  ERROR.addBuiltInError MISSING_MANDATORY_FUNCTIONS "Script not complete, since it doesn't define all mandatory functions";
-  ERROR.addBuiltInError UNKNOWN_ERROR "The script has finished due to an unexpected error";
-  ERROR.addBuiltInError UNACCEPTABLE_API_CALL "Unacceptable call: ";
-  ERROR.addBuiltInError POSTCONDITION_NOT_SATISFIED "Postcondition not satisfied: ";
-  ERROR.addBuiltInError UNACCEPTABLE_ENVIRONMENT_VARIABLE "Unacceptable environment variable: ";
+  ERROR.addBuiltInError SCRIPT_INTERRUPTED "User interruption"
+  ERROR.addBuiltInError MISSING_MANDATORY_VARIABLES "Script not complete, since it doesn't define all mandatory variables"
+  ERROR.addBuiltInError MISSING_MANDATORY_FUNCTIONS "Script not complete, since it doesn't define all mandatory functions"
+  ERROR.addBuiltInError UNKNOWN_ERROR "The script has finished due to an unexpected error"
+  ERROR.addBuiltInError UNACCEPTABLE_API_CALL "Unacceptable call: "
+  ERROR.addBuiltInError POSTCONDITION_NOT_SATISFIED "Postcondition not satisfied: "
+  ERROR.addBuiltInError UNACCEPTABLE_ENVIRONMENT_VARIABLE "Unacceptable environment variable: "
 }
 
 # fun: ERROR.defaultState
@@ -569,10 +405,7 @@ function ERROR.defineBuiltInErrorMessages() {
 # txt: Returns 0/TRUE always.
 # use: ERROR.defaultState
 function ERROR.defaultState() {
-  ERROR.defineBuiltInErrorMessages;
-=======
-  echo "Error: $@."
->>>>>>> c0ee7e4 (Minor bug fix.)
+  ERROR.defineBuiltInErrorMessages
 }
 
 # fun: ERROR.resetState
@@ -580,21 +413,9 @@ function ERROR.defaultState() {
 # txt: Resets the state of the module.
 # use: ERROR.resetState;
 function ERROR.resetState() {
-<<<<<<< HEAD
-  ERROR.getModuleName;
-  local _moduleName="${RESULT}";
-  DW.declareGlobalArray "${_moduleName}" BUILTIN_ERRORS;
-  DW.declareGlobalArray "${_moduleName}" ERROR_MESSAGES;
+  ERROR.getModuleName
+  local _moduleName="${RESULT}"
+  DW.declareGlobalArray "${_moduleName}" BUILTIN_ERRORS
+  DW.declareGlobalArray "${_moduleName}" ERROR_MESSAGES
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
-=======
-  __DW_BUILTIN_ERRORS=()
-  __DW_ERROR_MESSAGES=()
-}
-
-# env: __DW_BUILTIN_ERRORS: The built-in errors.
-declare -agx __DW_BUILTIN_ERRORS
-# env: __DW_ERROR_MESSAGES: The error messages.
-declare -agx __DW_ERROR_MESSAGES
-#
->>>>>>> c0ee7e4 (Minor bug fix.)

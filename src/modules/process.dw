@@ -63,16 +63,35 @@ function pidsMatching() {
 
   local -i _rescode=${FALSE}
   local _result
+  local _aux
+  local _ownPid
 
   if isMacOSX; then
     _result="$(command ps -ax 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command cut -d' ' -f 1)"
     _rescode=$?
   else
-    _result="$(command pidof "${_processName}" 2>/dev/null)"
+    _aux="$(command pidof "${_processName}" 2>/dev/null)"
     _rescode=$?
     if isFalse ${_rescode}; then
-      _result="$(command ps -ef 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command cut -d' ' -f 1)"
+      _aux="$(command ps -ef 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null)"
       _rescode=$?
+    fi
+    if isTrue ${_rescode}; then
+      _processPid="$(command echo "${_aux}" | command head -n 1 | command cut -d' ' -f 1)"
+      _aux="$(command echo "${_aux}" | command tail -n +2 | command cut -d' ' -f 1)"
+      local _pid
+      local _oldIFS="${IFS}"
+      IFS="${DWIFS}"
+      for _pid in ${_aux}; do
+        IFS="${_oldIFS}"
+        _result="${_pid}"
+        if ! isChildProcess "${_pid}" "${_processPid}"; then
+          _rescode=${FALSE}
+          _result=""
+          break
+        fi
+      done
+      IFS="${_oldIFS}"
     fi
   fi
 
@@ -149,15 +168,52 @@ function anotherProcessAlreadyRunning() {
 
   if pidsMatching "${_scriptPath}"; then
     _pids="${RESULT}"
+    echo "script: ${_scriptPath}, pids -> ${_pids}"
   fi
 
   if isNotEmpty "${_pids}"; then
+    local _oldIFS="${IFS}"
+    IFS="${DWIFS}"
     for _pid in ${_pids}; do
+      IFS="${_oldIFS}"
       if ! areEqual "${_pid}" "${_ownPid}"; then
         _rescode=${TRUE}
         break
       fi
     done
+    IFS="${_oldIFS}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: isChildProcess childPid parentPid
+# api: public
+# txt: Checks whether a process is child of another one.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if isChildProcess ${childPid} ${parentPid}; then
+# use:   echo "${parentPid} is parent of ${childPid}";
+# use: fi
+function isChildProcess() {
+  local _childPid="${1}"
+  checkNotEmpty childPid "${_childPid}" 1
+  local _parentPid="${2}"
+  checkNotEmpty parentPid "${_parentPid}" 2
+  local -i _rescode=${FALSE}
+
+  local _children="$(command pgrep -P "${_parentPid}")"
+  if isNotEmpty "${_children}"; then
+    local _oldIFS="${IFS}"
+    IFS="${DWIFS}"
+    local _pid
+    for _pid in ${_children}; do
+      IFS="${_oldIFS}"
+      if ! areEqual "${_pid}" "${_parentPid}"; then
+        _rescode=${TRUE}
+        break
+      fi
+    done
+    IFS="${_oldIFS}"
   fi
 
   return ${_rescode}

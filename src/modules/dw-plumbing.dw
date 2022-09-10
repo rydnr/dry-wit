@@ -19,16 +19,15 @@ declare -gx OPTIONAL=${FALSE}
 # txt: Returns 0/TRUE always.
 # use: checkReq jq;
 function checkReq() {
-<<<<<<< HEAD
-  local _dependency="${1}";
-  checkNotEmpty dependency "${_dependency}" 1;
-  local _errorCode="${2:-}";
+  local _dependency="${1}"
+  checkNotEmpty dependency "${_dependency}" 1
+  local _errorCode="${2:-}"
 
   if [ -z "${_errorCode}" ]; then
-    DRYWIT.addMissingDependencyError "${_dependency}";
-    DRYWIT.checkDependency "${_dependency}";
+    DRYWIT.addMissingDependencyError "${_dependency}"
+    DRYWIT.checkDependency "${_dependency}"
   else
-    DRYWIT.checkDependency "${_dependency}" "${_errorCode}";
+    DRYWIT.checkDependency "${_dependency}" "${_errorCode}"
   fi
 }
 
@@ -39,25 +38,12 @@ function checkReq() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.addMissingDependencyError "docker";
 function DRYWIT.addMissingDependencyError() {
-  local _dependency="${1}";
-  checkNotEmpty dependency "${_dependency}" 1;
-
-  normalizeUppercase "${_dependency}_NOT_INSTALLED";
-  local _constant="${RESULT}";
-
-  addError "${_constant}" "${_dependency} is not installed";
-=======
   local _dependency="${1}"
-  local _errorCode="${2:-}"
+  checkNotEmpty dependency "${_dependency}" 1
 
-  if [ -z "${_errorCode}" ]; then
-    echo "Adding missing dep error for ${_dependency}"
-    DRYWIT.addMissingDependencyError "${_dependency}"
-    DRYWIT.checkDependency "${_dependency}"
-  else
-    DRYWIT.checkDependency "${_dependency}" "${_errorCode}"
-  fi
->>>>>>> c0ee7e4 (Minor bug fix.)
+  normalizeUppercase "${_dependency}_NOT_INSTALLED"
+  local _constant="${RESULT}"
+  addError "${_constant}" "${_dependency} is not installed"
 }
 
 # fun: cleanup
@@ -66,89 +52,77 @@ function DRYWIT.addMissingDependencyError() {
 # txt: Returns 0/TRUE always.
 # use: cleanup;
 function cleanup() {
-<<<<<<< HEAD
-  local _oldIFS="${IFS}";
+  local _oldIFS="${IFS}"
 
-  FILE.getCleanupFilesVariableName;
-  local -n _cleanupFiles=${RESULT};
+  FILE.getCleanupFilesVariableName
+  local -n _cleanupFiles=${RESULT}
 
   if isGreaterThan ${#_cleanupFiles[@]} 0; then
-    setLogCategory "post-process";
-=======
-  local -i _deletedCount=0
-  local -i _notDeletedCount=0
-  local _deleted
-  local _notDeleted
-  local -i _success
-  local _oldIFS="${IFS}"
-  local _i
+    local -i _deletedCount=0
+    local -i _notDeletedCount=0
+    local _deleted
+    local _notDeleted
+    local -i _success
+    local _oldIFS="${IFS}"
+    local _i
 
-  if [ "${#_CLEANUP_FILES}" != "0" ]; then
-    setLogCategory "post-process"
->>>>>>> c0ee7e4 (Minor bug fix.)
+    if [ "${#_cleanupFiles}" != "0" ]; then
+      setLogCategory "post-process"
 
-    logTrace -n "Cleaning up temporary files"
+      logTrace -n "Cleaning up temporary files"
 
-<<<<<<< HEAD
-    local -i _deletedCount=0;
-    local -i _notDeletedCount=0;
-    local _deleted="";
-    local _notDeleted="";
+      setLogCategory "post-process"
 
-    IFS="${DWIFS}";
-    local _i;
-    for _i in ${_cleanupFiles[@]}; do
-      IFS="${_oldIFS}";
-      rm -rf "${_i}" > /dev/null 2>&1;
-      if isTrue $?; then
-        if isNotEmpty "${_deleted}"; then
-          _deleted="${_deleted} ";
+      logTrace -n "Cleaning up temporary files"
+
+      local -i _deletedCount=0
+      local -i _notDeletedCount=0
+      local _deleted=""
+      local _notDeleted=""
+
+      IFS="${DWIFS}"
+      local _i
+      for _i in ${_cleanupFiles[@]}; do
+        IFS="${_oldIFS}"
+        rm -rf "${_i}" >/dev/null 2>&1
+        if isTrue $?; then
+          if isNotEmpty "${_deleted}"; then
+            _deleted="${_deleted} "
+          fi
+          _deleted="${_deleted}${_i}"
+          _deletedCount=$((_deletedCount + 1))
+        else
+          if isNotEmpty "${_notDeleted}"; then
+            _notDeleted="${_notDeleted} "
+          fi
+          _notDeleted="${_notDeleted}${_i}"
+          _notDeletedCount=$((_notDeletedCount + 1))
         fi
-        _deleted="${_deleted}${_i}";
-        _deletedCount=$((_deletedCount + 1));
-      else
-        if isNotEmpty "${_notDeleted}"; then
-          _notDeleted="${_notDeleted} ";
-        fi
-        _notDeleted="${_notDeleted}${_i}";
-        _notDeletedCount=$((_notDeletedCount + 1));
-=======
-    IFS="${DWIFS}"
-    for _i in ${_CLEANUP_FILES[*]}; do
+      done
       IFS="${_oldIFS}"
-      rm -rf ${_i} >/dev/null 2>&1
-      if isTrue $?; then
-        _deleted="${_deleted} ${_i}"
-        _deletedCount=$((_deletedCount + 1))
-      else
-        _notDeleted="${_notDeleted} ${_i}"
-        _notDeletedCount=$((_notDeletedCount + 1))
->>>>>>> c0ee7e4 (Minor bug fix.)
+
+      local -i _success=${FALSE}
+
+      if isZero ${_notDeletedCount}; then
+        _success=${TRUE}
       fi
-    done
-    IFS="${_oldIFS}"
 
-    local -i _success=${FALSE};
-
-    if isZero ${_notDeletedCount}; then
-      _success=${TRUE}
-    fi
-
-    if isTrue ${_success}; then
-      if isZero ${_deletedCount}; then
-        logTraceResult SUCCESS "none"
+      if isTrue ${_success}; then
+        if isZero ${_deletedCount}; then
+          logTraceResult SUCCESS "none"
+        else
+          logTraceResult SUCCESS "${_deletedCount}"
+          logTrace "Deleted: ${_deleted}"
+        fi
+      elif isEmpty "${_notDeletedCount}"; then
+        logTraceResult FAILURE "?"
       else
-        logTraceResult SUCCESS "${_deletedCount}"
-        logTrace "Deleted: ${_deleted}"
+        logTraceResult FAILURE "${_notDeletedCount}"
       fi
-    elif isEmpty "${_notDeletedCount}"; then
-      logTraceResult FAILURE "?"
-    else
-      logTraceResult FAILURE "${_notDeletedCount}"
-    fi
 
-    if isFalse ${_success}; then
-      logTrace "Not deleted: ${_notDeleted}"
+      if isFalse ${_success}; then
+        logTrace "Not deleted: ${_notDeleted}"
+      fi
     fi
   fi
 }
@@ -163,19 +137,11 @@ function cleanup() {
 # use:   echo "myFunc is not defined in myScript.sh";
 # use: fi
 function isFunctionMissing() {
-<<<<<<< HEAD
-  local _function="${1}";
-  checkNotEmpty funcName "${_function}" 1;
-  local _script="${2}";
-
-  local -i _rescode;
-=======
   local _function="${1}"
+  checkNotEmpty funcName "${_function}" 1
   local _script="${2}"
-  local -i _rescode
 
-  checkNotEmpty "function" "${_function}" 1
->>>>>>> c0ee7e4 (Minor bug fix.)
+  local -i _rescode
 
   if isFunctionPresent "${_function}" "${_script}"; then
     _rescode=${FALSE}
@@ -196,82 +162,52 @@ function isFunctionMissing() {
 # use:   echo "myFunc is defined in myScript.sh";
 # use: fi
 function isFunctionPresent() {
-<<<<<<< HEAD
-  local _function="${1}";
-  checkNotEmpty funcName "${_function}" 1;
-  local _scriptName="";
-  if isGreaterThan $# 1; then
-    _scriptName="${2}";
-  fi
-  
-  local _oldIFS="${IFS}";
-
-  if isEmpty "${_scriptName}"; then
-    DW.getScriptName;
-    _scriptName="${RESULT}";
-  fi
-
-  local -i _rescode=${FALSE};
-  
-  if isMacOSX; then
-    command type -t "${_function}" 2> /dev/null | grep -q 'function'
-    _rescode=$?;
-  else
-    type "${_function}" 2> /dev/null | grep -q 'function'
-    _rescode=$?;
-  fi
-
-  if isFalse ${_rescode}; then
-    if isNotEmpty "${_scriptName}"; then
-      grep -q " ${_function} *()" "${_scriptName}" > /dev/null 2>&1;
-      _rescode=$?;
-    fi
-  fi
-  if isFalse ${_rescode}; then
-    if isNotEmpty "${_scriptName}"; then
-      DW.getScriptFolder;
-      local _scriptFolder="${RESULT}";
-
-      IFS="${DWIFS}";
-      local _inc;
-      for _inc in "${BASH_SOURCE[0]}/$(basename ${_scriptName} .sh).inc.sh" \
-                  "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh" \
-                  "./$(basename ${_scriptName} .sh).inc.sh"; do
-        IFS="${_oldIFS}";
-        if [ -e "${_inc}" ]; then
-          isFunctionPresent "${_function}" "${_inc}";
-          _rescode=$?;
-          if isTrue ${_rescode}; then
-            break;
-=======
   local _function="${1}"
-  local _script="${2}"
-  local _rescode
-  local _inc
+  checkNotEmpty funcName "${_function}" 1
+  local _scriptName=""
+  if isGreaterThan $# 1; then
+    _scriptName="${2}"
+  fi
+
   local _oldIFS="${IFS}"
 
-  checkNotEmpty "function" "${_function}" 1
+  if isEmpty "${_scriptName}"; then
+    DW.getScriptName
+    _scriptName="${RESULT}"
+  fi
 
-  type ${_function} 2>/dev/null | grep -q 'function'
-  _rescode=$?
+  local -i _rescode=${FALSE}
+
+  if isMacOSX; then
+    command type -t "${_function}" 2>/dev/null | grep -q 'function'
+    _rescode=$?
+  else
+    type "${_function}" 2>/dev/null | grep -q 'function'
+    _rescode=$?
+  fi
+
   if isFalse ${_rescode}; then
-    if isNotEmpty "${_script}"; then
-      grep " ${_function}()" "${_script}" >/dev/null 2>&1
+    if isNotEmpty "${_scriptName}"; then
+      grep -q " ${_function} *()" "${_scriptName}" >/dev/null 2>&1
       _rescode=$?
     fi
   fi
   if isFalse ${_rescode}; then
-    if isNotEmpty "${_script}"; then
+    if isNotEmpty "${_scriptName}"; then
+      DW.getScriptFolder
+      local _scriptFolder="${RESULT}"
+
       IFS="${DWIFS}"
-      for _inc in "./$(basename ${_script} .sh).inc.sh" \
-        "${DRY_WIT_SCRIPT_FOLDER}/$(basename ${_script} .sh).inc.sh"; do
+      local _inc
+      for _inc in "${BASH_SOURCE[0]}/$(basename ${_scriptName} .sh).inc.sh" \
+        "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh" \
+        "./$(basename ${_scriptName} .sh).inc.sh"; do
         IFS="${_oldIFS}"
-        if fileExists "${_inc}"; then
+        if [ -e "${_inc}" ]; then
           isFunctionPresent "${_function}" "${_inc}"
           _rescode=$?
           if isTrue ${_rescode}; then
             break
->>>>>>> c0ee7e4 (Minor bug fix.)
           fi
         fi
       done
@@ -282,8 +218,6 @@ function isFunctionPresent() {
   return ${_rescode}
 }
 
-<<<<<<< HEAD
-=======
 # fun: DRYWIT.addBuiltInError name message
 # api: private
 # txt: Annotates a new built-in error.
@@ -335,7 +269,6 @@ function DRYWIT.appendBuiltInError() {
   fi
 }
 
->>>>>>> c0ee7e4 (Minor bug fix.)
 # fun: DRYWIT.checkDependency name errorCode
 # api: private
 # txt: Checks a required dependency is available.
@@ -344,46 +277,26 @@ function DRYWIT.appendBuiltInError() {
 # txt: Returns 0/TRUE always; it exits if the dependency is not available.
 # use: DRYWIT.checkDependency jq JQ_IS_NOT_INSTALLED;
 function DRYWIT.checkDependency() {
-<<<<<<< HEAD
-  local _req="${1}";
-  checkNotEmpty name "${_req}" 1;
-  local _errorCode="";
-  if isGreaterThan $# 1; then
-    _errorCode="${2}";
-
-    if isEmpty "${_errorCode}"; then
-      normalizeUppercase "${_req}_NOT_INSTALLED";
-      _errorCode="${RESULT}";
-    fi
-  fi
-  
-  which ${_req} > /dev/null 2>&1;
-  local -i _rescode=$?;
-
-  if isFalse ${_rescode}; then
-    exitWithErrorCode ${_errorCode};
-  fi
-
-  return ${_rescode};
-=======
   local _req="${1}"
-  local _errorCode="${2}"
+  checkNotEmpty name "${_req}" 1
+  local _errorCode=""
+  if isGreaterThan $# 1; then
+    _errorCode="${2}"
+  fi
 
   if isEmpty "${_errorCode}"; then
     normalizeUppercase "${_req}_NOT_INSTALLED"
     _errorCode="${RESULT}"
   fi
 
-  echo "error code: ${_errorCode}"
   which ${_req} >/dev/null 2>&1
-  rescode=$?
-  if isFalse ${rescode}; then
-    if isEmpty "${_errorCode}"; then
-      _errorCode=UNKNOWN_ERROR
-    fi
+  local -i _rescode=$?
+
+  if isFalse ${_rescode}; then
     exitWithErrorCode ${_errorCode}
   fi
->>>>>>> c0ee7e4 (Minor bug fix.)
+
+  return ${_rescode}
 }
 
 # fun: DRYWIT.checkScript script
@@ -393,79 +306,31 @@ function DRYWIT.checkDependency() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.checkScript /tmp/myScript.sh;
 function DRYWIT.checkScript() {
-<<<<<<< HEAD
-  local _script="${1}";
-  checkNotEmpty script "${_script}" 1;
-  local _oldIFS="${IFS}";
-
-  getLogCategory;
-  local _oldCategory="${RESULT}";
-
-  setLogCategory "sanity-check";
-  logTrace -n "Checking mandatory constants";
-
-  ERROR.getErrorMessagesVariableName;
-  local -n _errorMessages=${RESULT};
-
-  IFS="${DWIFS}";
-  local _v;
-  for _v in ${_errorMessages[@]}; do
-    IFS="${_oldIFS}";
-    if [ -z "${_v}" ]; then
-      exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v};
-    fi
-  done
-  IFS="${_oldIFS}";
-  logTraceResult SUCCESS "${DONE}";
-
-  setLogCategory "${_oldCategory}";
-=======
   local _script="${1}"
-  local _v
-  local _f
+  checkNotEmpty script "${_script}" 1
   local _oldIFS="${IFS}"
 
-  checkNotEmpty "script" "${_script}" 1
+  getLogCategory
+  local _oldCategory="${RESULT}"
 
   setLogCategory "sanity-check"
   logTrace -n "Checking mandatory constants"
 
+  ERROR.getErrorMessagesVariableName
+  local -n _errorMessages=${RESULT}
+
   IFS="${DWIFS}"
-  for _v in ${ERROR_MESSAGES[@]}; do
+  local _v
+  for _v in ${_errorMessages[@]}; do
     IFS="${_oldIFS}"
     if [ -z "${_v}" ]; then
       exitWithErrorCode MISSING_MANDATORY_VARIABLES ${_v}
     fi
   done
   IFS="${_oldIFS}"
-  logTraceResult SUCCESS "done"
-  logTrace -n "Checking mandatory functions"
-  IFS="${DWIFS}"
-  for _f in main; do
-    IFS="${_oldIFS}"
-    isFunctionPresent ${_f} ${_script}
-    if isFalse $?; then
-      exitWithErrorCode MISSING_MANDATORY_FUNCTIONS ${_f}
-    fi
-  done
-  IFS="${_oldIFS}"
-  logTraceResult SUCCESS "${_DW_DONE}"
-}
+  logTraceResult SUCCESS "${DONE}"
 
-# fun: DRYWIT.defineDryWitErrorMessages
-# api: private
-# txt: Declares dry-wit's error messages.
-# txt: Returns 0/TRUE always.
-# use: DRYWIT.defineDryWitErrorMessages;
-function DRYWIT.defineDryWitErrorMessages() {
-  DRYWIT.addBuiltInError "SCRIPT_INTERRUPTED" "User interruption"
-  DRYWIT.addBuiltInError "MISSING_MANDATORY_VARIABLES" "Script not complete, since it doesn't define all mandatory variables"
-  DRYWIT.addBuiltInError "MISSING_MANDATORY_FUNCTIONS" "Script not complete, since it doesn't define all mandatory functions"
-  DRYWIT.addBuiltInError "UNKNOWN_ERROR" "The script has finished due to an unexpected error"
-  DRYWIT.addBuiltInError "UNACCEPTABLE_API_CALL" "Unacceptable call to dry-wit API: "
-  DRYWIT.addBuiltInError "POSTCONDITION_NOT_SATISFIED" "Postcondition not satisfied: "
-  DRYWIT.addBuiltInError "UNACCEPTABLE_ENVIRONMENT_VARIABLE" "Unacceptable environment variable: "
->>>>>>> c0ee7e4 (Minor bug fix.)
+  setLogCategory "${_oldCategory}"
 }
 
 # fun: DRYWIT.defineDryWitRequirements
@@ -485,71 +350,47 @@ function DRYWIT.defineDryWitRequirements() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.main;
 function DRYWIT.main() {
-<<<<<<< HEAD
-  DW.getScriptName;
-  local _scriptName="${RESULT}";
-  DW.getScriptPath;
-  local _scriptPath="${RESULT}";
-  retrieveAbsolutePath "${_scriptPath}";
-  local _absolutePath="${RESULT}";
+  DW.getScriptName
+  local _scriptName="${RESULT}"
+  DW.getScriptPath
+  local _scriptPath="${RESULT}"
+  retrieveAbsolutePath "${_scriptPath}"
+  local _absolutePath="${RESULT}"
 
   # first argument is the script name.
-  shift;
-
-  source "${_scriptPath}" $@;
-
-  disableExitOnErrorOption;
-  local _bashOpts="${RESULT}";
-
-  DRYWIT.setup "${_scriptName}";
-
-  if isFunctionPresent defineErrors "${_scriptName}"; then
-    defineErrors;
-  fi
-
-  if isFunctionPresent defineEnvDefaults "${_scriptName}"; then
-    defineEnvDefaults;
-  fi
-
-  if isFunctionPresent defineEnv "${_scriptName}"; then
-    defineEnv;
-  fi
-
-  if isFunctionPresent defineKeywords "${_scriptName}"; then
-    defineKeywords;
-  fi
-
-  if isFunctionPresent parseInput "${_scriptName}"; then
-    evalEnvVars;
-    parseInput $@;
-  fi
-
-  DRYWIT.checkScript "${_scriptName}";
-=======
-  local _script="${1#./}"
   shift
 
-  local _absolutePath
-  retrieveAbsolutePath "${DRY_WIT_SCRIPT_PATH}"
-  _absolutePath="${RESULT}"
+  source "${_scriptPath}" $@
 
-  source "${DRY_WIT_SCRIPT_PATH}" $@
+  disableExitOnErrorOption
+  local _bashOpts="${RESULT}"
 
-  DRYWIT.defineDryWitErrorMessages
+  DRYWIT.setup "${_scriptName}"
 
-  DRYWIT.setup "${_script}"
-
-  if isFunctionPresent defineErrors "${_script}"; then
+  if isFunctionPresent defineErrors "${_scriptName}"; then
     defineErrors
   fi
 
-  if isFunctionPresent defineEnvDefaults "${_script}"; then
+  if isFunctionPresent defineEnvDefaults "${_scriptName}"; then
     defineEnvDefaults
   fi
 
-  if isFunctionPresent defineEnv "${_script}"; then
+  if isFunctionPresent defineEnv "${_scriptName}"; then
     defineEnv
   fi
+
+  if isFunctionPresent defineKeywords "${_scriptName}"; then
+    defineKeywords
+  fi
+
+  if isFunctionPresent parseInput "${_scriptName}"; then
+    evalEnvVars
+    parseInput $@
+  fi
+
+  DRYWIT.checkScript "${_scriptName}"
+
+  DRYWIT.defineDryWitRequirements
 
   if isFunctionPresent defineKeywords "${_script}"; then
     defineKeywords
@@ -560,60 +401,35 @@ function DRYWIT.main() {
     parseInput $@
   fi
 
-  DRYWIT.checkScript "${_script}"
->>>>>>> c0ee7e4 (Minor bug fix.)
-
-  DRYWIT.defineDryWitRequirements
-
-<<<<<<< HEAD
   if isFunctionPresent checkRequirements "${_scriptName}"; then
-    logTrace -n "Checking declared requirements";
-    checkRequirements;
-    logTraceResult SUCCESS "${DONE}";
+    logTrace -n "Checking declared requirements"
+    checkRequirements
+    logTraceResult SUCCESS "${DONE}"
   fi
 
   if isFunctionPresent checkInput "${_scriptName}"; then
-    evalEnvVars;
-    checkInput $@;
-
-    if isFunctionPresent postCheckInput "${_scriptName}"; then
-      postCheckInput $@;
-    fi
-  fi
-
-  applyThemeIfPresent;
-
-  if isHelpFlagProvided; then
-    printHelp;
-  elif isFunctionPresent main "${_scriptName}"; then
-    setLogCategory "";
-
-    restoreBashOptions "${_bashOpts}";
-    main ${BASH_ARGV[@]};
-    setLogCategory "";
-  else
-    echo "Invalid ${_scriptName} script: main function is mandatory in dry-wit scripts";
-    exit 255;
-  fi
-=======
-  if isFunctionPresent checkRequirements "${_script}"; then
-    logTrace -n "Checking declared requirements"
-    checkRequirements
-    logTraceResult SUCCESS "${_DW_DONE}"
-  fi
-
-  if isFunctionPresent checkInput "${_script}"; then
     evalEnvVars
     checkInput $@
 
-    if isFunctionPresent postCheckInput "${_script}"; then
+    if isFunctionPresent postCheckInput "${_scriptName}"; then
       postCheckInput $@
     fi
   fi
 
-  setLogCategory "main"
-  main
->>>>>>> c0ee7e4 (Minor bug fix.)
+  applyThemeIfPresent
+
+  if isHelpFlagProvided; then
+    printHelp
+  elif isFunctionPresent main "${_scriptName}"; then
+    setLogCategory ""
+
+    restoreBashOptions "${_bashOpts}"
+    main ${BASH_ARGV[@]}
+    setLogCategory ""
+  else
+    echo "Invalid ${_scriptName} script: main function is mandatory in dry-wit scripts"
+    exit 255
+  fi
 }
 
 # fun: DRYWIT.retrieveSettingsFiles
@@ -623,59 +439,37 @@ function DRYWIT.main() {
 # txt: The variable RESULT contains a space-separated list of settings files.
 # use: DRYWIT.retrieveSettingsFiles; echo "settings files: ${RESULT}";
 function DRYWIT.retrieveSettingsFiles() {
-<<<<<<< HEAD
-  local _result="";
-  local -A _doneAlready=();
-
-  DW.getScriptPath;
-  local _scriptPath="${RESULT}";
-  DW.getScriptFolder;
-  local _scriptFolder="${RESULT}";
-  
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  local _f;
-  for _f in "$(basename ${_scriptPath} .sh).inc.sh" ".$(basename ${_scriptPath} .sh).inc.sh"; do
-    local _d;
-    for _d in "${_scriptFolder}" "."; do
-      IFS="${_oldIFS}";
-      retrieveAbsolutePath "${_d}/${_f}";
-      local _path="${RESULT}";
-      if [ -e "${_path}" ] && [ "${_doneAlready[${_path}]}" != "${TRUE}" ]; then
-        if isNotEmpty "${_result}"; then
-          _result="${_result} ";
-        fi
-        _result="${_result}${_path}";
-        _doneAlready["${_path}"]=${TRUE};
-=======
-  local _f
-  local _d
   local _result=""
-  local _oldIFS="${IFS}"
-
   local -A _doneAlready=()
 
+  DW.getScriptPath
+  local _scriptPath="${RESULT}"
+  DW.getScriptFolder
+  local _scriptFolder="${RESULT}"
+
+  local _oldIFS="${IFS}"
   IFS="${DWIFS}"
-  for _f in "$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh" ".$(basename ${DRY_WIT_SCRIPT_PATH} .sh).inc.sh"; do
-    for _d in "${DRY_WIT_SCRIPT_FOLDER}" "."; do
+  local _f
+  for _f in "$(basename ${_scriptPath} .sh).inc.sh" ".$(basename ${_scriptPath} .sh).inc.sh"; do
+    local _d
+    for _d in "${_scriptFolder}" "."; do
       IFS="${_oldIFS}"
       retrieveAbsolutePath "${_d}/${_f}"
-      if [ -e "${RESULT}" ] && [ "${_doneAlready[${RESULT}]}" != "${TRUE}" ]; then
-        _result="${_result} ${RESULT}"
-        _doneAlready["${RESULT}"]=${TRUE}
->>>>>>> c0ee7e4 (Minor bug fix.)
+      local _path="${RESULT}"
+      if [ -e "${_path}" ] && [ "${_doneAlready[${_path}]}" != "${TRUE}" ]; then
+        if isNotEmpty "${_result}"; then
+          _result="${_result} "
+        fi
+        _result="${_result}${_path}"
+        _doneAlready["${_path}"]=${TRUE}
       fi
     done
   done
   IFS="${_oldIFS}"
 
-<<<<<<< HEAD
-  export RESULT="${_result}";
-
-  return ${TRUE};
-=======
   export RESULT="${_result}"
->>>>>>> c0ee7e4 (Minor bug fix.)
+
+  return ${TRUE}
 }
 
 # fun: DRYWIT.setup
@@ -684,32 +478,14 @@ function DRYWIT.retrieveSettingsFiles() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.setup;
 function DRYWIT.setup() {
-<<<<<<< HEAD
-#  DRYWIT.trapSignals;
-
-  DRYWIT.retrieveSettingsFiles;
-  local _files="${RESULT}"
-
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  local _f;
-  for _f in ${_files}; do
-    IFS="${_oldIFS}";
-    sourceFileIfExists "${_f}";
-  done
-  IFS="${_oldIFS}";
-
-  evalEnvVars;
-=======
-  DRYWIT.trapSignals
-  local _f
-  local _files
-  local _oldIFS="${IFS}"
+  #  DRYWIT.trapSignals;
 
   DRYWIT.retrieveSettingsFiles
-  _files="${RESULT}"
+  local _files="${RESULT}"
 
+  local _oldIFS="${IFS}"
   IFS="${DWIFS}"
+  local _f
   for _f in ${_files}; do
     IFS="${_oldIFS}"
     sourceFileIfExists "${_f}"
@@ -717,7 +493,6 @@ function DRYWIT.setup() {
   IFS="${_oldIFS}"
 
   evalEnvVars
->>>>>>> c0ee7e4 (Minor bug fix.)
 }
 
 # fun: DRYWIT.trapSignals

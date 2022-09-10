@@ -64,9 +64,15 @@ function cleanup_deletes_temporary_files_test() {
 function DRYWIT.checkReq_label_is_optional_test() {
   DW.import array
   DRYWIT.addMissingDependencyError foobar
-  normalizeUppercase "${_req}_NOT_INSTALLED"
-  arrayContains "${__DW_ERROR_MESSAGES[@]}" "${RESULT}"
+  normalizeUppercase "foobar_NOT_INSTALLED"
+  isErrorDefined "${RESULT}"
   Assert.isTrue $? "DEPENDENCY_NOT_INSTALLED error message not generated automatically"
+}
+
+function checkReq_works_test() {
+  (checkReq unknownStuff$$ | grep "Unacceptable"); # 2>&1 > /dev/null 2>&1);
+  _result=$?;
+  Assert.isFalse ${_result} "checkReq unknownStuff$$ failed";
 }
 
 setScriptDescription "Runs all tests implemented for dw-plumbing.dw"
