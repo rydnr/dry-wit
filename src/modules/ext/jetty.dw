@@ -10,18 +10,17 @@
 # txt: Returns 0/TRUE if the configuration file was updated successfully; 1/FALSE otherwise.
 # use: if  updateKeyStorePathInJettyConf "/etc/ssl/keystore.jks" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateKeyStorePathInJettyConf() {
-  local _keyStorePath="${1}";
-  checkNotEmpty keyStorePath "${_keyStorePath}" 1;
-  local _configFile="${2}";
-  checkNotEmpty configFile "${_configFile}" 2;
-  local -i _rescode;
+  local _keyStorePath="${1}"
+  checkNotEmpty keyStorePath "${_keyStorePath}" 1
+  local _configFile="${2}"
+  checkNotEmpty configFile "${_configFile}" 2
+  local -i _rescode
 
-  sed -i "s|<Set name=\"KeyStorePath\">.*</Set>|<Set name=\"KeyStorePath\">${_keyStorePath}</Set>|g" "${_configFile}";
-  _rescode=$?;
+  sed -i "s|<Set name=\"KeyStorePath\">.*</Set>|<Set name=\"KeyStorePath\">${_keyStorePath}</Set>|g" "${_configFile}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
-
 
 # fun: updateKeyStorePasswordInJettyConf keyStorePassword configFile
 # api: public
@@ -31,16 +30,16 @@ function updateKeyStorePathInJettyConf() {
 # txt: Returns 0/TRUE if the config file is updated successfully; 1/FALSE otherwise.
 # use: if updateKeyStorePasswordInJettyConf "secret" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateKeyStorePasswordInJettyConf() {
-  local _keyStorePassword="${1}";
-  checkNotEmpty keyStorePassword "${_keyStorePassword}" 1;
-  local _configFile="${2}";
-  checkNotEmpty configFile "${_configFile}" 2;
-  local -i _rescode;
+  local _keyStorePassword="${1}"
+  checkNotEmpty keyStorePassword "${_keyStorePassword}" 1
+  local _configFile="${2}"
+  checkNotEmpty configFile "${_configFile}" 2
+  local -i _rescode
 
-  sed -i "s|<Set name=\"KeyStorePassword\">.*</Set>|<Set name=\"KeyStorePassword\">${_keyStorePassword}</Set>|g" "${_configFile}";
-  _rescode=$?;
+  sed -i "s|<Set name=\"KeyStorePassword\">.*</Set>|<Set name=\"KeyStorePassword\">${_keyStorePassword}</Set>|g" "${_configFile}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateTrustStorePathInJettyConf trustStorePath configFile
@@ -51,16 +50,16 @@ function updateKeyStorePasswordInJettyConf() {
 # txt: Returns 0/TRUE if the configuration file was updated successfully; 1/FALSE otherwise.
 # use: if  updateTrustStorePathInJettyConf "/etc/ssl/keystore.jks" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateTrustStorePathInJettyConf() {
-  local _trustStorePath="${1}";
-  checkNotEmpty trustStorePath "${_trustStorePath}" 1;
-  local _configFile="${2}";
-  checkNotEmpty configFile "${_configFile}" 2;
-  local -i _rescode;
+  local _trustStorePath="${1}"
+  checkNotEmpty trustStorePath "${_trustStorePath}" 1
+  local _configFile="${2}"
+  checkNotEmpty configFile "${_configFile}" 2
+  local -i _rescode
 
-  sed -i "s|<Set name=\"TrustStorePath\">.*</Set>|<Set name=\"TrustStorePath\">${_trustStorePath}</Set>|g" "${_configFile}";
-  _rescode=$?;
+  sed -i "s|<Set name=\"TrustStorePath\">.*</Set>|<Set name=\"TrustStorePath\">${_trustStorePath}</Set>|g" "${_configFile}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateTrustStorePasswordInJettyConf trustStorePassword configFile
@@ -71,16 +70,16 @@ function updateTrustStorePathInJettyConf() {
 # txt: Returns 0/TRUE if the config file is updated successfully; 1/FALSE otherwise.
 # use: if updateTrustStorePasswordInJettyConf "secret" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateTrustStorePasswordInJettyConf() {
-  local _trustStorePassword="${1}";
-  checkNotEmpty trustStorePassword "${_trustStorePassword}" 1;
-  local _configFile="${2}";
-  checkNotEmpty configFile "${_configFile}" 2;
-  local -i _rescode;
+  local _trustStorePassword="${1}"
+  checkNotEmpty trustStorePassword "${_trustStorePassword}" 1
+  local _configFile="${2}"
+  checkNotEmpty configFile "${_configFile}" 2
+  local -i _rescode
 
-  sed -i "s|<Set name=\"TrustStorePassword\">.*</Set>|<Set name=\"TrustStorePassword\">${_trustStorePassword}</Set>|g" "${_configFile}";
-  _rescode=$?;
+  sed -i "s|<Set name=\"TrustStorePassword\">.*</Set>|<Set name=\"TrustStorePassword\">${_trustStorePassword}</Set>|g" "${_configFile}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateKeyManagerPasswordInJettyConf keyManagerPassword configFile
@@ -91,15 +90,47 @@ function updateTrustStorePasswordInJettyConf() {
 # txt: Returns 0/TRUE if the password was updated; 1/FALSE otherwise.
 # use: if updateKeyManagePasswordInJettyConf "secret" "/opt/sonatype/nexus/etc/jetty-https.xml"; then ...; fi
 function updateKeyManagerPasswordInJettyConf() {
-  local _keyPassword="${1}";
-  checkNotEmpty keyManagerPassword "${_keyPassword}" 1;
-  local _configFile="${2}";
-  checkNotEmpty configFile "${_configFile}" 2;
-  local -i _rescode;
+  local _keyPassword="${1}"
+  checkNotEmpty keyManagerPassword "${_keyPassword}" 1
+  local _configFile="${2}"
+  checkNotEmpty configFile "${_configFile}" 2
+  local -i _rescode
 
-  sed -i "s|<Set name=\"KeyManagerPassword\">.*</Set>|<Set name=\"KeyManagerPassword\">${_keyPassword}</Set>|g" "${_configFile}";
-  _rescode=$?;
+  sed -i "s|<Set name=\"KeyManagerPassword\">.*</Set>|<Set name=\"KeyManagerPassword\">${_keyPassword}</Set>|g" "${_configFile}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
+}
+
+# fun: jettyConfAlreadyUpdated jettyConfFile
+# api: public
+# txt: Checks if given Jetty config file has been already updated by us.
+# opt: jettyConfFile: The Jetty config file.
+# txt: Returns 0/TRUE if the file was already updated; 1/FALSE otherwise.
+# use: if ! jettyConfAlreadyUpdated /opt/jetty/etc/jetty-https.xml; then ... fi
+function jettyConfAlreadyUpdated() {
+  local _jettyConfFile="${1}"
+  checkNotEmpty jettyConfFile "${_jettyConfFile}" 1
+  DW.getScriptName
+  local _scriptName="${RESULT}"
+
+  command tail -n 1 "${_jettyConfFile}" | command grep "Updated by ${_scriptName}" >/dev/null 2>&1
+}
+
+# fun: appendUpdateMarkInJettyConf jettyConfFile
+# api: public
+# txt: Appends an update mark to given Jetty config file.
+# opt: jettyConfFile: The Jetty config file.
+# txt: Returns 0/TRUE if the file could be updated; 1/FALSE otherwise.
+# use: if ! appendUpdateMarkInJettyConf /opt/sonatype/nexus3/etc/jetty/jetty-https.xml; then ... fi
+function appendUpdateMarkInJettyConf() {
+  local _jettyConfFile="${1}"
+  checkNotEmpty jettyConfFile "${_jettyConfFile}" 1
+  DW.getScriptName
+  local _scriptName="${RESULT}"
+  DW.import date
+  now
+  local _now="${RESULT}"
+  echo "<!-- Updated by ${_scriptName} at ${_now} -->" >>"${_jettyConfFile}"
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

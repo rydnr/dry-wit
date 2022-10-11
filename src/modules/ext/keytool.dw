@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Copyright 2015-today Automated Computing Machinery S.L.
+# Distributed under the terms of the GNU General Public License v3
+# mod: ssl
+# api: public
+# txt: Java keytool functions
+
+# fun: generateAndSignCertificate
+# api: public
+# txt: Generates and signs a new certificate.
+function generateAndSignCertificate() {
+  local _keystorePath="${1}"
+  checkNotEmpty keystorePath "${_keystorePath}" 1
+  local _certificateAlias="${2}"
+  checkNotEmpty certificateAlias "${_certificateAlias}" 2
+  local _certificateDname="${3}"
+  checkNotEmpty certificateDname "${_certificateDname}" 3
+  local _keyAlgorithm="${4}"
+  checkNotEmpty keyAlgorithm "${_keyAlgorithm}" 4
+  local _keyPassword="${5}"
+  checkNotEmpty keyPassword "${_keyPassword}" 5
+  local _keystorePassword="${6}"
+  checkNotEmpty keystorePassword "${_keystorePassword}" 6
+  local _keystoreType="${7}"
+  checkNotEmpty keystoreType "${_keystoreType}" 7
+  local _keyLength="${8}"
+  checkNotEmpty keyLength "${_keyLength}" 8
+  local _certificateExpirationDays="${9}"
+  checkNotEmpty certificateExpirationDays "${_certificateExpirationDays}" 9
+  local _javaSignAlgorithm="${10}"
+  checkNotEmpty javaSignAlgorithm "${_javaSignAlgorithm}" 10
+  local _sanExtensions="${11}"
+  local -i _rescode
+  # See https://stackoverflow.com/questions/33827789/self-signed-certificate-dnsname-components-must-begin-with-a-letter
+
+  local _output="$(keytool -keystore "${_keystorePath}" \
+    -alias "${_certificateAlias}" \
+    -genkey \
+    -noprompt \
+    -dname "${_certificateDname}" \
+    -keyalg "${_keyAlgorithm}" \
+    -keypass "${_keyPassword}" \
+    -storepass "${_keystorePassword}" \
+    -storetype "${_keystoreType}" \
+    -keysize ${_keyLength} \
+    -validity ${_certificateExpirationDays} \
+    -sigalg "${_javaSignAlgorithm}" \
+    -ext "SAN=${_sanExtensions}" \
+    -ext "BC=ca:true" || echo "$$.ERROR.$$")"
+
+  if areEqual "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="keytool -keystore \"${SSL_KEYSTORE_PATH}\" \
+      -alias \"${SSL_CERTIFICATE_ALIAS}\" \
+      -genkey \
+      -noprompt \
+      -dname \"${SSL_CERTIFICATE_DNAME}\" \
+      -keyalg \"${SSL_KEY_ALGORITHM}\" \
+      -keypass \"${SSL_KEY_PASSWORD}\" \
+      -storepass \"${SSL_KEYSTORE_PASSWORD}\" \
+      -storetype \"${SSL_KEYSTORE_TYPE}\" \
+      -keysize ${SSL_KEY_LENGTH} \
+      -validity ${SSL_CERTIFICATE_EXPIRATION_DAYS} \
+      -sigalg \"${SSL_JAVA_SIGN_ALGORITHM}\" \
+      -ext \"SAN=${SSL_SAN_EXTENSIONS}\" \
+      -ext \"BC=ca:true\"; \
+    ${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+checkReq keytool
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

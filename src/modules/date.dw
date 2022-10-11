@@ -12,25 +12,25 @@
 # txt: The variable RESULT contains the day-based timestamp.
 # use: date2jd 2019 6 2
 function date2jd() {
-  local _year=${1};
-  checkNotEmpty year "${_year}" 1;
-  local _month=${2};
-  checkNotEmpty month "${_month}" 2;
-  local _day=${3};
-  checkNotEmpty day "${_day}" 3;
+  local _year=${1}
+  checkNotEmpty year "${_year}" 1
+  local _month=${2}
+  checkNotEmpty month "${_month}" 2
+  local _day=${3}
+  checkNotEmpty day "${_day}" 3
 
-  local _standardJd;
-  _standardJd=$(( _day - 32075
-                  + 1461 * (_year + 4800 - (14 - _month)/12)/4
-                  + 367 * (_month - 2 + (14 - _month)/12*12)/12
-                  - 3 * ((_year + 4900 - (14 - _month)/12)/100)/4));
+  local _standardJd
+  _standardJd=$((_day - 32075 + \
+    1461 * (_year + 4800 - (14 - _month) / 12) / 4 + \
+    367 * (_month - 2 + (14 - _month) / 12 * 12) / 12 - \
+    3 * ((_year + 4900 - (14 - _month) / 12) / 100) / 4))
 
-  local _result;
-  _result=$((_standardJd-2400001));
+  local _result
+  _result=$((_standardJd - 2400001))
 
-  export RESULT=${_result};
+  export RESULT=${_result}
 
-  return ${TRUE};
+  return ${TRUE}
 }
 
 # fun: date2jds year month day hour minute second
@@ -46,28 +46,28 @@ function date2jd() {
 # txt: The variable RESULT contains the number of seconds.
 # use: date2jjds 2019 6 2 18 13 56
 function date2jds() {
-  local _year=${1};
-  checkNotEmpty year "${_year}" 1;
-  local _month=${2};
-  checkNotEmpty month "${_month}" 2;
-  local _day=${3};
-  checkNotEmpty day "${_day}" 3;
-  local _hour=${4};
-  checkNotEmpty hour "${_hour}" 4;
-  local _minute=${5};
-  checkNotEmpty minute "${_minute}" 5;
-  local _second=${6};
-  checkNotEmpty second "${_second}" 6;
+  local _year=${1}
+  checkNotEmpty year "${_year}" 1
+  local _month=${2}
+  checkNotEmpty month "${_month}" 2
+  local _day=${3}
+  checkNotEmpty day "${_day}" 3
+  local _hour=${4}
+  checkNotEmpty hour "${_hour}" 4
+  local _minute=${5}
+  checkNotEmpty minute "${_minute}" 5
+  local _second=${6}
+  checkNotEmpty second "${_second}" 6
 
-  date2jd ${_year} ${_month} ${_day};
-  local -i _result=${RESULT};
-  _result=$((_result*24+_hour));
-  _result=$((_result*60+_minute));
-  _result=$((_result*60+_second));
+  date2jd ${_year} ${_month} ${_day}
+  local -i _result=${RESULT}
+  _result=$((_result * 24 + _hour))
+  _result=$((_result * 60 + _minute))
+  _result=$((_result * 60 + _second))
 
-  export RESULT=${_result};
+  export RESULT=${_result}
 
-  return ${TRUE};
+  return ${TRUE}
 }
 
 # fun: jd2date date
@@ -78,28 +78,28 @@ function date2jds() {
 # txt: The variable RESULT contains "year month day"
 # use: jd2date 135353
 function jd2date() {
-  local _jd=${1};
-  checkNotEmpty date "${_jd}" 1;
+  local _jd=${1}
+  checkNotEmpty date "${_jd}" 1
 
-  local _year;
-  local _month;
-  local _day;
+  local _year
+  local _month
+  local _day
 
-  local -i _standardJd=$((_jd+2400001));
-  local -i _temp1=$((_standardJd+68569));
-  local -i _temp2=$((_temp1*4/146097));
-  _temp1=$((_temp1-(146097*_temp2+3)/4));
-  local -i _year=$((4000*(_temp1+1)/1461001));
-  _temp1=$((_temp1-1461*_year/4+31));
-  local -i _month=$((80*_temp1/2447));
-  local -i _day=$((_temp1-2447*_month/80));
-  _temp1=$((_month/11));
-  local -i _month=$((_month+2-12*_temp1));
-  local -i _year=$((100*(_temp2-49)+_year+_temp1));
+  local -i _standardJd=$((_jd + 2400001))
+  local -i _temp1=$((_standardJd + 68569))
+  local -i _temp2=$((_temp1 * 4 / 146097))
+  _temp1=$((_temp1 - (146097 * _temp2 + 3) / 4))
+  local -i _year=$((4000 * (_temp1 + 1) / 1461001))
+  _temp1=$((_temp1 - 1461 * _year / 4 + 31))
+  local -i _month=$((80 * _temp1 / 2447))
+  local -i _day=$((_temp1 - 2447 * _month / 80))
+  _temp1=$((_month / 11))
+  local -i _month=$((_month + 2 - 12 * _temp1))
+  local -i _year=$((100 * (_temp2 - 49) + _year + _temp1))
 
-  export RESULT="${_year} ${_month} ${_day}";
+  export RESULT="${_year} ${_month} ${_day}"
 
-  return ${TRUE};
+  return ${TRUE}
 }
 
 # fun: jds2date timestamp
@@ -110,21 +110,31 @@ function jd2date() {
 # txt: The variable RESULT contains "days hour minute second".
 # use: jds2date 112412542444
 function jds2date() {
-  local _jd=${1};
-  checkNotEmpty timestamp "${_jd}" 1;
+  local _jd=${1}
+  checkNotEmpty timestamp "${_jd}" 1
 
-  jd2date $((_jd/86400));
-  local _date_in_days="${RESULT}";
-  local -i _year="$(echo ${_date_in_days} | cut -d ' ' -f 1)";
-  local -i _month="$(echo ${_date_in_days} | cut -d ' ' -f 2)";
-  local -i _day="$(echo ${_date_in_days} | cut -d ' ' -f 3)";
+  jd2date $((_jd / 86400))
+  local _date_in_days="${RESULT}"
+  local -i _year="$(echo ${_date_in_days} | cut -d ' ' -f 1)"
+  local -i _month="$(echo ${_date_in_days} | cut -d ' ' -f 2)"
+  local -i _day="$(echo ${_date_in_days} | cut -d ' ' -f 3)"
 
-  local -i _temp=$((_jd%86400));
-  local -i _hour=$((_temp/3600))
-  local -i _temp=$((_temp-_hour*3600));
-  local -i _minute=$((_temp/60));
-  local -i _second=$((_temp-_minute*60));
+  local -i _temp=$((_jd % 86400))
+  local -i _hour=$((_temp / 3600))
+  local -i _temp=$((_temp - _hour * 3600))
+  local -i _minute=$((_temp / 60))
+  local -i _second=$((_temp - _minute * 60))
 
-  export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}";
+  export RESULT="${_date_in_days} ${_hour} ${_minute} ${_second}"
+}
+
+# fun: now
+# api: public
+# txt: Returns a string representation of the current timestamp.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the current timestamp, in YYYY/MM/DD-H24:MI:SS format
+# use: now; echo "Current date: ${RESULT}"
+function now() {
+  export RESULT="$(date '+%Y/%m/%d-%H:%M:%S')"
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -1,11 +1,11 @@
-#!/bin/bash dry-wit
+#!/usr/bin/env dry-wit
 # Copyright 2015-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 # mod: ssl
 # api: public
 # txt: Creates a SSL certificate with OpenSSL. See http://www.eclipse.org/jetty/documentation/current/configuring-ssl.html
 
-checkReq openssl;
+checkReq openssl
 
 # fun: generateKeyPair outputDir alias password encryption
 # api: public
@@ -18,33 +18,33 @@ checkReq openssl;
 # txt: If the key pair is generated, the variable RESULT contains the file with the private key.
 # use: if generateKeyPair "/tmp" myDomain secret des3; then echo "Private key: ${RESULT}"; fi
 function generateKeyPair() {
-  local _outputDir="${1}";
-  checkNotEmpty outputDir "${_outputDir}" 1;
-  local _alias="${2}";
-  checkNotEmpty alias "${_alias}" 2;
-  local _password="${3}";
-  checkNotEmpty password "${_password}" 3;
-  local _encryption="${4}";
-  checkNotEmpty encryption "${_encryption}" 4;
-  local _result="${_outputDir}/${_alias}.key";
-  local -i _rescode;
+  local _outputDir="${1}"
+  checkNotEmpty outputDir "${_outputDir}" 1
+  local _alias="${2}"
+  checkNotEmpty alias "${_alias}" 2
+  local _password="${3}"
+  checkNotEmpty password "${_password}" 3
+  local _encryption="${4}"
+  checkNotEmpty encryption "${_encryption}" 4
+  local _result="${_outputDir}/${_alias}.key"
+  local -i _rescode
 
-  openssl genrsa -${_encryption} -passout pass:"${_password}" -out "${_result}" > /dev/null 2>&1;
-  _rescode=$?;
+  openssl genrsa -${_encryption} -passout pass:"${_password}" -out "${_result}" >/dev/null 2>&1
+  _rescode=$?
 
   if isTrue ${_rescode}; then
-    openssl rsa -in "${_result}" -out "${_result}.rsa" -passin pass:"${_password}" > /dev/null 2>&1;
-    _rescode=$?;
+    openssl rsa -in "${_result}" -out "${_result}.rsa" -passin pass:"${_password}" >/dev/null 2>&1
+    _rescode=$?
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
-# fun: generateCSR outputDir alias key password subject
+# fun: generateCSR outputDir alias key password subject domain ip
 # api: public
 # txt: Generates a certificate signing request.
 # opt: outputDir: The output folder.
@@ -52,36 +52,46 @@ function generateKeyPair() {
 # opt: key: The key.
 # opt: password: The key password.
 # opt: subject: The certificate subject.
+# opt: domain: The domain name.
+# opt: ip: The IP of the server.
 # txt: Returns 0/TRUE if the request was generated; 1/FALSE otherwise.
-# txt: If the request is generated, the variable RESULT contains the path of the CSR file.
-# use: if generateCSR /tmp mydomain /tmp/myKey secret MyDomain; then echo "CSR: ${RESULT}"; fi
+# txt: If the request is generated, the variable RESULT contains the path of the CSR file. Otherwise, the variable ERROR contains the output of the openssl req command.
+# use: if generateCSR /tmp mydomain /tmp/myKey secret MyDomain mydomain.com 192.168.1.55; then echo "CSR: ${RESULT}"; fi
 function generateCSR() {
-  local _outputDir="${1}";
-  checkNotEmpty outputDir "${_outputDir}" 1;
-  local _alias="${2}";
-  checkNotEmpty alias "${_alias}" 2;
-  local _key="${3}";
-  checkNotEmpty key "${_key}" 3;
-  local _password="${4}";
-  checkNotEmpty password "${_password}" 4;
-  local _subject="${5}";
-  checkNotEmpty subject "${_subject}" 5;
-  local _result="${_outputDir}/${_alias}.csr";
-  local -i _rescode;
+  local _outputDir="${1}"
+  checkNotEmpty outputDir "${_outputDir}" 1
+  local _alias="${2}"
+  checkNotEmpty alias "${_alias}" 2
+  local _key="${3}"
+  checkNotEmpty key "${_key}" 3
+  local _password="${4}"
+  checkNotEmpty password "${_password}" 4
+  local _subject="${5}"
+  checkNotEmpty subject "${_subject}" 5
+  local _domain="${6}"
+  checkNotEmpty domain "${_domain}" 6
+  local _ip="${7}"
+  checkNotEmpty ip "${_ip}" 7
+  local _result="${_outputDir}/${_alias}.csr"
+  local -i _rescode
 
-  openssl req \
-          -new \
-          -passin pass:"${_password}" \
-          -passout pass:"${_password}" \
-          -key "${_key}" \
-          -out "${_result}" \
-          -subj "${_subject}" > /dev/null 2>&1;
-  _rescode=$?;
+  local _output="$(openssl req \
+    -new \
+    -passin pass:"${_password}" \
+    -passout pass:"${_password}" \
+    -key "${_key}" \
+    -out "${_result}" \
+    -subj "${_subject}" \
+    -addext "subjectAltName = DNS:${_domain},IP:${_ip}" \
+    -addext "BC=ca:true" 2>&1)"
+  _rescode=$?
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
+  else
+    export ERROR="${_output}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: generateCertificate outputDir alias csr key password expirationDays
@@ -97,34 +107,34 @@ function generateCSR() {
 # txt: If the certificate is generated, the variable RESULT contains its path.
 # use: if generateCertificate /tmp mydomain /tmp/myKey /tmp/myKey.csr secret 3650; then echo "Certificate: ${RESULT}"; fi
 function generateCertificate() {
-  local _outputDir="${1}";
-  checkNotEmpty outputDir "${_outputDir}" 1;
-  local _certificateAlias="${2}";
-  checkNotEmpty alias "${_certificateAlias}" 2;
-  local _csr="${3}";
-  checkNotEmpty csr "${_csr}" 3;
-  local _key="${4}";
-  checkNotEmpty key "${_key}" 4;
-  local _password="${5}";
-  checkNotEmpty password "${_password}" 5;
-  local _expirationDays="${6}";
-  checkNotEmpty expirationDays "${_expirationDays}" 6;
-  local _result="${_outputDir}/${_certificateAlias}.crt";
-  local -i _rescode;
+  local _outputDir="${1}"
+  checkNotEmpty outputDir "${_outputDir}" 1
+  local _certificateAlias="${2}"
+  checkNotEmpty alias "${_certificateAlias}" 2
+  local _csr="${3}"
+  checkNotEmpty csr "${_csr}" 3
+  local _key="${4}"
+  checkNotEmpty key "${_key}" 4
+  local _password="${5}"
+  checkNotEmpty password "${_password}" 5
+  local _expirationDays="${6}"
+  checkNotEmpty expirationDays "${_expirationDays}" 6
+  local _result="${_outputDir}/${_certificateAlias}.crt"
+  local -i _rescode
 
   openssl x509 \
-          -in "${_csr}" \
-          -out "${_result}" \
-          -req \
-          -signkey "${_key}" \
-          -days ${_expirationDays} \
-          -passin pass:"${_password}" > /dev/null 2>&1;
-  _rescode=$?;
+    -in "${_csr}" \
+    -out "${_result}" \
+    -req \
+    -signkey "${_key}" \
+    -days ${_expirationDays} \
+    -passin pass:"${_password}" \
+    _rescode=$?
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: generatePEM outputDir alias csr key password expirationDays
@@ -139,33 +149,33 @@ function generateCertificate() {
 # txt: Returns 0/TRUE if the PEM key was generated; 1/FALSE otherwise.
 # use: if generatePEM /tmp mydomain /tmp/myKey /tmp/myKey.pem /tmp/myKey-cert.pem secret 3650; then echo "PEM generated"; fi
 function generatePEM() {
-  local _keyOutputFile="${1}";
-  checkNotEmpty keyOutputFile "${_keyOutputFile}" 1;
-  local _certOutputFile="${2}";
-  checkNotEmpty certOutputFile "${_certOutputFile}" 2;
-  local _certificateAlias="${3}";
-  checkNotEmpty alias "${_certificateAlias}" 3;
-  local _password="${4}";
-  checkNotEmpty password "${_password}" 4;
-  local _expirationDays="${5}";
-  checkNotEmpty expirationDays "${_expirationDays}" 5;
-  local -i _rescode;
+  local _keyOutputFile="${1}"
+  checkNotEmpty keyOutputFile "${_keyOutputFile}" 1
+  local _certOutputFile="${2}"
+  checkNotEmpty certOutputFile "${_certOutputFile}" 2
+  local _certificateAlias="${3}"
+  checkNotEmpty alias "${_certificateAlias}" 3
+  local _password="${4}"
+  checkNotEmpty password "${_password}" 4
+  local _expirationDays="${5}"
+  checkNotEmpty expirationDays "${_expirationDays}" 5
+  local -i _rescode
 
   openssl req \
-          -newkey rsa:2048 \
-          -new \
-          -nodes \
-          -x509 \
-          -days ${_expirationDays} \
-          -keyout "${_keyOutputFile}" \
-          -out "${_certOutputFile}" \
-          -passin pass:"${_password}" > /dev/null 2>&1;
-  _rescode=$?;
+    -newkey rsa:2048 \
+    -new \
+    -nodes \
+    -x509 \
+    -days ${_expirationDays} \
+    -keyout "${_keyOutputFile}" \
+    -out "${_certOutputFile}" \
+    -passin pass:"${_password}" >/dev/null 2>&1
+  _rescode=$?
   if isTrue ${_rescode}; then
-    export RESULT="${_result}.pem";
+    export RESULT="${_result}.pem"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: changeSslKeyPermissions keyFile
@@ -175,10 +185,10 @@ function generatePEM() {
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
 # use: if changeSslKeyPermissions /etc/ssl/certs/private.pem; then echo "permissions updated"; fi
 function changeSslKeyPermissions() {
-  local _keyFile="${1}";
-  checkNotEmpty keyFile "${_keyFile}" 1;
+  local _keyFile="${1}"
+  checkNotEmpty keyFile "${_keyFile}" 1
 
-  changeFilePermissions "${_keyFile}" "0700";
+  changeFilePermissions "${_keyFile}" "0700"
 }
 
 # fun: changeSslKeyOwnership keyFile user group
@@ -190,14 +200,14 @@ function changeSslKeyPermissions() {
 # txt: Returns 0/TRUE if the permissions were updated; 1/FALSE otherwise.
 # use: if changeSslKeyOwnership /tmp/my-file root root; then echo "/tmp/my-file updated"; fi
 function changeSslKeyOwnership() {
-  local _keyFile="${1}";
-  checkNotEmpty keyFile "${_keyFile}" 1;
-  local _user="${2}";
-  checkNotEmpty user "${_user}" 2;
-  local _group="${3}";
-  checkNotEmpty group "${_group}" 3;
+  local _keyFile="${1}"
+  checkNotEmpty keyFile "${_keyFile}" 1
+  local _user="${2}"
+  checkNotEmpty user "${_user}" 2
+  local _group="${3}"
+  checkNotEmpty group "${_group}" 3
 
-  changeOwnerOfFile "${_keyFile}" "${_user}" "${_group}";
+  changeOwnerOfFile "${_keyFile}" "${_user}" "${_group}"
 }
 
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
