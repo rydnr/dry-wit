@@ -67,13 +67,13 @@ function pidsMatching() {
   local _ownPid
 
   if isMacOSX; then
-    _result="$(command ps -ax 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command cut -d' ' -f 1)"
+    _result="$(command ps -ax 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command grep -v dry-wit | command cut -d' ' -f 1)"
     _rescode=$?
   else
     _aux="$(command pidof "${_processName}" 2>/dev/null)"
     _rescode=$?
     if isFalse ${_rescode}; then
-      _aux="$(command ps -ef 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command awk '{print $2;}' | command grep -v -e '^PID$')"
+      _aux="$(command ps -ef 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command grep -v dry-wit | command awk '{print $2;}' | command grep -v -e '^PID$')"
       _rescode=$?
     fi
     if isTrue ${_rescode}; then
