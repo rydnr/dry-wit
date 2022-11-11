@@ -73,7 +73,7 @@ function pidsMatching() {
     _aux="$(command pidof "${_processName}" 2>/dev/null)"
     _rescode=$?
     if isFalse ${_rescode}; then
-      _aux="$(command ps -ef 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null)"
+      _aux="$(command ps -ef 2>/dev/null | command grep -v grep | command grep "${_processName}" 2>/dev/null | command awk '{print $2;}' | command grep -v -e '^PID$')"
       _rescode=$?
     fi
     if isTrue ${_rescode}; then
@@ -168,7 +168,6 @@ function anotherProcessAlreadyRunning() {
 
   if pidsMatching "${_scriptPath}"; then
     _pids="${RESULT}"
-    echo "script: ${_scriptPath}, pids -> ${_pids}"
   fi
 
   if isNotEmpty "${_pids}"; then
@@ -190,6 +189,8 @@ function anotherProcessAlreadyRunning() {
 # fun: isChildProcess childPid parentPid
 # api: public
 # txt: Checks whether a process is child of another one.
+# opt: childPid: The pid of the child process.
+# opt: parentPid: The pid of the parent process.
 # txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
 # use: if isChildProcess ${childPid} ${parentPid}; then
 # use:   echo "${parentPid} is parent of ${childPid}";
