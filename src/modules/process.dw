@@ -77,7 +77,6 @@ function pidsMatching() {
       _rescode=$?
     fi
     if isTrue ${_rescode}; then
-      _rescode=${FALSE}
       _processPid="$(command echo "${_aux}" | command head -n 1 | command cut -d' ' -f 1)"
       _aux="$(command echo "${_aux}" | command tail -n +2 | command cut -d' ' -f 1)"
       if isEmpty "${_processPid}"; then
