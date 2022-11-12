@@ -509,10 +509,10 @@ function mongodbFreeMonitoringAlreadyEnabled() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "db.getFreeMonitoringStatus()" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
     _rescode=$?
   else
-    _output="$(mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "db.getFreeMonitoringStatus()" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
     _rescode=$?
   fi
 
@@ -566,10 +566,10 @@ function enableMongodbFreeMonitoring() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "db.enableFreeMonitoring()" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
     _rescode=$?
   else
-    _output="$(mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "db.enableFreeMonitoring()" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
     _rescode=$?
   fi
 
@@ -1071,10 +1071,10 @@ function mongodbAdminUserAlreadyExists() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet --eval "db.getUsers({filter: {'user': '${_user}'}})" "${_url}/${_database}" 2>&1 | grep -v UUID)"
+    _output="$(mongosh --tls --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
     _rescode=$?
   else
-    _output="$(mongosh --quiet --eval "db.getUsers({filter: {'user': '${_user}'}})" "${_url}/${_database}" 2>&1 | grep -v UUID)"
+    _output="$(mongosh --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
     _rescode=$?
   fi
 
