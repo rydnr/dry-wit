@@ -1079,7 +1079,7 @@ function mongodbAdminUserAlreadyExists() {
   fi
 
   if isTrue ${_rescode}; then
-    _output="$(echo "${_output}" | jq '. | length')"
+    _output="$(echo "${_output}" | jq '.users | length')"
     _rescode=$?
   fi
 
