@@ -577,7 +577,7 @@ function enableMongodbFreeMonitoring() {
   fi
 
   if isTrue ${_rescode}; then
-    _result="$(echo "${_output}" | grep '"url"' | awk -F'"' '{print $4;}')"
+    _result="$(echo "${_output}" | jq '.url' | awk -F'"' '{print $2;}')"
     if isEmpty "${_result}"; then
       _rescode=${FALSE}
     fi
