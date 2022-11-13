@@ -232,8 +232,6 @@ EOF
   local _output
   local -i _rescode
 
-  cp "${_tmpFile}" /tmp/mongodbRoleAlreadyExists.txt
-
   if isTrue ${_useTls}; then
     _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --quiet "${_url}/${_database}")"
     _rescode=$?
@@ -242,7 +240,7 @@ EOF
     _rescode=$?
   fi
 
-  if isEmpty "${_output}" || areEqual "${_output}" "null"; then
+  if isEmpty "${_output}" || contains "${_output}" "null"; then
     _rescode=${FALSE}
   fi
 
@@ -990,7 +988,15 @@ function startMongodWithAuthenticationEnabled() {
 
   chmod a+x "${_permissionsFolder}"
 
-  $(which run-as.sh) ${_verbosity} -U ${_user} -G ${_group} -- "${_permissionsFolder}" mongod --config "${_configFile}" --auth --setParameter authenticationMechanisms=${_authenticationMechanism}
+  $(which run-as.sh) \
+    ${_verbosity} \
+    -U ${_user} \
+    -G ${_group} -- \
+    "${_permissionsFolder}" \
+    mongod \
+    --config "${_configFile}" \
+    --auth \
+    --setParameter authenticationMechanisms=${_authenticationMechanism}
   local -i _rescode=$?
 
   return ${_rescode}
@@ -1627,12 +1633,30 @@ function addMongodbRoleIfNecessary() {
   local _maybeTls="${12}"
 
   logDebug -n "Checking if ${_roleName} role already exists in ${_database} database"
-  if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+  if mongodbRoleAlreadyExists \
+    "${_roleName}" \
+    "${_database}" \
+    "${_adminUserName}" \
+    "${_adminUserPassword}" \
+    "${_authenticationDatabase}" \
+    "${_authenticationMechanism}" \
+    "${_url}" \
+    "${_maybeTls}"; then
     logDebugResult SUCCESS "exists"
   else
     logDebugResult NEUTRAL "missing"
     logDebug -n "Adding ${_roleName} role"
-    if addMongodbRole "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_privilegeSpec}" "${_roleSpec}" "${_url}" "${_maybeTls}"; then
+    if addMongodbRole \
+      "${_roleName}" \
+      "${_database}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_privilegeSpec}" \
+      "${_roleSpec}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
       logTrace "${_output}"
@@ -1646,7 +1670,15 @@ function addMongodbRoleIfNecessary() {
     fi
 
     logDebug -n "Double-checking ${_roleName} role already exists in ${_database} database"
-    if mongodbRoleAlreadyExists "${_roleName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if mongodbRoleAlreadyExists \
+      "${_roleName}" \
+      "${_database}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       logDebugResult SUCCESS "exists"
     else
       local _error="${ERROR}"
@@ -1701,12 +1733,28 @@ function addMongodbUserIfNecessary() {
   local _maybeTls="${12}"
 
   logDebug -n "Checking if user ${_userName} can log in, using database ${_database}"
-  if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+  if mongodbUserCanLogIn \
+    "${_userName}" \
+    "${_userPassword}" \
+    "${_database}" \
+    "${_authenticationMechanism}" \
+    "${_url}" \
+    "${_maybeTls}"; then
     logDebugResult SUCCESS "success"
   else
     logDebugResult NEUTRAL "failed"
     logDebug -n "Adding ${_userName} user"
-    if addMongodbUser "${_userName}" "${_userPassword}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_roleSpec}" "${_url}" "${_maybeTls}"; then
+    if addMongodbUser \
+      "${_userName}" \
+      "${_userPassword}" \
+      "${_database}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_roleSpec}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
       logTrace "${_output}"
@@ -1720,7 +1768,13 @@ function addMongodbUserIfNecessary() {
     fi
 
     logDebug -n "Double-checking if user ${_userName} can log in, using ${_database} database"
-    if mongodbUserCanLogIn "${_userName}" "${_userPassword}" "${_database}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if mongodbUserCanLogIn \
+      "${_userName}" \
+      "${_userPassword}" \
+      "${_database}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       logDebugResult SUCCESS "success"
     else
       local _error="${ERROR}"
@@ -1766,11 +1820,27 @@ function removeMongodbUserIfNecessary() {
   local _maybeTls="${9}"
 
   logDebug -n "Checking if user ${_userName} already exists in database ${_database}"
-  if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+  if mongodbUserAlreadyExists \
+    "${_userName}" \
+    "${_database}" \
+    "${_adminUserName}" \
+    "${_adminUserPassword}" \
+    "${_authenticationDatabase}" \
+    "${_authenticationMechanism}" \
+    "${_url}" \
+    "${_maybeTls}"; then
     logDebugResult SUCCESS "success"
 
     logDebug -n "Removing ${_userName} user"
-    if removeMongodbUser "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if removeMongodbUser \
+      "${_userName}" \
+      "${_database}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
       logTrace "${_output}"
@@ -1784,7 +1854,15 @@ function removeMongodbUserIfNecessary() {
     fi
 
     logDebug -n "Double-checking if user ${_userName} still exists in database ${_database}"
-    if mongodbUserAlreadyExists "${_userName}" "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if mongodbUserAlreadyExists \
+      "${_userName}" \
+      "${_database}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _error="${ERROR}"
       logDebugResult FAILURE "failed"
       if isNotEmpty "${_error}"; then
@@ -1841,14 +1919,34 @@ function addMongodbIndexIfNecessary() {
   local _maybeTls="${12}"
 
   logDebug -n "Checking if ${_database}.${_collection}.${_indexName} index already exists"
-  if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}" "${_url}" "${_maybeTls}"; then
+  if mongodbIndexAlreadyExists \
+    "${_adminUserName}" \
+    "${_adminUserPassword}" \
+    "${_authenticationDatabase}" \
+    "${_authenticationMechanism}" \
+    "${_database}" \
+    "${_collection}" \
+    "${_indexName}" \
+    "${_url}" \
+    "${_maybeTls}"; then
     logDebugResult SUCCESS "exists"
   else
     logDebugResult NEUTRAL "missing"
 
     logDebug -n "Creating ${_database}.${_collection}.${_indexName} index"
 
-    if createMongodbIndex "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_roleSpec}" "{ name: '${_indexName}' }" "${_url}" "${_maybeTls}"; then
+    if createMongodbIndex \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_database}" \
+      "${_collection}" \
+      "${_roleSpec}" \
+      "{ name: '\
+      ${_indexName}' \
+      }" "${_url}" \
+      "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
       logTrace "${_output}"
@@ -1862,7 +1960,16 @@ function addMongodbIndexIfNecessary() {
     fi
 
     logDebug -n "Double-checking ${_database}.${_collection}.${_indexName} index is actually created"
-    if mongodbIndexAlreadyExists "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_database}" "${_collection}" "${_indexName}" "${_url}" "${_maybeTls}"; then
+    if mongodbIndexAlreadyExists \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_database}" \
+      "${_collection}" \
+      "${_indexName}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       logDebugResult SUCCESS "exists"
     else
       local _error="${ERROR}"
@@ -1911,12 +2018,27 @@ function addMongodbDatabaseIfNecessary() {
   local _maybeTls="${10}"
 
   logDebug -n "Checking if ${_database} database already exists"
-  if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+  if mongodbDatabaseAlreadyExists \
+    "${_database}" \
+    "${_adminUserName}" \
+    "${_adminUserPassword}" \
+    "${_authenticationDatabase}" \
+    "${_authenticationMechanism}" \
+    "${_url}" \
+    "${_maybeTls}"; then
     logDebugResult SUCCESS "success"
   else
     logDebugResult NEUTRAL "failed"
     logDebug -n "Adding ${_database} database"
-    if createMongodbDatabase "${_database}" "${_temporaryCollection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if createMongodbDatabase \
+      "${_database}" \
+      "${_temporaryCollection}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
       if isNotEmpty "${_output}"; then
@@ -1932,7 +2054,14 @@ function addMongodbDatabaseIfNecessary() {
     fi
 
     logDebug -n "Double-checking if ${_database} database exists"
-    if mongodbDatabaseAlreadyExists "${_database}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if mongodbDatabaseAlreadyExists \
+      "${_database}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       logDebugResult SUCCESS "success"
     else
       local _error="${ERROR}"
@@ -1981,12 +2110,28 @@ function addMongodbCollectionIfNecessary() {
   local _maybeTls="${10}"
 
   logDebug -n "Checking if collection ${_collection} already exists in ${_database} database"
-  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+  if mongodbCollectionAlreadyExists \
+    "${_database}" \
+    "${_collection}" \
+    "${_adminUserName}" \
+    "${_adminUserPassword}" \
+    "${_authenticationDatabase}" \
+    "${_authenticationMechanism}" \
+    "${_url}" \
+    "${_maybeTls}"; then
     logDebugResult SUCCESS "success"
   else
     logDebugResult NEUTRAL "failed"
     logDebug -n "Adding ${_collection} collection in ${_database} database"
-    if createMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if createMongodbCollection \
+      "${_database}" \
+      "${_collection}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
       if isNotEmpty "${_output}"; then
@@ -2002,7 +2147,15 @@ function addMongodbCollectionIfNecessary() {
     fi
 
     logDebug -n "Double-checking if collection ${_collection} exists in ${_database} database"
-    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if mongodbCollectionAlreadyExists \
+      "${_database}" \
+      "${_collection}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       logDebugResult SUCCESS "success"
     else
       local _error="${ERROR}"
@@ -2051,10 +2204,26 @@ function removeMongodbCollectionIfNecessary() {
   local _maybeTls="${10}"
 
   logDebug -n "Checking if collection ${_collection} actually exists in ${_database} database"
-  if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+  if mongodbCollectionAlreadyExists \
+    "${_database}" \
+    "${_collection}" \
+    "${_adminUserName}" \
+    "${_adminUserPassword}" \
+    "${_authenticationDatabase}" \
+    "${_authenticationMechanism}" \
+    "${_url}" \
+    "${_maybeTls}"; then
     logDebugResult SUCCESS "true"
     logDebug -n "Removing ${_collection} collection in ${_database} database"
-    if removeMongodbCollection "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if removeMongodbCollection \
+      "${_database}" \
+      "${_collection}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
       if isNotEmpty "${_output}"; then
@@ -2070,7 +2239,15 @@ function removeMongodbCollectionIfNecessary() {
     fi
 
     logDebug -n "Double-checking if collection ${_collection} is actually removed from ${_database} database"
-    if mongodbCollectionAlreadyExists "${_database}" "${_collection}" "${_adminUserName}" "${_adminUserPassword}" "${_authenticationDatabase}" "${_authenticationMechanism}" "${_url}" "${_maybeTls}"; then
+    if mongodbCollectionAlreadyExists \
+      "${_database}" \
+      "${_collection}" \
+      "${_adminUserName}" \
+      "${_adminUserPassword}" \
+      "${_authenticationDatabase}" \
+      "${_authenticationMechanism}" \
+      "${_url}" \
+      "${_maybeTls}"; then
       local _error="${ERROR}"
       logDebugResult FAILURE "failed"
       if isNotEmpty "${_error}"; then
