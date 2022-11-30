@@ -1593,7 +1593,7 @@ function removeMongodbCollection() {
 
 # fun: addMongodbRoleIfNecessary roleName privilegeSpec roleSpec cannotAddRoleErrorLabel roleDoesNotExistErrorLabel database adminUser adminPassword authenticationDatabase authenticationMechanism
 # api: public
-# txt: Adds the EventSourcingEventFind role, if necessary.
+# txt: Adds a role, if necessary.
 # opt: roleName: The name of the role.
 # opt: privilegeSpec: The privilege definition.
 # opt: roleSpec: The role definition.
@@ -2294,6 +2294,10 @@ function updateMongodbUserPassword() {
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7
   local _url="${8:-mongodb://localhost}"
   local _maybeTls="${9}"
+  local _useTls=${FALSE}
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _useTls=${TRUE}
+  fi
 
   createTempFile
   local _tmpFile="${RESULT}"
@@ -2310,6 +2314,138 @@ EOF
   else
     _output="$(cat "${_tmpFile}" | mongosh -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
     _rescode=$?
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}"
+  else
+    export ERROR="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: grantMongodbRolesToUser userName roles database adminUserName adminUserPassword authenticationDatabase authenticationMechanism url? tls?
+# api: public
+# txt: Grants roles to a user.
+# opt: userName: The user name.
+# opt: roles: The roles to grant.
+# opt: database: The database where the user was created.
+# opt: adminUserName: The user to access the MongoDB server.
+# opt: adminUserPassword: The password to access the MongoDB server.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
+# txt: Returns 0/TRUE always, but can exit if the roles cannot be granted.
+# use: grantMongodbRolesToUser core "[ 'userAdminAnyDatabase' ]" admin admin secret admin SCRAM-SHA-256;
+function grantMongodbRolesToUser() {
+  local _userName="${1}"
+  checkNotEmpty userName "${_userName}" 1
+  local _roles="${2}"
+  checkNotEmpty roles "${_roles}" 2
+  local _database="${3}"
+  checkNotEmpty database "${_database}" 3
+  local _adminUserName="${4}"
+  checkNotEmpty adminUserName "${_adminUserName}" 4
+  local _adminUserPassword="${5}"
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5
+  local _authenticationDatabase="${6}"
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 6
+  local _authenticationMechanism="${7}"
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7
+  local _url="${8:-mongodb://localhost}"
+  local _maybeTls="${9}"
+  local _useTls=${FALSE}
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _useTls=${TRUE}
+  fi
+
+  createTempFile
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >"${_tmpFile}"
+use ${_database}
+db.grantRolesToUser("${_userName}", ${_roles})
+EOF
+  local _output
+  local -i _rescode
+  if isTrue ${_useTls}; then
+    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+  else
+    _output="$(cat "${_tmpFile}" | mongosh -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+  fi
+
+  if contains "${_output}" "{ ok: 1 }"; then
+    _rescode=${TRUE}
+  else
+    _rescode=${FALSE}
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}"
+  else
+    export ERROR="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: revokeMongodbRolesFromUser userName roles database adminUserName adminUserPassword authenticationDatabase authenticationMechanism url? tls?
+# api: public
+# txt: Revokes roles from a user.
+# opt: userName: The user name.
+# opt: roles: The roles to revoke.
+# opt: database: The database where the user was created.
+# opt: adminUserName: The user to access the MongoDB server.
+# opt: adminUserPassword: The password to access the MongoDB server.
+# opt: authenticationDatabase: The authentication database.
+# opt: authenticationMechanism: The authentication mechanism.
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
+# txt: Returns 0/TRUE always, but can exit if the roles cannot be revoked.
+# use: revokeMongodbRolesFromUser core "[ 'userAdminAnyDatabase' ]" Core admin secret admin SCRAM-SHA-256;
+function revokeMongodbRolesFromUser() {
+  local _userName="${1}"
+  checkNotEmpty userName "${_userName}" 1
+  local _roles="${2}"
+  checkNotEmpty roles "${_roles}" 2
+  local _database="${3}"
+  checkNotEmpty database "${_database}" 3
+  local _adminUserName="${4}"
+  checkNotEmpty adminUserName "${_adminUserName}" 4
+  local _adminUserPassword="${5}"
+  checkNotEmpty adminUserPassword "${_adminUserPassword}" 5
+  local _authenticationDatabase="${6}"
+  checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 6
+  local _authenticationMechanism="${7}"
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 7
+  local _url="${8:-mongodb://localhost}"
+  local _maybeTls="${9}"
+  local _useTls=${FALSE}
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _useTls=${TRUE}
+  fi
+
+  createTempFile
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >"${_tmpFile}"
+use ${_database}
+db.revokeRolesFromUser("${_userName}", ${_roles})
+EOF
+  local _output
+  local -i _rescode
+  if isTrue ${_useTls}; then
+    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+  else
+    _output="$(cat "${_tmpFile}" | mongosh -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+  fi
+
+  if contains "${_output}" "{ ok: 1 }"; then
+    _rescode=${TRUE}
+  else
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
