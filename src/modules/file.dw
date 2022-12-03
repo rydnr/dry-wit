@@ -32,17 +32,19 @@ function addFileToCleanup() {
 # fun: createTempFile
 # api: public
 # txt: Creates a new temporary file.
+# opt: ext: The extension. Optional.
 # txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
 # use: if createTempFile; then
 # use:   echo "Temp file: ${RESULT}";
 # use: fi
 function createTempFile() {
+  local _ext="${1}"
   local -i _rescode
 
   local _result
 
-  if createTempFileNoCleanup; then
+  if createTempFileNoCleanup "${_ext}"; then
     _result="${RESULT}"
     addFileToCleanup "${_result}"
     _rescode=${TRUE}
@@ -82,13 +84,15 @@ EOF
   return ${_rescode}
 }
 
-# fun: createTempFileNoCleanup
+# fun: createTempFileNoCleanup ext
 # api: public
 # txt: Creates a new temporary file, without managing its cleanup.
+# opt: ext: The extension. Optional.
 # txt: Returns 0/TRUE if the file gets created successfully; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the name of the temporary file.
-# use: if createTempFileNoCleanup; then echo "Temp file: ${RESULT}"; fi
+# use: if createTempFileNoCleanup .txt; then echo "Temp file: ${RESULT}"; fi
 function createTempFileNoCleanup() {
+  local _ext="${1}"
   local -i _rescode=${FALSE}
   local -i _execAllowed=${FALSE}
 
@@ -115,10 +119,10 @@ function createTempFileNoCleanup() {
   local _prefix="$(echo \"${_scriptName}\" | awk -F"/" '{print $NF;}' | sed 's/^"//g' | sed 's/"$//g')"
 
   if isTrue ${_execAllowed}; then
-    FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX"
+    FILE.mktempFile "${_dirname}" ".${_prefix}.XXXXXXXXXX${_ext}"
     _rescode=$?
   else
-    FILE.mktempFile ".${_prefix}.XXXXXXXXXX"
+    FILE.mktempFile ".${_prefix}.XXXXXXXXXX${_ext}"
     _rescode=$?
   fi
 
