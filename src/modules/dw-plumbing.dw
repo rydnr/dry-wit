@@ -247,7 +247,6 @@ function DRYWIT.addMissingDependencyError() {
   normalizeUppercase "${_dependency}_NOT_INSTALLED"
   local _constant="${RESULT}"
 
-  debugEcho "addError ${_constant} \"${_dependency}\" is not installed\""
   addError "${_constant}" "${_dependency} is not installed"
 }
 
@@ -360,7 +359,7 @@ function DRYWIT.main() {
   # first argument is the script name.
   shift
 
-  source "${_scriptPath}" $@
+  source "${_scriptPath}" "$@"
 
   disableExitOnErrorOption
   local _bashOpts="${RESULT}"
@@ -383,11 +382,6 @@ function DRYWIT.main() {
     defineKeywords
   fi
 
-  if isFunctionPresent parseInput "${_scriptName}"; then
-    evalEnvVars
-    parseInput $@
-  fi
-
   DRYWIT.checkScript "${_scriptName}"
 
   DRYWIT.defineDryWitRequirements
@@ -398,7 +392,7 @@ function DRYWIT.main() {
 
   if isFunctionPresent parseInput "${_script}"; then
     evalEnvVars
-    parseInput $@
+    parseInput "$@"
   fi
 
   if isFunctionPresent checkRequirements "${_scriptName}"; then
@@ -409,10 +403,10 @@ function DRYWIT.main() {
 
   if isFunctionPresent checkInput "${_scriptName}"; then
     evalEnvVars
-    checkInput $@
+    checkInput "$@"
 
     if isFunctionPresent postCheckInput "${_scriptName}"; then
-      postCheckInput $@
+      postCheckInput "$@"
     fi
   fi
 

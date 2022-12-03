@@ -1176,7 +1176,7 @@ function DW.initScriptName() {
 # use: DW.init
 function DW.init() {
 
-  DW.initScriptName $@
+  DW.initScriptName "$@"
 
   declare -igx DW_INITIALIZED=${TRUE}
 }
@@ -1188,7 +1188,7 @@ function DW.ifTestRunDryWitTest() {
   if [[ -n ${_scriptName} ]]; then
     if BOOTSTRAP.endsWith "${_scriptName}" "-tests.sh" ||
       BOOTSTRAP.endsWith "${_scriptName}" "-test.sh"; then
-      source $(which dry-wit-test) "${_scriptName}" $@
+      source $(which dry-wit-test) "${_scriptName}" "$@"
     fi
   fi
 }
@@ -1397,7 +1397,7 @@ else
   BOOTSTRAP.setNested ${FALSE}
 fi
 
-DW.init $@
+DW.init "$@"
 
 BOOTSTRAP.resetState
 
@@ -1407,7 +1407,7 @@ BOOTSTRAP.setDryWitPath "${BASH_SOURCE[0]}"
 
 DW.ifTestRunDryWitTest
 
-DRYWIT.main $@
+DRYWIT.main "$@"
 
 if BOOTSTRAP.isNested; then
   cleanup

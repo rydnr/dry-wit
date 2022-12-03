@@ -364,6 +364,21 @@ function flags_whose_values_contain_spaces_and_there_are_more_flags_are_supporte
   Assert.areEqual 'another flag with spaces' "${ANOTHER_VERSION_FLAG}" "Flags with spaces are not correctly parsed"
 }
 
+function flags_whose_values_contain_spaces_and_there_are_more_flags_and_parameters_are_supported_test() {
+  addCommandLineFlag "all-repositories" "a" "Whether to include all repositories" OPTIONAL NO_ARGUMENT ${FALSE}
+  addCommandLineFlag "group" "g" "The group" OPTIONAL EXPECTS_ARGUMENT
+  addCommandLineFlag "repo" "r" "The repository" OPTIONAL EXPECTS_ARGUMENT
+  addCommandLineFlag "only-users" "u" "Include only certain users" OPTIONAL EXPECTS_ARGUMENT
+  addCommandLineFlag "refresh" "rf" "Whether to refresh the log files" OPTIONAL NO_ARGUMENT ${FALSE}
+  addCommandLineFlag "show-users" "s" "List the known users" OPTIONAL NO_ARGUMENT ${FALSE}
+  addCommandLineFlag "force" "f" "Whether to regenerate the video(s) even if they exist already" OPTIONAL NO_ARGUMENT ${FALSE}
+  addCommandLineParameter "output" "The output file" OPTIONAL SINGLE
+
+  parseInput -f -u 'with spaces, and commas' 1.mp4
+  Assert.areEqual 'with spaces, and commas' "${ONLY_USERS}" "Flags with spaces and commas are not correctly parsed"
+  Assert.areEqual 1.mp4 "${OUTPUT}" "Parameter not parsed correctly"
+}
+
 function mandatory_flags_are_parsed_correctly_test() {
   addCommandLineFlag "myFlag" "pe" "A flag" MANDATORY EXPECTS_ARGUMENT ""
   parseInput -pe 'mandatory'
