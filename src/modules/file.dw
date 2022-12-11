@@ -29,7 +29,7 @@ function addFileToCleanup() {
   _cleanupFiles[${#_cleanupFiles[@]}]="${_file}"
 }
 
-# fun: createTempFile
+# fun: createTempFile ext?
 # api: public
 # txt: Creates a new temporary file.
 # opt: ext: The extension. Optional.
@@ -84,7 +84,7 @@ EOF
   return ${_rescode}
 }
 
-# fun: createTempFileNoCleanup ext
+# fun: createTempFileNoCleanup ext?
 # api: public
 # txt: Creates a new temporary file, without managing its cleanup.
 # opt: ext: The extension. Optional.
@@ -205,14 +205,15 @@ function FILE.mktempFile() {
   local _result
 
   if isMacOSX; then
-    _result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format})"
-    _rescode=$?
+    _result="$(TMPDIR="${_baseFolder}" mktemp -t ${_format} || echo "ERROR.$$")"
   else
-    _result="$(mktemp -p ${_baseFolder} -t ${_format})"
-    _rescode=$?
+    _result="$(mktemp -p ${_baseFolder} -t ${_format} || echo "ERROR.$$")"
   fi
 
-  if isTrue ${_rescode}; then
+  if isNotEmpty "${_result}" && contains "${_result}" "ERROR.$$"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
     export RESULT="${_result}"
   fi
 

@@ -1,0 +1,656 @@
+#!/usr/bin/env dry-wit
+# (c) 2022-today Automated Computing Machinery, S.L.
+#
+#    This file is part of dry-wit.
+#
+#    dry-wit is free software: you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    dry-wit is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with dry-wit.
+#    If not, see <http://www.gnu.org/licenses/>.
+#
+# mod: ext/ffmpeg
+# api: public
+# txt: ffmpeg functions
+
+# fun: convertPpmStream ppmStream videoFile force videoFramerate
+# api: public
+# txt: Converts a PPM stream to a video file.
+# opt: ppmStream: The PPM stream.
+# opt: videoFile: The output video.
+# opt: force: Whether to overwrite the video file.
+# opt: videoFramerate: The video framerate.
+# txt: Returns 0/TRUE if the video could be generated successfully; 1/FALSE otherwise.
+# use: if convertPpmStream stream.ppm.log my.mp4 ${FALSE} 60; then ... fi
+function convertPpmStream() {
+  local _ppmStream="${1}"
+  checkNotEmpty ppmStream "${_ppmStream}" 1
+  local _videoFile="${2}"
+  checkNotEmpty videoFile "${_videoFile}" 2
+  local -i force=${3}
+  checkBoolean force "${_force}" 3
+  local _videoFramerate="${4}"
+  checkNotEmpty videoFramerate "${_videoFramerate}" 4
+
+  local -i _rescode=${TRUE}
+
+  if ! fileExists "${_videoFile}" || isTrue ${_force}; then
+    logInfo -n "Converting PPM stream to ${_videoFile}"
+    _result="$(ffmpeg \
+      -f image2pipe \
+      -r ${_videoFramerate} \
+      -i "${_ppmStream}" \
+      -vcodec libx264 \
+      -preset medium \
+      -pix_fmt yuv420p \
+      -crf 1 \
+      -threads 0 \
+      -bf 0 \
+      -y "${_videoFile}" 2>&1 || echo "ERROR.$$")"
+    if isNotEmpty "${_result}" && contains "${_result}" "ERROR.$$"; then
+      _rescode=${FALSE}
+      logInfoResult FAILURE "failed"
+      logInfo "${_result}"
+      export ERROR="${_result}"
+    else
+      logInfoResult SUCCESS "done"
+      _rescode=${TRUE}
+      export RESULT="${_result}"
+    fi
+  fi
+
+  return ${_rescode}
+}
+
+# fun: addAudioToVideo videoFile videoFormat fadeOutSeconds audioFolder audioFormat cannotRetrieveVideoLengthErrorLabel cannotAppendAudioFileErrorLabel cannotRetrieveAudioLengthErrorLabel audioFiles? onlyAudioStyles?
+# api: public
+# txt: Adds audio to given video file.
+# opt: videoFile: The video file.
+# opt: videoFormat: The video format.
+# opt: fadeOutSeconds: The seconds for the fade-out at the end.
+# opt: audioFormat: The audio format.
+# opt: cannotRetrieveVideoLengthErrorLabel: The error label if the length of the video cannot be retrieved.
+# opt: cannotAppendAudioFileErrorLabel: The error label if the audio track cannot be added to the video.
+# opt: cannotRetrieveAudioLengthErrorLabel: The error label if the length of the audio cannot be retrieved.
+# opt: audioFiles: A comma-separated list of audio files.
+# opt: onlyAudioStyles: A comma-separated list of audio styles.
+# txt: Returns 0/TRUE if the audio could be added; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the output video file.
+# use: if addAudioToVideo myVideo.mp4 mp4 5 ~/music wav CANNOT_RETRIEVE_VIDEO_LENGTH CANNOT_APPEND_AUDIO CANNOT_RETRIEVE_AUDIO_LENGTH; then ... fi
+function addAudioToVideo() {
+  local _videoFile="${1}"
+  checkNotEmpty videoFile "${_videoFile}" 1
+  local _videoFormat="${2}"
+  checkNotEmpty videoFormat "${_videoFormat}" 2
+  local _fadeOutSeconds="${3}"
+  checkNumber fadeOutSeconds "${_fadeOutSeconds}" 3
+  local _audioFolder="${4}"
+  checkNotEmpty audioFolder "${_audioFolder}" 4
+  local _audioFormat="${5}"
+  checkNotEmpty audioFormat "${_audioFormat}" 5
+  local _cannotRetrieveVideoLengthErrorLabel="${6}"
+  checkNotEmpty cannotRetrieveVideoLengthErrorLabel "${_cannotRetrieveVideoLengthErrorLabel}" 6
+  local _cannotAppendAudioFileErrorLabel="${7}"
+  checkNotEmpty cannotAppendAudioFileErrorLabel "${_cannotAppendAudioFileErrorLabel}" 7
+  local _cannotRetrieveAudioLengthErrorLabel="${8}"
+  checkNotEmpty cannotRetrieveAudioLengthErrorLabel "${_cannotRetrieveAudioLengthErrorLabel}" 8
+  local _audioFiles="${9}"
+  local _onlyAudioStyles="${10}"
+
+  buildAudioTrack "${_videoFile}" "${_fadeOutSeconds}" "${_audioFolder}" "${_audioFormat}" "${_cannotRetrieveVideoLengthErrorLabel}" "${_cannotAppendAudioFileErrorLabel}" "${_cannotRetrieveAudioLengthErrorLabel}" "${_audioFiles}" "${_onlyAudioStyles}"
+  local -i _rescode=$?
+  local _audioTrack="${RESULT}"
+  if isTrue ${_rescode}; then
+    addAudioTrack "${_videoFile}" "${_audioTrack}" "${_videoFormat}"
+    _rescode=$?
+  fi
+
+  return ${_rescode}
+}
+
+# fun: buildAudioTrack videoFile fadeOutSeconds audioFolder audioFormat cannotRetrieveVideoLengthErrorLabel cannotAppendAudioFileErrorLabel cannotRetrieveAudioLengthErrorLabel audioFiles? onlyAudioStyles?
+# api: public
+# txt: Builds an audio track for given video file.
+# opt: videoFile: The video file.
+# opt: fadeOutSeconds: The seconds for the fade-out at the end.
+# opt: audioFormat: The audio format.
+# opt: cannotRetrieveVideoLengthErrorLabel: The error label if the length of the video cannot be retrieved.
+# opt: cannotAppendAudioFileErrorLabel: The error label if the audio track cannot be added to the video.
+# opt: cannotRetrieveAudioLengthErrorLabel: The error label if the length of the audio cannot be retrieved.
+# opt: audioFiles: A comma-separated list of audio files.
+# opt: onlyAudioStyles: A comma-separated list of audio styles.
+# txt: Returns 0/TRUE if the audio track could be built; 1/FALSE otherwise.
+# use: if buildAudioTrack myVideo.mp4 5 ~/music wav CANNOT_RETRIEVE_VIDEO_LENGTH CANNOT_APPEND_AUDIO CANNOT_RETRIEVE_AUDIO_LENGTH; then ... fi
+function buildAudioTrack() {
+  local _videoFile="${1}"
+  checkNotEmpty videoFile "${_videoFile}" 1
+  local _fadeOutSeconds="${2}"
+  checkNumber fadeOutSeconds "${_fadeOutSeconds}" 2
+  local _audioFolder="${3}"
+  checkNotEmpty audioFolder "${_audioFolder}" 3
+  local _audioFormat="${4}"
+  checkNotEmpty audioFormat "${_audioFormat}" 4
+  local _cannotRetrieveVideoLengthErrorLabel="${5}"
+  checkNotEmpty cannotRetrieveVideoLengthErrorLabel "${_cannotRetrieveVideoLengthErrorLabel}" 5
+  local _cannotAppendAudioFileErrorLabel="${6}"
+  checkNotEmpty cannotAppendAudioFileErrorLabel "${_cannotAppendAudioFileErrorLabel}" 6
+  local _cannotRetrieveAudioLengthErrorLabel="${7}"
+  checkNotEmpty cannotRetrieveAudioLengthErrorLabel "${_cannotRetrieveAudioLengthErrorLabel}" 7
+  local _audioFiles="${8}"
+  local _onlyAudioStyles="${9}"
+
+  local -i _rescode=${FALSE}
+
+  local -i _currentLength=0
+  local -i _totalLength=0
+  logDebug -n "Retrieving the length of the video file"
+  if retrieveLengthInSeconds "${_videoFile}"; then
+    _totalLength=${RESULT}
+    logDebugResult SUCCESS "${_totalLength}"
+  else
+    logDebugResult FAILURE "failed"
+    exitWithErrorCode "${_cannotRetrieveVideoLengthErrorLabel}"
+  fi
+
+  createTempFile .${_audioFormat}
+  local _masterAudio="${RESULT}"
+  if isEmpty "${_audioFiles}"; then
+    retrieveAudioFiles "${_audioFolder}" "${_audioFormat}" "${_onlyAudioStyles}"
+    _audioFiles="${RESULT}"
+  fi
+
+  local _oldIFS="${IFS}"
+  IFS=","
+  local _audioFile
+  local -i _firstTime=${TRUE}
+  for _audioFile in ${_audioFiles}; do
+    IFS="${_oldIFS}"
+    if isTrue ${_firstTime}; then
+      cp "${_audioFile}" "${_masterAudio}"
+    else
+      logDebug -n "Appending ${_audioFile} to ${_masterAudio}"
+      if appendAudio "${_masterAudio}" "${_audioFile}"; then
+        _masterAudio="${RESULT}"
+        logDebugResult SUCCESS "done"
+      else
+        logDebugResult FAILURE "failed"
+        exitWithErrorCode "${_cannotAppendAudioFileErrorLabel}"
+      fi
+    fi
+    logDebug -n "Retrieving the length of the current audio file"
+    if retrieveLengthInSeconds "${_masterAudio}"; then
+      _currentLength=$((${_currentLength} + ${RESULT}))
+      logDebugResult SUCCESS "${RESULT}"
+      logDebug -n "Checking if we need more audio tracks (${_currentLength} vs ${_totalLength} seconds)"
+      if ((${_currentLength} > ${_totalLength})); then
+        logDebugResult SUCCESS "no"
+        break
+      else
+        logDebugResult NEUTRAL "yes"
+      fi
+    else
+      logDebugResult FAILURE "failed"
+      exitWithErrorCode "${_cannotRetrieveAudioLengthErrorLabel}"
+    fi
+  done
+  IFS="${_oldIFS}"
+
+  if truncateAudioTrackToMatchVideo "${_masterAudio}" "${_videoFile}"; then
+    fadeOutAudioAtTheEnd "${RESULT}" ${_fadeOutSeconds}
+    _rescode=$?
+  fi
+
+  return ${_rescode}
+}
+
+# fun: addAudioTrack videoFile audioFile videoFormat
+# api: public
+# txt: Adds an audio track to given video.
+# opt: videoFile: The video file.
+# opt: audioFile: The audio file.
+# opt: videoFormat: The video format.
+# txt: Returns 0/TRUE if the audio was added successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the new video file.
+# use: if addAudioTrack video.mp4 audio.wav mp4; then echo "video: ${RESULT}"; fi
+function addAudioTrack() {
+  local _videoFile="${1}"
+  checkNotEmpty videoFile "${_videoFile}" 1
+  local _audioFile="${2}"
+  checkNotEmpty audioFile "${_audioFile}" 2
+  local _videoFormat="${3}"
+  checkNotEmpty videoFormat "${_videoFormat}" 3
+
+  local -i _rescode
+
+  createTempFile ".${_videoFormat}"
+  local _result="${RESULT}"
+
+  logInfo -n "Adding ${_audioFile} to ${_videoFile}"
+  ffmpeg -i "${_videoFile}" -i "${_audioFile}" \
+    -map 0:v -map 1:a -c:v copy -shortest \
+    -y "${_result}" >/dev/null 2>/dev/null
+  _rescode=$?
+  if isTrue ${_rescode}; then
+    logInfoResult SUCCESS "done"
+    export RESULT="${_result}"
+  else
+    logInfoResult FAILURE "failed"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: truncateAudioTrackToMatchVideo audioFile videoFile
+# api: public
+# txt: Truncates given audio file to match the video's length.
+# opt: audioFile: The audio file.
+# opt: videoFile: The video file.
+# txt: Returns 0/TRUE if the audio file was truncated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the new audio file.
+# use: if truncateAudioTrackToMatchVideo audio.wav video.mp4; then ... fi
+function truncateAudioTrackToMatchVideo() {
+  local _audioFile="${1}"
+  checkNotEmpty audioFile "${_audioFile}" 1
+  local _videoFile="${2}"
+  checkNotEmpty videoFile "${_videoFile}" 2
+  local _videoFormat="${3}"
+  checkNotEmpty videoFormat "${_videoFormat}" 3
+  local _cannotRetrieveVideoLengthErrorLabel="${4}"
+  checkNotEmpty cannotRetrieveVideoLengthErrorLabel "${_cannotRetrieveVideoLengthErrorLabel}" 4
+
+  local -i _rescode
+
+  logDebug -n "Retrieving the length of ${_videoFile}"
+  if retrieveLengthInSeconds "${_videoFile}"; then
+    local _length="${RESULT}"
+    logDebugResult SUCCESS "${_length}"
+    createTempFile ".${_videoFormat}"
+    local _result="${RESULT}"
+    logInfo -n "Truncating audio to ${_length} seconds"
+    ffmpeg -ss 0 -t ${_length} -i "${_audioFile}" -y "${_result}" >/dev/null 2>&1
+    _rescode=$?
+    if isTrue ${_rescode}; then
+      logInfoResult SUCCESS "done"
+      export RESULT="${_result}"
+    else
+      logInfoResult FAILURE "failed"
+    fi
+  else
+    logDebugResult FAILURE "failed"
+    exitWithErrorCode "${_cannotRetrieveVideoLengthErrorLabel}" "${_videoFile}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveLengthInSeconds file
+# api: public
+# txt: Retrieves the length of given file (audio or video).
+# opt: videoFile: The file.
+# txt: Returns 0/TRUE if the file could be analyzed; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the length of video or audio.
+# use: if retrieveLengthInSeconds my.mp4; then ... fi
+function retrieveLengthInSeconds() {
+  local _file="${1}"
+  checkNotEmpty file "${_file}" 1
+
+  local -i _rescode=${FALSE}
+
+  if fileExists "${_file}"; then
+    local _result="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${_file}")"
+    if contains "${_result}" "N/A"; then
+      _rescode=${FALSE}
+    else
+      _rescode=${TRUE}
+      export RESULT="${_result%.*}"
+    fi
+  fi
+
+  return ${_rescode}
+}
+
+# fun: fadeOutAudioAtTheEnd audioFile seconds
+# api: public
+# txt: Fades out given audio a number of seconds at the end.
+# opt: audioFile: The audio file.
+# opt: seconds: The seconds.
+# txt: Returns 0/TRUE if the file could be processed; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the new file.
+# use: if fadeOutAudioAtTheEnd my.wav 5; then echo "New file: ${RESULT}"; done
+function fadeOutAudioAtTheEnd() {
+  local _audioFile="${1}"
+  checkNotEmpty audioFile "${_audioFile}" 1
+  local _audioFormat="${2}"
+  checkNotEmpty audioFormat "${_audioFormat}" 2
+  local _seconds="${3}"
+  checkNumber seconds "${_seconds}" 3
+
+  local -i _rescode=${FALSE}
+
+  createTempFile ".${_audioFormat}"
+  local _output="${RESULT}"
+
+  logDebug -n "Retrieving the length of ${_audioFile}"
+  if retrieveLengthInSeconds "${_audioFile}"; then
+    local _length="${RESULT}"
+    logDebugResult SUCCESS "${_length}"
+    local _fadeOut=$((_length - ${_seconds}))
+    local _result="$(ffmpeg -i "${_audioFile}" \
+      -af "afade=t=out:st=${_fadeOut}:d=${_seconds}" \
+      -y "${_output}" 2>&1 || echo "ERROR.$$")"
+    if isNotEmpty "${_result}" && contains "${_result}" "ERROR.$$"; then
+      _rescode=${FALSE}
+      logDebug "${_result}"
+    else
+      _rescode=${TRUE}
+    fi
+  else
+    logDebugResult FAILURE "failed"
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: availableAudioTracks
+# api: public
+# txt: Retrieves the list of audio tracks.
+# txt: Returns 0/${TRUE} always.
+# txt: The variable RESULT contains the list of audio files.
+# use: availableAudioTracks
+# use: echo "Audio tracks: ${RESULT}"
+function availableAudioTracks() {
+  local _audioFolder="${1}"
+  checkNotEmpty audioFolder "${_audioFolder}" 1
+
+  export RESULT="$(command ls "${_audioFolder}")"
+}
+
+# fun: prependOpeningToVideo input output cannotRetrieveVideoResolutionErrorLabel cannotFixResolutionErrorLabel opening?
+# api: public
+# txt: Appends the opening to given video.
+# opt: input: The input video.
+# opt: output: The resulting video.
+# opt: cannotRetrieveVideoResolutionErrorLabel: The error label when the video resolution cannot be obtained.
+# opt: cannotFixResolutionErrorLabel: The error label when the resolution could not be fixed.
+# opt: opening: The opening video. Optional.
+# txt: Returns 0/TRUE if the opening could be prepended; 1/FALSE otherwise.
+# txt: if prependOpeningToVideo input.mp4 output.mp4 CANNOT_RETRIEVE_VIDEO_RESOLUTION CANNOT_FIX_RESOLUTION; then ... fi
+function prependOpeningToVideo() {
+  local _input="${1}"
+  checkNotEmpty input "${_input}" 1
+  local _output="${2}"
+  checkNotEmpty output "${_output}" 2
+  local _cannotRetrieveVideoResolutionErrorLabel="${3}"
+  checkNotEmpty cannotRetrieveVideoResolutionErrorLabel "${_cannotRetrieveVideoResolutionErrorLabel}" 3
+  local _cannotFixResolutionErrorLabel="${4}"
+  checkNotEmpty cannotFixResolutionErrorLabel "${_cannotFixResolutionErrorLabel}" 4
+  local _opening="${5}"
+
+  local -i _rescode
+
+  logDebug -n "Retrieving resolution of ${_input}"
+  retrieveVideoResolution "${_input}"
+  local _inputResolution="${RESULT}"
+  _rescode=$?
+  if isTrue ${_rescode}; then
+    logDebugResult SUCCESS "${_inputResolution}"
+  else
+    logDebugResult FAILURE "failed"
+    exitWithErrorCode "${_cannotRetrieveVideoResolutionErrorLabel}"
+  fi
+
+  if isEmpty "${_opening}"; then
+    retrieveRandomOpening
+    _opening="${RESULT}"
+  fi
+
+  logDebug -n "Retrieving resolution of ${_opening}"
+  retrieveVideoResolution "${_opening}"
+  local _openingVideoResolution="${RESULT}"
+  _rescode=$?
+  if isTrue ${_rescode}; then
+    logDebugResult SUCCESS "${_openingVideoResolution}"
+  else
+    logDebugResult FAILURE "failed"
+    exitWithErrorCode "${_cannotRetrieveVideoResolutionErrorLabel}"
+  fi
+
+  local _finalInput="${_input}"
+  if ! areEqual "${_inputResolution}" "${_openingVideoResolution}"; then
+    logDebug -n "Fixing ${_input} resolution to ${_openingVideoResolution}"
+    if fixResolution "${_input}" "${_openingVideoResolution}"; then
+      _finalInput="${RESULT}"
+      logDebugResult SUCCESS "done"
+    else
+      logDebugResult FAILURE "failed"
+      exitWithErrorCode "${_cannotFixResolutionErrorLabel}"
+    fi
+  fi
+
+  logInfo -n "Prepending ${_opening} to ${_finalInput}"
+  createTempFile .txt
+  local _list="${RESULT}"
+  echo "file '${_opening}'" >"${_list}"
+  echo "file '${_finalInput}'" >>"${_list}"
+  local _result="$(ffmpeg -f concat -safe 0 -i "${_list}" -c copy -y "${_output}" 2>/dev/null || echo "ERROR.$$")"
+  if isNotEmpty "${_result}" && contains "${_result}" "ERROR.$$"; then
+    _rescode=${FALSE}
+    logInfoResult FAILURE "failed"
+    logInfo "${_result}"
+    export ERROR="${_result}"
+  else
+    _rescode=${TRUE}
+    logInfoResult SUCCESS "done"
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: appendAudio master audioFile audioFormat
+# api: public
+# txt: Appends an audio file to given master file.
+# opt: master: The master file.
+# opt: audioFile: The audio file to append.
+# opt: audioFormat: The audio format.
+# txt: Returns 0/TRUE if the audio could be appended; 1/FALSE otherwise.
+# txt: if appendAudio master.wav chill.wav .wav; then ... fi
+function appendAudio() {
+  local _master="${1}"
+  checkNotEmpty master "${_master}" 1
+  local _audioFile="${2}"
+  checkNotEmpty audioFile "${_audioFile}" 2
+  local _audioFormat="${3}"
+  checkNotEmpty audioFormat "${_audioFormat}" 3
+  local -i _rescode
+
+  createTempFile ".${_audioFormat}"
+  local _output="${RESULT}"
+  logInfo -n "Appending $(basename "${_audioFile}") to ${_master}"
+  createTempFile .txt
+  local _list="${RESULT}"
+  echo "file '${_master}'" >"${_list}"
+  echo "file '${_audioFile}'" >>"${_list}"
+  local _result="$(ffmpeg -f concat -safe 0 -i "${_list}" -c copy -y "${_output}" 2>/dev/null || echo "ERROR.$$")"
+  if isNotEmpty "${_result}" && contains "${_result}" "ERROR.$$"; then
+    logInfoResult FAILURE "failed"
+    _rescode=${FALSE}
+    logInfo "${_result}"
+    export ERROR="${_result}"
+  else
+    logInfoResult SUCCESS "done"
+    export RESULT="${_output}"
+    _rescode=${TRUE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveVideoResolution videoFile
+# api: public
+# txt: Retrieves the resolution of given video.
+# opt: videoFile: The video file.
+# txt: Returns 0/TRUE if the resolution could be obtained; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the video resolution.
+# use: if retrieveVideoResolution myFile.mp4; then echo "Resolution: ${RESULT}"; fi
+function retrieveVideoResolution() {
+  local _videoFile="${1}"
+  checkNotEmpty videoFile "${_videoFile}" 1
+
+  local -i _rescode
+
+  local _result="$(ffprobe "${_videoFile}" 2>&1 | grep Stream | grep Video | cut -d ',' -f 3 | tr -d ' ')"
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: fixResolution videoFile resolution videoFormat
+# api: public
+# txt: Fixes the resolution of given file to match the provided one.
+# opt: videoFile: The video file.
+# opt: resolution: The resolution.
+# opt: videoFormat: The video format.
+# txt: Returns 0/TRUE if the video file could be processed to match the resolution; 1/FALSE otherwise.
+# use: if fixResolution myVideo.mp4 "1920x1080" mp4; then ...; fi
+function fixResolution() {
+  local _videoFile="${1}"
+  checkNotEmpty videoFile "${_videoFile}" 1
+  local _resolution="${2}"
+  checkNotEmpty resolution "${_resolution}" 2
+  local _videoFormat="${3}"
+  checkNotEmpty videoFormat "${_videoFormat}" 3
+
+  local -i _rescode
+
+  createTempFile ".${_videoFormat}"
+  local _output="${RESULT}"
+  local _result="$(ffmpeg -i "${_videoFile}" \
+    -vf scale="${_resolution}" \
+    -preset slow \
+    -y "${_output}" 2>/dev/null || echo "ERROR.$$")"
+  if isNotEmpty "${_result}" && contains "${_result}" "ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="${_result}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveAudioFiles audioFolder audioFormat onlyAudioStyles?
+# api: public
+# opt: audioFolder: The folder with the audio files.
+# opt: audioFormat: The audio format.
+# opt: onlyAudioStyles: A comma-separated list of audio styles.
+# txt: Retrieves a comma-separated list of audio files, optionally based on the user preferences.
+# txt: Returns 0/TRUE if any files can be found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the list of audio files.
+# use: if retrieveAudioFiles ~/music .wav; then echo "Audio files: ${RESULT}"; fi
+function retrieveAudioFiles() {
+  local _audioFolder="${1}"
+  checkNotEmpty audioFolder "${_audioFolder}" 1
+  local _audioFormat="${2}"
+  checkNotEmpty audioFormat "${_audioFormat}" 2
+  local _onlyAudioStyles="${3}"
+  local -i _rescode
+  local _result
+
+  if isEmpty "${_onlyAudioStyles}"; then
+    _result="$(find "${_audioFolder}" -type f -name "*.${_audioFormat}" | sort -R | awk '{printf("%s,", $0);}' | sed 's ,$  g')"
+  else
+    local _tmp="${RESULT}"
+    local _oldIFS="${IFS}"
+    IFS=","
+    local _audioStyle
+    for _audioStyle in ${_onlyAudioStyles}; do
+      IFS="${_oldIFS}"
+      find "${_audioFolder}/${_audioStyle}" -type f -name "*.${_audioFormat}" >>"${_tmp}"
+    done
+    IFS="${_oldIFS}"
+    _result="$(sort "${_tmp}" | uniq | sort -r | awk '{printf("%s,", $0);}' | sed 's ,$  g')"
+  fi
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveRandomBackground backgroundsFolder imageFormat
+# api: public
+# txt: Retrieves a random background.
+# opt: backgroundsFolder: The folder with the background images.
+# opt: imageFormat: The format of the images.
+# txt: Returns 0/TRUE always, unless there're no background images.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the background image.
+# use: if retrieveRandomBackground ~/images jpg; then echo "background: ${RESULT}"; fi
+function retrieveRandomBackground() {
+  local _backgroundsFolder="${1}"
+  checkNotEmpty backgroundsFolder "${_backgroundsFolder}" 1
+  local _imageFormat="${2}"
+  checkNotEmpty imageFormat "${_imageFormat}" 2
+  local -i _rescode
+
+  local _result="$(find "${_backgroundsFolder}" -type f -name "*.${_imageFormat}" | sort -R | head -n 1)"
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveRandomOpening openingVideosFolder videoFormat
+# api: public
+# txt: Retrieves a random opening video.
+# opt: openingVideosFolder: The folder with the opening videos.
+# opt: videoFormat: The video format.
+# txt: Returns 0/TRUE always, unless there're no opening videos.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the opening video.
+# use: if retrieveRandomOpening ~/videos mp4; then echo "opening: ${RESULT}"; fi
+function retrieveRandomOpening() {
+  local _openingVideosFolder="${1}"
+  checkNotEmpty openingVideosFolder "${_openingVideosFolder}" 1
+  local _videoFormat="${2}"
+  checkNotEmpty videoFormat "${_videoFormat}" 2
+  local -i _rescode
+
+  local _result="$(find "${_openingVideosFolder}" -type f -name "*.${_videoFormat}" | sort -R | head -n 1)"
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

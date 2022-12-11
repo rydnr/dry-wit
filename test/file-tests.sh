@@ -80,6 +80,21 @@ EOF
   Assert.isFalse $? "fileContains failed";
 }
 
+function createTempFile_gets_cleaned_up_test() {
+  createTempFile;
+  local _tempFile="${RESULT}";
+
+  cat <<EOF > "${_tempFile}"
+MY_KEY=my value
+EOF
+
+  FILE.getCleanupFilesVariableName
+  local -n _cleanupFiles=${RESULT}
+
+  arrayContains "${_tempFile}" "${_cleanupFiles[@]}"
+  Assert.isTrue $? "temp file does not get cleaned up"
+}
+
 # test metadata
 setScriptDescription "Runs all tests implemented for file.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

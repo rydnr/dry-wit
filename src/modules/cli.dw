@@ -1375,6 +1375,9 @@ function CLI.parseFlag() {
         elif CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
           _argument="${RESULT}"
         fi
+        if isEmpty "${_argument}"; then
+          _argument=${TRUE}
+        fi
         camelCaseToSnakeCase "${_longName}"
         normalizeUppercase "${RESULT}"
         local _upcasedLongName="${RESULT}"
@@ -1490,6 +1493,14 @@ function CLI.parseNotProvidedFlags() {
             if isEmpty "${_existingVariable:-}"; then
               declare -gx ${_upcasedLongName}="${_defaultValue}"
             fi
+          fi
+        else
+          camelCaseToSnakeCase "${_longName}"
+          normalizeUppercase "${RESULT}"
+          local _upcasedLongName="${RESULT}"
+          local -n _existingVariable=${_upcasedLongName}
+          if isEmpty "${_existingVariable:-}"; then
+            declare -gx ${_upcasedLongName}=""
           fi
         fi
       fi

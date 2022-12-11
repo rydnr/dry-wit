@@ -1,0 +1,590 @@
+# mod: trap
+# api: public
+# txt: Functions trapping signals used by dry-wit
+
+# fun: TRAP.trapSignals
+# api: private
+# txt: Traps required signals
+# txt: Returns 0/TRUE always.
+# use: TRAP.trapSignals;
+function TRAP.trapSignals() {
+  trap 'TRAP.finishedOkHook $? ${FUNCNAME[0]} ${LINENO}' 0
+  trap 'TRAP.errorHook $? ${FUNCNAME[0]} ${LINENO}' ERR
+  trap 'TRAP.exitHook $? ${FUNCNAME[0]} ${LINENO}' EXIT
+
+  trap 'TRAP.hupHook $? ${FUNCNAME[0]} ${LINENO}' HUP
+  trap 'TRAP.intHook $? ${FUNCNAME[0]} ${LINENO}' INT
+  trap 'TRAP.quitHook $? ${FUNCNAME[0]} ${LINENO}' QUIT
+  trap 'TRAP.illHook $? ${FUNCNAME[0]} ${LINENO}' ILL
+  trap 'TRAP.trapHook $? ${FUNCNAME[0]} ${LINENO}' TRAP
+  trap 'TRAP.abortHook $? ${FUNCNAME[0]} ${LINENO}' ABRT
+  trap 'TRAP.busHook $? ${FUNCNAME[0]} ${LINENO}' BUS
+  trap 'TRAP.fpeHook $? ${FUNCNAME[0]} ${LINENO}' FPE
+  trap 'TRAP.killHook $? ${FUNCNAME[0]} ${LINENO}' KILL
+  trap 'TRAP.usr1Hook $? ${FUNCNAME[0]} ${LINENO}' USR1
+  trap 'TRAP.segvHook $? ${FUNCNAME[0]} ${LINENO}' SEGV
+  trap 'TRAP.usr2Hook $? ${FUNCNAME[0]} ${LINENO}' USR2
+  trap 'TRAP.pipeHook $? ${FUNCNAME[0]} ${LINENO}' PIPE
+  trap 'TRAP.alarmHook $? ${FUNCNAME[0]} ${LINENO}' ALRM
+  trap 'TRAP.termHook $? ${FUNCNAME[0]} ${LINENO}' TERM
+  trap 'TRAP.stkfltHook $? ${FUNCNAME[0]} ${LINENO}' STKFLT
+  # trap 'TRAP.chldHook $? ${FUNCNAME[0]} ${LINENO}' CHLD
+  trap 'TRAP.contHook $? ${FUNCNAME[0]} ${LINENO}' CONT
+  trap 'TRAP.stopHook $? ${FUNCNAME[0]} ${LINENO}' STOP
+  trap 'TRAP.tstpHook $? ${FUNCNAME[0]} ${LINENO}' TSTP
+  trap 'TRAP.ttinHook $? ${FUNCNAME[0]} ${LINENO}' TTIN
+  trap 'TRAP.ttouHook $? ${FUNCNAME[0]} ${LINENO}' TTOU
+  trap 'TRAP.urgHook $? ${FUNCNAME[0]} ${LINENO}' URG
+  trap 'TRAP.xcpuHook $? ${FUNCNAME[0]} ${LINENO}' XCPU
+  trap 'TRAP.xfszHook $? ${FUNCNAME[0]} ${LINENO}' XFSZ
+  trap 'TRAP.vtalrmHook $? ${FUNCNAME[0]} ${LINENO}' VTALRM
+  trap 'TRAP.profHook $? ${FUNCNAME[0]} ${LINENO}' PROF
+  trap 'TRAP.winchHook $? ${FUNCNAME[0]} ${LINENO}' WINCH
+  trap 'TRAP.ioHook $? ${FUNCNAME[0]} ${LINENO}' IO
+  trap 'TRAP.pwrHook $? ${FUNCNAME[0]} ${LINENO}' PWR
+  trap 'TRAP.sysHook $? ${FUNCNAME[0]} ${LINENO}' SYS
+
+  #  trap 'TRAP.pollHook $? ${FUNCNAME[0]} ${LINENO}' POLL
+  #  trap 'TRAP.emtHook $? ${FUNCNAME[0]} ${LINENO}' EMT
+  #  trap 'TRAP.infoHook $? ${FUNCNAME[0]} ${LINENO}' INFO
+  #  trap 'TRAP.lostHook $? ${FUNCNAME[0]} ${LINENO}' LOST
+  #  trap 'TRAP.unusedHook $? ${FUNCNAME[0]} ${LINENO}' UNUSED
+  # trap 'TRAP.chldHook $? ${FUNCNAME[0]} ${LINENO}' CLD
+}
+
+# fun: TRAP.customHook signal errorCode? functionName? lineNumber?
+# api: private
+# txt: Calls any custom hook defined for given signal, if any, using the convention: customSIGNALHook.
+# opt: signal: The signal name.
+# opt: errorCode: The error code. Optional.
+# opt: functionName: The function name running when the signal was received.
+# opt: lineNumber: The line number when the signal was received.
+# txt: Returns the result of the custom function, if any, or 0/FALSE if no custom function is defined.
+# use: TRAP.customHook USR1
+function TRAP.customHook() {
+  local _signal="${1}"
+  checkNotEmpty signal "${_signal}" 1
+
+  local -i _rescode=${TRUE}
+
+  if isFunctionPresent "custom${_signal}Hook"; then
+    shift
+    "custom${_signal}Hook" $@
+    _rescode=$?
+  fi
+
+  return ${_rescode}
+}
+
+# fun: TRAP.finishedOkHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script finishes successfully.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.finishedOkHook $? ${FUNCNAME[0]} ${LINENO}' 0
+function TRAP.finishedOkHook() {
+  cleanup
+  TRAP.customHook 0 $@
+}
+
+# fun: TRAP.errorHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script encounters an error.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.errorHook $? ${FUNCNAME[0]} ${LINENO}' ERR
+function TRAP.errorHook() {
+  cleanup
+  TRAP.customHook ERR $@
+}
+
+# fun: TRAP.exitHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script exits.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.exitHook $? ${FUNCNAME[0]} ${LINENO}' EXIT
+function TRAP.exitHook() {
+  cleanup
+  TRAP.customHook EXIT $@
+}
+
+# fun: TRAP.hupHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script gets hung up.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.interruptedHook $? ${FUNCNAME[0]} ${LINENO}' HUP
+function TRAP.hupHook() {
+  cleanup
+  TRAP.customHook HUP $@
+}
+
+# fun: TRAP.intHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script gets interrupted.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.intHook $? ${FUNCNAME[0]} ${LINENO}' INT
+function TRAP.intHook() {
+  cleanup
+  if ! TRAP.customHook INT $@; then
+    exitWithErrorCode SCRIPT_INTERRUPTED ${@}
+  fi
+}
+
+# fun: TRAP.quitHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script finishes.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.quitHook $? ${FUNCNAME[0]} ${LINENO}' QUIT
+function TRAP.quitHook() {
+  cleanup
+  TRAP.customHook QUIT $@
+}
+
+# fun: TRAP.illHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script runs an illegal instruction.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.illHook $? ${FUNCNAME[0]} ${LINENO}' ILL
+function TRAP.illHook() {
+  cleanup
+  if ! TRAP.customHook ILL $@; then
+    exitWithErrorCode UNKNOWN_ERROR ${@}
+  fi
+}
+
+# fun: TRAP.trapHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script receives a trap.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.trapHook $? ${FUNCNAME[0]} ${LINENO}' TRAP
+function TRAP.trapHook() {
+  TRAP.customHook TRAP $@
+}
+
+# fun: TRAP.abortHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script aborts.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.abortHook $? ${FUNCNAME[0]} ${LINENO}' ABRT
+function TRAP.abortHook() {
+  cleanup
+  if ! TRAP.customHook ABRT $@; then
+    exitWithErrorCode SCRIPT_ABORTED ${@}
+  fi
+}
+
+# fun: TRAP.busHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script accesses an undefined portion of a memory object.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.busHook $? ${FUNCNAME[0]} ${LINENO}' BUS
+function TRAP.busHook() {
+  cleanup
+  TRAP.customHook BUS $@
+}
+
+# fun: TRAP.fpeHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script executes an erroneous arithmetic operation.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.fpeHook $? ${FUNCNAME[0]} ${LINENO}' FPE
+function TRAP.fpeHook() {
+  cleanup
+  TRAP.customHook FPE $@
+}
+
+# fun: TRAP.killHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script gets killed. This trap is uncatchable, so this function will never get executed.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.killHook $? ${FUNCNAME[0]} ${LINENO}' KILL
+function TRAP.killHook() {
+  cleanup
+  TRAP.customHook KILL $@
+}
+
+# fun: TRAP.usr1Hook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script receives an USR1 signal externally.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.usr1Hook $? ${FUNCNAME[0]} ${LINENO}' USR1
+function TRAP.usr1Hook() {
+  TRAP.customHook USR1 $@
+}
+
+# fun: TRAP.segvHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script tries to access an invalid memory reference.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.segvHook $? ${FUNCNAME[0]} ${LINENO}' SEGV
+function TRAP.segvHook() {
+  TRAP.customHook SEGV $@
+}
+
+# fun: TRAP.usr2Hook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script receives a USR2 signal externally.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.usr2Hook $? ${FUNCNAME[0]} ${LINENO}' USR2
+function TRAP.usr2Hook() {
+  TRAP.customHook USR2 $@
+}
+
+# fun: TRAP.pipeHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script writes on a pipe with no one to read it.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.pipeHook $? ${FUNCNAME[0]} ${LINENO}' PIPE
+function TRAP.pipeHook() {
+  cleanup
+  TRAP.customHook PIPE $@
+}
+
+# fun: TRAP.alarmHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script receives an alarm clock.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.alarmHook $? ${FUNCNAME[0]} ${LINENO}' ALRM
+function TRAP.alarmHook() {
+  TRAP.customHook ALRM $@
+}
+
+# fun: TRAP.termHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script receives a termination signal.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.termHook $? ${FUNCNAME[0]} ${LINENO}' TERM
+function TRAP.termHook() {
+  cleanup
+  TRAP.customHook TERM $@
+}
+
+# fun: TRAP.stkfltHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the coprocessor experiences a stack fault.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.stkfltHook $? ${FUNCNAME[0]} ${LINENO}' STKFLT
+function TRAP.stkfltHook() {
+  cleanup
+  TRAP.customHook STKFLT $@
+}
+
+# fun: TRAP.chldHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a child process terminates, stops, or continues.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.chldHook $? ${FUNCNAME[0]} ${LINENO}' CHLD
+function TRAP.chldHook() {
+  TRAP.customHook CHLD $@
+}
+
+# fun: TRAP.contHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script continues.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.contHook $? ${FUNCNAME[0]} ${LINENO}' CONT
+function TRAP.contHook() {
+  TRAP.customHook CONT $@
+}
+
+# fun: TRAP.stopHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script stops. This signal cannot be catched, so this function never runs.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.stopHook $? ${FUNCNAME[0]} ${LINENO}' STOP
+function TRAP.stopHook() {
+  TRAP.customHook STOP $@
+}
+
+# fun: TRAP.tstpHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the terminal stops.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.tstpHook $? ${FUNCNAME[0]} ${LINENO}' TSTP
+function TRAP.tstpHook() {
+  TRAP.customHook TSTP $@
+}
+
+# fun: TRAP.ttinHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a background process attempts to read.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.ttinHook $? ${FUNCNAME[0]} ${LINENO}' TTIN
+function TRAP.ttinHook() {
+  TRAP.customHook TTIN $@
+}
+
+# fun: TRAP.ttouHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a background process attempts to write.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.ttouHook $? ${FUNCNAME[0]} ${LINENO}' TTOU
+function TRAP.ttouHook() {
+  TRAP.customHook TTOU $@
+}
+
+# fun: TRAP.urgHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when an out-of-band data is available at a socket.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.urgHook $? ${FUNCNAME[0]} ${LINENO}' URG
+function TRAP.urgHook() {
+  TRAP.customHook URG $@
+}
+
+# fun: TRAP.xcpuHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the CPU time limit exceeded.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.xcpuHook $? ${FUNCNAME[0]} ${LINENO}' XCPU
+function TRAP.xcpuHook() {
+  cleanup
+  if ! TRAP.customHook XCPU $@; then
+    exitWithErrorCode UNKNOWN_ERROR ${@}
+  fi
+}
+
+# fun: TRAP.xfszHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a file size limit has been exceeded.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.xfszHook $? ${FUNCNAME[0]} ${LINENO}' XFSZ
+function TRAP.xfszHook() {
+  cleanup
+  if ! TRAP.customHook XFSZ $@; then
+    exitWithErrorCode UNKNOWN_ERROR ${@}
+  fi
+}
+
+# fun: TRAP.vtalarmHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a virtual timer expires.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.vtalarmHook $? ${FUNCNAME[0]} ${LINENO}' VTALRM
+function TRAP.vtalarmHook() {
+  cleanup
+  if ! TRAP.customHook VTALRM $@; then
+    exitWithErrorCode SCRIPT_ABORTED ${@}
+  fi
+}
+
+# fun: TRAP.profHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a profiling timer expires.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.profHook $? ${FUNCNAME[0]} ${LINENO}' PROF
+function TRAP.profHook() {
+  cleanup
+  if ! TRAP.customHook PROF $@; then
+    exitWithErrorCode UNKNOWN_ERROR ${@}
+  fi
+}
+
+# fun: TRAP.winchHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the terminal window size changes.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.winchHook $? ${FUNCNAME[0]} ${LINENO}' WINCH
+function TRAP.winchHook() {
+  TRAP.customHook WINCH $@
+}
+
+# fun: TRAP.ioHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when the script aborts.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.ioHook $? ${FUNCNAME[0]} ${LINENO}' IO
+function TRAP.ioHook() {
+  cleanup
+  if ! TRAP.customHook IO $@; then
+    exitWithErrorCode SCRIPT_ABORTED ${@}
+  fi
+}
+
+# fun: TRAP.pwrHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when there's a power failure.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.pwrHook $? ${FUNCNAME[0]} ${LINENO}' PWR
+function TRAP.pwrHook() {
+  cleanup
+  if ! TRAP.customHook PWR $@; then
+    exitWithErrorCode UNKNOWN_ERROR ${@}
+  fi
+}
+
+# fun: TRAP.sysHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when there's a bad system call.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.sysHook $? ${FUNCNAME[0]} ${LINENO}' SYS
+function TRAP.sysHook() {
+  cleanup
+  if ! TRAP.customHook SYS $@; then
+    exitWithErrorCode SCRIPT_ABORTED ${@}
+  fi
+}
+
+# fun: TRAP.pollHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a pollable event is received.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.pollHook $? ${FUNCNAME[0]} ${LINENO}' POLL
+function TRAP.pollHook() {
+  TRAP.customHook POLL $@
+}
+
+# fun: TRAP.emtHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when an emulator trap occurs.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.emtHook $? ${FUNCNAME[0]} ${LINENO}' EMT
+function TRAP.emtHook() {
+  TRAP.customHook EMT $@
+}
+
+# fun: TRAP.infoHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a status (info) request is received from the controlling terminal.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.infoHook $? ${FUNCNAME[0]} ${LINENO}' INFO
+function TRAP.infoHook() {
+  TRAP.customHook INFO $@
+}
+
+# fun: TRAP.lostHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when a file lock is lost.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.lostHook $? ${FUNCNAME[0]} ${LINENO}' LOST
+function TRAP.lostHook() {
+  cleanup
+  if ! TRAP.customHook LOST $@; then
+    exitWithErrorCode SCRIPT_ABORTED ${@}
+  fi
+}
+
+# fun: TRAP.unusedHook errorCode functionName lineNumber
+# api: private
+# txt: Hook to perform cleaning up when there's a system call with an unused system call number.
+# opt: errorCode: The error code.
+# opt: functionName: The function name.
+# opt: lineNumber: The line number.
+# txt: Returns 0/TRUE always.
+# use: trap 'TRAP.unusedHook $? ${FUNCNAME[0]} ${LINENO}' UNUSED
+function TRAP.unusedHook() {
+  TRAP.customHook EXIT $@
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

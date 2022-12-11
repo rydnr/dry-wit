@@ -71,10 +71,6 @@ function cleanup() {
 
       logTrace -n "Cleaning up temporary files"
 
-      setLogCategory "post-process"
-
-      logTrace -n "Cleaning up temporary files"
-
       local -i _deletedCount=0
       local -i _notDeletedCount=0
       local _deleted=""
@@ -84,7 +80,7 @@ function cleanup() {
       local _i
       for _i in ${_cleanupFiles[@]}; do
         IFS="${_oldIFS}"
-        rm -rf "${_i}" >/dev/null 2>&1
+        command rm -rf "${_i}" >/dev/null 2>&1
         if isTrue $?; then
           if isNotEmpty "${_deleted}"; then
             _deleted="${_deleted} "
@@ -472,7 +468,7 @@ function DRYWIT.retrieveSettingsFiles() {
 # txt: Returns 0/TRUE always.
 # use: DRYWIT.setup;
 function DRYWIT.setup() {
-  #  DRYWIT.trapSignals;
+  TRAP.trapSignals
 
   DRYWIT.retrieveSettingsFiles
   local _files="${RESULT}"
@@ -487,15 +483,5 @@ function DRYWIT.setup() {
   IFS="${_oldIFS}"
 
   evalEnvVars
-}
-
-# fun: DRYWIT.trapSignals
-# api: private
-# txt: Traps required signals
-# txt: Returns 0/TRUE always.
-# use: DRYWIT.trapSignals;
-function DRYWIT.trapSignals() {
-  trap 'exitWithErrorCode SCRIPT_INTERRUPTED' INT QUIT TSTP
-  #  trap 'exitWithErrorCode UNKNOWN_ERROR " ${FUNCNAME[0]}"' ERR;
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

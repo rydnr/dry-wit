@@ -1,0 +1,645 @@
+#!/usr/bin/env dry-wit
+# (c) 2022-today Automated Computing Machinery, S.L.
+#
+#    This file is part of dry-wit.
+#
+#    dry-wit is free software: you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    dry-wit is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with dry-wit.
+#    If not, see <http://www.gnu.org/licenses/>.
+#
+# mod: ext/gource
+# api: public
+# txt: gource functions.
+
+# fun: retrieveAffectedRepos baseFolder onlyRepos onlyGroups
+# api: public
+# txt: Retrieves the affected repos, depending on the command-line flags.
+# opt: baseFolder: The base folder.
+# opt: onlyRepos: A comma-separated list of repositories. Optional.
+# opt: onlyGroups: A comma-separated list of groups of repositories. Optional.
+# txt: Returns 0/TRUE if any repository could be found; 1/FALSE otherwise.
+# txt: The variable RESULT contains a comma-separated list of repositories.
+# use: if retrieveAffectedRepos "${PWD}" "" "my-group"; then echo "repositories: ${RESULT}"; fi
+function retrieveAffectedRepos() {
+  local _baseFolder="${1}"
+  checkNotEmpty baseFolder "${_baseFolder}" 1
+  local _onlyRepos="${2}"
+  local _onlyGroups="${3}"
+  local -i _rescode
+  local _result
+  if isEmpty "${_onlyRepos}"; then
+    if isEmpty "${_onlyGroups}"; then
+      _result="$(find "${_baseFolder}" -type d -name '*.git' | sed "s ^${_baseFolder}/  g" | sed 's /.git$  g' | awk '{printf("%s,", $0);}' | sed 's ,$  g')"
+    else
+      createTempFile
+      local _tmp="${RESULT}"
+      local _group
+      local _oldIFS="${IFS}"
+      IFS=","
+      for _group in ${_onlyGroups}; do
+        IFS="${_oldIFS}"
+        find "${_baseFolder}" -type d -name '*.git' | sed "s ^${_baseFolder}/  g" | sed 's /.git$  g' | grep -e "^${_group}/" >>"${_tmp}"
+      done
+      IFS="${_oldIFS}"
+      _result="$(cat "${_tmp}" | awk '{printf("%s,", $0);}' | sed 's ,$  g')"
+    fi
+  else
+    createTempFile
+    local _tmp="${RESULT}"
+    local _repo
+    local _oldIFS="${IFS}"
+    IFS=","
+    for _repo in ${_onlyRepos}; do
+      IFS="${_oldIFS}"
+      find "${_baseFolder}" -type d -name '*.git' | sed "s ^${_baseFolder}/  g" | sed 's /.git$  g' | grep -e "/${_repo}$" >>"${_tmp}"
+    done
+    IFS="${_oldIFS}"
+    _result="$(cat "${_tmp}" | awk '{printf("%s,", $0);}' | sed 's ,$  g')"
+  fi
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveAffectedUsers usersFile teamsFile onlyUsers onlyTeams
+# api: public
+# txt: Retrieves the affected users, depending on the command-line flags
+# opt: usersFile: The file with the users.
+# opt: teamsFile: The teams file.
+# opt: onlyUsers: A comma-separated list of users. Optional.
+# opt: onlyTeams: A comma-separated list of teams. Optional.
+# txt: Returns 0/TRUE if any user could be found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the comma-separated list of affected users.
+# use: if retrieveAffectedUsers "users.txt" "teams.txt" "" "my-team"; then echo "Users in my-team: ${RESULT}"; fi
+function retrieveAffectedUsers() {
+  local _usersFile="${1}"
+  checkNotEmpty usersFile "${_usersFile}" 1
+  local _teamsFile="${2}"
+  checkNotEmpty teamsFile "${_teamsFile}" 2
+  local _onlyUsers="${3}"
+  local _onlyTeams="${4}"
+
+  local -i _rescode
+  local _result
+
+  if isEmpty "${_onlyUsers}"; then
+    if isEmpty "${_onlyTeams}"; then
+      _result="$(cat "${_usersFile}" | cut -d'<' -f 1 | sed 's/ *$//g' | sort | uniq | awk '{printf("%s,", $0);}' | sed 's ,$  g')"
+    else
+      retrieveMembersOfTeams "${_teamsFile}" "${_onlyTeams}"
+      _result="${RESULT}"
+    fi
+  else
+    local _user
+    local _oldIFS="${IFS}"
+    IFS=","
+    for _user in ${ONLY_USERS}; do
+      IFS="${_oldIFS}"
+      grep "${_user} <" "${_usersFile}" >/dev/null 2>&1
+      _rescode=$?
+      if isTrue ${_rescode}; then
+        if isEmpty "${_result}"; then
+          _result="${_user}"
+        else
+          _result="${_result},${_user}"
+        fi
+      else
+        exitWithErrorCode UNKNOWN_USER "${_user}"
+      fi
+    done
+    IFS="${_oldIFS}"
+  fi
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveMembersOfTeams teamsFile teams
+# api: public
+# txt: Retrieves a comma-separated list of the team members for all given teams.
+# opt: teamsFile: The teams file.
+# opt: teams: The teams.
+# txt: Returns 0/TRUE if the team members could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the comma-separated team members
+# use: if retrieveMembersOfTeams teams.txt "team1,team2"; then ... fi
+function retrieveMembersOfTeams() {
+  local _teamsFile="${1}"
+  checkNotEmpty teamsFile "${_teamsFile}" 1
+  local _teams="${2}"
+  checkNotEmpty teams "${_teams}" 2
+
+  local -i _rescode=${FALSE}
+  local -a _result
+
+  local _team
+  local _oldIFS="${IFS}"
+  IFS=","
+  for _team in ${_teams}; do
+    IFS="${_oldIFS}"
+    if retrieveMembersOfTeam "${_teamsFile}" "${_team}"; then
+      local _users="${RESULT}"
+      local _user
+      IFS=","
+      for _user in ${_users}; do
+        IFS="${_oldIFS}"
+        if isNotEmpty "${_result[@]}" && arrayDoesNotContain "${_user}" "${_result[@]}"; then
+          _result+=("${_user}")
+          _rescode=${TRUE}
+        fi
+      done
+      IFS="${_oldIFS}"
+    fi
+  done
+  IFS="${_oldIFS}"
+
+  if isTrue ${_rescode}; then
+    flattenArray _result ","
+  fi
+
+  return ${_rescode}
+}
+
+# fun: retrieveMembersOfTeam teamsFile team
+# api: public
+# txt: Retrieves a comma-separated list of the team members.
+# opt: teamsFile: The teams file.
+# opt: team: The team.
+# txt: Returns 0/TRUE if the team members could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the comma-separated team members
+# use: if retrieveMembersOfTeam teams.txt my-team; then ... fi
+function retrieveMembersOfTeam() {
+  local _teamsFile="${1}"
+  checkNotEmpty teamsFile "${_teamsFile}" 1
+  local _team="${2}"
+  checkNotEmpty team "${_team}" 2
+
+  local -i _rescode
+  local _result="$(grep -e "^${_team}|" "${_teamsFile}" | cut -d'|' -f 2)"
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: createVideoForUsers users groupsLogFile output
+# api: public
+# txt: Creates a video for given users.
+# opt: users: A comma-separated list of users.
+# opt: groupsLogFile: The log file.
+# opt: output: The output video.
+# txt: Returns 0/TRUE if the video could be created; 1/FALSE otherwise.
+# use: if createVideoForUsers "Jonh Doe,Jane Doe" groups.log users.mp4; then ... fi
+function createVideoForUsers() {
+  local _users="${1}"
+  checkNotEmpty users "${_users}" 1
+  local _groupsLogFile="${2}"
+  checkNotEmpty groupsLogFile "${_groupsLogFile}" 2
+  local _output="${3}"
+  checkNotEmpty output "${_output}" 3
+
+  local _usersLogFile="$(dirname "${_output}")/$(basename "${_output}" ."${_output#*.}").log"
+  createTempFile ".log"
+  local _tempFile="${RESULT}"
+
+  local _user
+  local _oldIFS="${IFS}"
+  IFS=","
+  for _user in ${_users}; do
+    IFS="${_oldIFS}"
+    local _userLogFile="${BASE_FOLDER}/${_user}.log"
+    if ! fileExists "${_userLogFile}"; then
+      filterUser "${_user}" "${_groupsLogFile}" "${_userLogFile}"
+    fi
+    cat "${_userLogFile}" "${_usersLogFile}" | sort -n | uniq >"${_tempFile}" && mv "${_tempFile}" "${_usersLogFile}"
+  done
+  IFS="${_oldIFS}"
+  createVideo "${_usersLogFile}" "${_output}"
+}
+
+# fun: filterUser user logFile outputFile
+# api: public
+# txt: Filters given user from a log file.
+# opt: user: The user to filter.
+# opt: logFile: The log file.
+# opt: outputFile: The output file.
+# txt: Returns 0/TRUE if the user existed in the log file; 1/FALSE otherwise.
+# use: if filterUser root my.log filtered.log; then ... fi
+function filterUser() {
+  local _user="${1}"
+  checkNotEmpty user "${_user}" 1
+  local _logFile="${2}"
+  checkNotEmpty logFile "${_logFile}" 2
+  local _outputFile="${3}"
+  checkNotEmpty outputFile "${_outputFile}" 3
+
+  grep "${_user}" "${_logFile}" 2>/dev/null >>"${_outputFile}"
+}
+
+# fun: createGourceLogsForAllGroups logFile
+# api: public
+# txt: Creates Gource logs for all groups.
+# opt: logFile: The log file.
+# txt: Returns 0/TRUE if the logs could be created; 1/FALSE otherwise.
+# use: if createGourceLogsForAllGroups groups.log; then ... fi
+function createGourceLogsForAllGroups() {
+  local _groupsLogFile="${1}"
+  checkNotEmpty groupsLogFile "${_groupsLogFile}" 1
+
+  local -i _rescode=${TRUE}
+
+  local _groups="$(find ${BASE_FOLDER} -maxdepth 1 -type d 2>/dev/null | sed "s ^${BASE_FOLDER}/  g" | tail +2)"
+
+  local _group
+  local _oldIFS="${IFS}"
+  IFS="${DWIFS}"
+  for _group in ${_groups}; do
+    IFS="${_oldIFS}"
+    local _groupLogFile="${BASE_FOLDER}/${_group}/${_group}.log"
+    rm -f "${_groupLogFile}"
+    if createGourceLogsForGroup "${_group}" ${TRUE} ${TRUE} "${_groupLogFile}"; then
+      cat "${_groupLogFile}" >>"${_groupsLogFile}"
+    fi
+  done
+  IFS="${_oldIFS}"
+
+  if isTrue ${_rescode}; then
+    sort -n "${_groupsLogFile}" >"${_groupsLogFile}.1" && mv "${_groupsLogFile}.1" "${_groupsLogFile}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: createGourceLogsForGroup group includeGroup includeRoot groupLogFile
+# api: public
+# opt: group: The group.
+# opt: includeGroup: Whether to include the group as node.
+# opt: includeRoot: Whether to include a root node.
+# opt: groupLogFile: The group log file.
+# txt: Returns 0/TRUE if the logs could be generated; 1/FALSE otherwise.
+# use: if createGourceLogsForGroup my-group ${FALSE} ${FALSE} my-group.log; then ... fi
+function createGourceLogsForGroup() {
+  local _group="${1}"
+  checkNotEmpty group "${_group}" 1
+  local -i _includeGroup=${2}
+  checkBoolean includeGroup ${_includeGroup} 2
+  local -i _includeRoot=${3}
+  checkBoolean includeRoot ${_includeRoot} 3
+  local _groupLogFile="${4}"
+  checkNotEmpty groupLogFile "${_groupLogFile}" 4
+
+  local -i _rescode=${TRUE}
+
+  local _repo
+  local _oldIFS="${IFS}"
+  IFS="${DWIFS}"
+  for _repo in $(find ${BASE_FOLDER}/${_group} -type d -name '.git' 2>/dev/null | sed "s ^${BASE_FOLDER}/${_group}/  g" | sed 's /.git  g'); do
+    IFS="${_oldIFS}"
+    local _repoLogFile="${BASE_FOLDER}/${_group}/${_repo}/${_repo}.log"
+    if createGourceLogsForRepository "${_group}" "${_repo}" ${_includeGroup} ${_includeRoot} "${_repoLogFile}"; then
+      cat "${_repoLogFile}" >>"${_groupLogFile}"
+    else
+      _rescode=${FALSE}
+      break
+    fi
+  done
+  IFS="${_oldIFS}"
+
+  return ${_rescode}
+}
+
+# fun: createGourceLogsForRepository group repo includeGroup includeRoot repoLogFile
+# api: public
+# txt: Creates Gource logs for given repository.
+# opt: group: The group.
+# opt: repo: The repository.
+# opt: includeGroup: Whether to include the group as node.
+# opt: includeRoot: Whether to include a root node.
+# opt: repoLogFile: The repo log file.
+# txt: Returns 0/TRUE if the logs could be generated; 1/FALSE otherwise.
+# use: if createGourceLogsForRepository my-group my-repo ${FALSE} ${FALSE} my-repo.log; then ... fi
+function createGourceLogsForRepository() {
+  local _group="${1}"
+  checkNotEmpty group "${_group}" 1
+  local _repo="${2}"
+  checkNotEmpty repo "${_repo}" 2
+  local -i _includeGroup=${3}
+  checkBoolean includeGroup ${_includeGroup} 3
+  local -i _includeRoot=${4}
+  checkBoolean includeRoot ${_includeRoot} 4
+  local _repoLogFile="${5}"
+  checkNotEmpty repoLogFile "${_repoLogFile}" 5
+
+  local -i _rescode=${TRUE}
+
+  rm -f "${_repoLogFile}" 2>/dev/null
+  pushd ${_group}/${_repo} >/dev/null
+  git pull >/dev/null 2>&1
+  popd >/dev/null
+
+  logInfo -n "Generating logs for ${_group}/${_repo}"
+  if generateGourceLogs "${_group}" "${_repo}" "${_repoLogFile}"; then
+    if fileExists "${_repoLogFile}"; then
+      logInfoResult SUCCESS "done"
+      if isTrue ${_includeGroup}; then
+        if isTrue ${_includeRoot}; then
+          logDebug -n "Adding ${ROOT_NODE_NAME}/${_group#./} to ${_repoLogFile}"
+          if sed -i -r "s#(.*)\|#\1|/${ROOT_NODE_NAME}/${_group#./}/${_repo#./}#" "${_repoLogFile}"; then
+            logDebugResult SUCCESS "done"
+          else
+            logDebugResult FAILURE "failed"
+            _rescode=${FALSE}
+          fi
+        else
+          logDebug -n "Adding ${_group#./} to the log file"
+          if sed -i -r "s#(.*)\|#\1|/${_group#./}/${_repo#./}#" "${_repoLogFile}"; then
+            logDebugResult SUCCESS "done"
+          else
+            logDebugResult FAILURE "failed"
+            _rescode=${FALSE}
+          fi
+        fi
+      fi
+    else
+      logInfoResult FAILURE "failed"
+      _rescode=${FALSE}
+      exitWithErrorCode CANNOT_GENERATE_LOGS_FOR_REPOSITORY "${_group}/${_repo}"
+    fi
+  else
+    logInfoResult FAILURE "failed"
+    _rescode=${FALSE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: generateGourceLogs group repo repoLogFile
+# api: public
+# txt: Generates Gource logs for given repository.
+# opt: group: The group.
+# opt: repo: The repository.
+# opt: repoLogFile: The log file.
+# txt: Returns 0/TRUE if the logs could be generated; 1/FALSE otherwise.
+# use: if createGourceLogs my-group my-repo my-repo.log; then ... fi
+function generateGourceLogs() {
+  local _group="${1}"
+  checkNotEmpty group "${_group}" 1
+  local _repo="${2}"
+  checkNotEmpty repo "${_repo}" 2
+  local _repoLogFile="${3}"
+  checkNotEmpty repoLogFile "${_repoLogFile}" 3
+
+  local -i _rescode
+  rm -f "${_repoLogFile}" 2>/dev/null
+  pushd ${_group} >/dev/null
+  command gource --output-custom-log - ${_repo} >"$(basename "${_repoLogFile}")"
+  _rescode=$?
+  popd >/dev/null
+
+  if isTrue ${_rescode}; then
+    logDebug -n "Fixing names in ${_repoLogFile}"
+    fixNamesInGourceLogFile "${_repoLogFile}"
+    _rescode=$?
+    if isTrue ${_rescode}; then
+      logDebugResult SUCCESS "done"
+    else
+      logDebugResult FAILURE "failed"
+    fi
+  fi
+
+  return ${_rescode}
+}
+
+# fun: fixNamesInGourceLogFile repoLogFile
+# api: public
+# txt: Fixes the names in given Gource log file.
+# opt: repoLogFile: The Gource log file.
+# txt: Returns 0/TRUE if the names could be fixed; 1/FALSE otherwise.
+# use: if fixNamesInGourceLogFile my-log.txt; then ... fi
+function fixNamesInGourceLogFile() {
+  local _repoLogFile="${1}"
+  checkNotEmpty repoLogFile "${_repoLogFile}" 1
+
+  local -i _rescode
+
+  local _wrongName
+  local _name
+  local _oldIFS="${IFS}"
+  IFS="|"
+  while read _wrongName _name; do
+    sed -i "s/|${_wrongName}|/|${_name}|/g" "${_repoLogFile}"
+  done <"${NAME_REPLACEMENTS_FILE}"
+  _rescode=$?
+
+  return ${_rescode}
+}
+
+# fun: onlyOneUSer
+# api: public
+# txt: Checks it the video is for a single user.
+# txt: Returns 0/TRUE if ONLY_USERS include a single user; 1/FALSE otherwise.
+# use: if onlyOneUser; then ...; fi
+function onlyOneUser() {
+  local -i _rescode
+
+  local -i _count=$(echo "${ONLY_USERS}" | awk -F',' '{print NF}')
+
+  if ( (${_count} == 1)); then
+    _rescode=${TRUE}
+  else
+    _rescode=${FALSE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: createPpmStream logFile videoFile force videoResolution videoFramerate timeScale? avatarFolder? secondsPerDay? dirNameDepth? logo? logoOffset? background? autoSkipSeconds? maxFileLag? fileIdleTime? filenameColor? dirColor? title? userScale? hide? cameraMode?
+# api: public
+# txt: Creates a PPM stream from given log file.
+# opt: logfile: The input log.
+# opt: videoFile: The output video.
+# opt: force: Whether to force creating the PPM stream.
+# opt: videoResolution: The video resolution.
+# opt: videoFramerate: The video framerate.
+# opt: timeScale: The time scale.
+# opt: avatarFolder: The avatar folder.
+# opt: secondsPerDay: The seconds per day.
+# opt: dirNameDepth: The depth of the directories.
+# opt: logo: The logo.
+# opt: logoOffset: The logo offset.
+# opt: background: The background.
+# opt: autoSkipSeconds: The number of seconds to skip if nothing happens.
+# opt: maxFileLag: The max file lag.
+# opt: fileIdleTime: The file idle time.
+# opt: filenameColor: The filename color.
+# opt: dirColor: The directory color.
+# opt: title: The title.
+# opt: userScale: The user scale.
+# opt: hide: What to hide.
+# opt: cameraMode: The camera mode.
+# txt: Returns 0/TRUE if the video could be generated successfully; 1/FALSE otherwise.
+# use: if createPpmStream my.log my.mp4 ${FALSE} "1920x1080" 60; then ... fi
+function createPpmStream() {
+  local _logFile="${1}"
+  checkNotEmpty logFile "${_logFile}" 1
+  local _videoFile="${2}"
+  checkNotEmpty videoFile "${_videoFile}" 2
+  local -i _force=${3}
+  checkBoolean force ${_force} 3
+  local _videoResolution="${4}"
+  checkNotEmpty videoResolution "${_videoResolution}" 4
+  local _videoFramerate="${5}"
+  checkNotEmpty videoFramerate "${_videoFramerate}" 5
+  local _timeScale="${6}"
+  local _avatarFolder="${7}"
+  local _secondsPerDay="${8}"
+  local _dirNameDepth="${9}"
+  local _logo="${10}"
+  local _logoOffset="${11}"
+  local _background="${12}"
+  local _autoSkipSeconds="${13}"
+  local _maxFileLag="${14}"
+  local _fileIdleTime="${15}"
+  local _filenameColor="${16}"
+  local _dirColor="${17}"
+  local _title="${18}"
+  local _userScale="${19}"
+  local _hide="${20}"
+  local _cameraMode="${21}"
+  local -i _rescode
+  local _result
+
+  local _ppmStream="$(dirname "${_videoFile}")/.tmp/$(basename "${_videoFile}" ."${_videoFile#*.}").ppm"
+
+  if isEmpty "${_title}"; then
+    _title="$(basename ${_videoFile%.*})"
+    toCamelCase "${_title}"
+    _title="${RESULT}"
+  fi
+  if ! fileExists "${_ppmStream}" || isTrue ${_force}; then
+    if isEmpty "${_background}"; then
+      retrieveRandomBackground
+      _background="${RESULT}"
+    fi
+    local _onlyOneUser=""
+    if isNotEmpty "${_cameraMode}"; then
+      _cameraMode="--camera-mode ${_cameraMode}"
+    fi
+    local _followUsers=""
+    local _oldIFS="${IFS}"
+    IFS=","
+    local _user
+    for _user in "${_onlyUsers}"; do
+      IFS="${_oldIFS}"
+      _followUsers="${_followUsers} --follow-user \"${_user}\""
+      # _cameraMode="--camera-mode track"
+    done
+    IFS="${_oldIFS}"
+    if isEmpty "${_followUsers}"; then
+      _userScale="--user-scale ${USER_SCALE}"
+    fi
+    if isEmpty "${_hide}"; then
+      _hide="filenames,mouse"
+    fi
+    _hide="--hide ${_hide}"
+    if isNotEmpty "${_avatarFolder}"; then
+      _avatarFolder="--user-image-dir \"${_avatarFolder}\""
+    fi
+    if isNotEmpty "${_timeScale}"; then
+      _timeScale="-c ${_timeScale}"
+    fi
+    if isNotEmpty "${_secondsPerDay}"; then
+      _secondsPerDay="--seconds-per-day ${_secondsPerDay}"
+    fi
+    if isNotEmpty "${_dirNameDepth}"; then
+      _dirNameDepth="--dir-name-depth ${_dirNameDepth}"
+    fi
+    if isNotEmpty "${_logo}"; then
+      _logo="--logo \"${_logo}\""
+    fi
+    if isNotEmpty "${_logoOffset}"; then
+      _logoOffset="--logo-offset \"${_logoOffset}\""
+    fi
+    if isNotEmpty "${_background}"; then
+      _background="--background-image \"${_background}\""
+    fi
+    if isNotEmpty "${_autoSkipSeconds}"; then
+      _autoSkipSeconds="--auto-skip-seconds \"${_autoSkipSeconds}\""
+    fi
+    if isNotEmpty "${_maxFileLag}"; then
+      _maxFileLag="--max-file-lag ${_maxFileLag}"
+    fi
+    if isNotEmpty "${_fileIdleTime}"; then
+      _fileIdleTime="--file-idle-time ${_fileIdleTime}"
+    fi
+    if isNotEmpty "${_filenameColor}"; then
+      _filenameColor="--filename-colour ${_filenameColor}"
+    fi
+    if isNotEmpty "${_dirColor}"; then
+      _dirColor="--dir-colour ${_dirColor}"
+    fi
+    logInfo -n "Creating PPM stream ${_ppmStream}. Do not close the window..."
+    _result="$(gource \
+      ${_avatarFolder} \
+      -${_videoResolution} \
+      ${_timeScale} \
+      ${_secondsPerDay} \
+      ${_dirNameDepth} \
+      --highlight-users \
+      ${_hide} \
+      ${_cameraMode} \
+      ${_onlyOneUser} \
+      ${_userScale} \
+      --title "${_title}" \
+      ${_logo} \
+      ${_logoOffset} \
+      ${_background} \
+      ${_autoSkipSeconds} \
+      ${_maxFileLag} \
+      ${_fileIdleTime} \
+      ${_filenameColor} \
+      ${_dirColor} \
+      --disable-input \
+      --frameless \
+      --multi-sampling \
+      --output-framerate ${_videoFramerate} \
+      "${_logFile}" \
+      -o "${_ppmStream}" || echo "ERROR.$$")"
+    if isNotEmpty "${_result}" && contains "${_result}" "ERROR.$$"; then
+      _rescode=${FALSE}
+      logInfoResult FAILURE "failed"
+    else
+      _rescode=${TRUE}
+      logInfoResult SUCCESS "done"
+    fi
+  fi
+
+  return ${_rescode}
+}
+
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
