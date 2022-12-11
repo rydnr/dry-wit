@@ -26,9 +26,9 @@ function enableMongodbCrAuthentication() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }" "${_url}/${_database}")"
+    _output="$(mongosh --quiet --tls --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }" "${_url}/${_database}")"
   else
-    _output="$(mongosh --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }" "${_url}/${_database}")"
+    _output="$(mongosh --quiet --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }" "${_url}/${_database}")"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -101,9 +101,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -173,15 +173,14 @@ db.createRole(
   }
 )
 EOF
-  cp "${_tmpFile}" /tmp/addMongodbBackupRole.txt
 
   local _output
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -245,9 +244,9 @@ EOF
   local -i _rescode=${TRUE}
 
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --quiet "${_url}/${_database}")"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}")"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --quiet "${_url}/${_database}")"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}")"
   fi
 
   if isEmpty "${_output}" || contains "${_output}" "null"; then
@@ -317,13 +316,12 @@ db.createRole(
   }
 )
 EOF
-  cp "${_tmpFile}" /tmp/mongo-script.txt
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -402,9 +400,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -475,9 +473,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -529,9 +527,9 @@ function mongodbFreeMonitoringAlreadyEnabled() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   echo "${_output}" | grep -q '"url"' >/dev/null
@@ -582,9 +580,9 @@ function enableMongodbFreeMonitoring() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   echo "${_output}" | grep -q '"url"' >/dev/null
@@ -638,9 +636,9 @@ function disableMongodbFreeMonitoring() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(echo "db.disableFreeMonitoring()" | mongosh --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.disableFreeMonitoring()" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(echo "db.disableFreeMonitoring()" | mongosh -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.disableFreeMonitoring()" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1055,9 +1053,9 @@ function mongodbUserCanLogIn() {
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1102,9 +1100,9 @@ function mongodbAdminUserAlreadyExists() {
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
+    _output="$(mongosh --quiet --tls --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
   else
-    _output="$(mongosh --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
+    _output="$(mongosh --quiet --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
   fi
 
   _output="$(echo "${_output}" | jq '.users | length')"
@@ -1170,9 +1168,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -v "UUID")"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID")"
   else
-    _output="$(cat "${_tmpFile}" | mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -v "UUID")"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID")"
   fi
 
   _output="$(echo "${_output}" | jq '. | length')"
@@ -1246,9 +1244,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep 'ok' | grep '1')"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep 'ok' | grep '1')"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep 'ok' | grep '1')"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep 'ok' | grep '1')"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1324,9 +1322,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep "**true**")"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**")"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep "**true**")"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**")"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1382,9 +1380,9 @@ function createMongodbDatabase() {
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(echo "db.${_temporaryCollection}.insert({name: 'sample'})" | mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.${_temporaryCollection}.insert({name: 'sample'})" "${_url}/${_database}" 2>&1)"
   else
-    _output="$(echo "db.${_temporaryCollection}.insert({name: 'sample'})" | mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.${_temporaryCollection}.insert({name: 'sample'})" "${_url}/${_database}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1437,9 +1435,9 @@ function mongodbDatabaseAlreadyExists() {
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(echo "show dbs" | mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show dbs" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")"
   else
-    _output="$(echo "show dbs" | mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show dbs" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1500,9 +1498,9 @@ function createMongodbCollection() {
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)"
   else
-    _output="$(mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1558,9 +1556,9 @@ function mongodbCollectionAlreadyExists() {
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(echo "show collections" | mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$")"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show collections" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$")"
   else
-    _output="$(echo "show collections" | mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$")"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show collections" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$")"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -1616,9 +1614,9 @@ function removeMongodbCollection() {
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)"
   else
-    _output="$(mongosh -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -2354,9 +2352,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -2420,9 +2418,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
@@ -2486,9 +2484,9 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(cat "${_tmpFile}" | mongosh --tls -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   else
-    _output="$(cat "${_tmpFile}" | mongosh -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
   fi
 
   if contains "${_output}" " ok: 1"; then
