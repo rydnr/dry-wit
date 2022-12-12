@@ -22,25 +22,91 @@ function enableMongodbCrAuthentication() {
   fi
   local _database="${3:-admin}"
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >${_tmpFile}
+connect("${_url}/${_database}");
+var schema = db.system.version.findOne({'_id' : 'authSchema'});
+if (schema != undefined) {
+  schema.currentVersion = 3;
+  db.system.version.save(schema);
+} else {
+  db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 });
+}
+EOF
+
   local _output
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --quiet --tls --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }" "${_url}/${_database}")"
+    _output="$(mongosh --quiet --tls --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet --eval "var schema = db.system.version.findOne({'_id' : 'authSchema'}); if (schema != undefined) { schema.currentVersion = 3; db.system.version.save(schema); } else { db.system.version.insert({'_id' : 'authSchema', 'currentVersion' : 3 }); }" "${_url}/${_database}")"
+    _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
+    export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
+  return ${_rescode}
+}
+
+# fun: addMongodbSuperRootRole authenticationDatabase? url? tls?
+# api: public
+# txt: Adds the superRoot role.
+# opt: authenticationDatabase: The authentication database. Optional. Defaults to "admin".
+# opt: url: The MongoDB url. Defaults to mongodb://localhost.
+# opt: tls: Whether to connect using TLS. Defaults to false.
+# txt: Returns 0/TRUE if the role gets created successfully; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains error information.
+# use: if addMongodbSuperRootRole; then
+# use:   echo "superRoot role added successfully";
+# use: fi
+function addMongodbSuperRootRole() {
+  local _authenticationDatabase="${1:-admin}"
+  local _url="${2:-mongodb://localhost}"
+  local _maybeTls="${3}"
+  local _useTls=${FALSE}
+  if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
+    _useTls=${TRUE}
+  fi
+
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >"${_tmpFile}"
+connect("${_url}/${_authenticationDatabase}");
+print(EJSON.stringify(db.createRole(
+  {
+    role: "superRoot",
+    privileges: [
+      {
+        "resource": { anyResource: true }, actions: ['anyAction']
+      }
+    ],
+    roles: [ ]
+  }
+)));
+EOF
+  local _output
+  local -i _rescode
+  if isTrue ${_useTls}; then
+    _output="$(mongosh --tls --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 | jq '.ok' || echo "$$.ERROR.$$")"
   else
+    _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 | jq '.ok' || echo "$$.ERROR.$$")"
+  fi
+
+  if contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -71,24 +137,29 @@ function addMongodbAdminUser() {
   if isNotEmpty "${_maybeTls}" && isTrue "${_maybeTls}"; then
     _useTls=${TRUE}
   fi
+  local _output
+  local -i _rescode=${TRUE}
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-use ${_authenticationDatabase}
-db.createRole(
-  {
-    role: "superRoot",
-    privileges: [
-      {
-        "resource": { anyResource: true }, actions: ['anyAction']
-      }
-    ],
-    roles: [ ]
-  }
-)
-db.createUser(
+connect("${_url}/${_authenticationDatabase}");
+var role = db.getRole("${_roleName}");
+if (!role) {
+  db.createRole(
+    {
+      role: "superRoot",
+      privileges: [
+        {
+          "resource": { anyResource: true }, actions: ['anyAction']
+        }
+      ],
+      roles: [ ]
+    }
+  );
+}
+print(EJSON.stringify(db.createUser(
   {
     user: "${_user}",
     pwd: "${_password}",
@@ -96,36 +167,30 @@ db.createUser(
       { role: "superRoot", db: "${_authenticationDatabase}" }
     ]
   }
-)
+)));
 EOF
-  local _output
-  local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
 }
 
-# fun: addMongodbBackupRole roleName root rootPassword authenticationDatabase? authenticationMechanism?
+# fun: addMongodbBackupRole roleName database root rootPassword authenticationDatabase? authenticationMechanism?
 # api: public
 # txt: Adds a backup role (includes both "backup" and "restore").
 # opt: roleName: The role name. It must not match any of the built-in roles.
-# opt: targetDatabase: The target database.
+# opt: database: The target database.
 # opt: root: The root user.
 # opt: rootPassword: The root password.
 # opt: authenticationDatabase: The authentication database. Optional. Defaults to admin.
@@ -157,11 +222,12 @@ function addMongodbBackupRole() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-db.createRole(
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.createRole(
   {
     role: "${_roleName}",
     privileges: [],
@@ -171,28 +237,24 @@ db.createRole(
       { role: "dbAdminAnyDatabase", db: "${_authenticationDatabase}" }
     ]
   }
-)
+)));
 EOF
 
   local _output
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -200,7 +262,7 @@ EOF
 
 # fun: mongodbRoleAlreadyExists roleName database root rootPassword authenticationDatabase authenticationMechanism
 # api: public
-# txt: Checks if giwen role already exists.
+# txt: Checks if given role already exists.
 # opt: roleName: The role name.
 # opt: database: The target database.
 # opt: root: The root user.
@@ -233,30 +295,29 @@ function mongodbRoleAlreadyExists() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-db.getRole("${_roleName}")
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.getRole("${_roleName}")));
 EOF
 
   local _output
   local -i _rescode=${TRUE}
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}")"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}")"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if isEmpty "${_output}" || contains "${_output}" "null"; then
+  if contains "${_output}" "$$.ERROR.$$" || contains "${_output}" "null"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -304,36 +365,33 @@ function addMongodbRole() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-db.createRole(
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.createRole(
   {
     role: "${_roleName}",
     privileges: ${_privilegeSpec},
     roles: ${_roleSpec}
   }
-)
+)));
 EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -390,31 +448,28 @@ function addMongodbUser() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-db.createUser({ user: "${_user}", pwd: "${_password}", roles: ${_roleSpec} })
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.createUser({ user: "${_user}", pwd: "${_password}", roles: ${_roleSpec} })));
 EOF
 
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -463,31 +518,28 @@ function removeMongodbUser() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-db.dropUser("${_user}", { j: true, w: "majority" })
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.dropUser("${_user}", { j: true, w: "majority" })));
 EOF
 
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -523,20 +575,27 @@ function mongodbFreeMonitoringAlreadyEnabled() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >"${_tmpFile}"
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.getFreeMonitoringStatus()));
+EOF
+
   local _output
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --quiet --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --eval "EJSON.stringify(db.getFreeMonitoringStatus())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
   echo "${_output}" | grep -q '"url"' >/dev/null
   _rescode=$?
 
   if isTrue ${_rescode}; then
-    _result="$(echo "${_output}" | grep '"url"' | awk -F'"' '{print $4;}')"
     export RESULT="${_result}"
   else
     export ERROR="${_output}"
@@ -575,14 +634,22 @@ function enableMongodbFreeMonitoring() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >"${_tmpFile}"
+connect("${_url}/${_authenticationDatabase}");
+print(EJSON.stringify(db.enableFreeMonitoring()));
+EOF
+
   local _result
   local _output
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --quiet --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --eval "EJSON.stringify(db.enableFreeMonitoring())" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
   echo "${_output}" | grep -q '"url"' >/dev/null
@@ -632,25 +699,29 @@ function disableMongodbFreeMonitoring() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >"${_tmpFile}"
+connect("${_url}/${_authenticationDatabase}");
+print(EJSON.stringify(db.disableFreeMonitoring()));
+EOF
+
   local _output
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.disableFreeMonitoring()" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.disableFreeMonitoring()" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -791,28 +862,24 @@ function mongoDump() {
 
   if isEmpty "${_user}"; then
     if isTrue ${_useTls}; then
-      _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1)"
+      _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1 || echo "$$.ERROR.$$")"
     else
-      _output="$(mongodump --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1)"
+      _output="$(mongodump --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1 || echo "$$.ERROR.$$")"
     fi
   else
     if isTrue ${_useTls}; then
-      _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)"
+      _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1 || echo "$$.ERROR.$$")"
     else
-      _output="$(mongodump --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1)"
+      _output="$(mongodump --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1 || echo "$$.ERROR.$$")"
     fi
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -853,28 +920,24 @@ function mongoRestore() {
 
   if isEmpty "${_user}"; then
     if isTrue ${_useTls}; then
-      _output="$(mongorestore --ssl --uri "${_url}" "${_file}" 2>&1)"
+      _output="$(mongorestore --ssl --uri "${_url}" "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     else
-      _output="$(mongorestore --uri "${_url}" "${_file}" 2>&1)"
+      _output="$(mongorestore --uri "${_url}" "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     fi
   else
     if isTrue ${_useTls}; then
-      _output="$(mongorestore --ssl --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1)"
+      _output="$(mongorestore --ssl --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     else
-      _output="$(mongorestore --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1)"
+      _output="$(mongorestore --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     fi
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -920,28 +983,24 @@ function mongoImport() {
 
   if isEmpty "${_user}"; then
     if isTrue ${_useTls}; then
-      _output="$(mongoimport --ssl --uri "${_url}" ${_database} "${_file}" 2>&1)"
+      _output="$(mongoimport --ssl --uri "${_url}" ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     else
-      _output="$(mongoimport --uri "${_url}" ${_database} "${_file}" 2>&1)"
+      _output="$(mongoimport --uri "${_url}" ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     fi
   else
     if isTrue ${_useTls}; then
-      _output="$(mongoimport --ssl --uri "${_url}" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1)"
+      _output="$(mongoimport --ssl --uri "${_url}" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     else
-      _output="$(mongoimport --uri "${_url}" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1)"
+      _output="$(mongoimport --uri "${_url}" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
     fi
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1042,7 +1101,7 @@ function mongodbUserCanLogIn() {
   local _authenticationDatabase="${3}"
   checkNotEmpty authenticationDatabase "${_authenticationDatabase}" 3
   local _authenticationMechanism="${4}"
-  checkNotEmpty authenticationMechanism "{_authenticationMechanism}" 4
+  checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4
   local _url="${5:-mongodb://localhost}"
   local _maybeTls="${6}"
   local _useTls=${FALSE}
@@ -1053,21 +1112,17 @@ function mongodbUserCanLogIn() {
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1096,28 +1151,29 @@ function mongodbAdminUserAlreadyExists() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >"${_tmpFile}"
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.getUsers( { filter: { 'user': '${_user}' } } )))
+EOF
+
   local _output
   local -i _rescode
 
   if isTrue ${_useTls}; then
-    _output="$(mongosh --quiet --tls --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
+    _output="$(mongosh --quiet --tls --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | jq '.users | length' || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet --quiet --eval "EJSON.stringify(db.getUsers({filter: {'user': '${_user}'}}))" "${_url}/${_database}" 2>&1 | grep -v UUID)"
+    _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | jq '.users | length' || echo "$$.ERROR.$$")"
   fi
 
-  _output="$(echo "${_output}" | jq '.users | length')"
-  _rescode=$?
-
-  if isTrue ${_rescode}; then
-    if areEqual "${_output}" 0; then
-      _rescode=${FALSE}
-    fi
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
+  if contains "${_output}" "$$.ERROR.$$" || areEqual "${_output}" "0"; then
+    _rescode=${FALSE}
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1158,34 +1214,34 @@ function mongodbUserAlreadyExists() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-db.getUsers( { filter: { 'user': '${_user}' } } )
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.getUsers( { filter: { 'user': '${_user}' } } )));
 EOF
 
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID")"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID" || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID")"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID" || echo "$$.ERROR.$$")"
   fi
 
-  _output="$(echo "${_output}" | jq '. | length')"
-  _rescode=$?
-
-  if isTrue ${_rescode}; then
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="${_output}"
+  else
+    _output="$(echo "${_output}" | jq '.users | length')"
     if areEqual "${_output}" 0; then
       _rescode=${FALSE}
+      export ERROR="${_output}"
+    else
+      _rescode=${TRUE}
+      export RESULT="${_output}"
     fi
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
-    export ERROR="${_output}"
   fi
 
   return ${_rescode}
@@ -1218,13 +1274,15 @@ function createMongodbIndex() {
   local _authenticationMechanism="${4}"
   checkNotEmpty authenticationMechanism "${_authenticationMechanism}" 4
   local _database="${5}"
-  checkNotEmpty collection "${_database}" 5
+  checkNotEmpty database "${_database}" 5
   local _collection="${6}"
   checkNotEmpty collection "${_collection}" 6
   local _index="${7}"
   checkNotEmpty index "${_index}" 7
   local _options="${8}"
-  checkNotEmpty options "${_options}" 8
+  if isNotEmpty "${_options}"; then
+    _options=", ${_options}"
+  fi
   local _url="${9:-mongodb://localhost}"
   local _maybeTls="${10}"
   local _useTls=${FALSE}
@@ -1232,33 +1290,28 @@ function createMongodbIndex() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-use ${_database}
-
-db.${_collection}.createIndex(${_index}, ${_options})
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.${_collection}.createIndex({ "${_index}": 1 }, { name: "${_index}" ${_options} })));
 EOF
 
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep 'ok' | grep '1')"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep 'ok' | grep '1')"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1277,7 +1330,7 @@ EOF
 # opt: url: The MongoDB url. Defaults to mongodb://localhost.
 # opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE if the index exists; 1/FALSE otherwise.
-# use: if mongodbIndexAlreadyExists root secret admin SCRAM-SHA-1 myDatabase myCollection '{ id: 1 }'; then
+# use: if mongodbIndexAlreadyExists root secret admin SCRAM-SHA-1 myDatabase myCollection id; then
 # use:   echo "Index exists";
 # use: fi
 function mongodbIndexAlreadyExists() {
@@ -1302,12 +1355,11 @@ function mongodbIndexAlreadyExists() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >${_tmpFile}
-use ${_database}
-
+connect("${_url}/${_database}");
 var indexes = db.${_collection}.getIndexes();
 var exists = false;
 for (var i=0; i < indexes.length; i++) {
@@ -1322,21 +1374,17 @@ EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**")"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**" || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**")"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**" || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1377,24 +1425,29 @@ function createMongodbDatabase() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >${_tmpFile}
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.${_temporaryCollection}.insertOne({name: 'sample.$$'})));
+print(EJSON.stringify(db.${_temporaryCollection}.deleteOne({name: 'sample.$$'})));
+EOF
+
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.${_temporaryCollection}.insert({name: 'sample'})" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.${_temporaryCollection}.insert({name: 'sample'})" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1432,24 +1485,28 @@ function mongodbDatabaseAlreadyExists() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >${_tmpFile}
+connect("${_url}/${_database}");
+show dbs;
+EOF
+
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show dbs" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W" || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show dbs" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W")"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W" || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1495,24 +1552,28 @@ function createMongodbCollection() {
     _options=",${_options}"
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >${_tmpFile}
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.createCollection('${_collection}'${_options})));
+EOF
+
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "db.createCollection('${_collection}'${_options})" "${_url}/${_database}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1553,24 +1614,28 @@ function mongodbCollectionAlreadyExists() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >${_tmpFile}
+connect("${_url}/${_database}");
+show collections;
+EOF
+
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show collections" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$")"
+    _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$" || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --eval "show collections" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$")"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$" || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1611,24 +1676,28 @@ function removeMongodbCollection() {
     _useTls=${TRUE}
   fi
 
+  createTempFile .js
+  local _tmpFile="${RESULT}"
+
+  cat <<EOF >${_tmpFile}
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.${_collection}.drop()));
+EOF
+
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)"
+    _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" "${_url}/${_database}" --eval "db.${_collection}.drop()" 2>&1)"
+    _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -1920,11 +1989,11 @@ function removeMongodbUserIfNecessary() {
   fi
 }
 
-# fun: addMongodbIndexIfNecessary indexName roleSpec database collection cannotCreateIndexErrorLabel indexDoesNotExistErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
+# fun: addMongodbIndexIfNecessary indexField options database collection cannotCreateIndexErrorLabel indexDoesNotExistErrorLabel adminUserName adminUserPassword authenticationDatabase authenticationMechanism
 # api: public
 # txt: Adds an index, if necessary.
-# opt: indexName: The index name.
-# opt: roleSpec: The role specification.
+# opt: indexField: The index field.
+# opt: options: The index options.
 # opt: database: The database.
 # opt: collection: The collection.
 # opt: cannotCreateIndexErrorLabel: The label of the error when the index cannot be created.
@@ -1936,12 +2005,12 @@ function removeMongodbUserIfNecessary() {
 # opt: url: The MongoDB url. Defaults to mongodb://localhost.
 # opt: tls: Whether to connect using TLS. Defaults to false.
 # txt: Returns 0/TRUE always, but can exit if the index cannot be created.
-# use: addMongodbIndexIfNecessary id '{ id: 1 }' myDatabase myCollection CANNOT_CREATE_ID_INDEX ID_INDEX_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
+# use: addMongodbIndexIfNecessary id 'unique: true' myDatabase myCollection CANNOT_CREATE_ID_INDEX ID_INDEX_DOES_NOT_EXIST admin secret admin SCRAM-SHA-256;
 function addMongodbIndexIfNecessary() {
-  local _indexName="${1}"
-  checkNotEmpty indexName "${_indexName}" 1
-  local _roleSpec="${2}"
-  checkNotEmpty roleSpec "${_roleSpec}" 2
+  local _indexField="${1}"
+  checkNotEmpty indexField "${_indexField}" 1
+  local _options="${2}"
+  checkNotEmpty options "${_options}" 2
   local _database="${3}"
   checkNotEmpty database "${_database}" 3
   local _collection="${4}"
@@ -1961,7 +2030,7 @@ function addMongodbIndexIfNecessary() {
   local _url="${11:-mongodb://localhost}"
   local _maybeTls="${12}"
 
-  logDebug -n "Checking if ${_database}.${_collection}.${_indexName} index already exists"
+  logDebug -n "Checking if ${_database}.${_collection}.${_indexField} index already exists"
   if mongodbIndexAlreadyExists \
     "${_adminUserName}" \
     "${_adminUserPassword}" \
@@ -1969,14 +2038,14 @@ function addMongodbIndexIfNecessary() {
     "${_authenticationMechanism}" \
     "${_database}" \
     "${_collection}" \
-    "${_indexName}" \
+    "${_indexField}" \
     "${_url}" \
     "${_maybeTls}"; then
     logDebugResult SUCCESS "exists"
   else
     logDebugResult NEUTRAL "missing"
 
-    logDebug -n "Creating ${_database}.${_collection}.${_indexName} index"
+    logDebug -n "Creating ${_database}.${_collection}.${_indexField} index"
 
     if createMongodbIndex \
       "${_adminUserName}" \
@@ -1985,10 +2054,9 @@ function addMongodbIndexIfNecessary() {
       "${_authenticationMechanism}" \
       "${_database}" \
       "${_collection}" \
-      "${_roleSpec}" \
-      "{ name: '\
-      ${_indexName}' \
-      }" "${_url}" \
+      "${_indexField}" \
+      "${_options}" \
+      "${_url}" \
       "${_maybeTls}"; then
       local _output="${RESULT}"
       logDebugResult SUCCESS "done"
@@ -2002,7 +2070,7 @@ function addMongodbIndexIfNecessary() {
       exitWithErrorCode "${_cannotCreateIndexErrorLabel}"
     fi
 
-    logDebug -n "Double-checking ${_database}.${_collection}.${_indexName} index is actually created"
+    logDebug -n "Double-checking ${_database}.${_collection}.${_indexField} index is actually created"
     if mongodbIndexAlreadyExists \
       "${_adminUserName}" \
       "${_adminUserPassword}" \
@@ -2010,7 +2078,7 @@ function addMongodbIndexIfNecessary() {
       "${_authenticationMechanism}" \
       "${_database}" \
       "${_collection}" \
-      "${_indexName}" \
+      "${_indexField}" \
       "${_url}" \
       "${_maybeTls}"; then
       logDebugResult SUCCESS "exists"
@@ -2342,31 +2410,27 @@ function updateMongodbUserPassword() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-use ${_authenticationDatabase}
-db.changeUserPassword("${_userName}", "${_userPassword}")
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.changeUserPassword("${_userName}", "${_userPassword}")));
 EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -2408,31 +2472,28 @@ function grantMongodbRolesToUser() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-use ${_database}
-db.grantRolesToUser("${_userName}", ${_roles})
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.grantRolesToUser("${_userName}", ${_roles})));
 EOF
+
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
@@ -2474,31 +2535,27 @@ function revokeMongodbRolesFromUser() {
     _useTls=${TRUE}
   fi
 
-  createTempFile
+  createTempFile .js
   local _tmpFile="${RESULT}"
 
   cat <<EOF >"${_tmpFile}"
-use ${_database}
-db.revokeRolesFromUser("${_userName}", ${_roles})
+connect("${_url}/${_database}");
+print(EJSON.stringify(db.revokeRolesFromUser("${_userName}", ${_roles})));
 EOF
   local _output
   local -i _rescode
   if isTrue ${_useTls}; then
-    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   else
-    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1)"
+    _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
   fi
 
-  if contains "${_output}" " ok: 1"; then
-    _rescode=${TRUE}
-  else
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_output}"
-  else
     export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
