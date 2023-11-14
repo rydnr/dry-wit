@@ -35,19 +35,17 @@
         org = "rydnr";
         repo = "dry-wit";
         pname = "${org}-${repo}";
-        version = "3.0.1";
+        version = "3.0.2";
         pkgs = import nixos { inherit system; };
         description = "Dry-wit bash framework";
         license = pkgs.lib.licenses.gpl3;
         homepage = "https://github.com/${org}/${repo}";
         maintainers = [ "rydnr <github@acm-sl.org>" ];
-        nixosVersion = builtins.readFile "${nixos}/.version";
-        nixpkgsRelease =
-          builtins.replaceStrings [ "\n" ] [ "" ] "nixos-${nixosVersion}";
-        dry-wit-for = { sh }:
+        dry-wit-for = { sh, sh-name }:
           pkgs.stdenv.mkDerivation rec {
             inherit pname version;
             src = ../.;
+            buildInputs = [ sh ];
             phases = [ "unpackPhase" "installPhase" ];
 
             installPhase = ''
@@ -55,7 +53,7 @@
               cp -r src/* $out
               cp README.txt LICENSE.txt $out/
               substituteInPlace $out/dry-wit \
-                --replace "#!/usr/bin/env bash" "#!/usr/bin/env ${sh}"
+                --replace "#!/usr/bin/env bash" "#!/usr/bin/env ${sh}/bin/${sh-name}"
             '';
 
             meta = with pkgs.lib; {
@@ -67,9 +65,18 @@
         packages = rec {
           default = dry-wit-default;
           dry-wit-default = dry-wit-bash5;
-          dry-wit-bash5 = dry-wit-for { sh = pkgs.bash_5; };
-          dry-wit-zsh = dry-wit-for { sh = pkgs.zsh; };
-          dry-wit-fish = dry-wit-for { sh = pkgs.fish; };
+          dry-wit-bash5 = dry-wit-for {
+            sh = pkgs.bash_5;
+            sh-name = "bash";
+          };
+          dry-wit-zsh = dry-wit-for {
+            sh = pkgs.zsh;
+            sh-name = "zsh";
+          };
+          dry-wit-fish = dry-wit-for {
+            sh = pkgs.fish;
+            sh-name = "fish";
+          };
         };
       });
 }
