@@ -51,7 +51,7 @@
             installPhase = ''
               mkdir -p $out
               cp -r src/* $out
-              cp README.txt LICENSE.txt $out/
+              cp README.md LICENSE $out/
               substituteInPlace $out/dry-wit \
                 --replace "#!/usr/bin/env bash" "#!/usr/bin/env ${sh}/bin/${sh-name}"
             '';
