@@ -1,0 +1,168 @@
+# Copyright 2023-today Automated Computing Machinery S.L.
+# Distributed under the terms of the GNU General Public License v3
+
+# fun: extract_org flakeFile
+# api: public
+# txt: Retrieves the value of the "org" variable in the flake.
+# opt: flakeFile: The flake file.
+# txt: Returns 0/TRUE if the "org" value could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, RESULT will contain the "org" value.
+# use: if extract_org "~/flake.nix"; then
+# use:   echo "org -> ${RESULT}"
+# use: fi
+function extract_org() {
+  local _flakeFile="${1}";
+  checkNotEmpty flakeFile "${_flakeFile}" 1;
+
+  local -i _rescode;
+  local _result;
+  _result="$(grep -oP '(?<=org = ")[^"]+' "${_flakeFile}")";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+    export ERROR="";
+  else
+    export RESULT="";
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: extract_repo flakeFile
+# api: public
+# txt: Retrieves the value of the "repo" variable in the flake.
+# opt: flakeFile: The flake file.
+# txt: Returns 0/TRUE if the "repo" value could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, RESULT will contain the "repo" value.
+# use: if extract_repo "~/flake.nix"; then
+# use:   echo "repo -> ${RESULT}"
+# use: fi
+function extract_repo() {
+  local _flakeFile="${1}";
+  checkNotEmpty flakeFile "${_flakeFile}" 1;
+
+  local -i _rescode;
+  local _result;
+  _result="$(grep -oP '(?<=repo = ")[^"]+' "${_flakeFile}")";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+    export ERROR="";
+  else
+    export RESULT="";
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: extract_version flakeFile
+# api: public
+# txt: Retrieves the value of the "version" variable in the flake.
+# opt: flakeFile: The flake file.
+# txt: Returns 0/TRUE if the "version" value could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, RESULT will contain the "repo" value.
+# use: if extract_version "~/flake.nix"; then
+# use:   echo "version -> ${RESULT}"
+# use: fi
+function extract_version() {
+  local _flakeFile="${1}";
+  checkNotEmpty flakeFile "${_flakeFile}" 1;
+
+  local -i _rescode;
+  local _result;
+  _result="$(grep -oP '(?<=version = ")[^"]+' "${_flakeFile}")";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+    export ERROR="";
+  else
+    export RESULT="";
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: fetch_sha256 url rev
+# api: public
+# txt: Fetches the checksum using nix-prefetch-git.
+# opt: url: The url of the git repository.
+# opt: rev: The revision.
+# txt: Returns 0/TRUE if the sha256 value could be fetched; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, RESULT will contain the "sha256" hash.
+# txt: If the function returns 1/FALSE, ERROR will contain the error message.
+# use: if fetch_sha256 "https://github.com/my_org/my_repo" "0.0.1"; then
+# use:   echo "sha256: ${RESULT}";
+# use: fi
+function fetch_sha256() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+  local _rev="${2}"
+  checkNotEmpty rev "${_rev}" 2;
+
+  local -i _rescode;
+  local _result="$(nix-prefetch-git --quiet "${_url}" --rev "${_rev}" 2>&1 | jq -r '.sha256' 2>/dev/null)";
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+    export ERROR="";
+  else
+    export RESULT="";
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: update_version_in_flake flakeFile version
+# api: public
+# txt: Updates the "version" variable in a PythonEDA Nix flake.
+# opt: flakeFile: The flake file.
+# txt: Returns 0/TRUE if the "version" value could be updated; 1/FALSE otherwise.
+# use: if update_version_in_flake "~/flake.nix" "0.0.2"; then
+# use:   echo "version updated";
+# use: fi
+function update_version_in_flake() {
+  local _flakeFile="${1}";
+  checkNotEmpty flakeFile "${_flakeFile}" 1;
+  local _version="${2}";
+  checkNotEmpty version "${_version}" 1;
+
+  local -i _rescode;
+  sed -i "s/version = \".*\";/version = \"${_version}\";/" "${_flakeFile}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+
+# fun: update_sha256_in_flake flakeFile version
+# api: public
+# txt: Updates the "sha256" variable in a PythonEDA Nix flake.
+# opt: flakeFile: The flake file.
+# txt: Returns 0/TRUE if the "sha256" value could be updated; 1/FALSE otherwise.
+# use: if update_sha256_in_flake "~/flake.nix" "sha256-aaaaaaaaaaaaaaaa"; then
+# use:   echo "sha256 updated";
+# use: fi
+function update_sha256_in_flake() {
+  local _flakeFile="${1}";
+  checkNotEmpty flakeFile "${_flakeFile}" 1;
+  local _sha256="${2}";
+  checkNotEmpty sha256 "${_sha256}" 1;
+
+  local -i _rescode;
+  sed -i "s/sha256 = \".*\";/sha256 = \"${_sha256}\";/" "${_flakeFile}";
+  _rescode=$?;
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
