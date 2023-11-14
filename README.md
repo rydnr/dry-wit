@@ -11,7 +11,23 @@ dry-wit yourself.
 
 It comes with a number of [modules](https://github.com/rydnr/dry-wit/tree/main/src/modules "modules").
 
-## Nix users
+## Usage
+
+- Use this shebang in your scripts.
+
+``` sh
+#!/usr/bin/env dry-wit
+```
+
+- Write the only mandatory function `main()`
+
+The `main()` function is the starting point of your script. You don't need to care about anything but the funcional requirements of your script.
+
+## Examples
+
+You can check other dry-wit scripts as a reference. For example, <https://github.com/rydnr/update-sha256-in-nix-flake/tree/main/src/update-sha256-in-nix-flake.sh>.
+
+## Installation for Nix users
 
 If you are a Nix user, you can create your own scripts using dry-wit and package them as Nix flakes too.
 
@@ -109,15 +125,7 @@ Basically, in order to write dry-wit scripts you'll need to do the following:
 echo 'export PATH=$PATH:$HOME/.dry-wit/src' >> $HOME/.bashrc
 ```
 
-- Use this shebang in your scripts.
-
-``` sh
-#!/usr/bin/env dry-wit
-```
-
-- Write the only mandatory function `main()`
-
-The `main()` function is the starting point of your script. You don't need to care about anything but the funcional requirements of your script.
+### MacOS X
 
 Note for Mac OS X users:
 
