@@ -572,7 +572,8 @@ function checkInput() {
 # txt: Returns 0/TRUE if the command-line arguments were parsed successfully; 1/FALSE otherwise.
 # use: parseInput $@;
 function parseInput() {
-  local _flags=$(CLI.extractFlags $@)
+  local _flags;
+  _flags=$(CLI.extractFlags $@)
   local _oldIFS="${IFS}"
   local -a _providedFlags=()
   local -i _shifts
@@ -1288,10 +1289,9 @@ function CLI.parseCallbackDefinedForFlag() {
   isFunctionDefined "${_result}"
   local -i _rescode=$?
 
-  local _toLower=""
   if isFalse ${_rescode}; then
     toLower "${_result}"
-    _toLower="${RESULT}"
+    local _toLower="${RESULT}"
     if isFunctionDefined "${_toLower}"; then
       _result="${_toLower}"
       _rescode=${TRUE}
@@ -1339,7 +1339,7 @@ function CLI.parseFlag() {
       _longName="${RESULT}"
     else
       _continue=${FALSE}
-      #      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      # exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
   fi
 
@@ -1349,7 +1349,7 @@ function CLI.parseFlag() {
       _shortName="${RESULT}"
     else
       _continue=${FALSE}
-      #      exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
+      # exitWithError UNKNOWN_FLAG "Unknown flag ${_flag}";
     fi
   fi
 
@@ -1372,8 +1372,6 @@ function CLI.parseFlag() {
         if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
           _argument=${1}
           _result=$((_result + 1))
-        elif CLI.retrieveDefaultValueForOptionalFlag "${_flagKey}"; then
-          _argument="${RESULT}"
         fi
         if isEmpty "${_argument}"; then
           _argument=${TRUE}
@@ -1385,7 +1383,7 @@ function CLI.parseFlag() {
       fi
     else
       _continue=${FALSE}
-      #      exitWithError INVALID_OPTION "Unexpected flag: '${_flag}'";
+      # exitWithError INVALID_OPTION "Unexpected flag: '${_flag}'";
     fi
   fi
 
@@ -1440,7 +1438,7 @@ function CLI.parseNotProvidedFlags() {
   local -i _rescode=${TRUE}
 
   if isGreaterThan $# 0; then
-    local _providedFlags="${1}"
+    local _providedFlags="${@}"
 
     local -a _notProvidedFlags=()
 
@@ -1482,7 +1480,6 @@ function CLI.parseNotProvidedFlags() {
 
         if isTrue ${_defaultValueDefined}; then
           if CLI.parseCallbackDefinedForFlag "${_longName}"; then
-            CLI.buildNameOfTheCallbackFunctionToParseFlag "${_longName}"
             local _callbackFunction="${RESULT}"
             "${_callbackFunction}" "${_defaultValue}"
           else
@@ -1491,10 +1488,9 @@ function CLI.parseNotProvidedFlags() {
             local _upcasedLongName="${RESULT}"
             local -n _existingVariable=${_upcasedLongName}
             local _value="${_defaultValue}";
-            if ! isEmpty "${_existingVariable:-}"; then
-              _value=${TRUE};
+            if isEmpty "${_existingVariable:-}"; then
+              declare -gx ${_upcasedLongName}="${_value}";
             fi
-            declare -gx ${_upcasedLongName}="${_value}";
           fi
         else
           camelCaseToSnakeCase "${_longName}"
@@ -1502,7 +1498,7 @@ function CLI.parseNotProvidedFlags() {
           local _upcasedLongName="${RESULT}"
           local -n _existingVariable=${_upcasedLongName}
           if isEmpty "${_existingVariable}"; then
-            declare -gx ${_upcasedLongName}=""
+            declare -gx ${_upcasedLongName}=${TRUE}
           fi
         fi
       fi

@@ -244,13 +244,29 @@ function update_urls_in_flake() {
   command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1;
   _rescode=$?;
 
-  if isTrue ${_rescode}; then
-    local _flakeFolder;
-    _flakeFolder="$(dirname "${_flakeNix}")";
+  return ${_rescode};
+}
 
-    _result="$(command nix flake update "${_flakeFolder}")";
-    _rescode=$?;
-  fi
+# fun: update_flake_lock flakeNix
+# api: public
+# txt: Updates the flake.lock file.
+# opt: flakeNix: The flake.nix file.
+# txt: Returns 0/TRUE if the flake.lock file gets updated successfully; 1/FALSE otherwise.
+# use: if update_flake_lock "${PWD}/flake.nix"; then
+# use:   echo "flake.lock updated successfully";
+# use: fi
+function update_flake_lock() {
+  local _flakeNix="${1}";
+  checkNotEmpty flakeNix "${_flakeNix}" 3;
+
+  local -i _rescode=${FALSE};
+  local _result;
+
+  local _flakeFolder;
+  _flakeFolder="$(dirname "${_flakeNix}")";
+
+  _result="$(command nix flake update "${_flakeFolder}")";
+  _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
