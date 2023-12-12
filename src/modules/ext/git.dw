@@ -22,17 +22,24 @@ function retrieveBranch() {
   return ${_rescode};
 }
 
-# fun: retrieveRepositoryUrl
+# fun: retrieveRepositoryUrl folder?
 # api: public
 # txt: Finds out the URL of the git repository.
+# opt: folder: The repository folder. Optional.
 # txt: Returns 0/TRUE if the url could be retrieved; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT contains the repository url.
-# use: if findOutRepositoryUrl; then echo "The repository url is ${RESULT}"; fi
+# use: if findOutRepositoryUrl "${_repo_folder}"; then
+# use:   echo "The repository url is ${RESULT}";
+# use: fi
 function retrieveRepositoryUrl() {
+  local _folder="${1}";
+  if isEmpty "${_folder}"; then
+    _folder="${PWD}";
+  fi
   local -i _rescode;
   local _result;
 
-  _result="$(git config --get remote.origin.url)";
+  _result="$(pushd "${_folder}" > /dev/null && git config --get remote.origin.url && popd > /dev/null)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -55,13 +62,13 @@ function retrieveHeadRevision() {
   local _rescode=${FALSE};
   local _result;
 
-  pushd "${_folder}" > /dev/null 2>&1;
+  pushd "${_folder}" > /dev/null 2>&1 || return ${FALSE};
   _rescode=$?;
 
   if isTrue ${_rescode}; then
     _result="$(git rev-parse HEAD)";
     _rescode=$?;
-    popd > /dev/null 2>&1;
+    popd > /dev/null 2>&1 || return ${FALSE};
   fi
 
   if isTrue ${_rescode}; then
@@ -88,12 +95,12 @@ function retrieveRemoteHead() {
   local _result;
   local -i _rescode;
 
-  pushd "${_repo}" > /dev/null 2>&1;
+  pushd "${_repo}" > /dev/null 2>&1 || return ${FALSE};
   _rescode=$?;
   if isTrue ${_rescode}; then
     _result=$(git ls-remote 2> /dev/null | grep "${_branch}" | grep 'refs/remotes' | awk '{print $1;}');
     _rescode=$?;
-    popd > /dev/null 2>&1
+    popd > /dev/null 2>&1 || return ${FALSE}
   fi
 
   if isTrue ${_rescode}; then
@@ -129,4 +136,494 @@ function retrieveRemoteHeadFromURL() {
 
   return ${_rescode};
 }
+
+# fun: retrieveLatestRemoteTagInGithub owner repo token?
+# api: public
+# txt: Retrieves the latest remote tag in a github repository.
+# opt: owner: The repository owner.
+# opt: repo: The repository name.
+# opt: token: The github token. Optional.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the tag.
+# use: if retrieveLatestRemoteTagInGithub rydnr "nix-flake-to-graphviz"; then echo "Latest tag: ${RESULT}"; fi
+function retrieveLatestRemoteTagInGithub() {
+  local _owner="${1}";
+  checkNotEmpty owner "${_owner}" 1;
+  local _repo="${2}";
+  checkNotEmpty repo "${_repo}" 1;
+  local _token="${3}";
+
+  local _result;
+  local -i _rescode=${FALSE};
+
+  # GitHub API URL for fetching tags
+  local _apiUrl="https://api.github.com/repos/${_owner}/${_repo}/tags"
+
+  # Using GitHub API to get tags
+  # The token is optional but helps to avoid rate limits
+  local _auth;
+  _auth="";
+  if ! isEmpty "${_token}"; then
+    _auth="-H \"Authorization: token ${_token}\"";
+  fi
+  local _tags;
+  _tags="$(curl -s ${_auth} "${_apiUrl}")";
+  # Extracting tags, filtering for semver, sorting, and getting the latest
+  _result="$(command echo "${_tags}" | command grep -o '"name": "[^"]*' | command grep -o '[^"]*$' | command grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | command sort -V | command tail -n 1)";
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: incrementPatchVersion version
+# api: public
+# txt: Increments the patch number in given version.
+# opt: version: The version.
+# txt: Returns 0/TRUE if the new version could be generated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the new version.
+# use: if incrementPatchVersion "${my_version}"; then
+# use:   echo "New version: ${RESULT}";
+# use: fi
+function incrementPatchVersion() {
+  local _version="${1}";
+  checkNotEmpty version "${_version}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+  _result="$(command echo "${_version}" | command awk -F. '{print $1 "." $2 "." $3+1}')";
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+     _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: checkGithubTokenValid token
+# api: public
+# txt: Checks if given Github token is valid.
+# opt: token: The token to check.
+# txt: Returns 0/TRUE if the token is valid; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain the HTTP status code of the error.
+# use: if checkGithubTokenValid "${token}"; then
+# use:   echo "${token} is valid";
+# use: fi
+function checkGithubTokenValid() {
+  local _token="${1}";
+  checkNotEmpty token "${_token}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _responseCode;
+  _responseCode=$(command curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${_token}" https://api.github.com/user)
+
+  if [ "${_responseCode}" -eq 200 ]; then
+    _rescode=${TRUE};
+  else
+    export ERROR="${_responseCode}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: extractOwnerFromGithubUrl url
+# api: public
+# txt: Extracts the owner from a Github url.
+# opt: url: The github url.
+# txt: Returns 0/TRUE if the owner could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the owner.
+# use: if extractOwnerFromGithubUrl "${url}"; then
+# use:   echo "owner: ${RESULT}";
+# use: fi
+function extractOwnerFromGithubUrl() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+
+  local -i _rescode=${FALSE};
+  local _result;
+
+  _result="$(echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/.*|\1|p")";
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: extractRepoFromGithubUrl url
+# api: public
+# txt: Extracts the repo from a Github url.
+# opt: url: The github url.
+# txt: Returns 0/TRUE if the repo could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the repository.
+# use: if extractRepoFromGithubUrl "${url}"; then
+# use:   echo "repo: ${RESULT}";
+# use: fi
+function extractRepoFromGithubUrl() {
+  local _url="${1}";
+  checkNotEmpty url "${_url}" 1;
+
+  local -i _rescode=${FALSE};
+  local _result;
+
+  _result="$(echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/\([^/]*\)|\2|p")";
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: gitAddAll repo
+# api: public
+# txt: Adds all modified files to the index.
+# opt: repo: The repository folder.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the output.
+# txt: Otherwise the variable ERROR will contain information about the error.
+# use: if gitAddAll "${repoFolder}"; then
+# use:   ...
+# use: fi
+function gitAddAll() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+  _result="$(pushd "${_repo}" > /dev/null && command git add --all && popd > /dev/null 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: gitAdd repo file
+# api: public
+# txt: Adds given file to the index.
+# opt: repo: The repository folder.
+# opt: file: The file to add.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the output.
+# txt: Otherwise the variable ERROR will contain information about the error.
+# use: if gitAdd "${repoFolder}" README.md; then
+# use:   ...
+# use: fi
+function gitAdd() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+  local _file="${2}";
+  checkNotEmpty file "${_file}" 2;
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+  _result="$(pushd "${_repo}" > /dev/null && command git add "${_file}" && popd > /dev/null 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: DW.gitConfig repo? gpgKeyId?
+# api: public
+# txt: Creates a temporary git config file.
+# opt: repo: The repository folder. Optional.
+# opt: gpgKeyId: The id of the GnuPG key to sign the tag. Optional.
+# txt: Returns 0/TRUE if the file is created; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the path of the file.
+# txt: Otherwise the variable ERROR will contain information about the error.
+# use: if DW.gitConfig; then
+# use:   ...
+# use: fi
+function DW.gitConfig() {
+  local _gitRepo="${1}";
+  local _gpgKeyId="${2}";
+
+  local -i _rescode=${FALSE};
+
+  createTempFile;
+  _rescode=$?;
+  local _result="${RESULT}";
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    cat <<EOF > "${_result}"
+
+[apply]
+        whitespace = strip
+
+[diff]
+        color = false
+        rename = copy
+
+[pager]
+        color = false
+
+[status]
+        color = false
+
+[http]
+        sslVerify = false
+
+[push]
+        default = tracking
+
+[branch]
+        autosetupmerge = true
+
+[color]
+        ui = false
+        diff   = false
+        branch = false
+        status = false
+
+[rerere]
+        enabled = true
+
+[pull]
+        rebase = true
+
+[commit]
+        gpgsign = true
+
+[tag]
+        gpgsign = true
+
+[url "https://github.com/"]
+        insteadOf = ssh://git@github.com/
+
+[advice]
+        skippedCherryPicks = false
+EOF
+
+    local _committerEmail;
+    local _committerName;
+    if ! isEmpty "${_gpgKeyId}" && checkGpgKeyIdKnown "${_gpgKeyId}"; then
+      DW.import gpg;
+      extractEmailFromGpgKey "${_gpgKeyId}";
+      _committerEmail="${RESULT}";
+      extractOwnerNameFromGpgKey "${_gpgKeyId}";
+      _committerName="${RESULT}";
+
+      cat <<EOF >> "${_result}"
+
+[user]
+        email = ${_committerEmail}
+        name = ${_committerName}
+        signingKey = ${_gpgKeyId}
+EOF
+    else
+      if isEmpty "${_gitRepo}"; then
+        _committerEmail="$(command git config --global user.email)";
+        _committerName="$(command git config --global user.name)";
+      else
+        _committerEmail="$(command git config user.email)";
+        _committerName="$(command git config user.name)";
+      fi
+      cat <<EOF >> "${_result}"
+
+[user]
+        email = ${_committerEmail}
+        name = ${_committerName}
+EOF
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+
+# fun: gitCommit repo message gpgKeyId?
+# api: public
+# txt: Adds all modified files to the index.
+# opt: repo: The repository folder.
+# opt: message: The message.
+# opt: gpgKeyId: The id of the GPG key. Optional.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the output.
+# txt: Otherwise the variable ERROR will contain information about the error.
+# use: if gitCommit "${repoFolder}" "Minor changes"; then
+# use:   ...
+# use: fi
+function gitCommit() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+  local _message="${2}";
+  checkNotEmpty message "${_message}" 2;
+  local _gpgKeyId="${3}";
+
+  local -i _rescode=${FALSE};
+
+  DW.gitConfig "${_repo}" "${_gpgKeyId}";
+  local _configFile="${RESULT}";
+
+  local _result;
+  _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git commit -m "${_message}" && popd > /dev/null 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: gitTag repo tag message? gpgKeyId?
+# api: public
+# txt: Creates a tag.
+# opt: repo: The repository folder.
+# opt: tag: The tag name.
+# opt: message: The message. Optional.
+# opt: gpgKeyId: The id of the GnuPG key to sign the tag. Optional.
+# txt: Returns 0/TRUE if the tag is created; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the output.
+# txt: Otherwise the variable ERROR will contain information about the error.
+# use: if gitCommit "${repoFolder}" "Minor changes"; then
+# use:   ...
+# use: fi
+function gitTag() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+  local _tag="${2}";
+  checkNotEmpty tag "${_tag}" 2;
+  local _message="${3}";
+  local _gpgKeyId="${4}";
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+
+  DW.gitConfig "${_repo}" "${_gpgKeyId}";
+  local _configFile="${RESULT}";
+
+  if isEmpty "${_message}"; then
+    _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git tag "${_tag}" && popd > /dev/null 2>&1)";
+    _rescode=$?;
+  else
+    _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git tag "${_tag}" -m "${_message}" && popd > /dev/null 2>&1)";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: gitPush repo
+# api: public
+# txt: Pushes pending commits to the remote repository.
+# opt: repo: The repository folder.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the output.
+# txt: Otherwise the variable ERROR will contain information about the error.
+# use: if gitPush "${repoFolder}"; then
+# use:   ...
+# use: fi
+function gitPush() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+
+  local -i _rescode=${FALSE};
+
+  DW.gitConfig "${_repo}";
+  local _configFile="${RESULT}";
+
+  local _result;
+  _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git push && popd > /dev/null 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: gitPushTags repo
+# api: public
+# txt: Pushes pending tags to the remote repository.
+# opt: repo: The repository folder.
+# opt: gpgKeyId: The id of the GnuPG key to sign the tag. Optional.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the output.
+# txt: Otherwise the variable ERROR will contain information about the error.
+# use: if gitPushTags "${repoFolder}"; then
+# use:   ...
+# use: fi
+function gitPushTags() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+
+  local -i _rescode=${FALSE};
+
+  DW.gitConfig "${_repo}";
+  local _configFile="${RESULT}";
+  local _result;
+  _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git push --tags 2>&1 && popd > /dev/null 2>&1)";
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+checkReq awk;
+checkReq curl;
+checkReq git;
+checkReq sed;
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

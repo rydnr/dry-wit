@@ -19,8 +19,8 @@
 {
   description = "Dry-wit bash framework";
   inputs = rec {
-    nixos.url = "github:NixOS/nixpkgs/nixos-23.05";
     flake-utils.url = "github:numtide/flake-utils/v1.0.0";
+    nixos.url = "github:NixOS/nixpkgs/nixos-23.11";
   };
   outputs = inputs:
     with inputs;
@@ -35,7 +35,7 @@
         org = "rydnr";
         repo = "dry-wit";
         pname = "${org}-${repo}";
-        version = "3.0.4";
+        version = "3.0.5";
         pkgs = import nixos { inherit system; };
         description = "Dry-wit bash framework";
         license = pkgs.lib.licenses.gpl3;

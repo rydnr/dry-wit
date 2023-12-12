@@ -1490,16 +1490,18 @@ function CLI.parseNotProvidedFlags() {
             normalizeUppercase "${RESULT}"
             local _upcasedLongName="${RESULT}"
             local -n _existingVariable=${_upcasedLongName}
-            if isEmpty "${_existingVariable:-}"; then
-              declare -gx ${_upcasedLongName}="${_defaultValue}"
+            local _value="${_defaultValue}";
+            if ! isEmpty "${_existingVariable:-}"; then
+              _value=${TRUE};
             fi
+            declare -gx ${_upcasedLongName}="${_value}";
           fi
         else
           camelCaseToSnakeCase "${_longName}"
           normalizeUppercase "${RESULT}"
           local _upcasedLongName="${RESULT}"
           local -n _existingVariable=${_upcasedLongName}
-          if isEmpty "${_existingVariable:-}"; then
+          if isEmpty "${_existingVariable}"; then
             declare -gx ${_upcasedLongName}=""
           fi
         fi
@@ -1599,17 +1601,17 @@ function CLI.parseCommandLineParameters() {
   local _oldIFS="${IFS}"
 
   CLI.getParameterNamesVariableName
-  local -n _parameterNames="${RESULT}"
+  local -n _parameterNames="${RESULT}";
 
   IFS="${DWIFS}"
   local _parameterName
   for _parameterName in ${_parameterNames[@]}; do
     IFS="${_oldIFS}"
 
-    local _parameterValue
-    local _parseCallback
+    local _parameterValue;
+    local _parseCallback;
     if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
-      _parameterValue="${@}"
+      _parameterValue="${@}";
       if CLI.parseCallbackDefinedForParameter "${_parameterName}"; then
         _parseCallback="${RESULT}"
         "${_parseCallback}" ${_parameterValue}

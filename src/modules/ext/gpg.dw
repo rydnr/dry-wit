@@ -1,0 +1,96 @@
+# mod: gpg
+# api: public
+# txt: gnupg-related functions
+
+# fun: checkGpgKeyIdKnown gpgKeyId
+# api: public
+# txt: Checks if given GnuPG key is known to gnupg.
+# opt: gpgKeyId: The id of the GnuPG key.
+# txt: Returns 0/TRUE if the key is known; 1/FALSE otherwise.
+# use: if checkGpgKeyIdKnown "${my_key_id}"; then
+# use:   echo "GnuPG key ${my_key_id} is known";
+# use: fi
+function checkGpgKeyIdKnown() {
+  local _gpgKeyId="${1}";
+  checkNotEmpty gpgKeyId "${_gpgKeyId}" 1;
+
+  local -i _rescode=${FALSE};
+
+  if command gpg --list-keys | command grep -q "${_gpgKeyId}" 2> /dev/null; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: extractEmailFromGpgKey gpgKeyId
+# api: public
+# txt: Extracts the email from given key.
+# opt: gpgKeyId: The id of the GnuPG key.
+# txt: Returns 0/TRUE if the email could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the email.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain additional information.
+# use: if extractEmailFromGpgKey "${my_key_id}"; then
+# use:   echo "Email: ${RESULT}";
+# use: fi
+function extractEmailFromGpgKey() {
+  local _gpgKeyId="${1}";
+  checkNotEmpty gpgKeyId "${_gpgKeyId}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+  _result="$(command gpg --list-keys "${_gpgKeyId}" | command grep -oP "\b\K[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")";
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: extractOwnerNameFromGpgKey gpgKeyId
+# api: public
+# txt: Extracts the name of the owner from given key.
+# opt: gpgKeyId: The id of the GnuPG key.
+# txt: Returns 0/TRUE if the name could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the name.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain additional information.
+# use: if extractOwnerNameFromGpgKey "${my_key_id}"; then
+# use:   echo "Owner: ${RESULT}";
+# use: fi
+function extractOwnerNameFromGpgKey() {
+  local _gpgKeyId="${1}";
+  checkNotEmpty gpgKeyId "${_gpgKeyId}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _result;
+  _result="$(command gpg --list-keys "${_gpgKeyId}" | command grep -oP 'uid\s+\[.*\]\s+\K[^<(]+' | sed 's/\s*$//')";
+
+  _rescode=$?;
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+checkReq gpg;
+checkReq grep;
+checkReq sed;
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

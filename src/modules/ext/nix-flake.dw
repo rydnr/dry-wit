@@ -165,4 +165,97 @@ function update_sha256_in_flake() {
 
   return ${_rescode};
 }
+
+# fun: extract_inputs_in_flake_lock flakeLockFile
+# api: public
+# txt: Retrieves the inputs declared in given file.
+# opt: flakeLockFile: The flake.lock file.
+# txt: Returns 0/TRUE if the inputs could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain a space-separated list of inputName:owner/repo/tag entries.
+# use: if extract_inputs_in_flake_lock "flake.lock"; then
+# use:   echo "inputs: ${RESULT}";
+# use: fi
+function extract_inputs_in_flake_lock() {
+  local _flakeLock="${1}";
+  checkNotEmpty flakeLockFile "${_flakeLock}" 1;
+
+  local _result="";
+  local -i _rescode=${FALSE};
+
+  local _root;
+  _root="$(command jq -r '.root' "${_flakeLock}")"
+
+  local _input;
+  local -i _firstTime=${TRUE};
+  local _inputs;
+  _inputs="$(command jq -r --arg root "${_root}" '.nodes[$root].inputs | to_entries[] | .key' "${_flakeLock}")";
+
+  local _origIFS="${IFS}";
+  IFS="${DWIFS}";
+  for _input in ${_inputs}; do
+    IFS=${_origIFS};
+    # Extract the owner, repo, and ref values for each input
+    local _owner;
+    _owner=$(jq -r --arg input "${_input}" '.nodes[$input].original.owner' "${_flakeLock}")
+    local _repo;
+    _repo=$(jq -r --arg input "${_input}" '.nodes[$input].original.repo' "${_flakeLock}")
+    local _ref;
+    _ref=$(jq -r --arg input "${_input}" '.nodes[$input].original.ref' "${_flakeLock}")
+
+    if isFalse ${_firstTime}; then
+      _result="${_result} ";
+    else
+      _firstTime=${FALSE};
+    fi
+
+    _result="${_result}${_input}:${_owner}/${_repo}/${_ref}";
+    _rescode=${TRUE};
+  done
+  IFS=${_origIFS};
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
+
+# fun: update_urls_in_flake  oldUrl newUrl flakeNix
+# api: public
+# txt: Updates the version of an input in given flake.nix file.
+# opt: oldUrl: The old url.
+# opt: newUrl: The new url.
+# opt: flakeNix: The flake.nix file.
+# txt: Returns 0/TRUE if the version of the input gets updated successfully; 1/FALSE otherwise.
+# use: if update_urls_in_flake "github:nixos/nixpkgs/23.05" "github:nixos/nixpkgs/23.11" "${PWD}/flake.nix"; then
+# use:   echo "nixpks updated successfully";
+# use: fi
+function update_urls_in_flake() {
+  local _oldUrl="${1}";
+  checkNotEmpty oldUrl "${_oldUrl}" 1;
+  local _newUrl="${2}";
+  checkNotEmpty newUrl "${_newUrl}" 2;
+  local _flakeNix="${3}";
+  checkNotEmpty flakeNix "${_flakeNix}" 3;
+
+  local -i _rescode=${FALSE};
+  local _result;
+
+  command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1;
+  _rescode=$?;
+
+  if isTrue ${_rescode}; then
+    local _flakeFolder;
+    _flakeFolder="$(dirname "${_flakeNix}")";
+
+    _result="$(command nix flake update "${_flakeFolder}")";
+    _rescode=$?;
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
