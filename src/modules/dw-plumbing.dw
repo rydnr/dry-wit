@@ -355,6 +355,8 @@ function DRYWIT.main() {
   # first argument is the script name.
   shift
 
+  local -i _rescode;
+
   source "${_scriptPath}" "$@"
 
   disableExitOnErrorOption
@@ -415,11 +417,14 @@ function DRYWIT.main() {
 
     restoreBashOptions "${_bashOpts}"
     main ${BASH_ARGV[@]}
+    _rescode=$?;
+
     setLogCategory ""
   else
     echo "Invalid ${_scriptName} script: main function is mandatory in dry-wit scripts"
     exit 255
   fi
+  return ${_rescode};
 }
 
 # fun: DRYWIT.retrieveSettingsFiles

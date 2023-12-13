@@ -1,16 +1,16 @@
 # Copyright 2023-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
-# fun: extract_org flakeFile
+# fun: extractOrgFromFlakeNix flakeFile
 # api: public
 # txt: Retrieves the value of the "org" variable in the flake.
 # opt: flakeFile: The flake file.
 # txt: Returns 0/TRUE if the "org" value could be extracted; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, RESULT will contain the "org" value.
-# use: if extract_org "~/flake.nix"; then
+# use: if extractOrgFromFlakeNix "~/flake.nix"; then
 # use:   echo "org -> ${RESULT}"
 # use: fi
-function extract_org() {
+function extractOrgFromFlakeNix() {
   local _flakeFile="${1}";
   checkNotEmpty flakeFile "${_flakeFile}" 1;
 
@@ -30,16 +30,16 @@ function extract_org() {
   return ${_rescode};
 }
 
-# fun: extract_repo flakeFile
+# fun: extractRepoFromFlakeNix flakeFile
 # api: public
 # txt: Retrieves the value of the "repo" variable in the flake.
 # opt: flakeFile: The flake file.
 # txt: Returns 0/TRUE if the "repo" value could be extracted; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, RESULT will contain the "repo" value.
-# use: if extract_repo "~/flake.nix"; then
+# use: if extractRepoFromFlakeNix "~/flake.nix"; then
 # use:   echo "repo -> ${RESULT}"
 # use: fi
-function extract_repo() {
+function extractRepoFromFlakeNix() {
   local _flakeFile="${1}";
   checkNotEmpty flakeFile "${_flakeFile}" 1;
 
@@ -59,16 +59,16 @@ function extract_repo() {
   return ${_rescode};
 }
 
-# fun: extract_version flakeFile
+# fun: extractVersionFromFlakeNix flakeFile
 # api: public
 # txt: Retrieves the value of the "version" variable in the flake.
 # opt: flakeFile: The flake file.
 # txt: Returns 0/TRUE if the "version" value could be extracted; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, RESULT will contain the "repo" value.
-# use: if extract_version "~/flake.nix"; then
+# use: if extractVersionFromFlakeNix "~/flake.nix"; then
 # use:   echo "version -> ${RESULT}"
 # use: fi
-function extract_version() {
+function extractVersionFromFlakeNix() {
   local _flakeFile="${1}";
   checkNotEmpty flakeFile "${_flakeFile}" 1;
 
@@ -88,7 +88,7 @@ function extract_version() {
   return ${_rescode};
 }
 
-# fun: fetch_sha256 url rev
+# fun: fetchSha256FromUrl url rev
 # api: public
 # txt: Fetches the checksum using nix-prefetch-git.
 # opt: url: The url of the git repository.
@@ -96,17 +96,18 @@ function extract_version() {
 # txt: Returns 0/TRUE if the sha256 value could be fetched; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, RESULT will contain the "sha256" hash.
 # txt: If the function returns 1/FALSE, ERROR will contain the error message.
-# use: if fetch_sha256 "https://github.com/my_org/my_repo" "0.0.1"; then
+# use: if fetchSha256FromUrl "https://github.com/my_org/my_repo" "0.0.1"; then
 # use:   echo "sha256: ${RESULT}";
 # use: fi
-function fetch_sha256() {
+function fetchSha256FromUrl() {
   local _url="${1}";
   checkNotEmpty url "${_url}" 1;
   local _rev="${2}"
   checkNotEmpty rev "${_rev}" 2;
 
   local -i _rescode;
-  local _result="$(nix-prefetch-git --quiet "${_url}" --rev "${_rev}" 2>&1 | jq -r '.sha256' 2>/dev/null)";
+  local _result;
+  _result="$(nix-prefetch-git --quiet "${_url}" --rev "${_rev}" 2>&1 | jq -r '.sha256' 2>/dev/null)";
   _rescode=$?;
 
   if isEmpty "${_result}"; then
@@ -124,15 +125,15 @@ function fetch_sha256() {
   return ${_rescode};
 }
 
-# fun: update_version_in_flake flakeFile version
+# fun: updateVersionInFlakeNix flakeFile version
 # api: public
 # txt: Updates the "version" variable in a PythonEDA Nix flake.
 # opt: flakeFile: The flake file.
 # txt: Returns 0/TRUE if the "version" value could be updated; 1/FALSE otherwise.
-# use: if update_version_in_flake "~/flake.nix" "0.0.2"; then
+# use: if updateVersionInFlakeNix "~/flake.nix" "0.0.2"; then
 # use:   echo "version updated";
 # use: fi
-function update_version_in_flake() {
+function updateVersionInFlakeNix() {
   local _flakeFile="${1}";
   checkNotEmpty flakeFile "${_flakeFile}" 1;
   local _version="${2}";
@@ -145,15 +146,15 @@ function update_version_in_flake() {
   return ${_rescode};
 }
 
-# fun: update_sha256_in_flake flakeFile version
+# fun: updateSha256InFlakeNix flakeFile version
 # api: public
 # txt: Updates the "sha256" variable in a PythonEDA Nix flake.
 # opt: flakeFile: The flake file.
 # txt: Returns 0/TRUE if the "sha256" value could be updated; 1/FALSE otherwise.
-# use: if update_sha256_in_flake "~/flake.nix" "sha256-aaaaaaaaaaaaaaaa"; then
+# use: if updateSha256InFlakeNix "~/flake.nix" "sha256-aaaaaaaaaaaaaaaa"; then
 # use:   echo "sha256 updated";
 # use: fi
-function update_sha256_in_flake() {
+function updateSha256InFlakeNix() {
   local _flakeFile="${1}";
   checkNotEmpty flakeFile "${_flakeFile}" 1;
   local _sha256="${2}";
@@ -166,16 +167,16 @@ function update_sha256_in_flake() {
   return ${_rescode};
 }
 
-# fun: extract_inputs_in_flake_lock flakeLockFile
+# fun: extractInputsFromFlakeLock flakeLockFile
 # api: public
 # txt: Retrieves the inputs declared in given file.
 # opt: flakeLockFile: The flake.lock file.
 # txt: Returns 0/TRUE if the inputs could be extracted; 1/FALSE otherwise.
 # txt: If the function returns 0/TRUE, the variable RESULT will contain a space-separated list of inputName:owner/repo/tag entries.
-# use: if extract_inputs_in_flake_lock "flake.lock"; then
+# use: if extractInputsFromFlakeLock "flake.lock"; then
 # use:   echo "inputs: ${RESULT}";
 # use: fi
-function extract_inputs_in_flake_lock() {
+function extractInputsFromFlakeLock() {
   local _flakeLock="${1}";
   checkNotEmpty flakeLockFile "${_flakeLock}" 1;
 
@@ -188,7 +189,7 @@ function extract_inputs_in_flake_lock() {
   local _input;
   local -i _firstTime=${TRUE};
   local _inputs;
-  _inputs="$(command jq -r --arg root "${_root}" '.nodes[$root].inputs | to_entries[] | .key' "${_flakeLock}")";
+  _inputs="$(command jq -r --arg root "${_root}" '.nodes[$root].inputs | to_entries[] | .value' "${_flakeLock}")";
 
   local _origIFS="${IFS}";
   IFS="${DWIFS}";
@@ -220,17 +221,17 @@ function extract_inputs_in_flake_lock() {
   return ${_rescode};
 }
 
-# fun: update_urls_in_flake  oldUrl newUrl flakeNix
+# fun: updateInputsInFlakeNix  oldUrl newUrl flakeNix
 # api: public
 # txt: Updates the version of an input in given flake.nix file.
 # opt: oldUrl: The old url.
 # opt: newUrl: The new url.
 # opt: flakeNix: The flake.nix file.
 # txt: Returns 0/TRUE if the version of the input gets updated successfully; 1/FALSE otherwise.
-# use: if update_urls_in_flake "github:nixos/nixpkgs/23.05" "github:nixos/nixpkgs/23.11" "${PWD}/flake.nix"; then
+# use: if updateInputsInFlakeNix "github:nixos/nixpkgs/23.05" "github:nixos/nixpkgs/23.11" "${PWD}/flake.nix"; then
 # use:   echo "nixpks updated successfully";
 # use: fi
-function update_urls_in_flake() {
+function updateInputsInFlakeNix() {
   local _oldUrl="${1}";
   checkNotEmpty oldUrl "${_oldUrl}" 1;
   local _newUrl="${2}";
@@ -247,15 +248,15 @@ function update_urls_in_flake() {
   return ${_rescode};
 }
 
-# fun: update_flake_lock flakeNix
+# fun: updateFlakeLock flakeNix
 # api: public
 # txt: Updates the flake.lock file.
 # opt: flakeNix: The flake.nix file.
 # txt: Returns 0/TRUE if the flake.lock file gets updated successfully; 1/FALSE otherwise.
-# use: if update_flake_lock "${PWD}/flake.nix"; then
+# use: if updateFlakeLock "${PWD}/flake.nix"; then
 # use:   echo "flake.lock updated successfully";
 # use: fi
-function update_flake_lock() {
+function updateFlakeLock() {
   local _flakeNix="${1}";
   checkNotEmpty flakeNix "${_flakeNix}" 3;
 
@@ -265,7 +266,7 @@ function update_flake_lock() {
   local _flakeFolder;
   _flakeFolder="$(dirname "${_flakeNix}")";
 
-  _result="$(command nix flake update "${_flakeFolder}")";
+  _result="$(command nix flake update "${_flakeFolder}" 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then

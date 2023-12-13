@@ -1409,8 +1409,11 @@ BOOTSTRAP.setDryWitPath "${BASH_SOURCE[0]}"
 DW.ifTestRunDryWitTest
 
 DRYWIT.main "$@"
+__dw__rescode=$?
 
 if BOOTSTRAP.isNested; then
   cleanup
 fi
+
+exit ${__dw__rescode}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

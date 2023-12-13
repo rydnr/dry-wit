@@ -39,7 +39,7 @@ function retrieveRepositoryUrl() {
   local -i _rescode;
   local _result;
 
-  _result="$(pushd "${_folder}" > /dev/null && git config --get remote.origin.url && popd > /dev/null)";
+  _result="$(git -C "${_folder}" config --get remote.origin.url)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -62,13 +62,11 @@ function retrieveHeadRevision() {
   local _rescode=${FALSE};
   local _result;
 
-  pushd "${_folder}" > /dev/null 2>&1 || return ${FALSE};
+  _result="$(git -C "${_folder}" rev-parse HEAD)";
   _rescode=$?;
 
-  if isTrue ${_rescode}; then
-    _result="$(git rev-parse HEAD)";
-    _rescode=$?;
-    popd > /dev/null 2>&1 || return ${FALSE};
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
   fi
 
   if isTrue ${_rescode}; then
@@ -92,15 +90,13 @@ function retrieveRemoteHead() {
   local _branch="${2}";
   checkNotEmpty branch "${_branch}" 2;
 
-  local _result;
   local -i _rescode;
-
-  pushd "${_repo}" > /dev/null 2>&1 || return ${FALSE};
+  local _result;
+  _result=$(git -C "${_repo}" ls-remote 2> /dev/null | grep "${_branch}" | grep 'refs/remotes' | awk '{print $1;}');
   _rescode=$?;
-  if isTrue ${_rescode}; then
-    _result=$(git ls-remote 2> /dev/null | grep "${_branch}" | grep 'refs/remotes' | awk '{print $1;}');
-    _rescode=$?;
-    popd > /dev/null 2>&1 || return ${FALSE}
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
   fi
 
   if isTrue ${_rescode}; then
@@ -150,7 +146,7 @@ function retrieveLatestRemoteTagInGithub() {
   local _owner="${1}";
   checkNotEmpty owner "${_owner}" 1;
   local _repo="${2}";
-  checkNotEmpty repo "${_repo}" 1;
+  checkNotEmpty repo "${_repo}" 2;
   local _token="${3}";
 
   local _result;
@@ -161,13 +157,12 @@ function retrieveLatestRemoteTagInGithub() {
 
   # Using GitHub API to get tags
   # The token is optional but helps to avoid rate limits
-  local _auth;
-  _auth="";
+  local _auth=();
   if ! isEmpty "${_token}"; then
-    _auth="-H \"Authorization: token ${_token}\"";
+    _auth+=("-H" "Authorization: token ${_token}");
   fi
   local _tags;
-  _tags="$(curl -s ${_auth} "${_apiUrl}")";
+  _tags="$(curl -s "${_auth[@]}" "${_apiUrl}")";
   # Extracting tags, filtering for semver, sorting, and getting the latest
   _result="$(command echo "${_tags}" | command grep -o '"name": "[^"]*' | command grep -o '[^"]*$' | command grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | command sort -V | command tail -n 1)";
   _rescode=$?;
@@ -317,7 +312,7 @@ function gitAddAll() {
   local -i _rescode=${FALSE};
 
   local _result;
-  _result="$(pushd "${_repo}" > /dev/null && command git add --all && popd > /dev/null 2>&1)";
+  _result="$(command git -C "${_repo}" add --all 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -349,7 +344,7 @@ function gitAdd() {
   local -i _rescode=${FALSE};
 
   local _result;
-  _result="$(pushd "${_repo}" > /dev/null && command git add "${_file}" && popd > /dev/null 2>&1)";
+  _result="$(command git -C "${_repo}" add "${_file}" 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -501,7 +496,7 @@ function gitCommit() {
   local _configFile="${RESULT}";
 
   local _result;
-  _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git commit -m "${_message}" && popd > /dev/null 2>&1)";
+  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" commit -m "${_message}" 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -535,19 +530,18 @@ function gitTag() {
   local _gpgKeyId="${4}";
 
   local -i _rescode=${FALSE};
-
   local _result;
 
   DW.gitConfig "${_repo}" "${_gpgKeyId}";
   local _configFile="${RESULT}";
 
-  if isEmpty "${_message}"; then
-    _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git tag "${_tag}" && popd > /dev/null 2>&1)";
-    _rescode=$?;
-  else
-    _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git tag "${_tag}" -m "${_message}" && popd > /dev/null 2>&1)";
-    _rescode=$?;
+  local _args=("${_tag}");
+  if isNotEmpty "${_message}"; then
+    _args+=("-m" "${_message}");
   fi
+
+  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" tag "${_args[@]}" 2>&1)";
+  _rescode=$?;
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
@@ -578,7 +572,7 @@ function gitPush() {
   local _configFile="${RESULT}";
 
   local _result;
-  _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git push && popd > /dev/null 2>&1)";
+  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" push 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -610,7 +604,7 @@ function gitPushTags() {
   DW.gitConfig "${_repo}";
   local _configFile="${RESULT}";
   local _result;
-  _result="$(pushd "${_repo}" > /dev/null && GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git push --tags 2>&1 && popd > /dev/null 2>&1)";
+  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" push --tags 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -618,6 +612,64 @@ function gitPushTags() {
   else
     export ERROR="${_result}";
   fi
+
+  return ${_rescode};
+}
+
+# fun: isGitRepoDirty repo
+# api: public
+# txt: Checks whether the repository is dirty, i.e., has uncommitted changes.
+# opt: repo: The repository folder.
+# txt: Returns 0/TRUE if the repository is dirty; 1/FALSE otherwise.
+# use: if isGitRepoDirty "${myRepo}"; then
+# use:   echo "${myRepo} has uncommitted changes";
+# use: fi
+function isGitRepoDirty() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+
+  local -i _rescode=${FALSE};
+
+  local _output;
+  _output="$(command git -C "${_repo}" status -s)";
+
+  if isNotEmpty "${_output}"; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+}
+
+# fun: gitRepoContainsChangesBesides repo files(+)
+# api: public
+# txt: Checks if given repository contains unstaged changes besides given files.
+# opt: repo: The repository folder.
+# opt: files: The files to skip.
+# txt: Returns 0/TRUE if the repository contains unstaged changes; 1/FALSE otherwise.
+# use: if gitRepoContainsChangesBesides "${my_repo}" flake.nix flake.lock; then
+# use:   echo "${my_repo} contains non-flake changes";
+# use: fi
+function gitRepoContainsChangesBesides() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+  shift;
+  local _files=("$@");
+  checkNotEmpty files "${_files[@]}" 2;
+
+  DW.import array;
+
+  local -i _rescode=${FALSE};
+
+  local _line;
+  local _file;
+
+  while IFS= read -r _line; do
+    _file=$(command echo "${_line}" | command awk '{print $2;}')
+    if arrayDoesNotContain "${_file}" "${_files[@]}"; then
+      _rescode=${TRUE};
+      break;
+    fi
+  done < <(command git -C "${_repo}" status -s | grep -e '^ M ');
 
   return ${_rescode};
 }
