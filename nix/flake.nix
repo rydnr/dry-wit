@@ -35,7 +35,7 @@
         org = "rydnr";
         repo = "dry-wit";
         pname = "${org}-${repo}";
-        version = "3.0.7";
+        version = "3.0.8";
         pkgs = import nixos { inherit system; };
         description = "Dry-wit bash framework";
         license = pkgs.lib.licenses.gpl3;
@@ -73,7 +73,7 @@
               cp -r src/dry-wit-test $out
               cp README.md LICENSE $out/
               substituteInPlace $out/dry-wit-test \
-                --replace "#!/usr/bin/env dry-wit" "#!/usr/bin/env ${dry-wit}/bin/dry-wit"
+                --replace "#!/usr/bin/env dry-wit" "#!/usr/bin/env ${dry-wit}/dry-wit"
             '';
 
             meta = with pkgs.lib; {
