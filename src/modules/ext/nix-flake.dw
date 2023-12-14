@@ -275,4 +275,19 @@ function updateFlakeLock() {
 
   return ${_rescode};
 }
+
+# fun: retrieveLatestStableNixpkgsTag token?
+# api: public
+# txt: Retrieves the latest remote tag of Nixpkgs.
+# opt: token: The github token. Optional.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the tag.
+# use: if retrieveLatestStableNixpkgsTag"; then echo "Latest nixpkgs: ${RESULT}"; fi
+function retrieveLatestStableNixpkgsTag() {
+  local _token="${1}";
+
+  DW.import git;
+
+  retrieveLatestRemoteTagInGithubMatching "nixos" "nixpkgs" '^[0-9]{2}\.[0-9]{2}$' "${_token}";
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

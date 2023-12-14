@@ -149,8 +149,29 @@ function retrieveLatestRemoteTagInGithub() {
   checkNotEmpty repo "${_repo}" 2;
   local _token="${3}";
 
-  local _result;
+  retrieveLatestRemoteTagInGithubMatching "${_owner}" "${_repo}" '^v?[0-9]+\.[0-9]+\.[0-9]+$';
+}
+
+# fun: retrieveLatestRemoteTagInGithubMatching owner repo regex token?
+# api: public
+# txt: Retrieves the latest remote tag in a github repository matching a regex.
+# opt: owner: The repository owner.
+# opt: repo: The repository name.
+# opt: token: The github token. Optional.
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the tag.
+# use: if retrieveLatestRemoteTagInGithubMatching rydnr "nix-flake-to-graphviz"; then echo "Latest tag: ${RESULT}"; fi
+function retrieveLatestRemoteTagInGithubMatching() {
+  local _owner="${1}";
+  checkNotEmpty owner "${_owner}" 1;
+  local _repo="${2}";
+  checkNotEmpty repo "${_repo}" 2;
+  local _regex="${3}";
+  checkNotEmpty regex "${_regex}" 3;
+  local _token="${4}";
+
   local -i _rescode=${FALSE};
+  local _result;
 
   # GitHub API URL for fetching tags
   local _apiUrl="https://api.github.com/repos/${_owner}/${_repo}/tags"
@@ -161,11 +182,39 @@ function retrieveLatestRemoteTagInGithub() {
   if ! isEmpty "${_token}"; then
     _auth+=("-H" "Authorization: token ${_token}");
   fi
+
   local _tags;
-  _tags="$(curl -s "${_auth[@]}" "${_apiUrl}")";
-  # Extracting tags, filtering for semver, sorting, and getting the latest
-  _result="$(command echo "${_tags}" | command grep -o '"name": "[^"]*' | command grep -o '[^"]*$' | command grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | command sort -V | command tail -n 1)";
-  _rescode=$?;
+  local _tag;
+  local -i _page=1
+  local -i _perPage=100
+  local _result=""
+  # Loop through pages
+  while true; do
+    # Fetch a page of tags
+    _tags=$(command curl -s "${_auth[@]}" "${_apiUrl}?page=${_page}&per_page=${_perPage}" | command jq -r '.[].name')
+
+    # Break if no tags are found
+    if isEmpty "${_tags}"; then
+      break;
+    fi
+
+    # Check each tag
+    for _tag in ${_tags}; do
+      if [[ ${_tag} =~ ${_regex} ]]; then
+        _result="${_tag}";
+        _rescode=${TRUE}
+        break
+      fi
+    done
+
+    # Break if found
+    if isTrue ${_rescode}; then
+      break
+    fi
+
+    # Increment page number
+    ((_page++))
+  done
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
