@@ -251,7 +251,7 @@ function extractOwnerFromGithubUrl() {
   local -i _rescode=${FALSE};
   local _result;
 
-  _result="$(echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/.*|\1|p")";
+  _result="$(command echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/.*|\1|p")";
   _rescode=$?;
 
   if isEmpty "${_result}"; then
@@ -281,7 +281,7 @@ function extractRepoFromGithubUrl() {
   local -i _rescode=${FALSE};
   local _result;
 
-  _result="$(echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/\([^/]*\)|\2|p")";
+  _result="$(command echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/\([^/]*\)|\2|p")";
   _rescode=$?;
 
   if isEmpty "${_result}"; then
@@ -631,7 +631,7 @@ function isGitRepoDirty() {
   local -i _rescode=${FALSE};
 
   local _output;
-  _output="$(command git -C "${_repo}" status -s)";
+  _output="$(command git -C "${_repo}" status -s | command grep -v '??')";
 
   if isNotEmpty "${_output}"; then
     _rescode=${TRUE};
@@ -640,16 +640,50 @@ function isGitRepoDirty() {
   return ${_rescode};
 }
 
-# fun: gitRepoContainsChangesBesides repo files(+)
+# fun: gitRepoContainsModificationsIn repo files(+)
 # api: public
-# txt: Checks if given repository contains unstaged changes besides given files.
+# txt: Checks if given repository contains unstaged modifications in given files.
 # opt: repo: The repository folder.
 # opt: files: The files to skip.
-# txt: Returns 0/TRUE if the repository contains unstaged changes; 1/FALSE otherwise.
-# use: if gitRepoContainsChangesBesides "${my_repo}" flake.nix flake.lock; then
-# use:   echo "${my_repo} contains non-flake changes";
+# txt: Returns 0/TRUE if the repository contains unstaged modifications of given files; 1/FALSE otherwise.
+# use: if gitRepoContainsModificationsIn "${my_repo}" flake.nix flake.lock; then
+# use:   echo "${my_repo} contains flake modifications";
 # use: fi
-function gitRepoContainsChangesBesides() {
+function gitRepoContainsModificationsIn() {
+  local _repo="${1}";
+  checkNotEmpty repo "${_repo}" 1;
+  shift;
+  local _files=("$@");
+  checkNotEmpty files "${_files[@]}" 2;
+
+  DW.import array;
+
+  local -i _rescode=${FALSE};
+
+  local _line;
+  local _file;
+
+  while IFS= read -r _line; do
+    _file=$(command echo "${_line}" | command awk '{print $2;}')
+    if arrayContains "${_file}" "${_files[@]}"; then
+      _rescode=${TRUE};
+      break;
+    fi
+  done < <(command git -C "${_repo}" status -s | command grep -e '^ M ');
+
+  return ${_rescode};
+}
+
+# fun: gitRepoContainsModificationsBesides repo files(+)
+# api: public
+# txt: Checks if given repository contains unstaged modifications besides given files.
+# opt: repo: The repository folder.
+# opt: files: The files to skip.
+# txt: Returns 0/TRUE if the repository contains unstaged modifications; 1/FALSE otherwise.
+# use: if gitRepoContainsModificationssBesides "${my_repo}" flake.nix flake.lock; then
+# use:   echo "${my_repo} contains non-flake modifications";
+# use: fi
+function gitRepoContainsModificationsBesides() {
   local _repo="${1}";
   checkNotEmpty repo "${_repo}" 1;
   shift;
@@ -669,7 +703,7 @@ function gitRepoContainsChangesBesides() {
       _rescode=${TRUE};
       break;
     fi
-  done < <(command git -C "${_repo}" status -s | grep -e '^ M ');
+  done < <(command git -C "${_repo}" status -s | command grep -e '^ M ');
 
   return ${_rescode};
 }
