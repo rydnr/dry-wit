@@ -6,17 +6,22 @@
 # api: public
 # txt: Finds out the current branch.
 # txt: Returns 0/TRUE if the branch could be retrieved; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the name of the branch.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the name of the branch.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
 # use: if retrieveBranch; then echo "The current branch is ${RESULT}"; fi
 function retrieveBranch() {
   local -i _rescode;
-  local _result;
 
-  _result="$(command git rev-parse --abbrev-ref HEAD)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+
+  command git rev-parse --abbrev-ref HEAD > "${_outputFile}" 2>&1;
   _rescode=$?;
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="$(<"${_outputFile}")";
+  else
+    export ERROR="$(<"${_outputFile}")";
   fi
 
   return ${_rescode};
@@ -27,7 +32,8 @@ function retrieveBranch() {
 # txt: Finds out the URL of the git repository.
 # opt: folder: The repository folder. Optional.
 # txt: Returns 0/TRUE if the url could be retrieved; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the repository url.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the repository url.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
 # use: if findOutRepositoryUrl "${_repo_folder}"; then
 # use:   echo "The repository url is ${RESULT}";
 # use: fi
@@ -37,13 +43,17 @@ function retrieveRepositoryUrl() {
     _folder="${PWD}";
   fi
   local -i _rescode;
-  local _result;
 
-  _result="$(command git -C "${_folder}" config --get remote.origin.url)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+
+  command git -C "${_folder}" config --get remote.origin.url > "${_outputFile}" 2>&1;
   _rescode=$?;
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="$(<"${_outputFile}")";
+  else
+    export ERROR="$(<"${_outputFile}")";
   fi
 
   return ${_rescode};
@@ -54,6 +64,8 @@ function retrieveRepositoryUrl() {
 # txt: Retrieves the latest revision of the git repository.
 # opt: repositoryFolder: The repository folder;
 # txt: Returns 0/TRUE if the revision could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the head revision.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
 # use: if retrieveHeadRevision; then echo "Revision: ${RESULT}"; fi
 function retrieveHeadRevision() {
   local _folder="${1}";
@@ -62,8 +74,12 @@ function retrieveHeadRevision() {
   local _rescode=${FALSE};
   local _result;
 
-  _result="$(command git -C "${_folder}" rev-parse HEAD)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+
+  command git -C "${_folder}" rev-parse HEAD > "${_outputFile}" 2>&1;
   _rescode=$?;
+  _result="$(<"${_outputFile}")";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
@@ -71,6 +87,8 @@ function retrieveHeadRevision() {
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
   fi
 
   return ${_rescode};
@@ -82,7 +100,8 @@ function retrieveHeadRevision() {
 # opt: repo: The repository folder.
 # opt: branch: The remote branch.
 # txt: Returns 0/TRUE if the folder could be processed; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the hash.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the hash.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
 # use: if retrieveRemoteHead "/tmp/my-Rep" "master"; then echo "Remote HEAD: ${RESULT}"; fi
 function retrieveRemoteHead() {
   local _repo="${1}";
@@ -92,8 +111,12 @@ function retrieveRemoteHead() {
 
   local -i _rescode;
   local _result;
-  _result=$(command git -C "${_repo}" ls-remote 2> /dev/null | command grep "${_branch}" | command grep 'refs/remotes' | command awk '{print $1;}');
+
+  createTempFile;
+  local _outputFile="${RESULT}";
+  command git -C "${_repo}" ls-remote 2> /dev/null | command grep "${_branch}" | command grep 'refs/remotes' | command awk '{print $1;}' > "${_outputFile}";
   _rescode=$?;
+  _result="$(<"${_outputFile}")";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
@@ -101,6 +124,8 @@ function retrieveRemoteHead() {
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
   fi
 
   return ${_rescode};
@@ -112,7 +137,8 @@ function retrieveRemoteHead() {
 # opt: url: The remote URL.
 # opt: branch: The remote branch.
 # txt: Returns 0/TRUE if the URL could be processed; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the hash.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the hash.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
 # use: if retrieveRemoteHeadFromURL "http://github.com/Ryder/set-square" "master"; then echo "Remote master: ${RESULT}"; fi
 function retrieveRemoteHeadFromURL() {
   local _url="${1}";
@@ -120,14 +146,24 @@ function retrieveRemoteHeadFromURL() {
   local _branch="${2}";
   checkNotEmpty branch "${_branch}" 2;
 
-  local _result;
   local -i _rescode;
+  local _result;
 
-  _result="$(command git ls-remote "${_url}" 2> /dev/null | command grep "${_branch}" | command head -n 1 | command cut -f 1)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+  command git ls-remote "${_url}" 2> /dev/null | command grep "${_branch}" | command head -n 1 | command cut -f 1 > "${_outputFile}";
   _rescode=$?;
+
+  _result="$(<"${_outputFile}")";
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE};
+  fi
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  else
+    export ERROR="${_result}";
   fi
 
   return ${_rescode};
@@ -572,14 +608,16 @@ function gitCommit() {
   DW.gitConfig "${_repo}" "${_gpgKeyId}";
   local _configFile="${RESULT}";
 
-  local _result;
-  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" commit -m "${_message}" 2>&1)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+
+  GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" commit -m "${_message}" > "${_outputFile}" 2>&1;
   _rescode=$?;
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="$(<"${_outputFile}")";
   else
-    export ERROR="${_result}";
+    export ERROR="$(<"${_outputFile}")";
   fi
 
   return ${_rescode};
@@ -607,7 +645,6 @@ function gitTag() {
   local _gpgKeyId="${4}";
 
   local -i _rescode=${FALSE};
-  local _result;
 
   DW.gitConfig "${_repo}" "${_gpgKeyId}";
   local _configFile="${RESULT}";
@@ -617,13 +654,16 @@ function gitTag() {
     _args+=("-m" "${_message}");
   fi
 
-  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" tag "${_args[@]}" 2>&1)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+
+  GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" tag "${_args[@]}" > "${_outputFile}" 2>&1;
   _rescode=$?;
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="$(<"${_outputFile}")";
   else
-    export ERROR="${_result}";
+    export ERROR="$(<"${_outputFile}")";
   fi
 
   return ${_rescode};
@@ -648,14 +688,16 @@ function gitPush() {
   DW.gitConfig "${_repo}";
   local _configFile="${RESULT}";
 
-  local _result;
-  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" push 2>&1)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+
+  GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" push > "${_outputFile}" 2>&1;
   _rescode=$?;
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="$(<"${_outputFile}")";
   else
-    export ERROR="${_result}";
+    export ERROR="$(<"${_outputFile}")";
   fi
 
   return ${_rescode};
@@ -681,13 +723,15 @@ function gitPushTags() {
   DW.gitConfig "${_repo}";
   local _configFile="${RESULT}";
   local _result;
-  _result="$(GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" push --tags 2>&1)";
+  createTempFile;
+  local _outputFile="${RESULT}";
+  GIT_CONFIG_GLOBAL="${_configFile}" GIT_CONFIG_NOSYSTEM=true command git -C "${_repo}" push --tags > "${_outputFile}" 2>&1;
   _rescode=$?;
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="$(<"${_outputFile}")";
   else
-    export ERROR="${_result}";
+    export ERROR="$(<"${_outputFile}")";
   fi
 
   return ${_rescode};
@@ -707,10 +751,9 @@ function isGitRepoDirty() {
 
   local -i _rescode=${FALSE};
 
-  local _output;
-  _output="$(command git -C "${_repo}" status -s | command grep -v '??')";
+  _result="$(command git -C "${_repo}" status -s | command grep -v '??')";
 
-  if isNotEmpty "${_output}"; then
+  if isNotEmpty "${_result}"; then
     _rescode=${TRUE};
   fi
 
@@ -741,12 +784,12 @@ function gitRepoContainsModificationsIn() {
   local _file;
 
   while IFS= read -r _line; do
-    _file=$(command echo "${_line}" | command awk '{print $2;}')
+    _file="$(command echo "${_line}" | command awk '{print $2;}')";
     if arrayContains "${_file}" "${_files[@]}"; then
       _rescode=${TRUE};
       break;
     fi
-  done < <(command git -C "${_repo}" status -s | command grep -e '^ M ');
+  done < <(command git -C "${_repo}" status -s | command grep -e '^[ M|M |MM]');
 
   return ${_rescode};
 }
@@ -780,7 +823,7 @@ function gitRepoContainsModificationsBesides() {
       _rescode=${TRUE};
       break;
     fi
-  done < <(command git -C "${_repo}" status -s | command grep -e '^ M ');
+  done < <(command git -C "${_repo}" status -s | command grep -e '^[ M|M |MM]');
 
   return ${_rescode};
 }
