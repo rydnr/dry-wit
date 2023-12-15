@@ -248,10 +248,11 @@ function updateInputsInFlakeNix() {
   return ${_rescode};
 }
 
-# fun: updateFlakeLock flakeNix
+# fun: updateFlakeLock flakeNix githubToken?
 # api: public
 # txt: Updates the flake.lock file.
 # opt: flakeNix: The flake.nix file.
+# opt: githubToken: The access token to use for github. Optional.
 # txt: Returns 0/TRUE if the flake.lock file gets updated successfully; 1/FALSE otherwise.
 # use: if updateFlakeLock "${PWD}/flake.nix"; then
 # use:   echo "flake.lock updated successfully";
@@ -259,6 +260,7 @@ function updateInputsInFlakeNix() {
 function updateFlakeLock() {
   local _flakeNix="${1}";
   checkNotEmpty flakeNix "${_flakeNix}" 3;
+  local _githubToken="${2}";
 
   local -i _rescode=${FALSE};
   local _result;
@@ -266,7 +268,11 @@ function updateFlakeLock() {
   local _flakeFolder;
   _flakeFolder="$(dirname "${_flakeNix}")";
 
-  _result="$(command nix flake update "${_flakeFolder}" 2>&1)";
+  local -a _args=();
+  if ! isEmpty "${_githubToken}"; then
+    _args+=("--access-tokens" "github.com=${_githubToken}")
+  fi
+  _result="$(pushd "${_flakeFolder}" > /dev/null 2>&1 && command nix flake update "${_args[@]}" . 2>&1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
