@@ -12,7 +12,7 @@ function retrieveBranch() {
   local -i _rescode;
   local _result;
 
-  _result="$(git rev-parse --abbrev-ref HEAD)";
+  _result="$(command git rev-parse --abbrev-ref HEAD)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -39,7 +39,7 @@ function retrieveRepositoryUrl() {
   local -i _rescode;
   local _result;
 
-  _result="$(git -C "${_folder}" config --get remote.origin.url)";
+  _result="$(command git -C "${_folder}" config --get remote.origin.url)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -62,7 +62,7 @@ function retrieveHeadRevision() {
   local _rescode=${FALSE};
   local _result;
 
-  _result="$(git -C "${_folder}" rev-parse HEAD)";
+  _result="$(command git -C "${_folder}" rev-parse HEAD)";
   _rescode=$?;
 
   if isEmpty "${_result}"; then
@@ -92,7 +92,7 @@ function retrieveRemoteHead() {
 
   local -i _rescode;
   local _result;
-  _result=$(git -C "${_repo}" ls-remote 2> /dev/null | grep "${_branch}" | grep 'refs/remotes' | awk '{print $1;}');
+  _result=$(command git -C "${_repo}" ls-remote 2> /dev/null | command grep "${_branch}" | command grep 'refs/remotes' | command awk '{print $1;}');
   _rescode=$?;
 
   if isEmpty "${_result}"; then
@@ -123,7 +123,7 @@ function retrieveRemoteHeadFromURL() {
   local _result;
   local -i _rescode;
 
-  _result="$(git ls-remote "${_url}" 2> /dev/null | grep "${_branch}" | head -n 1 | cut -f 1)";
+  _result="$(command git ls-remote "${_url}" 2> /dev/null | command grep "${_branch}" | command head -n 1 | command cut -f 1)";
   _rescode=$?;
 
   if isTrue ${_rescode}; then
@@ -183,15 +183,32 @@ function retrieveLatestRemoteTagInGithubMatching() {
     _auth+=("-H" "Authorization: token ${_token}");
   fi
 
+  local _error;
   local _tags;
   local _tag;
   local -i _page=1
   local -i _perPage=100
   local _result=""
+
+  DW.import curl;
   # Loop through pages
   while true; do
     # Fetch a page of tags
-    _tags=$(command curl -s "${_auth[@]}" "${_apiUrl}?page=${_page}&per_page=${_perPage}" | command jq -r '.[].name')
+    curlGet "${_apiUrl}?page=${_page}&per_page=${_perPage}" "${_auth[@]}";
+    _rescode=$?;
+    local _response="${RESULT}";
+    local _responseCode="${STATUS}";
+    if isFalse ${_rescode} || areNotEqual "${_responseCode}" "200"; then
+      _error="${ERROR}";
+      break;
+    fi
+
+    _tags=$(command echo "${_response}" | command jq -r '.[].name' 2>&1)
+    _rescode=$?;
+    if isFalse ${_rescode}; then
+      _error="${_tags}";
+      break;
+    fi
 
     # Break if no tags are found
     if isEmpty "${_tags}"; then
@@ -202,7 +219,7 @@ function retrieveLatestRemoteTagInGithubMatching() {
     for _tag in ${_tags}; do
       if [[ ${_tag} =~ ${_regex} ]]; then
         _result="${_tag}";
-        _rescode=${TRUE}
+        _rescode=${TRUE};
         break
       fi
     done
@@ -222,6 +239,8 @@ function retrieveLatestRemoteTagInGithubMatching() {
 
   if isTrue ${_rescode}; then
     export RESULT="${_result}";
+  elif ! isEmpty "${_error}"; then
+    export ERROR="${_error}";
   fi
 
   return ${_rescode};
@@ -272,13 +291,22 @@ function checkGithubTokenValid() {
 
   local -i _rescode=${FALSE};
 
-  local _responseCode;
-  _responseCode=$(command curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${_token}" https://api.github.com/user)
+  DW.import curl;
+  curlGet "https://api.github.com/user" "Authorization: token ${_token}";
+  _rescode=$?;
+  local _response="${RESULT}";
 
-  if [ "${_responseCode}" -eq 200 ]; then
-    _rescode=${TRUE};
+  if isTrue ${_rescode}; then
+    local _responseCode="${STATUS}";
+    if areNotEqual "${_responseCode}" 200; then
+      _rescode=${FALSE};
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_response}";
   else
-    export ERROR="${_responseCode}";
+    export ERROR="${_response}";
   fi
 
   return ${_rescode};
@@ -758,7 +786,9 @@ function gitRepoContainsModificationsBesides() {
 }
 
 checkReq awk;
-checkReq curl;
+checkReq cut;
 checkReq git;
+checkReq grep;
+checkReq head;
 checkReq sed;
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

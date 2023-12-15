@@ -1323,7 +1323,6 @@ function CLI.parseFlag() {
   local _flag="${1}"
   checkNotEmpty flag "${_flag}" 1
   shift
-
   local -i _result=0
   local -i _continue=${TRUE}
 
@@ -1362,9 +1361,9 @@ function CLI.parseFlag() {
       if CLI.parseCallbackDefinedForFlag "${_longName}"; then
         local _callbackFunction="${RESULT}"
         if CLI.doesCommandLineFlagExpectArgument "${_flagKey}"; then
-          _argument=${@}
+          _argument=("${@}");
           _result=$((_result + 1))
-          "${_callbackFunction}" ${_argument}
+          "${_callbackFunction}" "${_argument[@]}"
         else
           "${_callbackFunction}"
         fi
