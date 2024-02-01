@@ -564,7 +564,7 @@ function runCommandLongOutput() {
   local _cmd="${1}"
   shift
   if isDebugEnabled; then
-    "${_cmd}" $@ 2>&1 | tee "${_result}" | logDebugFromStdin
+    ${_cmd} $@ 2>&1 | tee "${_result}" | logDebugFromStdin
     _rescode=${PIPESTATUS[0]}
   else
     "${_cmd}" $@ >"${_result}" 2>&1

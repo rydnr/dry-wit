@@ -296,4 +296,49 @@ function nth() {
 
   return ${_rescode};
 }
+
+# fun: modify_array value separator regex replacement
+# api: public
+# txt: Replaces the item of given value matching a regex, with a replacement.
+# opt: value: The value to process.
+# opt: separator: The separator.
+# opt: regex: The regular expression.
+# opt: replacement: The value for the item matching given regex.
+# txt: Returns 0/TRUE if the value was processed successfully; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the updated value.
+# use: if modify_pythonpath "${PYTHONPATH}" ":" ".*-testcontainers-python/.*" "/tmp/testcontainers-python"; then
+# use:    export PYTHONPATH="${RESULT}";
+# use: fi
+function modify_array() {
+  local _value="${1}";
+  checkNotEmpty value "${_value}" 1;
+  local _separator="${2}";
+  checkNotEmpty separator "${_separator}" 2;
+  local _regex="${3}";
+  checkNotEmpty regex "${_regex}" 3;
+  local _replacement="${4}";
+  checkNotEmpty replacement "${_replacement}" 4;
+
+  local -i _rescode=${FALSE};
+  local _result;
+  local _array=();
+
+  IFS="${_separator}" read -r -a _array <<< "${_value}"
+
+  local _item;
+  for _index in "${!_array[@]}"; do
+    if [[ "${_array[_index]}" =~ ${_regex} ]]; then
+      _array[_index]="${_replacement}";
+      _rescode=${TRUE};
+    fi
+  done
+
+  if isTrue ${_rescode}; then
+    _result="$(printf "%s${_separator}" "${_array[@]}")";
+    _result="${_result%"${_separator}"}";
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode};
+}
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

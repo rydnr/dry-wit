@@ -109,6 +109,33 @@ Here's a template you can use, assuming the script is in a git repository under 
 }
 ```
 
+## Nix users
+
+I recommend you to package your script as a flake, so Nix manages the `dry-wit` dependency for you.
+To do so, check the latest tag of this repository and use it instead of the `[version]` placeholder below.
+
+```nix
+{
+  description = "[..]";
+  inputs = rec {
+    [..]
+    dry-wit = {
+      [optional follows]
+      url =
+        "github:rydnr/dry-wit/[version]?dir=nix";
+    };
+  };
+  outputs = [..]
+};
+```
+
+Then, in your package, declare `dry-wit` input as a dependency:
+
+``` nix
+propagatedBuildInputs = [ dry-wit ];
+```
+
+`
 ## Manual installation
 
 Basically, in order to write dry-wit scripts you'll need to do the following:
