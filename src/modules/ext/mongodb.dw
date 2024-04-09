@@ -4,7 +4,7 @@
 
 DW.import process
 
-# fun: enableMongodbCrAuthentication
+# fun: enableMongodbCrAuthentication url? tls? database?
 # api: public
 # txt: Enables MONGODB-CR authentication.
 # opt: url: The MongoDB url. Defaults to mongodb://localhost.
@@ -38,16 +38,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
 
   if isTrue ${_useTls}; then
     _output="$(mongosh --quiet --tls --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --tls --file \"${_tmpFile}\" \"${_url}/${_database}\""
   else
     _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --file \"${_tmpFile}\" \"${_url}/${_database}\""
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -95,15 +98,18 @@ print(EJSON.stringify(db.createRole(
 EOF
   local _output
   local -i _rescode
+  local _cmd
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 | jq '.ok' || echo "$$.ERROR.$$")"
+    _output="mongosh --tls --quiet --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1 | jq '.ok'"
   else
     _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 | jq '.ok' || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1 | jq '.ok'"
   fi
 
-  if contains "${_output}" "$$.ERROR.$$"; then
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -142,6 +148,7 @@ function addMongodbAdminUser() {
 
   createTempFile .js
   local _tmpFile="${RESULT}"
+  local _cmd
 
   cat <<EOF >"${_tmpFile}"
 connect("${_url}/${_authenticationDatabase}");
@@ -171,13 +178,15 @@ print(EJSON.stringify(db.createUser(
 EOF
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1"
   else
     _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -242,16 +251,18 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
 
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
-    _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _output="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -305,16 +316,19 @@ EOF
 
   local _output
   local -i _rescode=${TRUE}
+  local _cmd
 
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
-  if contains "${_output}" "$$.ERROR.$$" || contains "${_output}" "null"; then
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$" || contains "${_output}" "null"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -380,15 +394,19 @@ print(EJSON.stringify(db.createRole(
 EOF
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -458,15 +476,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -528,15 +550,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -585,11 +611,14 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
 
   if isTrue ${_useTls}; then
     _output="$(mongosh --quiet --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --tls --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" \"${_authenticationDatabase}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" "${_authenticationDatabase}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" \"${_authenticationDatabase}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   echo "${_output}" | grep -q '"url"' >/dev/null
@@ -598,7 +627,7 @@ EOF
   if isTrue ${_rescode}; then
     export RESULT="${_result}"
   else
-    export ERROR="${_output}"
+    export ERROR="${_cmd} | grep -q '\"url\"';\n${_output}"
   fi
 
   return ${_rescode}
@@ -645,11 +674,14 @@ EOF
   local _result
   local _output
   local -i _rescode
+  local _cmd
 
   if isTrue ${_useTls}; then
     _output="$(mongosh --quiet --tls -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --tls -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1"
   fi
 
   echo "${_output}" | grep -q '"url"' >/dev/null
@@ -659,6 +691,7 @@ EOF
     _result="$(echo "${_output}" | jq '.url' | awk -F'"' '{print $2;}')"
     if isEmpty "${_result}"; then
       _rescode=${FALSE}
+      export ERROR="${_cmd};\n${_output}"
     fi
   fi
 
@@ -709,16 +742,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
 
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_root}" -p "${_rootPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_authenticationDatabase}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_root}\" -p \"${_rootPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_authenticationDatabase}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -857,26 +893,31 @@ function mongoDump() {
 
   local _output
   local -i _rescode
+  local _cmd
 
   checkReq mongodump
 
   if isEmpty "${_user}"; then
     if isTrue ${_useTls}; then
       _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongodump --ssl --uri=\"${_url}\" --db=\"${_db}\" --excludeCollectionsWithPrefix=system --out=\"${_output}\" 2>&1"
     else
       _output="$(mongodump --uri="${_url}" --db="${_db}" --excludeCollectionsWithPrefix=system --out="${_output}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongodump --uri=\"${_url}\" --db=\"${_db}\" --excludeCollectionsWithPrefix=system --out=\"${_output}\" 2>&1"
     fi
   else
     if isTrue ${_useTls}; then
       _output="$(mongodump --ssl --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongodump --ssl --uri=\"${_url}\" --db=\"${_db}\" --out=\"${_output}\" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1"
     else
       _output="$(mongodump --uri="${_url}" --db="${_db}" --out="${_output}" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongodump --uri=\"${_url}\" --db=\"${_db}\" --out=\"${_output}\" --excludeCollectionsWithPrefix=system -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} 2>&1"
     fi
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -917,24 +958,29 @@ function mongoRestore() {
 
   local _output
   local -i _rescode
+  local _cmd
 
   if isEmpty "${_user}"; then
     if isTrue ${_useTls}; then
       _output="$(mongorestore --ssl --uri "${_url}" "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongorestore --ssl --uri \"${_url}\" \"${_file}\" 2>&1"
     else
       _output="$(mongorestore --uri "${_url}" "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongorestore --uri \"${_url}\" \"${_file}\" 2>&1"
     fi
   else
     if isTrue ${_useTls}; then
       _output="$(mongorestore --ssl --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongorestore --ssl --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} \"${_file}\" 2>&1"
     else
       _output="$(mongorestore --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongorestore --uri ${_url} -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} \"${_file}\" 2>&1"
     fi
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -980,24 +1026,29 @@ function mongoImport() {
 
   local _output
   local -i _rescode
+  local _cmd
 
   if isEmpty "${_user}"; then
     if isTrue ${_useTls}; then
       _output="$(mongoimport --ssl --uri "${_url}" ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongoimport --ssl --uri \"${_url}\" ${_database} \"${_file}\" 2>&1"
     else
       _output="$(mongoimport --uri "${_url}" ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongoimport --uri \"${_url}\" ${_database} \"${_file}\" 2>&1"
     fi
   else
     if isTrue ${_useTls}; then
       _output="$(mongoimport --ssl --uri "${_url}" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongoimport --ssl --uri \"${_url}\" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} \"${_file}\" 2>&1"
     else
       _output="$(mongoimport --uri "${_url}" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} "${_file}" 2>&1 || echo "$$.ERROR.$$")"
+      _cmd="mongoimport --uri \"${_url}\" -u ${_user} -p ${_pass} --authenticationDatabase=${_authenticationDatabase} --authenticationMechanism=${_authenticationMechanism} ${_database} \"${_file}\" 2>&1"
     fi
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1111,15 +1162,19 @@ function mongodbUserCanLogIn() {
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --tls -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_database}\" --authenticationMechanism=\"${_authenticationMechanism}\" --eval \"{ ping: 1 }\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_database}" --authenticationMechanism="${_authenticationMechanism}" --eval "{ ping: 1 }" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_database}\" --authenticationMechanism=\"${_authenticationMechanism}\" --eval \"{ ping: 1 }\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1161,16 +1216,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
 
   if isTrue ${_useTls}; then
     _output="$(mongosh --quiet --tls --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | jq '.users | length' || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --tls --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | jq '.users | length'"
   else
     _output="$(mongosh --quiet --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | jq '.users | length' || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | jq '.users | length'"
   fi
 
   if contains "${_output}" "$$.ERROR.$$" || areEqual "${_output}" "0"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1224,17 +1282,21 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep -v \"UUID\""
   else
     _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -v "UUID" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep -v \"UUID\""
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
-    _output="$(echo "${_output}" | jq '.users | length')"
+    _output="$(command echo "${_output}" | command jq '.users | length')"
     if areEqual "${_output}" 0; then
       _rescode=${FALSE}
       export ERROR="${_output}"
@@ -1300,15 +1362,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1373,15 +1439,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep \"**true**\""
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep "**true**" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep \"**true**\""
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1436,15 +1506,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1495,15 +1569,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep -q -e \"^${_database}\W\""
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -q -e "^${_database}\W" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep -q -e \"^${_database}\W\""
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1562,15 +1640,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --tls -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1624,15 +1706,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep -e \"^${_collection}$\""
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 | grep -e "^${_collection}$" || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1 | grep -e \"^${_collection}$\""
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -1686,15 +1772,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --quiet --tls -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet --tls -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_user}" -p "${_password}" --authenticationDatabase="${_authenticationDatabase}" --authenticationMechanism="${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_user}\" -p \"${_password}\" --authenticationDatabase=\"${_authenticationDatabase}\" --authenticationMechanism=\"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -2419,15 +2509,19 @@ print(EJSON.stringify(db.changeUserPassword("${_userName}", "${_userPassword}"))
 EOF
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -2482,15 +2576,19 @@ EOF
 
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"
@@ -2544,15 +2642,19 @@ print(EJSON.stringify(db.revokeRolesFromUser("${_userName}", ${_roles})));
 EOF
   local _output
   local -i _rescode
+  local _cmd
+
   if isTrue ${_useTls}; then
     _output="$(mongosh --tls --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --tls --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   else
     _output="$(mongosh --quiet -u "${_adminUserName}" -p "${_adminUserPassword}" --authenticationDatabase "${_authenticationDatabase}" --authenticationMechanism "${_authenticationMechanism}" --file "${_tmpFile}" "${_url}/${_database}" 2>&1 || echo "$$.ERROR.$$")"
+    _cmd="mongosh --quiet -u \"${_adminUserName}\" -p \"${_adminUserPassword}\" --authenticationDatabase \"${_authenticationDatabase}\" --authenticationMechanism \"${_authenticationMechanism}\" --file \"${_tmpFile}\" \"${_url}/${_database}\" 2>&1"
   fi
 
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    export ERROR="${_output}"
+    export ERROR="${_cmd};\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"

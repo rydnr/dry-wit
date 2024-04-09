@@ -2,11 +2,12 @@
 # api: public
 # txt: Some Jetty-related functions.
 
-# fun: updateKeyStorePathInJettyConf keyStorePath configFile
+# fun: updateKeyStorePathInJettyConf keyStorePath configFile keyStoreAlias?
 # api: public
 # txt: Updates the keystore path in given Jetty config file.
 # opt: keystorePath: The keystore path.
 # opt: configFile: The Jetty config file.
+# opt: keyStoreAlias: The key store alias. Optional.
 # txt: Returns 0/TRUE if the configuration file was updated successfully; 1/FALSE otherwise.
 # use: if  updateKeyStorePathInJettyConf "/etc/ssl/keystore.jks" "/etc/jetty/jetty-https.xml"; then ...; fi
 function updateKeyStorePathInJettyConf() {
@@ -14,9 +15,33 @@ function updateKeyStorePathInJettyConf() {
   checkNotEmpty keyStorePath "${_keyStorePath}" 1
   local _configFile="${2}"
   checkNotEmpty configFile "${_configFile}" 2
+  local _keyStoreAlias="${3}"
+
   local -i _rescode
 
-  sed -i "s|<Set name=\"KeyStorePath\">.*</Set>|<Set name=\"KeyStorePath\">${_keyStorePath}</Set>|g" "${_configFile}"
+  if isEmpty "${_keyStoreAlias}"; then
+    sed -i "s|<Set name=\"KeyStorePath\">.*</Set>|<Set name=\"KeyStorePath\">${_keyStorePath}</Set>|g" "${_configFile}"
+  else
+    sed -i "s|<Set name=\"KeyStorePath\">.*</Set>|<Set name=\"certAlias\">${_keyStoreAlias}</Set>\n  <Set name=\"KeyStorePath\">${_keyStorePath}</Set>|g" "${_configFile}"
+  fi
+  _rescode=$?
+
+  return ${_rescode}
+}
+
+# fun: supportForSniInJettyConf keyStorePath configFile keyStoreAlias?
+# api: public
+# txt: Enables SNI support in given Jetty config file.
+# opt: configFile: The Jetty config file.
+# txt: Returns 0/TRUE if the configuration file was updated successfully; 1/FALSE otherwise.
+# use: if  supportForSniInJettyConf "/etc/jetty/jetty-https.xml"; then ...; fi
+function supportForSniInJettyConf() {
+  local _configFile="${1}"
+  checkNotEmpty configFile "${_configFile}" 2
+
+  local -i _rescode
+
+  sed -i 's|<New id="sslContextFactory" class="org.eclipse.jetty.util.ssl.SslContextFactory">|<New id="sslContextFactory" class="org.eclipse.jetty.util.ssl.SslContextFactory$Server">|g' "${_configFile}"
   _rescode=$?
 
   return ${_rescode}

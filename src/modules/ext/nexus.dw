@@ -76,7 +76,7 @@ function appendHttpsConnectorPortToNexusCfg() {
   checkNotEmpty port "${_port}" 2
   local -i _rescode
 
-  echo "application-port-ssl=${_port}" >>"${_file}" 2>/dev/null
+  command echo "application-port-ssl=${_port}" >>"${_file}" 2>/dev/null
   _rescode=$?
 
   return ${_rescode}
@@ -94,7 +94,27 @@ function nexusSystemPropertiesAlreadyUpdated() {
   DW.getScriptName
   local _scriptName="${RESULT}"
 
-  command tail -n 1 "${_nexusSystemPropertiesFile}" | command grep "Updated by ${_scriptName}" >/dev/null 2>&1
+  [[ -e "${_nexusSystemPropertiesFile}" ]] && command tail -n 1 "${_nexusSystemPropertiesFile}" | command grep "Updated by ${_scriptName}" >/dev/null 2>&1
+}
+
+# fun: appendUpdateMarkInNexusSystemProperties nexusSystemProperties
+# api: public
+# txt: Appends an update mark to given Nexus properties file.
+# opt: nexusSystemProperties: The Nexus system properties file.
+# txt: Returns 0/TRUE if the file could be updated; 1/FALSE otherwise.
+# use: if ! appendUpdateMarkInNexusSystemProperties /opt/sonatype/nexus3/etc/nexus.properties; then ... fi
+function appendSslEtcInNexusSystemProperties() {
+  local _nexusSystemPropertiesFile="${1}"
+  checkNotEmpty nexusSystemPropertiesFile "${_nexusSystemPropertiesFile}" 1
+  local _sslEtc="${2}"
+  checkNotEmpty sslEtc "${_sslEtc}" 2
+
+  local -i _rescode
+
+  command echo "ssl.etc=${_sslEtc}" >>"${_nexusSystemPropertiesFile}" 2>/dev/null
+  _rescode=$?
+
+  return ${_rescode}
 }
 
 # fun: appendUpdateMarkInNexusSystemProperties nexusSystemProperties
@@ -112,7 +132,7 @@ function appendUpdateMarkInNexusSystemProperties() {
   now
   local _now="${RESULT}"
 
-  echo "# Updated by ${_scriptName} at ${_now}" >>"${_nexusSystemPropertiesFile}"
+  command echo "# Updated by ${_scriptName} at ${_now}" >>"${_nexusSystemPropertiesFile}"
 }
 
 # fun: nexusCfgAlreadyUpdated nexusCfg
@@ -127,7 +147,7 @@ function nexusCfgAlreadyUpdated() {
   DW.getScriptName
   local _scriptName="${RESULT}"
 
-  command tail -n 1 "${_nexusCfgFile}" | command grep "Updated by ${_scriptName}" >/dev/null 2>&1
+  [[ -e "${_nexusCfgFile}" ]] && command tail -n 1 "${_nexusCfgFile}" | command grep "Updated by ${_scriptName}" >/dev/null 2>&1
 }
 
 # fun: appendUpdateMarkInNexusCfg nexusCfg
@@ -145,6 +165,6 @@ function appendUpdateMarkInNexusCfg() {
   now
   local _now="${RESULT}"
 
-  echo "# Updated by ${_scriptName} at ${_now}" >>"${_nexusCfg}"
+  command echo "# Updated by ${_scriptName} at ${_now}" >>"${_nexusCfg}"
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

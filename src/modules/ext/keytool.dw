@@ -5,9 +5,22 @@
 # api: public
 # txt: Java keytool functions
 
-# fun: generateAndSignCertificate
+# fun: generateAndSignCertificate keystorePath certificateAlias certificateDname keyAlgorithm keyPassword keystorePassword keystoreType keyLength certificateExpirationDays javaSignAlgorithm sanExtensions
 # api: public
 # txt: Generates and signs a new certificate.
+# opt: keystorePath: The keystore path.
+# opt: certificateAlias: The certificate alias.
+# opt: certificateDname: The certificate DNAME.
+# opt: keyAlgorithm: The key algorithm.
+# opt: keyPassword: The key password.
+# opt: keystorePassword: The keystore password.
+# opt: keystoreType: The keystore type.
+# opt: keyLength: The key length.
+# opt: certificateExpirationDays: The certificate expiration days.
+# opt: javaSignAlgorithm: The Java sign algorithm.
+# opt: sanExtensions: The SAN extensions.
+# txt: Returns 0/TRUE if the certificate was generated and signed successfully; 1/FALSE otherwise.
+# use: if generateAndSignCertificate "${SSL_KEYSTORE_PATH}" "${SSL_CERTIFICATE_ALIAS}" "${SSL_CERTIFICATE_DNAME}" "${SSL_KEY_ALGORITHM}" "${SSL_KEY_PASSWORD}" "${SSL_KEYSTORE_PASSWORD}" "${SSL_KEYSTORE_TYPE}" ${SSL_KEY_LENGTH} ${SSL_CERTIFICATE_EXPIRATION_DAYS} "${SSL_JAVA_SIGN_ALGORITHM}" "${SSL_SAN_EXTENSIONS}"; then ...; fi
 function generateAndSignCertificate() {
   local _keystorePath="${1}"
   checkNotEmpty keystorePath "${_keystorePath}" 1
@@ -33,7 +46,8 @@ function generateAndSignCertificate() {
   local -i _rescode
   # See https://stackoverflow.com/questions/33827789/self-signed-certificate-dnsname-components-must-begin-with-a-letter
 
-  local _output="$(keytool -keystore "${_keystorePath}" \
+  local _output
+  _output="$(keytool -keystore "${_keystorePath}" \
     -alias "${_certificateAlias}" \
     -genkey \
     -noprompt \
@@ -46,9 +60,9 @@ function generateAndSignCertificate() {
     -validity ${_certificateExpirationDays} \
     -sigalg "${_javaSignAlgorithm}" \
     -ext "SAN=${_sanExtensions}" \
-    -ext "BC=ca:true" || echo "$$.ERROR.$$")"
+    -ext "BC=ca:true" || command echo "$$.ERROR.$$")"
 
-  if areEqual "${_output}" "$$.ERROR.$$"; then
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
     export ERROR="keytool -keystore \"${SSL_KEYSTORE_PATH}\" \
       -alias \"${SSL_CERTIFICATE_ALIAS}\" \
@@ -63,8 +77,102 @@ function generateAndSignCertificate() {
       -validity ${SSL_CERTIFICATE_EXPIRATION_DAYS} \
       -sigalg \"${SSL_JAVA_SIGN_ALGORITHM}\" \
       -ext \"SAN=${SSL_SAN_EXTENSIONS}\" \
-      -ext \"BC=ca:true\"; \
-    ${_output}"
+      -ext \"BC=ca:true\";\n${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: convertKeystoreTo srcKeystorePath keystorePassword destKeystorePath? keystoreType?
+# api: public
+# txt: Converts given keystore to another format.
+# opt: srcKeystorePath: The original keystore path.
+# opt: keystorePassword: The keystore password.
+# opt: destKeystorePath: The path of the new keystore. Optional. Defaults to the original keystore path.
+# opt: keystoreType: The keystore type. Optional. Defaults to pkcs12.
+# txt: Returns 0/TRUE if the keystore was converted successfully; 1/FALSE otherwise.
+# use: if convertKeystoreTo "${SSL_KEYSTORE_PATH}" "${SSL_KEYSTORE_PASSWORD}"; then ...; fi
+function convertKeystoreTo() {
+  local _srcKeystorePath="${1}"
+  checkNotEmpty srcKeystorePath "${_srcKeystorePath}" 1
+  local _keystorePassword="${2}"
+  checkNotEmpty keystorePassword "${_keystorePassword}" 2
+  local _destKeystorePath="${3:-${_srcKeystorePath}}"
+  checkNotEmpty destKeystorePath "${_destKeystorePath}" 3
+  local _keystoreType="${4:-pkcs12}"
+  checkNotEmpty keystoreType "${_keystoreType}" 4
+  local -i _rescode
+  # See https://stackoverflow.com/questions/33827789/self-signed-certificate-dnsname-components-must-begin-with-a-letter
+
+  local _output
+  _output="$(keytool -importkeystore \
+    -srckeystore "${_srcKeystorePath}" \
+    -srcstorepass "${_keystorePassword}" \
+    -destkeystore "${_destKeystorePath}" \
+    -deststoretype "${_keystoreType}" \
+    -deststorepass "${_keystorePassword}" \
+    -noprompt || command echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="keytool -importkeystore \
+    -srckeystore \"${_srcKeystorePath}\" \
+    -srcstorepass \"${_keystorePassword}\" \
+    -destkeystore \"${_destKeystorePath}\" \
+    -deststoretype \"${_keystoreType}\" \
+    -deststorepass \"${_keystorePassword}\" \
+    -noprompt;\n${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: loadCertificateIntoKeystore certificatePath certificateAlias keystorePath keystorePassword
+# api: public
+# txt: Loads a certificate into given keystore.
+# opt: certificatePath: The certificate path.
+# opt: certificateAlias: The alias of the certificate in the keystore.
+# opt: keystorePath: The original keystore path.
+# opt: keystorePassword: The keystore password.
+# txt: Returns 0/TRUE if the certificate was loaded successfully; 1/FALSE otherwise.
+# use: if loadCertificateIntoKeystore "${SSL_CERTIFICATE_PATH}" "${SSL_CERTIFICATE_ALIAS}" "${SSL_KEYSTORE_PATH}" "${SSL_KEYSTORE_PASSWORD}"; then ...; fi
+function loadCertificateIntoKeystore() {
+  local _certificatePath="${1}"
+  checkNotEmpty certificatePath "${_certificatePath}" 1
+  local certificateAlias="${2}"
+  checkNotEmpty certificateAlias "${certificateAlias}" 2
+  local _keystorePath="${3}"
+  checkNotEmpty keystorePath "${_keystorePath}" 3
+  local _keystorePassword="${4}"
+  checkNotEmpty keystorePassword "${_keystorePassword}" 4
+  local -i _rescode
+
+  local _output
+  _output="$(keytool \
+    -keystore "${_keystorePath}" \
+    -import \
+    -alias "${certificateAlias}" \
+    -file "${_certificatePath}" \
+    -trustcacerts \
+    -storepass "${_keystorePassword}" \
+    -noprompt || command echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="keytool \
+    -keystore \"${_keystorePath}\" \
+    -import \
+    -alias \"${certificateAlias}\" \
+    -file \"${_certificatePath}\" \
+    -trustcacerts \
+    -storepass \"${_keystorePassword}\" \
+    -noprompt;\n${_output}"
   else
     _rescode=${TRUE}
     export RESULT="${_output}"

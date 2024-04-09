@@ -122,10 +122,12 @@ function normalize() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
 
-  local _result="$(echo "${_text}" 2> /dev/null | tr -c '[[:alnum:]]' '_' 2> /dev/null | sed 's/_*$//g' 2> /dev/null || echo "$$.ERROR.$$")";
+  local _result
+  _result="$(echo "${_text}" 2> /dev/null | tr -c '[[:alnum:]]' '_' 2> /dev/null | sed 's/_*$//g' 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo \"${_text}\" 2> /dev/null | tr -c '[[:alnum:]]' '_' 2> /dev/null | sed 's/_*$//g';\n${_result}"
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -175,10 +177,14 @@ function removePrefix() {
   local _prefix="${2}";
   checkNotEmpty prefix "${_prefix}" 2;
 
-  local _result="$(sed -e "s%^${_prefix}%%" <<< ${_text} 2> /dev/null || echo "$$.ERROR.$$")";
+  local _result
+  _result="$(command sed -e "s%^${_prefix}%%" <<< ${_text} 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if   areEqual "${_result}" "$$.ERROR.$$" \
-    || areEqual "${_text}" "${_result}"; then
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE};
+    export ERROR="sed -e \"s%^${_prefix}%%\" <<< ${_text};\n${_result}";
+  elif isNotEmpty "${_result}" && areEqual "${_text}" "${_result}"; then
+    export ERROR="sed -e \"s%^${_prefix}%%\" <<< ${_text};\n${_result}";
     _rescode=${FALSE};
   else
     _rescode=${TRUE};
@@ -211,9 +217,12 @@ function removeSuffix() {
     _rescode=${FALSE};
   else
     _result="$(echo "${_text}" | sed -e "s~${_suffix}$~~" 2> /dev/null || echo "$$.ERROR.$$")";
-    if   areEqual "${_result}" "$$.ERROR.$$" \
-      || areEqual "${_text}" "${_result}"; then
+    if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
       _rescode=${FALSE};
+      export ERROR="echo \"${_text}\" | sed -e \"s~${_suffix}$~~\";\n${_result}"
+    elif isNotEmpty "${_result}" && areEqual "${_text}" "${_result}"; then
+      _rescode=${FALSE};
+      export ERROR="echo \"${_text}\" | sed -e \"s~${_suffix}$~~\";\n${_result}"
     else
       _rescode=${TRUE};
     fi
@@ -249,11 +258,13 @@ function replaceNLeftmostTokens() {
   checkNotEmpty n "${_number}" 3;
   local _separator="$4";
   checkNotEmpty separator "${_separator}" 4;
-
-  local _result="$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g" 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+
+  local _result
+  _result="$(echo "${_text}" | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=0;i<d&&i<NF;i++) {printf("%s%s", newT, separator);}for (i=d+2;i<=NF;i++){printf("%s%s", $i, separator);}}END{printf("\n");}' | sed "s ${_separator}$  g" 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo \"${_text}\" | awk -F\"${_separator}\" -vd=${_number} -vnewT=\"${_newToken}\" -vseparator=\"${_separator}\" '{for (i=0;i<d&&i<NF;i++) {printf(\"%s%s\", newT, separator);}for (i=d+2;i<=NF;i++){printf(\"%s%s\", $i, separator);}}END{printf(\"\n\");}' | sed \"s ${_separator}$  g\";\n${_result}"
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -283,11 +294,13 @@ function replaceNRightmostTokens() {
   checkNotEmpty n "${_number}" 3;
   local _separator="$4";
   checkNotEmpty separator "${_separator}" 4;
-
-  local _result="$(echo "${_text}" 2> /dev/null | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' 2> /dev/null | sed "s ${_separator}$  g" 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+
+  local _result
+  _result="$(echo "${_text}" 2> /dev/null | awk -F"${_separator}" -vd=${_number} -vnewT="${_newToken}" -vseparator="${_separator}" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf("%s%s", newT, separator);}}for (i=NF-d;i>0;i--){printf("%s%s", $i, separator);}}END{printf("\n");}' 2> /dev/null | sed "s ${_separator}$  g" 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo \"${_text}\" 2> /dev/null | awk -F\"${_separator}\" -vd=${_number} -vnewT=\"${_newToken}\" -vseparator=\"${_separator}\" '{for (i=NF;i>NF-d&&i>0;i--) {if (newT!="") {printf(\"%s%s\", newT, separator);}}for (i=NF-d;i>0;i--){printf(\"%s%s\", $i, separator);}}END{printf(\"\\n\");}' 2> /dev/null | sed \"s ${_separator}$  g\";\n${_result}";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -335,11 +348,13 @@ function startsWith() {
 function toLower() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
-
-  local _result="$(echo "${_text}" 2> /dev/null | awk '{print tolower($0);}' 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+
+  local _result
+  _result="$(echo "${_text}" 2> /dev/null | awk '{print tolower($0);}' 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo \"${_text}\" 2> /dev/null | awk '{print tolower($0);}';\n${_result}";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -361,11 +376,13 @@ function toLower() {
 function toUpper() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
-
-  local _result="$(echo "${_text}" 2> /dev/null | awk '{print toupper($0);}' 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+
+  local _result
+  _result="$(echo "${_text}" 2> /dev/null | awk '{print toupper($0);}' 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo \"${_text}\" 2> /dev/null | awk '{print toupper($0);}';\n${_result}"
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -559,6 +576,7 @@ function trim() {
 function keyValueSplit() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
+  local -i _rescode;
 
   local _result;
   _result="$(echo -e "${_text}" 2> /dev/null | awk -F'=' '\
@@ -587,9 +605,25 @@ function printValue(text,   value, len, a) {
   #             };
   #             print;
   #     }
-  local -i _rescode=$?;
-  if isFalse ${_rescode} || areEqual "${_result}" "$$.ERROR.$$"; then
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo -e \"${_text}\" 2> /dev/null | awk -F'=' ' \
+function printKey(text,     value, len) { \
+  len=split(text, value, \" \"); \
+  if (len > 1) { \
+    printf(\"%s=\", value[len]); \
+  } \
+} \
+function printValue(text,   value, len, a) { \
+  len=split(text, value, \" \"); \
+  if (len > 1) { \
+    for (a=1; a<len-1; a++) { \
+      printf(\"%s \", value[a]); \
+    }; \
+    printf(\"%s\\n\", value[len-1]); \
+  } \
+} \
+{ printf(\"%s=\", $1); for (i=2; i<NF; i++) {printValue($i); printKey($i);}; printf(\"%s\\n\", $NF); }';\n${_result}";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -738,11 +772,13 @@ function hash() {
   checkNotEmpty hash "${_hash}" 1;
   local _value="${2}";
   checkNotEmpty value "${_value}" 2;
-
-  local _result="$(echo -n "${_value}" 2> /dev/null | ${_hash}sum 2> /dev/null 2> /dev/null | cut -f1 -d" " 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+
+  local _result
+  _result="$(echo -n "${_value}" 2> /dev/null | ${_hash}sum 2> /dev/null 2> /dev/null | cut -f1 -d" " 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo -n \"${_value}\" 2> /dev/null | ${_hash}sum 2> /dev/null 2> /dev/null | cut -f1 -d\" \";\n${_result})";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -860,13 +896,15 @@ function snakeCaseToCamelCase() {
 # use: toCamelCase "output_file";
 # use: echo "output_file -> ${RESULT}";
 function toCamelCase() {
-  local _text="${1}";
-  checkNotEmpty text "${_text}" 1;
+  local _text="${1}"
+  checkNotEmpty text "${_text}" 1
+  local -i _rescode
 
-  local _result="$(echo "${_text}" 2> /dev/null | awk 'function toCamel(s) { camel = ""; split(s, words, /-|[^a-zA-Z0-9]/); for (i = 1; i in words; i++) {camel = camel toupper(substr(words[i], 1, 1)) tolower(substr(words[i], 2))}; return camel} NF { printf "%s\n", toCamel($0)}' 2> /dev/null || echo "$$.ERROR.$$")";
-  local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+  local _result
+  _result="$(echo "${_text}" 2> /dev/null | awk 'function toCamel(s) { camel = ""; split(s, words, /-|[^a-zA-Z0-9]/); for (i = 1; i in words; i++) {camel = camel toupper(substr(words[i], 1, 1)) tolower(substr(words[i], 2))}; return camel} NF { printf "%s\n", toCamel($0)}' 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="echo \"${_text}\" 2> /dev/null | awk 'function toCamel(s) { camel = \"\"; split(s, words, /-|[^a-zA-Z0-9]/); for (i = 1; i in words; i++) {camel = camel toupper(substr(words[i], 1, 1)) tolower(substr(words[i], 2))}; return camel} NF { printf \"%s\\n\", toCamel($0)}';\n${_result}";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";
@@ -978,11 +1016,13 @@ function capitalize() {
 function tailText() {
   local _text="${1}";
   checkNotEmpty text "${_text}" 1;
-
-  local _result="$(cut -c2- <<< ${_text} 2> /dev/null || echo "$$.ERROR.$$")";
   local -i _rescode;
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+
+  local _result
+  _result="$(cut -c2- <<< ${_text} 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="cut -c2- <<< ${_text};\n${_result}";
   else
     _rescode=${TRUE};
     export RESULT="${_result}";

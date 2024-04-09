@@ -67,11 +67,14 @@ function copyToDockerContainer() {
 
   local -i _rescode;
 
-  local _output="$(docker cp "${_file}" "${_containerName}":"${_targetLocation}" 2> /dev/null || echo "$$.ERROR.$$")";
-  if areEqual "${_output}" "$$.ERROR.$$"; then
+  local _output
+  _output="$(docker cp "${_file}" "${_containerName}":"${_targetLocation}" 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="docker cp \"${_file}\" \"${_containerName}\":\"${_targetLocation}\";\n${_output}"
   else
-    _rescode=${TRUE};
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode};
@@ -118,9 +121,11 @@ function dockerCommand() {
 
   local -i _rescode;
 
-  local _output="$(docker ${_args} 2> /dev/null || echo "$$.ERROR.$$")";
-  if areEqual "${_output}" "$$.ERROR.$$"; then
+  local _output
+  _output="$(docker ${_args} 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="docker ${_args};\n${_output}"
   else
     _rescode=${TRUE};
   fi
@@ -141,9 +146,11 @@ function dockerContainerExists() {
 
   local -i _rescode;
 
-  local _result="$(docker ps -a --no-trunc --filter name=^/${_name}$ -q 2> /dev/null || echo "$$.ERROR.$$")";
-  if areEqual "${_output}" "$$.ERROR.$$"; then
+  local _result
+  _result="$(docker ps -a --no-trunc --filter name=^/${_name}$ -q 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="docker ps -a --no-trunc --filter name=^/${_name}$ -q;\n${_result}"
   else
     _rescode=${TRUE};
   fi
@@ -174,9 +181,11 @@ function dockerNetworkExists() {
   local _result;
   local -i _rescode;
 
-  local _output="$(docker network inspect ${_name} 2> /dev/null || echo "$$.ERROR.$$")";
-  if areEqual "${_output}" "$$.ERROR.$$"; then
+  local _output
+  _output="$(docker network inspect ${_name} 2> /dev/null || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="docker network inspect ${_name};\n${_output}"
   else
     _rescode=${TRUE};
   fi
@@ -198,7 +207,8 @@ function isDockerContainerRunning() {
   local -i _rescode;
 
   ## Note: docker is a requirement of the caller script, not dry-wit.
-  local _status="$(docker inspect ${_containerName} -f '{{json .State.Running}}' 2>&1)";
+  local _status
+  _status="$(docker inspect ${_containerName} -f '{{json .State.Running}}' 2>&1)";
 
   if [[ "${_status}" == "true" ]]; then
     _rescode=${TRUE};
@@ -251,9 +261,11 @@ function retrieveDockerContainerStatus() {
   local -i _rescode;
 
   ## Note: docker is a requirement of the caller script, not dry-wit.
-  local _result="$(docker inspect ${_containerName} -f {{json .State.Status}} 2>&1 || echo "$$.ERROR.$$")";
-  if areEqual "${_result}" "$$.ERROR.$$"; then
+  local _result
+  _result="$(docker inspect ${_containerName} -f {{json .State.Status}} 2>&1 || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_output}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE};
+    export ERROR="docker inspect ${_containerName} -f {{json .State.Status}};\n${_result}"
   else
     _rescode=${TRUE};
     export RESULT="${_result}";

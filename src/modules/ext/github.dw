@@ -263,9 +263,11 @@ function deleteGithubRepo() {
   local _result;
   _result="$(command curl -s -X DELETE -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${_token}" https://api.github.com/repos/${_owner}/${_repo})";
   _rescode=$?;
-  if isFalse ${_rescode}; then
+  if isNotEmpty "${_result}" && contains "${_result}" "Bad credentials"; then
     export ERROR="${_result}";
+    _rescode=${FALSE};
   fi
+  echo "${_result}"
 
   return ${_rescode};
 }

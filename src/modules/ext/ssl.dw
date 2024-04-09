@@ -16,6 +16,7 @@ checkReq openssl
 # opt: encryption: The encryption algorithm.
 # txt: Returns 0/TRUE if the key pair was generated successfully; 1/FALSE otherwise.
 # txt: If the key pair is generated, the variable RESULT contains the file with the private key.
+# txt: If the key pair is not generated, the variable ERROR contains the output of the openssl genrsa command.
 # use: if generateKeyPair "/tmp" myDomain secret des3; then echo "Private key: ${RESULT}"; fi
 function generateKeyPair() {
   local _outputDir="${1}"
@@ -29,22 +30,26 @@ function generateKeyPair() {
   local _result="${_outputDir}/${_alias}.key"
   local -i _rescode
 
-  openssl genrsa -${_encryption} -passout pass:"${_password}" -out "${_result}" >/dev/null 2>&1
-  _rescode=$?
-
-  if isTrue ${_rescode}; then
-    openssl rsa -in "${_result}" -out "${_result}.rsa" -passin pass:"${_password}" >/dev/null 2>&1
-    _rescode=$?
-  fi
-
-  if isTrue ${_rescode}; then
-    export RESULT="${_result}"
+  local _output
+  _output="$(command openssl genrsa -${_encryption} -passout pass:"${_password}" -out "${_result}" >/dev/null 2>&1 || command echo "$$.ERROR.$$")"
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="openssl genrsa -${_encryption} -passout pass:\"${_password}\" -out \"${_result}\";\n${_output}"
+  else
+    _output="$(command openssl rsa -in "${_result}" -out "${_result}.rsa" -passin pass:"${_password}" >/dev/null 2>&1 || command echo "$$.ERROR.$$")"
+    if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+      _rescode=${FALSE}
+      export ERROR="openssl rsa -in \"${_result}\" -out \"${_result}.rsa\" -passin pass:\"${_password}\";\n${_output}"
+    else
+      _rescode=${TRUE}
+      export RESULT="${_result}"
+    fi
   fi
 
   return ${_rescode}
 }
 
-# fun: generateCSR outputDir alias key password subject domain ip
+# fun: generateCSR outputDir alias key password subject domain ip?
 # api: public
 # txt: Generates a certificate signing request.
 # opt: outputDir: The output folder.
@@ -56,6 +61,7 @@ function generateKeyPair() {
 # opt: ip: The IP of the server.
 # txt: Returns 0/TRUE if the request was generated; 1/FALSE otherwise.
 # txt: If the request is generated, the variable RESULT contains the path of the CSR file. Otherwise, the variable ERROR contains the output of the openssl req command.
+# txt: If the request is not generated, the variable ERROR contains the output of the openssl req command.
 # use: if generateCSR /tmp mydomain /tmp/myKey secret MyDomain mydomain.com 192.168.1.55; then echo "CSR: ${RESULT}"; fi
 function generateCSR() {
   local _outputDir="${1}"
@@ -71,24 +77,39 @@ function generateCSR() {
   local _domain="${6}"
   checkNotEmpty domain "${_domain}" 6
   local _ip="${7}"
-  checkNotEmpty ip "${_ip}" 7
   local _result="${_outputDir}/${_alias}.csr"
   local -i _rescode
 
-  local _output="$(openssl req \
+  local _subjectAltName
+  _subjectAltName="subjectAltName = DNS:${_domain}";
+  if isNotEmpty "${_ip}"; then
+    _subjectAltName="${_subjectAltName},IP:${_ip}"
+  fi
+
+  local _output
+
+  _output="$(command openssl req \
     -new \
     -passin pass:"${_password}" \
     -passout pass:"${_password}" \
     -key "${_key}" \
     -out "${_result}" \
     -subj "${_subject}" \
-    -addext "subjectAltName = DNS:${_domain},IP:${_ip}" \
-    -addext "BC=ca:true" 2>&1)"
-  _rescode=$?
-  if isTrue ${_rescode}; then
-    export RESULT="${_result}"
+    -addext "${_subjectAltName}" 2>&1 || command echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="openssl req \
+    -new \
+    -passin pass:\"${_password}\" \
+    -passout pass:\"${_password}\" \
+    -key \"${_key}\" \
+    -out \"${_result}\" \
+    -subj \"${_subject}\" \
+    -addext \"${_subjectAltName}\";\n${_output}"
   else
-    export ERROR="${_output}"
+    _rescode=${TRUE}
+    export RESULT="${_result}"
   fi
 
   return ${_rescode}
@@ -105,6 +126,7 @@ function generateCSR() {
 # opt: expirationDays: The expiration, in days.
 # txt: Returns 0/TRUE if the certificate was generated; 1/FALSE otherwise.
 # txt: If the certificate is generated, the variable RESULT contains its path.
+# txt: If the certificate is not generated, the variable ERROR contains the output of the openssl x509 command.
 # use: if generateCertificate /tmp mydomain /tmp/myKey /tmp/myKey.csr secret 3650; then echo "Certificate: ${RESULT}"; fi
 function generateCertificate() {
   local _outputDir="${1}"
@@ -122,22 +144,33 @@ function generateCertificate() {
   local _result="${_outputDir}/${_certificateAlias}.crt"
   local -i _rescode
 
-  openssl x509 \
+  local _output
+  _output="$(command openssl x509 \
     -in "${_csr}" \
     -out "${_result}" \
     -req \
     -signkey "${_key}" \
     -days ${_expirationDays} \
-    -passin pass:"${_password}" \
-    _rescode=$?
-  if isTrue ${_rescode}; then
+    -passin pass:"${_password}" 2>&1 || command echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="openssl x509 \
+    -in \"${_csr}\" \
+    -out \"${_result}\" \
+    -req \
+    -signkey \"${_key}\" \
+    -days ${_expirationDays} \
+    -passin pass:\"${_password}\";\n${_output}"
+  else
+    _rescode=${TRUE}
     export RESULT="${_result}"
   fi
 
   return ${_rescode}
 }
 
-# fun: generatePEM outputDir alias csr key password expirationDays
+# fun: generatePEM outputDir alias csr key password expirationDays algorithm?
 # api: public
 # txt: Generates a PEM key for a given key.
 # opt: outputDir: The output folder.
@@ -146,7 +179,10 @@ function generateCertificate() {
 # opt: key: The key.
 # opt: password: The key password.
 # opt: expirationDays: The expiration, in days.
+# opt: algorithm: The algorithm. Optional. Defaults to rsa:2048.
 # txt: Returns 0/TRUE if the PEM key was generated; 1/FALSE otherwise.
+# txt: If the PEM key is generated, the variable RESULT contains the path of the PEM key.
+# txt: If the PEM key is not generated, the variable ERROR contains the output of the openssl req command.
 # use: if generatePEM /tmp mydomain /tmp/myKey /tmp/myKey.pem /tmp/myKey-cert.pem secret 3650; then echo "PEM generated"; fi
 function generatePEM() {
   local _keyOutputFile="${1}"
@@ -159,20 +195,86 @@ function generatePEM() {
   checkNotEmpty password "${_password}" 4
   local _expirationDays="${5}"
   checkNotEmpty expirationDays "${_expirationDays}" 5
+  local _algorithm="${6:-rsa:2048}"
   local -i _rescode
 
-  openssl req \
-    -newkey rsa:2048 \
+  local _output
+  _output="$(command openssl req \
+    -newkey ${_algorithm} \
     -new \
     -nodes \
     -x509 \
     -days ${_expirationDays} \
     -keyout "${_keyOutputFile}" \
     -out "${_certOutputFile}" \
-    -passin pass:"${_password}" >/dev/null 2>&1
-  _rescode=$?
-  if isTrue ${_rescode}; then
-    export RESULT="${_result}.pem"
+    -passin pass:"${_password}" >/dev/null 2>&1 || command echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="openssl req \
+    -newkey ${_algorithm} \
+    -new \
+    -nodes \
+    -x509 \
+    -days ${_expirationDays} \
+    -keyout \"${_keyOutputFile}\" \
+    -out \"${_certOutputFile}\" \
+    -passin pass:\"${_password}\";\n${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: generatePKCS12 outputDir alias key cert password
+# api: public
+# txt: Generates a PKCS12 file with a key and a certificate.
+# opt: outputDir: The output folder.
+# opt: alias: The alias.
+# opt: key: The key.
+# opt: cert: The certificate.
+# opt: password: The password.
+# txt: Returns 0/TRUE if the PKCS12 file was generated; 1/FALSE otherwise.
+# txt: If the PKCS12 file is generated, the variable RESULT contains the path of the PKCS12 file.
+# txt: If the PKCS12 file is not generated, the variable ERROR contains the output of the openssl pkcs12 command.
+# use: if generatePKCS12 /tmp example /tmp/myKey /tmp/myCert secret; then echo "PKCS12: ${RESULT}"; fi
+function generatePKCS12() {
+  local _outputDir="${1}"
+  checkNotEmpty outputDir "${_outputDir}" 1
+  local _alias="${2}"
+  checkNotEmpty alias "${_alias}" 2
+  local _key="${3}"
+  checkNotEmpty key "${_key}" 3
+  local _cert="${4}"
+  checkNotEmpty cert "${_cert}" 4
+  local _password="${5}"
+  checkNotEmpty password "${_password}" 5
+  local _result="${_outputDir}/${_alias}.p12"
+  local -i _rescode
+
+  local _output
+  _output="$(command openssl pkcs12 \
+    -inkey "${_key}" \
+    -in "${_cert}" \
+    -export \
+    -out "${_result}" \
+    -passin pass:"${_password}" \
+    -passout pass:"${_password}" >/dev/null 2>&1 || command echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="openssl pkcs12 \
+    -inkey \"${_key}\" \
+    -in \"${_cert}\" \
+    -export \
+    -out \"${_result}\" \
+    -passin pass:\"${_password}\"; \
+    -passout pass:\"${_password}\";\n${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
   fi
 
   return ${_rescode}
