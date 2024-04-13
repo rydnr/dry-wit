@@ -1,0 +1,52 @@
+# mod: miab
+# api: public
+# txt: mail-in-a-box-related functions
+
+# fun: updateDnsEntry server user password qname value rtype?
+# api: public
+# txt: Updates a DNS entry.
+# opt: server: The MIAB server.
+# opt: user: The username in the MIAB server.
+# opt: password: The password to access the MIAB server.
+# opt: qname: The entry to change.
+# opt: value: The record's value.
+# opt: rtype: Either A, AAAA, TXT, CNAME, MX, SRV, SSHFP, CAA or NS. Optional. Defaults to A.
+# txt: Returns 0/TRUE if the DNS entry could be updated; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain logging information.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
+# use: if updateDnsEntry ${MY_MIAB_SERVER} ${MY_USER} ${MY_PASSWORD} www.{MY_DOMAIN} ${NEW_IP}; then echo "www.${MY_DOMAIN} updated to ${NEW_IP}"; fi
+function updateDnsEntry() {
+  local _server="${1}"
+  checkNotEmpty server "${_server}" 1
+  local _user="${2}"
+  checkNotEmpty user "${_user}" 2
+  local _password="${3}"
+  checkNotEmpty password "${_password}" 3
+  local _qname="${4}"
+  checkNotEmpty qname "${_qname}" 4
+  local _value="${5}"
+  checkNotEmpty value "${_value}" 5
+  local _rtype="${6:-A}"
+  checkNotEmpty rtype "${_rtype}" 6
+
+  local -i _rescode;
+
+  local _cmd;
+  _cmd="curl -X PUT -d \"${_value}\" --user "${_user}":${_password} https://${_server}/admin/dns/custom/${_qname}/${_rtype} 2>&1"
+
+  local _output;
+  _output="$(command curl -X PUT -d "${_value}" --user "${_user}":${_password} https://${_server}/admin/dns/custom/${_qname}/${_rtype} 2>&1 || echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="${_cmd};\n${_output}"
+  else
+    _rescode=${TRUE}
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode};
+}
+
+checkReq curl;
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

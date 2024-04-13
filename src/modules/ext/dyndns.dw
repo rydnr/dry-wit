@@ -1,0 +1,59 @@
+# mod: dyndns
+# api: public
+# txt: dyndns.org-related functions
+
+# fun: checkIp
+# api: public
+# txt: Retrieves the current IP.
+# txt: Returns 0/TRUE if the public IP could be retrieved; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT will contain the public IP.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
+# use: if checkIp; then echo "Public IP: ${RESULT}"; fi
+function checkIp() {
+  local -i _rescode;
+
+  local _cmd;
+  _cmd="curl -s http://checkip.dyndns.org/ 2>&1 | cut -d '>' -f 7 |cut -d '<' -f1 | cut -d':' -f 2 | sed 's| *||g"
+
+  local _output;
+  _output="$(command curl -s http://checkip.dyndns.org/ 2>&1 || echo "$$.ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="${_cmd};\n${_output}"
+  else
+    _output="$(command echo "${_output}" | command cut -d '>' -f 7 2>&1 || echo "$$.ERROR.$$")"
+    if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+      _rescode=${FALSE}
+      export ERROR="${_cmd};\n${_output}"
+    else
+      _output="$(command echo "${_output}" | command cut -d '<' -f 1 2>&1 || echo "$$.ERROR.$$")"
+      if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+        _rescode=${FALSE}
+        export ERROR="${_cmd};\n${_output}"
+      else
+        _output="$(command echo "${_output}" | command cut -d':' -f 2 2>&1 || echo "$$.ERROR.$$")"
+        if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+          _rescode=${FALSE}
+          export ERROR="${_cmd};\n${_output}"
+        else
+          _output="$(command echo "${_output}" | command sed 's| *||g' 2>&1 || echo "$$.ERROR.$$")"
+          if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+            _rescode=${FALSE}
+            export ERROR="${_cmd};\n${_output}"
+          else
+            _rescode=${TRUE}
+            export RESULT="${_output}"
+          fi
+        fi
+      fi
+    fi
+  fi
+
+  return ${_rescode};
+}
+
+checkReq curl;
+checkReq cut;
+checkReq sed;
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet
