@@ -1,0 +1,367 @@
+# mod: calibre
+# api: public
+# txt: Calibre functions
+
+# fun: process_book book metadataFile
+# api: public
+# txt: Processes the book.
+# opt: book: The book folder.
+# opt: metadataFile: The file to store the metadata.
+# txt: Returns 0/TRUE if the book was processed; 1/FALSE otherwise.
+# use: if process_book "/tmp/Carl Jung/Tipos psicologicos (15313)" "/tmp/metadata.opf"; then echo "Book processed"; fi
+function process_book() {
+  local _book="${1}"
+  checkNotEmpty book "${_book}" 1
+  local _metadataFile="${2}"
+  checkNotEmpty metadataFile "${_metadataFile}" 2
+
+  local -i _rescode=${FALSE}
+
+  if extract_book_id_from_folder_name "${_book}"; then
+    local _bookId="${RESULT}"
+    if extract_isbn_from_folder_name "${_book}"; then
+      local _isbn="${RESULT}"
+      if fetch_metadata_from_isbn "${_isbn}" "${_book}" "${_bookId}" "${_metadataFile}"; then
+        _rescode=${TRUE}
+      fi
+    fi
+    if isFalse ${_rescode}; then
+      if extract_authors_and_title_from_folder "${_book}"; then
+        local _authors="$(command echo "${RESULT}" | command cut -d '|' -f 1 || command echo "$$.ERROR.$$")"
+        local _title="$(command echo "${RESULT}" | command cut -d '|' -f 2 || command echo "$$.ERROR.$$")"
+        if isEmpty "${_authors}" || isEmpty "${_title}"; then
+          if read_custom_metadata "${_book}"; then
+            _authors="$(command echo "${RESULT}" | command cut -d '|' -f 1 || command echo "$$.ERROR.$$")"
+            _title="$(command echo "${RESULT}" | command cut -d '|' -f 2 || command echo "$$.ERROR.$$")"
+          fi
+        fi
+        if isEmpty "${_authors}" || isEmpty "${_title}"; then
+          write_custom_metadata_sample "${_book}"
+        else
+          if fetch_metadata_from_title_and_authors "${_title}" "${_authors}" "${_book}" "${_bookId}" "${_metadataFile}"; then
+            _rescode=${TRUE}
+          fi
+        fi
+      fi
+    fi
+
+    if isTrue ${_rescode}; then
+      if save_metadata "${_bookId}" "${_metadataFile}" "${_book}"; then
+        logInfo "Metadata updated for book ${_book}"
+      else
+        logInfo ERROR "Could not update metadata for book ${_book}"
+      fi
+    else
+      logInfo WARN "Could not process book ${_book}"
+    fi
+  else
+    logInfo WARN "Book not in the Calibre library: ${_book}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: filter_books_with_isbn books
+# api: public
+# txt: Filters the books with ISBN from the list of books.
+# opt: books: The list of books.
+# txt: Returns 0/TRUE if the books with ISBN were found; 1/FALSE otherwise.
+# use: if filter_books_with_isbn "The list of books"; then echo "Books with ISBN: ${RESULT}"; fi
+function filter_books_with_isbn() {
+  local _books=("$@")
+  checkNotEmpty books "${_books}" 1
+  local _output
+  local -i _rescode=${FALSE}
+
+  local _book
+  local _found
+  local _isbn
+  local _oldIFS="${IFS}"
+  IFS="${DWIFS}"
+  for _book in "${_books[@]}"; do
+    IFS="${_oldIFS}"
+    _found=${FALSE}
+    logDebug -n "Checking whether book ${_book} has an ISBN"
+    if extract_isbn_from_folder_name "${_book}" ${FALSE}; then
+      _isbn="${RESULT}"
+      if isNotEmpty "${_isbn}"; then
+        _found=${TRUE}
+      fi
+    fi
+    if isFalse ${_found}; then
+      if extract_isbn_from_folder_name "$(dirname "${_book}")" ${FALSE}; then
+        _isbn="${RESULT}"
+        if isNotEmpty "${_isbn}"; then
+          _found=${TRUE}
+        fi
+      fi
+    fi
+
+    if isTrue ${_found}; then
+      logDebugResult SUCCESS "${_isbn}"
+      _output="${_output}${_book}${DWIFS}"
+      _rescode=${TRUE}
+    else
+      logDebugResult NEUTRAL "not found"
+    fi
+  done
+  IFS="${_oldIFS}"
+  if isTrue ${_rescode}; then
+    export RESULT="${_output}"
+  fi
+
+  return ${_rescode}
+}
+
+# fun: extract_book_id_from_folder_name dir
+# api: public
+# txt: Extracts the book id from the folder name.
+# txt: Note: The book id is the number between the parentheses at the end of the folder name.
+# opt: dir: The book folder.
+# txt: Returns 0/TRUE if the book id was extracted; 1/FALSE otherwise.
+# use: if extract_book_id_from_folder_name "The folder name"; then echo "Book id: ${RESULT}"; fi
+function extract_book_id_from_folder_name() {
+  local _dir="${1}"
+  checkNotEmpty dir "${_dir}" 1
+  local _output
+  local -i _rescode=${TRUE}
+
+  logDebug -n "Retrieving the book id from the folder ${_dir}"
+  local _output="$(command echo "${_dir}" | command grep -oP '\((\d+)\)$' | command tr -d '()' || command echo "$$.ERROR.$$")"
+  if isEmpty "${_output}"; then
+   _rescode=${FALSE}
+  elif contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+  fi
+  if isTrue ${_rescode}; then
+    logDebugResult SUCCESS "${_output}"
+    export RESULT="${_output}"
+  else
+    logDebugResult FAILURE "failed"
+    if isNotEmpty "${_output}"; then
+      logDebug "echo \"${_dir}\" | command grep -oP '\((\d+)\)$' | command tr -d '()'"
+      logDebug "$(command echo "${_output}" | command sed "s $$.ERROR.$$  g")"
+    fi
+  fi
+  return ${_rescode}
+}
+
+# fun: extract_isbn_from_folder_name dir log?
+# api: public
+# txt: Extracts the ISBN from the folder name.
+# opt: dir: The book folder.
+# opt: log: Whether to enable logging. Optional. Defaults to 0/TRUE.
+# txt: Returns 0/TRUE if the ISBN was extracted; 1/FALSE otherwise.
+# use: if extract_isbn_from_folder_name "The folder name"; then echo "ISBN: ${RESULT}"; fi
+function extract_isbn_from_folder_name() {
+  local _dir="${1}"
+  checkNotEmpty dir "${_dir}" 1
+  local _log="${2:-${TRUE}}"
+  local _output
+  local -i _rescode=${TRUE}
+
+  if isTrue ${_log}; then
+    logDebug -n "Retrieving the book ISBN from the folder ${_dir}"
+  fi
+  local _output="$(command echo "${_dir}" | command grep -oP '(?<=\.)978[0-9]*(?=[\. ])' || command echo "$$.ERROR.$$")"
+  if isEmpty "${_output}"; then
+    _rescode=${FALSE}
+  elif contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+  fi
+  if isTrue ${_rescode}; then
+    if isTrue ${_log}; then
+      logDebugResult SUCCESS "${_output}"
+    fi
+    _rescode=${TRUE}
+    export RESULT="${_output}"
+  elif isTrue ${_log}; then
+    logDebugResult NEUTRAL "missing"
+  fi
+  return ${_rescode}
+}
+
+# fun: extract_authors_and_title_from_folder dir
+# api: public
+# txt: Extracts the authors and title from the folder name.
+# opt: dir: The book folder.
+# txt: Returns 0/TRUE if the authors and title was extracted; 1/FALSE otherwise.
+# use: if extract_authors_and_title_from_folder "/tmp/Carl Jung/Tipos psicologicos (15313)"; then echo "AUTHORS|TITLE: ${RESULT}"; fi
+function extract_authors_and_title_from_folder() {
+  local _dir="${1}"
+  checkNotEmpty dir "${_dir}" 1
+  local _output
+  local -i _rescode=${TRUE}
+
+  local _authors="$(command basename "$(command dirname "${_dir}")")"
+  local _title="$(command basename "${_dir}" | command sed 's| ([0-9]+)$||')"
+  if isEmpty "${_authors}" || isEmpty "${_title}"; then
+    _rescode=${FALSE}
+  fi
+  if isTrue ${_rescode}; then
+    export RESULT="${_authors}|${_title}"
+  fi
+  return ${_rescode}
+}
+
+# fun: fetch_metadata_from_isbn isbn dir bookId metadataFile
+# api: public
+# txt: Fetches the metadata for the book with the given ISBN.
+# opt: isbn: The ISBN of the book.
+# opt: dir: The directory containing the book.
+# opt: bookId: The book id in the Calibre library.
+# opt: metadataFile: The file to store the metadata.
+# txt: Returns 0/TRUE if the metadata was fetched; 1/FALSE otherwise.
+# use: if fetch_metadata_from_isbn "9781234567890" "/path/to/book" 13531 "/tmp/medatada.opf"; then echo "Metadata fetched"; fi
+function fetch_metadata_from_isbn() {
+  local _isbn="${1}"
+  checkNotEmpty isbn "${_isbn}" 1
+  local _dir="${2}"
+  checkNotEmpty dir "${_dir}" 2
+  local _bookId="${3}"
+  checkNotEmpty bookId "${_bookId}" 3
+  local _metadataFile="${4}"
+  checkNotEmpty metadataFile "${_metadataFile}" 4
+  local _output
+  local -i _rescode=${FALSE}
+
+  logDebug -n "Fetching metadata for ISBN: ${_isbn} (${_dir})"
+  _output="$(command fetch-ebook-metadata --isbn "${_isbn}" -o -c "${_dir}/cover.jpg" 2> /dev/null > "${_metadataFile}" || echo "$$.ERROR.$$")"
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    logDebugResult FAILURE "failed"
+    logDebug "fetch-ebook-metadata --isbn \"${_isbn}\" -o -c \"${_dir}/cover.jpg\""
+    logDebug "$(command echo "${_output}" | sed "s $$.ERROR.$$  g")"
+    exitWithErrorCode CANNOT_FETCH_BOOK_METADATA "${_dir}"
+  else
+    logDebugResult SUCCESS "done"
+    _rescode=${TRUE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: fetch_metadata_from_title_and_authors title authors dir bookId metadataFile
+# api: public
+# txt: Fetches the metadata for the book given its authors and title.
+# opt: title: The title of the book.
+# opt: authors: The authors of the book.
+# opt: dir: The directory containing the book.
+# opt: bookId: The book id in the Calibre library.
+# opt: metadataFile: The file to store the metadata.
+# txt: Returns 0/TRUE if the metadata was fetched and updated; exits if the metadata cannot be fetched or updated.
+# use: if fetch_metadata_from_title_and_authors "Tipos psicologicos" "Carl G. Jung" "/path/to/book" 13531 /tmp/metadata.opf; then echo "Metadata fetched"; fi
+function fetch_metadata_from_title_and_authors() {
+  local _title="${1}"
+  checkNotEmpty title "${_title}" 1
+  local _authors="${2}"
+  checkNotEmpty authors "${_authors}" 2
+  local _dir="${3}"
+  checkNotEmpty dir "${_dir}" 3
+  local _bookId="${4}"
+  checkNotEmpty bookId "${_bookId}" 4
+  local _metadataFile="${5}"
+  checkNotEmpty metadataFile "${_metadataFile}" 5
+  local _output
+  local -i _rescode=${FALSE}
+
+  logDebug -n "Fetching metadata for title/author: ${_title}/${_authors} (${_dir})"
+  _output="$(command fetch-ebook-metadata --title="${_title}" --authors="${_authors}" -o -c "${_dir}/cover.jpg" 2> /dev/null > "${_metadataFile}" || echo "$$.ERROR.$$")"
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    logDebugResult FAILURE "failed"
+    logDebug "fetch-ebook-metadata --title=\"${_title}\" --authors=\"${_authors}\" -o -c \"${_dir}/cover.jpg\")"
+    logDebug "$(command echo "${_output}" | sed "s $$.ERROR.$$  g")"
+  else
+    logDebugResult SUCCESS "done"
+    _rescode=${TRUE}
+  fi
+  return ${_rescode}
+}
+
+# fun: save_metadata bookId metadataFile dir
+# api: public
+# txt: Saves the metadata for the book.
+# opt: bookId: The book id in the Calibre library.
+# opt: metadataFile: The file with the metadata.
+# opt: dir: The directory containing the book.
+# txt: Returns 0/TRUE if the metadata was saved; 1/FALSE otherwise.
+# use: if save_metadata 13531 /tmp/metadata.opf "~/books/Carl Jung/Tipos psicologicos (15171)"; then echo "Metadata saved"; fi
+function save_metadata() {
+  local _bookId="${1}"
+  checkNotEmpty bookId "${_bookId}" 2
+  local _metadataFile="${2}"
+  checkNotEmpty metadataFile "${_metadataFile}" 2
+  local _dir="${3}"
+  checkNotEmpty dir "${_dir}" 3
+  local _output
+  local -i _rescode=${FALSE}
+
+  logDebug -n "Updating book metadata in Calibre"
+  _output="$(command calibredb set_metadata "${_bookId}" "${_metadataFile}" 2> /dev/null || echo "$$.ERROR.$$")"
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    logDebugResult FAILURE "failed"
+    logDebug "calibredb set_metadata \"${_bookId}\" \"${_metadataFile}\""
+    logDebug "$(command echo "${_output}" | sed "s $$.ERROR.$$  g")"
+  else
+    logDebugResult SUCCESS "done"
+    _rescode=${TRUE}
+    touch "${_dir}"/.updated
+  fi
+
+  return ${_rescode}
+}
+
+# fun: read_custom_metadata dir
+# api: public
+# txt: Reads the custom metadata for the book.
+# opt: dir: The directory containing the book.
+# txt: Returns 0/TRUE if the metadata was read; 1/FALSE otherwise.
+# use: if read_custom_metadata "/tmp/Carl Jung/Tipos psicologicos (15313)"; then echo "Metadata: ${RESULT}"; fi
+function read_custom_metadata() {
+  local _dir="${1}"
+  checkNotEmpty dir "${_dir}" 1
+  local _output
+  local -i _rescode=${TRUE}
+
+  logDebug -n "Reading custom metadata for book ${_dir}"
+  local _title="$(command cat "${_dir}/.metadata.json" | command jq '.title' | command sed 's "  g'|| command echo "$$.ERROR.$$")"
+  if isEmpty "${_title}"; then
+    _rescode=${FALSE}
+  elif contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+  fi
+  if isTrue ${_rescode}; then
+    local _authors="$(command cat "${_dir}/.metadata.json" | command jq '.authors' | command sed 's "  g'|| command echo "$$.ERROR.$$")"
+    if isEmpty "${_authors}"; then
+      _rescode=${FALSE}
+    elif contains "${_output}" "$$.ERROR.$$"; then
+      _rescode=${FALSE}
+    fi
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_title}|${_authors}"
+  fi
+  return ${_rescode}
+}
+
+# fun: write_custom_metadata_sample dir
+# api: public
+# txt: Writes a custom metadata file for the book.
+# opt: dir: The directory containing the book.
+# txt: Returns 0/TRUE if the sample was written; 1/FALSE otherwise.
+# use: if write_custom_metadata_sample "/tmp/Carl Jung/Tipos psicologicos (15313)"; then echo "Sample written"; fi
+function write_custom_metadata_sample() {
+  local _dir="${1}"
+  checkNotEmpty dir "${_dir}" 1
+  local _output
+  local -i _rescode=${TRUE}
+
+  cat <<EOF > "${_dir}/.sample.json" || _rescode=${FALSE}
+{
+  "title": "$(dirname "${_dir}")",
+  "authors": "$(basename "$(dirname ${_dir})")"
+}
+EOF
+
+  return ${_rescode}
+}

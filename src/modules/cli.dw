@@ -516,7 +516,7 @@ function usage() {
 # txt: Returns 0/TRUE always, but it could raise an exception and exit.
 # use: checkInput $@;
 function checkInput() {
-  local _flags=$(CLI.extractFlags $@)
+  local _flags=$(CLI.extractFlags "$@")
 
   local -a _flagsChecked=()
   local -i _flagCount=0
@@ -573,7 +573,7 @@ function checkInput() {
 # use: parseInput $@;
 function parseInput() {
   local _flags;
-  _flags=$(CLI.extractFlags $@)
+  _flags=$(CLI.extractFlags "$@")
   local _oldIFS="${IFS}"
   local -a _providedFlags=()
   local -i _shifts
@@ -661,16 +661,46 @@ function dw_parse_help_cli_flag() {
   setHelpFlagProvided
 }
 
+# fun: CLI.extractFlags_old cliArguments
+# api: private
+# txt: Extracts the flags from the arguments.
+# txt: Prints the flags to stdout.
+# opt: cliArguments: The arguments to process.
+# use: local _myFlags=$(CLI.extractFlags_old "$@");
+function CLI.extractFlags_old() {
+  echo " $@" |
+    awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' |
+    awk -F" " '{print $1;}'
+}
+
 # fun: CLI.extractFlags cliArguments
 # api: private
 # txt: Extracts the flags from the arguments.
 # txt: Prints the flags to stdout.
 # opt: cliArguments: The arguments to process.
-# use: local _myFlags=$(CLI.extractFlags $*);
+# use: local _myFlags=$(CLI.extractFlags "$@");
 function CLI.extractFlags() {
-  echo " $@" |
-    awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' |
-    awk -F" " '{print $1;}'
+  local i=1
+  while [[ $i -le $# ]]; do
+    eval "arg=${!i}"
+
+    # Check if the argument is a flag (starts with a dash)
+    if [[ "$arg" == -* ]]; then
+      # Print the flag
+      echo "$arg"
+    fi
+
+    # Move to the next argument
+    ((i++))
+
+    # Skip over the argument's value if this flag has one
+    if [[ "$arg" == -* ]] && [[ $i -le $# ]]; then
+      eval "next_arg=\$$i"
+      if [[ "$next_arg" != -* ]]; then
+        ((i++))
+      fi
+    fi
+  done
 }
 
 # fun: CLI.extractFlagValue flagName cliArguments
