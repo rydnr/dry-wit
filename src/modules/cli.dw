@@ -317,19 +317,19 @@ function addCommandLineFlag() {
     _index=${RESULT}
   fi
 
-  _flagKeys[${_index}]="${_flagKey}"
+  _flagKeys[_index]="${_flagKey}"
 
   CLI.getFlagShortNamesVariableName
   local -n _flagShortNames=${RESULT}
-  _flagShortNames[${_longName}]="${_shortName}"
+  _flagShortNames["${_longName}"]="${_shortName}"
 
   CLI.getFlagLongNamesVariableName
   local -n _flagLongNames=${RESULT}
-  _flagLongNames[${_shortName}]="${_longName}"
+  _flagLongNames["${_shortName}"]="${_longName}"
 
   CLI.getFlagDescriptionsVariableName
   local -n _flagDescriptions="${RESULT}"
-  _flagDescriptions[${_flagKey}]="${_description}"
+  _flagDescriptions["${_flagKey}"]="${_description}"
 
   normalizeUppercase "${_longName}"
   local _longNameInUpperCase="${RESULT}"
@@ -339,7 +339,7 @@ function addCommandLineFlag() {
 
   CLI.getMandatoryFlagsVariableName
   local -n _mandatoryFlags="${RESULT}"
-  _mandatoryFlags[${_flagKey}]=${_mandatory}
+  _mandatoryFlags["${_flagKey}"]=${_mandatory}
 
   if areEqual "${_expectsArgument}" "EXPECTS_ARGUMENT"; then
     addError "${_longNameInUpperCase}_EXPECTS_AN_ARGUMENT" "${_longName} expects an argument"
@@ -347,11 +347,11 @@ function addCommandLineFlag() {
 
   CLI.getFlagExpectingArgumentsVariableName
   local -n _flagExpectingArguments="${RESULT}"
-  _flagExpectingArguments[${_flagKey}]="${_expectsArgument}"
+  _flagExpectingArguments["${_flagKey}"]="${_expectsArgument}"
 
   CLI.getOptionalFlagDefaultValuesVariableName
   local -n _optionalFlagDefaultValues=${RESULT}
-  _optionalFlagDefaultValues[${_flagKey}]="${_defaultValue}"
+  _optionalFlagDefaultValues["${_flagKey}"]="${_defaultValue}"
 
   return ${_rescode}
 }
@@ -504,7 +504,7 @@ function usage() {
   if ! CLI.scriptDescriptionUsage; then
     echo
   fi
-  echo "Where:"
+  command echo "Where:"
   CLI.commandLineFlagsDetailedUsage
   CLI.commandLineParametersDetailedUsage
 }
@@ -525,7 +525,7 @@ function checkInput() {
   # Flags
   IFS="${DWIFS}"
   local _flag
-  for _flag in ${_flags}; do
+  for _flag in ${_flags}; do # not a bug
     IFS="${_oldIFS}"
 
     if isHelpFlagProvided; then
@@ -537,11 +537,11 @@ function checkInput() {
       if areEqual "${_flag}" "--"; then
         break
       else
-        CLI.checkFlag "${_flag}" $@
+        CLI.checkFlag "${_flag}" "$@"
         local -i _shifts=$?
         IFS="${DWIFS}"
         local -i _i
-        for _i in $(seq 1 1 ${_shifts} 2>/dev/null); do
+        for _i in $(command seq 1 1 ${_shifts} 2>/dev/null); do
           IFS="${_oldIFS}"
           shift
         done
@@ -555,7 +555,7 @@ function checkInput() {
   if ! isHelpFlagProvided; then
     CLI.checkForMissingMandatoryCommandLineFlags "${_flagsChecked[@]}"
 
-    CLI.checkCommandLineParameters $@
+    CLI.checkCommandLineParameters "$@"
 
     CLI.checkEnvironmentVariables
 
@@ -602,7 +602,7 @@ function parseInput() {
 
   CLI.parseNotProvidedFlags "${_providedFlags[@]}"
 
-  CLI.parseCommandLineParameters ${@}
+  CLI.parseCommandLineParameters "${@}"
 }
 
 # fun: dw_parse_debug_cli_flag
@@ -668,9 +668,9 @@ function dw_parse_help_cli_flag() {
 # opt: cliArguments: The arguments to process.
 # use: local _myFlags=$(CLI.extractFlags_old "$@");
 function CLI.extractFlags_old() {
-  echo " $@" |
-    awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' |
-    awk -F" " '{print $1;}'
+  command echo " $*" |
+    command awk -F" -" '{for (i=2; i<=NF; i++){printf("-%s \n", $i);}}' |
+    command awk -F" " '{print $1;}'
 }
 
 # fun: CLI.extractFlags cliArguments
@@ -680,14 +680,18 @@ function CLI.extractFlags_old() {
 # opt: cliArguments: The arguments to process.
 # use: local _myFlags=$(CLI.extractFlags "$@");
 function CLI.extractFlags() {
+  local arg
+  local next_arg
   local i=1
+  local _index=0
   while [[ $i -le $# ]]; do
+    ((_index++))
     eval "arg=${!i}"
 
     # Check if the argument is a flag (starts with a dash)
     if [[ "$arg" == -* ]]; then
       # Print the flag
-      echo "$arg"
+      command printf '%s\n' $arg
     fi
 
     # Move to the next argument
@@ -716,10 +720,10 @@ function CLI.extractFlagValue() {
   shift
   checkNotEmpty cliArguments "${@}" 2
 
-  echo " $@" |
-    awk -F" -" '{printf("-"); for (i=2; i<=NF; i++){if(i%2 == 1) {printf("-");}; printf("%s \n", $i);}}' |
-    grep -e "^${_flag} " |
-    awk -v f="${_flag}" '{printf("echo \"%s\" | sed -e \"s_^%s __g\"\n", $2, f);}' |
+  command echo " $*" |
+    command awk -F" -" '{printf("-"); for (i=2; i<=NF; i++){if(i%2 == 1) {printf("-");}; printf("%s \n", $i);}}' |
+    command grep -e "^${_flag} " |
+    command awk -v f="${_flag}" '{printf("command echo \"%s\" | sed -e \"s_^%s __g\"\n", $2, f);}' |
     sh
 }
 
@@ -949,7 +953,7 @@ function CLI.checkFlag() {
   fi
 
   if isTrue ${_continue}; then
-    CLI.checkCommandLineFlag "${_flagKey}" "${_longName}" $@
+    CLI.checkCommandLineFlag "${_flagKey}" "${_longName}" "$@"
     _result=$((_result + $?))
   fi
 
@@ -1081,7 +1085,7 @@ function CLI.checkCommandLineFlag() {
 # opt: flags: The flags provided.
 # use: CLI.checkForMissingMandatoryCommandLineFlags "-f --file -v -vv";
 function CLI.checkForMissingMandatoryCommandLineFlags() {
-  local _flagsChecked="$@"
+  local _flagsChecked=("$@")
 
   local _oldIFS="${IFS}"
 
@@ -1091,13 +1095,13 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
   if isNotEmpty "${_flagKeys[@]}"; then
     IFS="${DWIFS}"
     local _key
-    for _key in ${_flagKeys[@]}; do
+    for _key in "${_flagKeys[@]}"; do
       IFS="${_oldIFS}"
       if CLI.retrieveCommandLineFlagLongNameFromKey "${_key}"; then
         local _longName="${RESULT}"
         toUpper "${_longName}"
         local _longNameInUpperCase="${RESULT}"
-        if isEmpty "${_flagsChecked}" || ! CLI.isCommandLineFlagAlreadyChecked "${_flagsChecked}" "${_key}"; then
+        if isEmpty "${_flagsChecked[@]}" || ! CLI.isCommandLineFlagAlreadyChecked "${_key}" "${_flagsChecked[@]}"; then
           if CLI.isCommandLineFlagMandatory "${_key}"; then
             exitWithError "${_longNameInUpperCase}_IS_MANDATORY" "${_longName} flag is mandatory"
           fi
@@ -1110,20 +1114,21 @@ function CLI.checkForMissingMandatoryCommandLineFlags() {
   fi
 }
 
-# fun: CLI.isCommandLineFlagAlreadyChecked alreadyCheckedFlags flagKey
+# fun: CLI.isCommandLineFlagAlreadyChecked flagKey alreadyCheckedFlags
 # api: private
 # txt: Checks whether the flag has been already checked.
-# opt: alreadyCheckedFlags: The already-checked flags.
 # opt: flagKey: The flag key to check.
+# opt: alreadyCheckedFlags: The already-checked flags.
 # txt: Returns 0/TRUE if the flag has been checked; 1/FALSE otherwise.
-# use: if CLI.isCommandLineFlagAlreadyChecked "-f -v -h" "${flagKey}"; then
+# use: if CLI.isCommandLineFlagAlreadyChecked "${flagKey}" "-f -v -h"; then
 # use:   echo "${flagKey} already checked";
 # use: fi
 function CLI.isCommandLineFlagAlreadyChecked() {
-  local _flagsAlreadyChecked="${1}"
+  local _flagKey="${1}"
+  checkNotEmpty flagKey "${_flagKey}" 1
+  shift
+  local _flagsAlreadyChecked="${@}"
   checkNotEmpty alreadyCheckedFlags "${_flagsAlreadyChecked}" 1
-  local _flagKey="${2}"
-  checkNotEmpty flagKey "${_flagKey}" 2
 
   local -i _rescode
 
@@ -1157,7 +1162,7 @@ function CLI.checkCommandLineParameters() {
 
   IFS="${DWIFS}"
   local _parameterName
-  for _parameterName in ${_parameterNames[@]}; do
+  for _parameterName in "${_parameterNames[@]}"; do
     IFS="${_oldIFS}"
 
     local _parameterValue="${1}"
@@ -1194,7 +1199,7 @@ function CLI.checkCommandLineParameters() {
 
     if isTrue ${_callbackDefined}; then
       if isTrue ${_multiple}; then
-        "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}" ${@}
+        "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}" "${@}"
       else
         "dw_check_${_parameterName}_cli_parameter" "${_parameterValue}"
       fi
@@ -1347,7 +1352,7 @@ function CLI.parseCallbackDefinedForFlag() {
 # opt: flag: The flag to parse.
 # opt: remainingArguments: The rest of the command-line flags and parameters.
 # txt: Returns the number of parameters to shift.
-# use: CLI.parseFlag "-f" $@;
+# use: CLI.parseFlag "-f" "$@";
 # use: echo "Must shift $?";
 function CLI.parseFlag() {
   local _flag="${1}"
@@ -1467,7 +1472,7 @@ function CLI.parseNotProvidedFlags() {
   local -i _rescode=${TRUE}
 
   if isGreaterThan $# 0; then
-    local _providedFlags="${@}"
+    local -a _providedFlags=("${@}")
 
     local -a _notProvidedFlags=()
 
@@ -1478,7 +1483,7 @@ function CLI.parseNotProvidedFlags() {
 
     IFS="${DWIFS}"
     local _flagKey
-    for _flagKey in ${_flagKeys[@]}; do
+    for _flagKey in "${_flagKeys[@]}"; do
       IFS="${_oldIFS}"
 
       local -i _provided=${FALSE}
@@ -1488,7 +1493,7 @@ function CLI.parseNotProvidedFlags() {
       CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}"
       _shortName="${RESULT}"
       IFS="${DWIFS}"
-      for _providedFlag in ${_providedFlags}; do
+      for _providedFlag in "${_providedFlags[@]}"; do
         IFS="${_oldIFS}"
         if areEqual "${_providedFlag}" "--${_longName}" ||
           areEqual "${_providedFlag}" "-${_shortName}"; then
@@ -1630,16 +1635,16 @@ function CLI.parseCommandLineParameters() {
 
   IFS="${DWIFS}"
   local _parameterName
-  for _parameterName in ${_parameterNames[@]}; do
+  for _parameterName in "${_parameterNames[@]}"; do
     IFS="${_oldIFS}"
 
     local _parameterValue;
     local _parseCallback;
     if CLI.isCommandLineParameterMultiple "${_parameterName}"; then
-      _parameterValue="${@}";
+      _parameterValue="${*}";
       if CLI.parseCallbackDefinedForParameter "${_parameterName}"; then
         _parseCallback="${RESULT}"
-        "${_parseCallback}" ${_parameterValue}
+        "${_parseCallback}" "${_parameterValue}"
       else
         camelCaseToSnakeCase "${_parameterName}"
         normalizeUppercase "${RESULT}"
@@ -2082,7 +2087,7 @@ function CLI.commandLineFlagsUsage() {
 
   IFS="${DWIFS}"
   local _flagKey
-  for _flagKey in ${_flagKeys[@]}; do
+  for _flagKey in "${_flagKeys[@]}"; do
     IFS="${_oldIFS}"
     CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}"
     local _shortName="${RESULT}"
@@ -2104,7 +2109,7 @@ function CLI.commandLineFlagsUsage() {
   done
   IFS="${_oldIFS}"
 
-  echo -n "${_message}"
+  command echo -n "${_message}"
 
   return ${_rescode}
 }
@@ -2124,7 +2129,7 @@ function CLI.scriptDescriptionUsage() {
     _rescode=${FALSE}
   else
     _rescode=${TRUE}
-    echo -e "\n${_scriptDescription}\n"
+    command echo -e "\n${_scriptDescription}\n"
   fi
 
   return ${_rescode}
@@ -2147,7 +2152,7 @@ function CLI.scriptLicenseSummaryUsage() {
     _rescode=${TRUE}
   else
     _rescode=${FALSE}
-    echo "${_scriptLicenseSummary}"
+    command echo "${_scriptLicenseSummary}"
   fi
 
   return ${_rescode}
@@ -2170,7 +2175,7 @@ function CLI.scriptUrlUsage() {
     _rescode=${TRUE}
   else
     _rescode=${FALSE}
-    echo "${_scriptUrl}"
+    command echo "${_scriptUrl}"
   fi
 
   return ${_rescode}
@@ -2193,7 +2198,7 @@ function CLI.scriptCopyrightUsage() {
     _rescode=${FALSE}
   else
     _rescode=${TRUE}
-    echo "${_scriptCopyright}"
+    command echo "${_scriptCopyright}"
   fi
 
   return ${_rescode}
@@ -2217,7 +2222,7 @@ function CLI.commandLineFlagsDetailedUsage() {
 
   IFS="${DWIFS}"
   local _flagKey
-  for _flagKey in ${_flagKeys[@]}; do
+  for _flagKey in "${_flagKeys[@]}"; do
     IFS="${_oldIFS}"
     CLI.retrieveCommandLineFlagShortNameFromKey "${_flagKey}"
     local _shortName="${RESULT}"
@@ -2242,7 +2247,7 @@ function CLI.commandLineFlagsDetailedUsage() {
     _rescode=${FALSE}
   else
     _rescode=${TRUE}
-    echo -n -e "${_message}"
+    command echo -n -e "${_message}"
   fi
 
   return ${_rescode}
@@ -2347,7 +2352,7 @@ function CLI.commandLineParametersUsage() {
 
   IFS="${DWIFS}"
   local _name
-  for _name in ${_parameterNames[@]}; do
+  for _name in "${_parameterNames[@]}"; do
     IFS="${_oldIFS}"
     _message="${_message} ${_name}"
     if CLI.commandLineParameterIsMultiple "${_name}"; then
@@ -2364,7 +2369,7 @@ function CLI.commandLineParametersUsage() {
     _rescode=${FALSE}
   else
     _rescode=${TRUE}
-    echo -e "${_message}"
+    command echo -e "${_message}"
   fi
 
   return ${_rescode}
@@ -2386,7 +2391,7 @@ function CLI.commandLineParametersDetailedUsage() {
 
   IFS="${DWIFS}"
   local _name
-  for _name in ${_parameterNames[@]}; do
+  for _name in "${_parameterNames[@]}"; do
     IFS="${_oldIFS}"
     if isNotEmpty "${_message}"; then
       _message="\n"
@@ -2411,7 +2416,7 @@ function CLI.commandLineParametersDetailedUsage() {
     _rescode=${FALSE}
   else
     _rescode=${TRUE}
-    echo -e "${_message}"
+    command echo -e "${_message}"
   fi
 
   return ${_rescode}

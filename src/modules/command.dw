@@ -13,27 +13,27 @@
 # use: fi
 function runCommand() {
   local _command
-  _command="$(echo $@ | sed 's_\n_ _g')"
+  _command="${*//\n/ }"
   checkNotEmpty command "${_command}" 1
 
   local -i _rescode
 
-  getLogCategory
-  local _previousLogCategory="${RESULT}"
-  if ! areEqual "${_previousLogCategory}" "${_command}"; then
-    setLogCategory "${_previousLogCategory}:(${_command})"
-  fi
+#  getLogCategory
+#  local _previousLogCategory="${RESULT}"
+#  if ! areEqual "${_previousLogCategory}" "${_command}"; then
+#    setLogCategory "${_previousLogCategory}:(${_command})"
+#  fi
 
   logDebug "${_command}"
   local _result
-  _result=$($@ 2>&1)
+  _result=$("${@}" 2>&1)
   _rescode=$?
 
   export RESULT="${_result}"
 
-  if ! areEqual "${_previousLogCategory}" "${_command}"; then
-    setLogCategory "${_previousLogCategory}"
-  fi
+#  if ! areEqual "${_previousLogCategory}" "${_command}"; then
+#    setLogCategory "${_previousLogCategory}"
+#  fi
 
   return ${_rescode}
 }
@@ -545,7 +545,7 @@ function runScriptAsUserAndGroupUsingSu() {
 # use: if runCommandLongOutput "nmap -Pn"; then ...; fi
 function runCommandLongOutput() {
   local _command
-  _command="$(echo $@ | sed 's_\n_ _g')"
+  _command="${*//\n/ }"
   checkNotEmpty command "${_command}" 1
 
   local -i _rescode
@@ -554,20 +554,20 @@ function runCommandLongOutput() {
   createTempFile
   _result="${RESULT}"
 
-  local _previousLogCategory
-  getLogCategory
-  _previousLogCategory="${RESULT}"
-  setLogCategory "${_previousLogCategory}*"
+#  local _previousLogCategory
+#  getLogCategory
+#  _previousLogCategory="${RESULT}"
+#  setLogCategory "${_previousLogCategory}*"
 
   logDebug "${_command}"
 
   local _cmd="${1}"
   shift
   if isDebugEnabled; then
-    ${_cmd} $@ 2>&1 | tee "${_result}" | logDebugFromStdin
+    ${_cmd} "${@}" 2>&1 | tee "${_result}" | logDebugFromStdin
     _rescode=${PIPESTATUS[0]}
   else
-    "${_cmd}" $@ >"${_result}" 2>&1
+    "${_cmd}" "${@}" >"${_result}" 2>&1
     _rescode=$?
   fi
 
@@ -575,7 +575,7 @@ function runCommandLongOutput() {
     export RESULT="${_result}"
   fi
 
-  setLogCategory "${_previousLogCategory}"
+  # setLogCategory "${_previousLogCategory}"
 
   return ${_rescode}
 }

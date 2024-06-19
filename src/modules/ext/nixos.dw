@@ -1,0 +1,34 @@
+# Copyright 2024-today Automated Computing Machinery S.L.
+# Distributed under the terms of the GNU General Public License v3
+
+# fun: nixosRebuildSwitch args*
+# api: public
+# txt: Runs "nixos-rebuild switch".
+# opt: args: Additional arguments to "nixos-rebuild switch"
+# txt: Returns 0/TRUE if the operation succeeds; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, RESULT will contain the output.
+# txt: If the function returns 1/FALSE, ERROR will contain additional information.
+# use: if ! nixosRebuildSwitch; then
+# use:   echo "nixos-rebuild switch failed: ${ERROR}"
+# use: fi
+function nixosRebuildSwitch() {
+  local -i _rescode;
+  local _result;
+  _result="$(command sudo nixos-rebuild switch 2>&1 || echo "$$.ERROR.$$")";
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+  fi
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}";
+    export ERROR="";
+  else
+    export RESULT="";
+    _result="$(command echo "${_result}" | command sed "s $$.ERROR.$$  g")"
+    if isNotEmpty "${_result}"; then
+      export ERROR="${_result}";
+    fi
+  fi
+
+  return ${_rescode};
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

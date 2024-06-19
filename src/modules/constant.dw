@@ -16,14 +16,16 @@ function evalConstant() {
   checkNotEmpty constantName "${_constant}" 1;
 
   local _result;
-  _result=$(echo | awk -v c="${_constant}" -v p1="{" -v p2="}" '{printf("echo %s%s%s%s\n", "$", p1, c, p2);}' | sh 2> /dev/null);
+  _result=$(command echo "${_constant}" | command awk -v p1="{" -v p2="}" '{printf("command echo %s%s%s%s\n", "$", p1, $0, p2);}' | sh 2> /dev/null || command echo "$$.ERROR.$$");
 
   if isEmpty "${_result}" ; then
     _result="${2}";
+  elif contains "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
   fi
 
   if isEmpty "${_result}" ; then
-    result="${_constant}";
+    _result="${_constant}";
   fi
 
   local -i _rescode;

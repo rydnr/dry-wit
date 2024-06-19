@@ -62,7 +62,7 @@ function exitWithError() {
   local _label="${1}"
   checkNotEmpty label "${_label}" 1
   shift
-  local _message="${@}"
+  local _message="${*}"
   checkNotEmpty message "${_message}" 2
 
   if isErrorUndefined "${_label}"; then
@@ -88,6 +88,7 @@ function exitWithErrorCode() {
     logResult "${_level}" FAILURE "aborted"
   fi
 
+  command echo "${BASH_SOURCE[*]}"
   printErrorMessage "${_label}" "$@"
   local -i _rescode=$?
   cleanup
@@ -168,7 +169,7 @@ function printErrorMessage() {
   local _oldIFS="${IFS}"
   IFS="${DWIFS}"
   local _builtinError
-  for _builtinError in ${_builtinErrors[@]}; do
+  for _builtinError in "${_builtinErrors[@]}"; do
     IFS="${_oldIFS}"
     _rescode=$((_rescode + 1))
     if areEqual "${_builtinError}" "${_label}"; then
@@ -188,7 +189,7 @@ function printErrorMessage() {
     #    rescode=${TRUE};
     IFS="${DWIFS}"
     local _errorMessage
-    for _errorMessage in ${_errorMessages[@]}; do
+    for _errorMessage in "${_errorMessages[@]}"; do
       IFS="${_oldIFS}"
       _rescode=$((_rescode + 1))
       if areEqual "${_errorMessage}" "${_label}"; then
@@ -217,7 +218,7 @@ $@
 EOF
       )"
     else
-      _error="${_error} $@"
+      _error="${_error} $*"
     fi
   fi
 
@@ -303,7 +304,7 @@ EOF
       local _j
       for ((_j = 0; _j < ${#_errorMessages[@]}; _j++)); do
         DW.getGlobalString "${_moduleName}" "${_errorMessages[${_j}]}"
-        echo "  $((_j + _i + 1)): ${RESULT}."
+        command echo "  $((_j + _i + 1)): ${RESULT}."
       done
     fi
     IFS="${_oldIFS}"

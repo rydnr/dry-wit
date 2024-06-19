@@ -171,8 +171,6 @@ function buildColor() {
   local _bgValue="${3}";
   checkNotEmpty background "${_bgValue}" 3;
 
-  local result="";
-
   declare -gx "${_color}"="\033[0;${_fgValue}m";
   declare -gx "${_color}_FG"="\033[0;${_fgValue}m";
   declare -gx "${_color}_BG"="\033[${_bgValue}m";
@@ -203,7 +201,8 @@ function allowsColors() {
     local _cachedResult="${RESULT}";
 
     if isEmpty "${_cachedResult}"; then
-      local _colors="$(tput colors 2>&1)";
+      local _colors
+      _colors="$(command tput colors 2>&1)";
       if isNotEmpty "${_colors}"; then
         if isGreaterOrEqualTo "${_colors}" 8; then
           #          env | grep -e '^_=' | grep env > /dev/null 2>&1;
@@ -352,7 +351,7 @@ function COLOR.resetState() {
   fi
 }
 
-if allowsColors && isEmpty "${VOID}"; then
+if isEmpty "${VOID}"; then
   # env: VOID: No color.
   buildColor VOID 0 0;
   # env: BLACK: Black color.
@@ -390,5 +389,5 @@ if allowsColors && isEmpty "${VOID}"; then
 fi
 
 # env: ENABLE_COLOR: Whether to enable colors when logging. Defaults to ${FALSE}.
-defineEnvVar ENABLE_COLOR MANDATORY "Whether to enable colors when logging" ${FALSE};
+defineEnvVar ENABLE_COLOR MANDATORY "Whether to enable colors when logging" ${TRUE};
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

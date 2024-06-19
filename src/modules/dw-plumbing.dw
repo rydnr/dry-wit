@@ -67,8 +67,6 @@ function cleanup() {
     local _i
 
     if [ "${#_cleanupFiles}" != "0" ]; then
-      setLogCategory "post-process"
-
       logTrace -n "Cleaning up temporary files"
 
       local -i _deletedCount=0
@@ -175,16 +173,16 @@ function isFunctionPresent() {
   local -i _rescode=${FALSE}
 
   if isMacOSX; then
-    command type -t "${_function}" 2>/dev/null | grep -q 'function'
+    command type -t "${_function}" 2>/dev/null | command grep -q 'function'
     _rescode=$?
   else
-    type "${_function}" 2>/dev/null | grep -q 'function'
+    command type "${_function}" 2>/dev/null | command grep -q 'function'
     _rescode=$?
   fi
 
   if isFalse ${_rescode}; then
     if isNotEmpty "${_scriptName}"; then
-      grep -q " ${_function} *()" "${_scriptName}" >/dev/null 2>&1
+      command grep -q " ${_function} *()" "${_scriptName}" >/dev/null 2>&1
       _rescode=$?
     fi
   fi
@@ -195,9 +193,11 @@ function isFunctionPresent() {
 
       IFS="${DWIFS}"
       local _inc
-      for _inc in "${BASH_SOURCE[0]}/$(basename ${_scriptName} .sh).inc.sh" \
-        "${_scriptFolder}/$(basename ${_scriptName} .sh).inc.sh" \
-        "./$(basename ${_scriptName} .sh).inc.sh"; do
+      local _scriptInc
+      _scriptInc="$(command basename "${_scriptName}" .sh).inc.sh"
+      for _inc in "${BASH_SOURCE[0]}/${_scriptInc}" \
+        "${_scriptFolder}/${_scriptInc}" \
+        "./${_scriptInc}"; do
         IFS="${_oldIFS}"
         if [ -e "${_inc}" ]; then
           isFunctionPresent "${_function}" "${_inc}"
@@ -230,20 +230,6 @@ function DRYWIT.addBuiltInError() {
   DRYWIT.appendBuiltInError "${_upcasedErrorName}"
   upvar "${_upcasedErrorName}" "${_message}"
   export "${_upcasedErrorName}"="${_message}"
-}
-
-# fun: DRYWIT.addMissingDependencyError dependency
-# api: private
-# txt: Annotates a new error describing a missing dependency.
-# opt: message: The the missing dependency.
-# txt: Returns 0/TRUE always.
-# use: DRYWIT.addMissingDependencyError "docker";
-function DRYWIT.addMissingDependencyError() {
-  local _dependency="${1}"
-  normalizeUppercase "${_dependency}_NOT_INSTALLED"
-  local _constant="${RESULT}"
-
-  addError "${_constant}" "${_dependency} is not installed"
 }
 
 # fun: DRYWIT.appendBuiltInError error
@@ -284,7 +270,7 @@ function DRYWIT.checkDependency() {
     _errorCode="${RESULT}"
   fi
 
-  which ${_req} >/dev/null 2>&1
+  which "${_req}" >/dev/null 2>&1
   local -i _rescode=$?
 
   if isFalse ${_rescode}; then
@@ -308,7 +294,6 @@ function DRYWIT.checkScript() {
   getLogCategory
   local _oldCategory="${RESULT}"
 
-  setLogCategory "sanity-check"
   logTrace -n "Checking mandatory constants"
 
   ERROR.getErrorMessagesVariableName
@@ -324,8 +309,6 @@ function DRYWIT.checkScript() {
   done
   IFS="${_oldIFS}"
   logTraceResult SUCCESS "${DONE}"
-
-  setLogCategory "${_oldCategory}"
 }
 
 # fun: DRYWIT.defineDryWitRequirements
@@ -413,13 +396,11 @@ function DRYWIT.main() {
   if isHelpFlagProvided; then
     printHelp
   elif isFunctionPresent main "${_scriptName}"; then
-    setLogCategory ""
 
     restoreBashOptions "${_bashOpts}"
-    main ${BASH_ARGV[@]}
+    main "${BASH_ARGV[@]}"
     _rescode=$?;
 
-    setLogCategory ""
   else
     echo "Invalid ${_scriptName} script: main function is mandatory in dry-wit scripts"
     exit 255

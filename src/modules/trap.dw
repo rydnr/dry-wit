@@ -10,17 +10,17 @@
 function TRAP.trapSignals() {
   trap 'TRAP.finishedOkHook $? ${FUNCNAME[0]} ${LINENO}' 0
   trap 'TRAP.errorHook $? ${FUNCNAME[0]} ${LINENO}' ERR
-  trap 'TRAP.exitHook $? ${FUNCNAME[0]} ${LINENO}' EXIT
+  # trap 'TRAP.exitHook $? ${FUNCNAME[0]} ${LINENO}' EXIT
 
   trap 'TRAP.hupHook $? ${FUNCNAME[0]} ${LINENO}' HUP
-  trap 'TRAP.intHook $? ${FUNCNAME[0]} ${LINENO}' INT
-  trap 'TRAP.quitHook $? ${FUNCNAME[0]} ${LINENO}' QUIT
+  # trap 'TRAP.intHook $? ${FUNCNAME[0]} ${LINENO}' INT
+  # trap 'TRAP.quitHook $? ${FUNCNAME[0]} ${LINENO}' QUIT
   trap 'TRAP.illHook $? ${FUNCNAME[0]} ${LINENO}' ILL
   trap 'TRAP.trapHook $? ${FUNCNAME[0]} ${LINENO}' TRAP
-  trap 'TRAP.abortHook $? ${FUNCNAME[0]} ${LINENO}' ABRT
+  # trap 'TRAP.abortHook $? ${FUNCNAME[0]} ${LINENO}' ABRT
   trap 'TRAP.busHook $? ${FUNCNAME[0]} ${LINENO}' BUS
   trap 'TRAP.fpeHook $? ${FUNCNAME[0]} ${LINENO}' FPE
-  trap 'TRAP.killHook $? ${FUNCNAME[0]} ${LINENO}' KILL
+  # trap 'TRAP.killHook $? ${FUNCNAME[0]} ${LINENO}' KILL
   trap 'TRAP.usr1Hook $? ${FUNCNAME[0]} ${LINENO}' USR1
   trap 'TRAP.segvHook $? ${FUNCNAME[0]} ${LINENO}' SEGV
   trap 'TRAP.usr2Hook $? ${FUNCNAME[0]} ${LINENO}' USR2
@@ -30,7 +30,7 @@ function TRAP.trapSignals() {
   trap 'TRAP.stkfltHook $? ${FUNCNAME[0]} ${LINENO}' STKFLT
   # trap 'TRAP.chldHook $? ${FUNCNAME[0]} ${LINENO}' CHLD
   trap 'TRAP.contHook $? ${FUNCNAME[0]} ${LINENO}' CONT
-  trap 'TRAP.stopHook $? ${FUNCNAME[0]} ${LINENO}' STOP
+  # trap 'TRAP.stopHook $? ${FUNCNAME[0]} ${LINENO}' STOP
   trap 'TRAP.tstpHook $? ${FUNCNAME[0]} ${LINENO}' TSTP
   trap 'TRAP.ttinHook $? ${FUNCNAME[0]} ${LINENO}' TTIN
   trap 'TRAP.ttouHook $? ${FUNCNAME[0]} ${LINENO}' TTOU
@@ -44,11 +44,11 @@ function TRAP.trapSignals() {
   trap 'TRAP.pwrHook $? ${FUNCNAME[0]} ${LINENO}' PWR
   trap 'TRAP.sysHook $? ${FUNCNAME[0]} ${LINENO}' SYS
 
-  #  trap 'TRAP.pollHook $? ${FUNCNAME[0]} ${LINENO}' POLL
-  #  trap 'TRAP.emtHook $? ${FUNCNAME[0]} ${LINENO}' EMT
-  #  trap 'TRAP.infoHook $? ${FUNCNAME[0]} ${LINENO}' INFO
-  #  trap 'TRAP.lostHook $? ${FUNCNAME[0]} ${LINENO}' LOST
-  #  trap 'TRAP.unusedHook $? ${FUNCNAME[0]} ${LINENO}' UNUSED
+  # trap 'TRAP.pollHook $? ${FUNCNAME[0]} ${LINENO}' POLL
+  # trap 'TRAP.emtHook $? ${FUNCNAME[0]} ${LINENO}' EMT
+  # trap 'TRAP.infoHook $? ${FUNCNAME[0]} ${LINENO}' INFO
+  # trap 'TRAP.lostHook $? ${FUNCNAME[0]} ${LINENO}' LOST
+  # trap 'TRAP.unusedHook $? ${FUNCNAME[0]} ${LINENO}' UNUSED
   # trap 'TRAP.chldHook $? ${FUNCNAME[0]} ${LINENO}' CLD
 }
 
@@ -69,7 +69,7 @@ function TRAP.customHook() {
 
   if isFunctionPresent "custom${_signal}Hook"; then
     shift
-    "custom${_signal}Hook" $@
+    "custom${_signal}Hook" "$@"
     _rescode=$?
   fi
 
@@ -86,7 +86,7 @@ function TRAP.customHook() {
 # use: trap 'TRAP.finishedOkHook $? ${FUNCNAME[0]} ${LINENO}' 0
 function TRAP.finishedOkHook() {
   cleanup
-  TRAP.customHook 0 $@
+  TRAP.customHook 0 "$@"
 }
 
 # fun: TRAP.errorHook errorCode functionName lineNumber
@@ -99,7 +99,7 @@ function TRAP.finishedOkHook() {
 # use: trap 'TRAP.errorHook $? ${FUNCNAME[0]} ${LINENO}' ERR
 function TRAP.errorHook() {
   cleanup
-  TRAP.customHook ERR $@
+  TRAP.customHook ERR "$@"
 }
 
 # fun: TRAP.exitHook errorCode functionName lineNumber
@@ -112,7 +112,7 @@ function TRAP.errorHook() {
 # use: trap 'TRAP.exitHook $? ${FUNCNAME[0]} ${LINENO}' EXIT
 function TRAP.exitHook() {
   cleanup
-  TRAP.customHook EXIT $@
+  exit "$@"
 }
 
 # fun: TRAP.hupHook errorCode functionName lineNumber
@@ -122,10 +122,10 @@ function TRAP.exitHook() {
 # opt: functionName: The function name.
 # opt: lineNumber: The line number.
 # txt: Returns 0/TRUE always.
-# use: trap 'TRAP.interruptedHook $? ${FUNCNAME[0]} ${LINENO}' HUP
+# use: trap 'TRAP.hupHook $? ${FUNCNAME[0]} ${LINENO}' HUP
 function TRAP.hupHook() {
   cleanup
-  TRAP.customHook HUP $@
+  TRAP.customHook HUP "$@"
 }
 
 # fun: TRAP.intHook errorCode functionName lineNumber
@@ -138,8 +138,8 @@ function TRAP.hupHook() {
 # use: trap 'TRAP.intHook $? ${FUNCNAME[0]} ${LINENO}' INT
 function TRAP.intHook() {
   cleanup
-  if ! TRAP.customHook INT $@; then
-    exitWithErrorCode SCRIPT_INTERRUPTED ${@}
+  if ! TRAP.customHook INT "$@"; then
+    exitWithErrorCode SCRIPT_INTERRUPTED "$@"
   fi
 }
 
@@ -153,7 +153,7 @@ function TRAP.intHook() {
 # use: trap 'TRAP.quitHook $? ${FUNCNAME[0]} ${LINENO}' QUIT
 function TRAP.quitHook() {
   cleanup
-  TRAP.customHook QUIT $@
+  TRAP.customHook QUIT "$@"
 }
 
 # fun: TRAP.illHook errorCode functionName lineNumber
@@ -166,7 +166,7 @@ function TRAP.quitHook() {
 # use: trap 'TRAP.illHook $? ${FUNCNAME[0]} ${LINENO}' ILL
 function TRAP.illHook() {
   cleanup
-  if ! TRAP.customHook ILL $@; then
+  if ! TRAP.customHook ILL "$@"; then
     exitWithErrorCode UNKNOWN_ERROR ${@}
   fi
 }
@@ -180,7 +180,7 @@ function TRAP.illHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.trapHook $? ${FUNCNAME[0]} ${LINENO}' TRAP
 function TRAP.trapHook() {
-  TRAP.customHook TRAP $@
+  TRAP.customHook TRAP "$@"
 }
 
 # fun: TRAP.abortHook errorCode functionName lineNumber
@@ -193,7 +193,7 @@ function TRAP.trapHook() {
 # use: trap 'TRAP.abortHook $? ${FUNCNAME[0]} ${LINENO}' ABRT
 function TRAP.abortHook() {
   cleanup
-  if ! TRAP.customHook ABRT $@; then
+  if ! TRAP.customHook ABRT "$@"; then
     exitWithErrorCode SCRIPT_ABORTED ${@}
   fi
 }
@@ -208,7 +208,7 @@ function TRAP.abortHook() {
 # use: trap 'TRAP.busHook $? ${FUNCNAME[0]} ${LINENO}' BUS
 function TRAP.busHook() {
   cleanup
-  TRAP.customHook BUS $@
+  TRAP.customHook BUS "$@"
 }
 
 # fun: TRAP.fpeHook errorCode functionName lineNumber
@@ -221,7 +221,7 @@ function TRAP.busHook() {
 # use: trap 'TRAP.fpeHook $? ${FUNCNAME[0]} ${LINENO}' FPE
 function TRAP.fpeHook() {
   cleanup
-  TRAP.customHook FPE $@
+  TRAP.customHook FPE "$@"
 }
 
 # fun: TRAP.killHook errorCode functionName lineNumber
@@ -234,7 +234,7 @@ function TRAP.fpeHook() {
 # use: trap 'TRAP.killHook $? ${FUNCNAME[0]} ${LINENO}' KILL
 function TRAP.killHook() {
   cleanup
-  TRAP.customHook KILL $@
+  TRAP.customHook KILL "$@"
 }
 
 # fun: TRAP.usr1Hook errorCode functionName lineNumber
@@ -246,7 +246,7 @@ function TRAP.killHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.usr1Hook $? ${FUNCNAME[0]} ${LINENO}' USR1
 function TRAP.usr1Hook() {
-  TRAP.customHook USR1 $@
+  TRAP.customHook USR1 "$@"
 }
 
 # fun: TRAP.segvHook errorCode functionName lineNumber
@@ -258,7 +258,7 @@ function TRAP.usr1Hook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.segvHook $? ${FUNCNAME[0]} ${LINENO}' SEGV
 function TRAP.segvHook() {
-  TRAP.customHook SEGV $@
+  TRAP.customHook SEGV "$@"
 }
 
 # fun: TRAP.usr2Hook errorCode functionName lineNumber
@@ -270,7 +270,7 @@ function TRAP.segvHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.usr2Hook $? ${FUNCNAME[0]} ${LINENO}' USR2
 function TRAP.usr2Hook() {
-  TRAP.customHook USR2 $@
+  TRAP.customHook USR2 "$@"
 }
 
 # fun: TRAP.pipeHook errorCode functionName lineNumber
@@ -283,7 +283,7 @@ function TRAP.usr2Hook() {
 # use: trap 'TRAP.pipeHook $? ${FUNCNAME[0]} ${LINENO}' PIPE
 function TRAP.pipeHook() {
   cleanup
-  TRAP.customHook PIPE $@
+  TRAP.customHook PIPE "$@"
 }
 
 # fun: TRAP.alarmHook errorCode functionName lineNumber
@@ -295,7 +295,7 @@ function TRAP.pipeHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.alarmHook $? ${FUNCNAME[0]} ${LINENO}' ALRM
 function TRAP.alarmHook() {
-  TRAP.customHook ALRM $@
+  TRAP.customHook ALRM "$@"
 }
 
 # fun: TRAP.termHook errorCode functionName lineNumber
@@ -308,7 +308,7 @@ function TRAP.alarmHook() {
 # use: trap 'TRAP.termHook $? ${FUNCNAME[0]} ${LINENO}' TERM
 function TRAP.termHook() {
   cleanup
-  TRAP.customHook TERM $@
+  TRAP.customHook TERM "$@"
 }
 
 # fun: TRAP.stkfltHook errorCode functionName lineNumber
@@ -321,7 +321,7 @@ function TRAP.termHook() {
 # use: trap 'TRAP.stkfltHook $? ${FUNCNAME[0]} ${LINENO}' STKFLT
 function TRAP.stkfltHook() {
   cleanup
-  TRAP.customHook STKFLT $@
+  TRAP.customHook STKFLT "$@"
 }
 
 # fun: TRAP.chldHook errorCode functionName lineNumber
@@ -333,7 +333,7 @@ function TRAP.stkfltHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.chldHook $? ${FUNCNAME[0]} ${LINENO}' CHLD
 function TRAP.chldHook() {
-  TRAP.customHook CHLD $@
+  TRAP.customHook CHLD "$@"
 }
 
 # fun: TRAP.contHook errorCode functionName lineNumber
@@ -345,7 +345,7 @@ function TRAP.chldHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.contHook $? ${FUNCNAME[0]} ${LINENO}' CONT
 function TRAP.contHook() {
-  TRAP.customHook CONT $@
+  TRAP.customHook CONT "$@"
 }
 
 # fun: TRAP.stopHook errorCode functionName lineNumber
@@ -357,7 +357,7 @@ function TRAP.contHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.stopHook $? ${FUNCNAME[0]} ${LINENO}' STOP
 function TRAP.stopHook() {
-  TRAP.customHook STOP $@
+  TRAP.customHook STOP "$@"
 }
 
 # fun: TRAP.tstpHook errorCode functionName lineNumber
@@ -369,7 +369,7 @@ function TRAP.stopHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.tstpHook $? ${FUNCNAME[0]} ${LINENO}' TSTP
 function TRAP.tstpHook() {
-  TRAP.customHook TSTP $@
+  TRAP.customHook TSTP "$@"
 }
 
 # fun: TRAP.ttinHook errorCode functionName lineNumber
@@ -381,7 +381,7 @@ function TRAP.tstpHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.ttinHook $? ${FUNCNAME[0]} ${LINENO}' TTIN
 function TRAP.ttinHook() {
-  TRAP.customHook TTIN $@
+  TRAP.customHook TTIN "$@"
 }
 
 # fun: TRAP.ttouHook errorCode functionName lineNumber
@@ -393,7 +393,7 @@ function TRAP.ttinHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.ttouHook $? ${FUNCNAME[0]} ${LINENO}' TTOU
 function TRAP.ttouHook() {
-  TRAP.customHook TTOU $@
+  TRAP.customHook TTOU "$@"
 }
 
 # fun: TRAP.urgHook errorCode functionName lineNumber
@@ -405,7 +405,7 @@ function TRAP.ttouHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.urgHook $? ${FUNCNAME[0]} ${LINENO}' URG
 function TRAP.urgHook() {
-  TRAP.customHook URG $@
+  TRAP.customHook URG "$@"
 }
 
 # fun: TRAP.xcpuHook errorCode functionName lineNumber
@@ -418,7 +418,7 @@ function TRAP.urgHook() {
 # use: trap 'TRAP.xcpuHook $? ${FUNCNAME[0]} ${LINENO}' XCPU
 function TRAP.xcpuHook() {
   cleanup
-  if ! TRAP.customHook XCPU $@; then
+  if ! TRAP.customHook XCPU "$@"; then
     exitWithErrorCode UNKNOWN_ERROR ${@}
   fi
 }
@@ -433,7 +433,7 @@ function TRAP.xcpuHook() {
 # use: trap 'TRAP.xfszHook $? ${FUNCNAME[0]} ${LINENO}' XFSZ
 function TRAP.xfszHook() {
   cleanup
-  if ! TRAP.customHook XFSZ $@; then
+  if ! TRAP.customHook XFSZ "$@"; then
     exitWithErrorCode UNKNOWN_ERROR ${@}
   fi
 }
@@ -448,7 +448,7 @@ function TRAP.xfszHook() {
 # use: trap 'TRAP.vtalarmHook $? ${FUNCNAME[0]} ${LINENO}' VTALRM
 function TRAP.vtalarmHook() {
   cleanup
-  if ! TRAP.customHook VTALRM $@; then
+  if ! TRAP.customHook VTALRM "$@"; then
     exitWithErrorCode SCRIPT_ABORTED ${@}
   fi
 }
@@ -463,7 +463,7 @@ function TRAP.vtalarmHook() {
 # use: trap 'TRAP.profHook $? ${FUNCNAME[0]} ${LINENO}' PROF
 function TRAP.profHook() {
   cleanup
-  if ! TRAP.customHook PROF $@; then
+  if ! TRAP.customHook PROF "$@"; then
     exitWithErrorCode UNKNOWN_ERROR ${@}
   fi
 }
@@ -477,7 +477,7 @@ function TRAP.profHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.winchHook $? ${FUNCNAME[0]} ${LINENO}' WINCH
 function TRAP.winchHook() {
-  TRAP.customHook WINCH $@
+  TRAP.customHook WINCH "$@"
 }
 
 # fun: TRAP.ioHook errorCode functionName lineNumber
@@ -490,7 +490,7 @@ function TRAP.winchHook() {
 # use: trap 'TRAP.ioHook $? ${FUNCNAME[0]} ${LINENO}' IO
 function TRAP.ioHook() {
   cleanup
-  if ! TRAP.customHook IO $@; then
+  if ! TRAP.customHook IO "$@"; then
     exitWithErrorCode SCRIPT_ABORTED ${@}
   fi
 }
@@ -505,7 +505,7 @@ function TRAP.ioHook() {
 # use: trap 'TRAP.pwrHook $? ${FUNCNAME[0]} ${LINENO}' PWR
 function TRAP.pwrHook() {
   cleanup
-  if ! TRAP.customHook PWR $@; then
+  if ! TRAP.customHook PWR "$@"; then
     exitWithErrorCode UNKNOWN_ERROR ${@}
   fi
 }
@@ -520,7 +520,7 @@ function TRAP.pwrHook() {
 # use: trap 'TRAP.sysHook $? ${FUNCNAME[0]} ${LINENO}' SYS
 function TRAP.sysHook() {
   cleanup
-  if ! TRAP.customHook SYS $@; then
+  if ! TRAP.customHook SYS "$@"; then
     exitWithErrorCode SCRIPT_ABORTED ${@}
   fi
 }
@@ -534,7 +534,7 @@ function TRAP.sysHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.pollHook $? ${FUNCNAME[0]} ${LINENO}' POLL
 function TRAP.pollHook() {
-  TRAP.customHook POLL $@
+  TRAP.customHook POLL "$@"
 }
 
 # fun: TRAP.emtHook errorCode functionName lineNumber
@@ -546,7 +546,7 @@ function TRAP.pollHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.emtHook $? ${FUNCNAME[0]} ${LINENO}' EMT
 function TRAP.emtHook() {
-  TRAP.customHook EMT $@
+  TRAP.customHook EMT "$@"
 }
 
 # fun: TRAP.infoHook errorCode functionName lineNumber
@@ -558,7 +558,7 @@ function TRAP.emtHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.infoHook $? ${FUNCNAME[0]} ${LINENO}' INFO
 function TRAP.infoHook() {
-  TRAP.customHook INFO $@
+  TRAP.customHook INFO "$@"
 }
 
 # fun: TRAP.lostHook errorCode functionName lineNumber
@@ -571,8 +571,8 @@ function TRAP.infoHook() {
 # use: trap 'TRAP.lostHook $? ${FUNCNAME[0]} ${LINENO}' LOST
 function TRAP.lostHook() {
   cleanup
-  if ! TRAP.customHook LOST $@; then
-    exitWithErrorCode SCRIPT_ABORTED ${@}
+  if ! TRAP.customHook LOST "$@"; then
+    exitWithErrorCode SCRIPT_ABORTED "$@"
   fi
 }
 
@@ -585,6 +585,6 @@ function TRAP.lostHook() {
 # txt: Returns 0/TRUE always.
 # use: trap 'TRAP.unusedHook $? ${FUNCNAME[0]} ${LINENO}' UNUSED
 function TRAP.unusedHook() {
-  TRAP.customHook EXIT $@
+  TRAP.customHook EXIT "$@"
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

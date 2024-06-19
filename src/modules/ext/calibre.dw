@@ -27,8 +27,10 @@ function process_book() {
     fi
     if isFalse ${_rescode}; then
       if extract_authors_and_title_from_folder "${_book}"; then
-        local _authors="$(command echo "${RESULT}" | command cut -d '|' -f 1 || command echo "$$.ERROR.$$")"
-        local _title="$(command echo "${RESULT}" | command cut -d '|' -f 2 || command echo "$$.ERROR.$$")"
+        local _authors
+        _authors="$(command echo "${RESULT}" | command cut -d '|' -f 1 || command echo "$$.ERROR.$$")"
+        local _title
+        _title="$(command echo "${RESULT}" | command cut -d '|' -f 2 || command echo "$$.ERROR.$$")"
         if isEmpty "${_authors}" || isEmpty "${_title}"; then
           if read_custom_metadata "${_book}"; then
             _authors="$(command echo "${RESULT}" | command cut -d '|' -f 1 || command echo "$$.ERROR.$$")"
@@ -49,13 +51,13 @@ function process_book() {
       if save_metadata "${_bookId}" "${_metadataFile}" "${_book}"; then
         logInfo "Metadata updated for book ${_book}"
       else
-        logInfo ERROR "Could not update metadata for book ${_book}"
+        logInfo "Could not update metadata for book ${_book}"
       fi
     else
-      logInfo WARN "Could not process book ${_book}"
+      logInfo "Could not process book ${_book}"
     fi
   else
-    logInfo WARN "Book not in the Calibre library: ${_book}"
+    logInfo "Book not in the Calibre library: ${_book}"
   fi
 
   return ${_rescode}
@@ -140,7 +142,10 @@ function extract_book_id_from_folder_name() {
     logDebugResult FAILURE "failed"
     if isNotEmpty "${_output}"; then
       logDebug "echo \"${_dir}\" | command grep -oP '\((\d+)\)$' | command tr -d '()'"
-      logDebug "$(command echo "${_output}" | command sed "s $$.ERROR.$$  g")"
+      _output="$(command echo "${_output}" | command sed "s $$.ERROR.$$  g")"
+      if isNotEmpty "${_output}"; then
+        logDebug "${_output}"
+      fi
     fi
   fi
   return ${_rescode}
@@ -163,20 +168,28 @@ function extract_isbn_from_folder_name() {
   if isTrue ${_log}; then
     logDebug -n "Retrieving the book ISBN from the folder ${_dir}"
   fi
-  local _output="$(command echo "${_dir}" | command grep -oP '(?<=\.)978[0-9]*(?=[\. ])' || command echo "$$.ERROR.$$")"
+  LOGGING.getModuleName;
+  DW.getGlobalVariableName "${RESULT}" ISBN_REGEX;
+  local -n _regex="${RESULT}"
+  local _output
+  _output="$(command echo "${_dir}" | command grep -oP "${_regex}" | command sed 's -  g' || command echo "$$.ERROR.$$")"
   if isEmpty "${_output}"; then
     _rescode=${FALSE}
+    if isTrue ${_log}; then
+      logDebugResult NEUTRAL "missing"
+    fi
   elif contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-  fi
-  if isTrue ${_rescode}; then
+    if isTrue ${_log}; then
+      logDebugResult FAILURE "failed"
+      logDebug "${_output}"
+    fi
+  else
     if isTrue ${_log}; then
       logDebugResult SUCCESS "${_output}"
     fi
     _rescode=${TRUE}
     export RESULT="${_output}"
-  elif isTrue ${_log}; then
-    logDebugResult NEUTRAL "missing"
   fi
   return ${_rescode}
 }
@@ -193,8 +206,10 @@ function extract_authors_and_title_from_folder() {
   local _output
   local -i _rescode=${TRUE}
 
-  local _authors="$(command basename "$(command dirname "${_dir}")")"
-  local _title="$(command basename "${_dir}" | command sed 's| ([0-9]+)$||')"
+  local _authors
+  _authors="$(command basename "$(command dirname "${_dir}")" | command sed 's| ([0-9]+)$||g')"
+  local _title
+  _title="$(command basename "${_dir}" | command sed 's| ([0-9]+)$||g')"
   if isEmpty "${_authors}" || isEmpty "${_title}"; then
     _rescode=${FALSE}
   fi
@@ -230,8 +245,10 @@ function fetch_metadata_from_isbn() {
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     logDebugResult FAILURE "failed"
     logDebug "fetch-ebook-metadata --isbn \"${_isbn}\" -o -c \"${_dir}/cover.jpg\""
-    logDebug "$(command echo "${_output}" | sed "s $$.ERROR.$$  g")"
-    exitWithErrorCode CANNOT_FETCH_BOOK_METADATA "${_dir}"
+    _output="$(command echo "${_output}" | command sed "s $$.ERROR.$$  g")"
+    if isNotEmpty "${_output}"; then
+      logDebug "${_output}"
+    fi
   else
     logDebugResult SUCCESS "done"
     _rescode=${TRUE}
@@ -268,8 +285,11 @@ function fetch_metadata_from_title_and_authors() {
   _output="$(command fetch-ebook-metadata --title="${_title}" --authors="${_authors}" -o -c "${_dir}/cover.jpg" 2> /dev/null > "${_metadataFile}" || echo "$$.ERROR.$$")"
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
     logDebugResult FAILURE "failed"
-    logDebug "fetch-ebook-metadata --title=\"${_title}\" --authors=\"${_authors}\" -o -c \"${_dir}/cover.jpg\")"
-    logDebug "$(command echo "${_output}" | sed "s $$.ERROR.$$  g")"
+    logDebug "fetch-ebook-metadata --title=\"${_title}\" --authors=\"${_authors}\" -o -c \"${_dir}/cover.jpg\""
+    _output="$(command echo "${_output}" | command sed "s $$.ERROR.$$  g")"
+    if isNotEmpty "${_output}"; then
+      logDebug "${_output}"
+    fi
   else
     logDebugResult SUCCESS "done"
     _rescode=${TRUE}
@@ -295,16 +315,20 @@ function save_metadata() {
   local _output
   local -i _rescode=${FALSE}
 
+  touch "${_dir}"/.updated 2> /dev/null
   logDebug -n "Updating book metadata in Calibre"
   _output="$(command calibredb set_metadata "${_bookId}" "${_metadataFile}" 2> /dev/null || echo "$$.ERROR.$$")"
   if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    rm -f "${_dir}"/.updated 2> /dev/null
     logDebugResult FAILURE "failed"
     logDebug "calibredb set_metadata \"${_bookId}\" \"${_metadataFile}\""
-    logDebug "$(command echo "${_output}" | sed "s $$.ERROR.$$  g")"
+    _output="$(command echo "${_output}" | command sed "s $$.ERROR.$$  g")"
+    if isNotEmpty "${_output}"; then
+      logDebug "${_output}"
+    fi
   else
     logDebugResult SUCCESS "done"
     _rescode=${TRUE}
-    touch "${_dir}"/.updated
   fi
 
   return ${_rescode}
@@ -323,14 +347,16 @@ function read_custom_metadata() {
   local -i _rescode=${TRUE}
 
   logDebug -n "Reading custom metadata for book ${_dir}"
-  local _title="$(command cat "${_dir}/.metadata.json" | command jq '.title' | command sed 's "  g'|| command echo "$$.ERROR.$$")"
+  local _title
+  _title="$(command cat "${_dir}/.metadata.json" | command jq '.title' | command sed 's "  g'|| command echo "$$.ERROR.$$")"
   if isEmpty "${_title}"; then
     _rescode=${FALSE}
   elif contains "${_output}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
   fi
   if isTrue ${_rescode}; then
-    local _authors="$(command cat "${_dir}/.metadata.json" | command jq '.authors' | command sed 's "  g'|| command echo "$$.ERROR.$$")"
+    local _authors
+    _authors="$(command cat "${_dir}/.metadata.json" | command jq '.authors' | command sed 's "  g'|| command echo "$$.ERROR.$$")"
     if isEmpty "${_authors}"; then
       _rescode=${FALSE}
     elif contains "${_output}" "$$.ERROR.$$"; then
@@ -358,10 +384,24 @@ function write_custom_metadata_sample() {
 
   cat <<EOF > "${_dir}/.sample.json" || _rescode=${FALSE}
 {
-  "title": "$(dirname "${_dir}")",
-  "authors": "$(basename "$(dirname ${_dir})")"
+  "title": "$(command dirname "${_dir}")",
+  "authors": "$(command basename "$(command dirname "${_dir}")")"
 }
 EOF
 
   return ${_rescode}
 }
+
+# fun: CALIBRE.resetState
+# api: private
+# txt: Initializes the module state.
+# txt: Returns 0/TRUE always.
+# use: CALIBRE.resetState
+function CALIBRE.resetState() {
+  LOGGING.getModuleName;
+  local _moduleName="${RESULT}";
+
+  # env: The ISBN regex.
+  DW.declareGlobalString "${_moduleName}" ISBN_REGEX '((978)?[0-9]{10}|(978-)?[0-9]{1}-[0-9]{5}-[0-9]{3}-[0-9]{1})';
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

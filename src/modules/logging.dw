@@ -683,7 +683,7 @@ function setLogOutcomeTokens() {
   checkNotEmpty tokens "${_firstToken}" 1;
 
   LOGGING.getModuleName;
-  DW.declareGlobalArray "${RESULT}" LOG_OUTCOME_TOKENS $@;
+  DW.declareGlobalArray "${RESULT}" LOG_OUTCOME_TOKENS "$@";
 }
 
 # fun: getLogOutcomeSeparator
@@ -860,7 +860,7 @@ function setInvalidLogCategories() {
   checkNotEmpty category "${_firstCategory}" 1;
 
   LOGGING.getModuleName;
-  DW.declareGlobalArray "${RESULT}" INVALID_LOG_CATEGORIES $@;
+  DW.declareGlobalArray "${RESULT}" INVALID_LOG_CATEGORIES "$@";
 }
 
 # fun: addInvalidLogCategory category
@@ -1001,7 +1001,7 @@ function setLogPrefixTokens() {
   checkNotEmpty tokens "${_firstToken}" 1;
 
   LOGGING.getModuleName;
-  DW.declareGlobalArray "${RESULT}" LOG_PREFIX_TOKENS $@;
+  DW.declareGlobalArray "${RESULT}" LOG_PREFIX_TOKENS "$@";
 }
 
 # fun: LOGGING.getLogPrefixColorsVariableName
@@ -1027,7 +1027,7 @@ function setLogPrefixColors() {
   checkNotEmpty colors "${_firstColor}" 1;
 
   LOGGING.getModuleName;
-  DW.declareGlobalArray "${RESULT}" LOG_PREFIX_COLORS $@;
+  DW.declareGlobalArray "${RESULT}" LOG_PREFIX_COLORS "$@";
 }
 
 # fun: LOGGING.getLogOutcomeColorsVariableName
@@ -1053,7 +1053,7 @@ function setLogOutcomeColors() {
   checkNotEmpty colors "${_firstColor}" 1;
 
   LOGGING.getModuleName;
-  DW.declareGlobalArray "${RESULT}" LOG_OUTCOME_COLORS $@;
+  DW.declareGlobalArray "${RESULT}" LOG_OUTCOME_COLORS "$@";
 }
 
 # fun: LOGGING.buildLogPrefix inColor
@@ -1075,8 +1075,11 @@ function LOGGING.buildLogPrefix() {
   LOGGING.getLogPrefixTokensVariableName;
   local -n _logPrefixTokens="${RESULT}";
 
-  LOGGING.getLogPrefixColorsVariableName;
-  local -n _logPrefixColors="${RESULT}";
+  local -n _logPrefixColors
+  if isTrue ${_allowsColors}; then
+    LOGGING.getLogPrefixColorsVariableName;
+    _logPrefixColors="${RESULT}";
+  fi
 
   local -i _len=$((${#_logPrefixTokens[@]} - 1));
 
@@ -1399,7 +1402,6 @@ function LOGGING.logCompletedNested() {
   LOGGING.logToFiles "-${_nestedTask}-";
   LOGGING.logToFilesAnEmptyLine;
   LOGGING.popLogLevel;
-  LOGGING.popLogCategory;
 }
 
 # fun: LOGGING.checkTraceDebugInfoWarnOrError TRACE|DEBUG|INFO|WARN|ERROR index
@@ -1486,12 +1488,12 @@ function LOGGING.logCompletedNoNested() {
   LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 1;
   shift;
 
-  local _text="${@}";
+  local _text
+  _text="${@}";
   checkNotEmpty outcome "${_text}" 2;
 
   LOGGING.echoLogOutcome "${_keyword}" "${_text}";
   LOGGING.popLog;
-  LOGGING.popLogCategory;
   LOGGING.popLogLevel;
   echo;
   LOGGING.logToFilesAnEmptyLine;
@@ -1513,8 +1515,6 @@ function LOGGING.logInProgress() {
   local _message="$@";
   checkNotEmpty message "${_message}" 2;
 
-  LOGGING.peekLogCategory;
-  LOGGING.saveLogCategory;
   LOGGING.setLastLogLevel "${_level}";
   LOGGING.saveLogLevel;
 
@@ -1569,7 +1569,6 @@ function LOGGING.logInProgressNested() {
     getLastLogLevel;
     _level="${RESULT}";
   fi
-  LOGGING.saveLogCategory;
   LOGGING.pushLogLevel "${_level}";
   LOGGING.getNestedTaskInProgressMarker;
   local _nestedTaskInProgressMarker="${RESULT}";
@@ -1709,65 +1708,6 @@ function LOGGING.logStuff() {
     echo;
     LOGGING.logToFilesAnEmptyLine;
     LOGGING.popLog;
-  fi
-}
-
-# fun: LOGGING.isNewLogCategoryNeeded category
-# api: private
-# txt: Checks if a new log category is needed in the stack.
-# opt: category: The new category.
-# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
-# use: if LOGGING.isNewLogCategoryNeeded "new-category"; then
-# use:   LOGGING.pushLogCategory "new-category";
-# use: fi
-function LOGGING.isNewLogCategoryNeeded() {
-  local _category="${1}";
-  checkNotEmpty category "${_category}" 1;
-
-  LOGGING.isLogCategoryStackEmpty;
-  local -i _rescode=$?;
-
-  if isFalse ${_rescode}; then
-    LOGGING.getLogCategoryStackVariableName;
-    local -n _logCategories=${RESULT};
-
-    local -i _len=${#_logCategories[@]};
-    if areEqual ${_len} 1; then
-      if areEqual "${_logCategories[0]}" "${DW_LOGGING_EMPTY_LOG_CATEGORY}"; then
-        _rescode=${TRUE};
-      elif ! areEqual "${_logCategories[0]}" "${_category}"; then
-        _rescode=${TRUE};
-      fi
-    elif isGreaterThan ${_len} 1; then
-      local -i _last=$((${_len} - 1));
-      local -i _beforeLast=$((${_len} - 2));
-      _rescode=${TRUE};
-      if areEqual "${_logCategories[${_last}]}" "${_category}"; then
-        _rescode=${FALSE};
-      elif areEqual "${_logCategories[${_last}]}" "${_logCategories[${_beforeLast}]}"; then
-        _rescode=${FALSE};
-      elif areEqual "${_logCategories[${_last}]}" "${DW_LOGGING_EMPTY_LOG_CATEGORY}"; then
-        _rescode=${TRUE};
-      fi
-    fi
-  fi
-
-#  _rescode=${TRUE};
-
-  return ${_rescode};
-}
-
-# fun: LOGGING.saveLogCategory
-# api: private
-# txt: Saves the log category in the stack.
-# txt: Returns 0/TRUE always.
-# use: LOGGING.saveLogCategory;
-function LOGGING.saveLogCategory() {
-  LOGGING.buildDefaultLogCategory;
-  local _category="${RESULT}";
-  if LOGGING.isNewLogCategoryNeeded "${_category}"; then
-
-    LOGGING.pushLogCategory "${_category}";
   fi
 }
 
@@ -1955,17 +1895,6 @@ function LOGGING.getLogPrefixCategorySeparator() {
   return ${TRUE};
 }
 
-# fun: LOGGING.getLogCategoryStackVariableName
-# api: private
-# txt: Retrieves the log category stack variable name.
-# txt: Returns 0/TRUE always.
-# use: LOGGING.getLogCategoryStackVariableName;
-# use: local -n logCategoryStack=${RESULT};
-function LOGGING.getLogCategoryStackVariableName() {
-  LOGGING.getModuleName;
-  DW.getGlobalVariableName "${RESULT}" LOG_CATEGORY_STACK;
-}
-
 # fun: LOGGING.peekLogCategory
 # api: private
 # txt: Peeks given category from the log category stack.
@@ -1978,14 +1907,11 @@ function LOGGING.peekLogCategory() {
   local -i _rescode;
   local _result="";
 
-  LOGGING.getLogCategoryStackVariableName;
-  local -n _logCategoryStack=${RESULT};
-
-  local -i _len=${#_logCategoryStack[@]};
+  local -i _len=${#FUNCNAME[@]};
 
   if isGreaterThan ${_len} 0; then
     local -i _newLen=$((${_len} - 1));
-    _result="${_logCategoryStack[${_newLen}]}";
+    _result="${FUNCNAME[${_newLen}]}";
     _rescode=$?;
   else
     _rescode=${FALSE};
@@ -2069,7 +1995,7 @@ function LOGGING.popLog() {
   local -i _len=${#_logStack[@]};
 
   if [ ${_len} -gt 0 ]; then
-    local -i _newLen=$((${_len} - 1));
+    local -i _newLen=$((_len - 1));
     _result="${_logStack[${_newLen}]}";
     LOGGING.setLastLog "${_result}";
     eval "unset _logStack[${_newLen}]";
@@ -2084,65 +2010,6 @@ function LOGGING.popLog() {
 
   return ${_rescode};
 }
-
-# fun: LOGGING.popLogCategory
-# api: private
-# txt: Pops given category from the log category stack.
-# txt: Returns 0/TRUE if the stack contained at least the popped item; 1/FALSE otherwise.
-# txt: If the function returns 0/TRUE, the variable RESULT contains the popped category.
-# use: if LOGGING.popLogCategory; then
-# use:   echo "Last log category: ${RESULT}";
-# use: fi
-function LOGGING.popLogCategory() {
-  local -i _rescode;
-
-  LOGGING.getLogCategoryStackVariableName;
-  local -n _logCategoryStack=${RESULT};
-
-  local _before="${_logCategoryStack[@]}";
-
-  local -i _len=${#_logCategoryStack[@]};
-
-  if isGreaterThan ${_len} 0; then
-    local -i _newLen=$((${_len} - 1));
-    export RESULT="${_logCategoryStack[${_newLen}]}";
-    eval "unset _logCategoryStack[${_newLen}]";
-    _rescode=$?;
-  else
-    _rescode=${FALSE};
-  fi
-
-  if isFalse ${_rescode}; then
-    export RESULT="";
-  fi
-
-  return ${_rescode};
-}
-
-# fun: LOGGING.isLogCategoryStackEmpty
-# api: private
-# txt: Checks if the log category stack is empty.
-# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
-# use: if LOGGING.isLogCategoryStackEmpty; then
-# use:   ...;
-# use: fi
-function LOGGING.isLogCategoryStackEmpty() {
-  local -i _rescode;
-
-  LOGGING.getLogCategoryStackVariableName;
-  local -n _logCategoryStack=${RESULT};
-
-  local -i _len=${#_logCategoryStack[@]};
-
-  if isZero ${_len}; then
-    _rescode=${TRUE};
-  else
-    _rescode=${FALSE};
-  fi
-
-  return ${_rescode};
-}
-
 
 # fun: LOGGING.popLogLevel
 # api: private
@@ -2183,27 +2050,6 @@ function LOGGING.pushLog() {
   LOGGING.getLogStackVariableName;
   local -n _logStack=${RESULT};
   _logStack[${#_logStack[@]}]="$*";
-}
-
-# fun: LOGGING.pushLogCategory category
-# api: private
-# txt: Pushes given category to the log category stack.
-# opt: category: The category to push.
-# txt: Returns 0/TRUE always.
-# use: LOGGING.pushLogCategory "sending-data";
-function LOGGING.pushLogCategory() {
-  local _category="${*}";
-  checkNotEmpty category "${_category}" 1;
-
-  LOGGING.getLogCategoryStackVariableName;
-  local -n _logCategoryStack=${RESULT};
-
-  if isEmpty "${_category}"; then
-    LOGGING.buildDefaultLogCategory;
-    _category="${RESULT}";
-  fi
-
-  _logCategoryStack[${#_logCategoryStack[@]}]="${_category}";
 }
 
 # fun: LOGGING.pushLogLevel TRACE|DEBUG|INFO|WARN|ERROR
@@ -2397,6 +2243,31 @@ function LOGGING.retrieveLogPrefixLevelToken() {
   return ${_rescode};
 }
 
+# fun: LOGGING.isInternal category
+# api: private
+# txt: Checks whether given category is internal or not.
+# opt: category: The category.
+# txt: Returns 0/TRUE if the category is internal; 1/FALSE otherwise.
+# use: if LOGGING.isInternal "${category}"; then
+# use:   echo "internal category";
+# use: fi
+function LOGGING.isInternal() {
+  local _category="${1}";
+  checkNotEmpty category "${_category}" 1;
+
+  local _rescode=${FALSE};
+
+  if areEqual "${_category}" "${DW_LOGGING_EMPTY_LOG_CATEGORY}" \
+    || startsWith "${_category}" "LOGGING." \
+    || startsWith "${_category}" "DRYWIT." \
+    || areEqual "${_category}" "logInfo" \
+    || areEqual "${_category}" "logDebug" ; then
+    _rescode=${TRUE};
+  fi
+
+  return ${_rescode};
+
+}
 # fun: LOGGING.buildLogCategoryPrefix separator
 # api: private
 # txt: Builds the category part of the log category prefix.
@@ -2412,19 +2283,16 @@ function LOGGING.buildLogCategoryPrefix() {
   local _result="";
   local _oldIFS="${IFS}";
 
-  LOGGING.getLogCategoryStackVariableName;
-  local -n _logCategories=${RESULT};
-
-  local -i _len=${#_logCategories[@]};
-  local _i _maxIndex=$((${_len} - 1));
+  local -i _len=${#FUNCNAME[@]};
+  local _i _maxIndex=$((_len - 2));
 
   IFS="${DWIFS}";
   local -i _i;
-  for _i in $(seq 0 1 ${_maxIndex}); do
+  for _i in $(seq ${_maxIndex} -1 0); do
     IFS="${_oldIFS}";
-    local _category="${_logCategories[${_i}]}";
+    local _category="${FUNCNAME[${_i}]}";
     if    isNotEmpty "${_category}" \
-       && ! areEqual "${_category}" "${DW_LOGGING_EMPTY_LOG_CATEGORY}"; then
+       && ! LOGGING.isInternal "${_category}"; then
       if isNotEmpty "${_result}"; then
         _result="${_result}${_separator}";
       fi
@@ -2894,23 +2762,6 @@ function setInfoEnabled() {
   DW.setGlobalInt "${RESULT}" LOG_INFO ${TRUE};
 }
 
-# fun: setLogCategory category
-# api: public
-# txt: Specifies the log category.
-# opt: category: The log category.
-# txt: Returns 0/TRUE always.
-# use: setLogCategory;
-function setLogCategory() {
-  local _category="${1}";
-
-  if isEmpty "${_category}"; then
-    LOGGING.popLogCategory;
-    _category="${DW_LOGGING_EMPTY_LOG_CATEGORY}";
-  fi
-
-  LOGGING.pushLogCategory "${_category}";
-}
-
 # fun: setLogNamespace namespace
 # api: public
 # txt: Sets the log namespace.
@@ -3002,7 +2853,8 @@ function LOGGING.logToFiles() {
 
   if isLogToFilesEnabled; then
     LOGGING.getLogFilesVariableName;
-    local -n _logFiles="${RESULT}";
+    local -n _logFiles
+    _logFiles="${RESULT}";
 
     local _oldIFS="${IFS}";
     IFS="${DWIFS}";
