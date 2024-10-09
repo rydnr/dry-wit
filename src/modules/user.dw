@@ -13,20 +13,20 @@
 # use:   echo "User guest added to group users";
 # use: fi
 function addUserToGroup() {
-  local _user="${1}";
-  checkNotEmpty userName "${_user}" 1;
-  local _group="${2}";
-  checkNotEmpty groupName "${_group}" 2;
+  local _user="${1}"
+  checkNotEmpty userName "${_user}" 1
+  local _group="${2}"
+  checkNotEmpty groupName "${_group}" 2
 
-  local _result;
-  _result="$(gpasswd -a ${_user} ${_group} 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(gpasswd -a ${_user} ${_group} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: createGroup groupName groupId?
@@ -39,31 +39,31 @@ function addUserToGroup() {
 # use:   echo "fakegroup created successfully";
 # use: fi
 function createGroup() {
-  local _groupName="${1}";
-  checkNotEmpty groupName "${_groupName}" 1;
-  local _gid="${2}";
+  local _groupName="${1}"
+  checkNotEmpty groupName "${_groupName}" 1
+  local _gid="${2}"
 
-  logDebug -n "Creating group ${_groupName}";
+  logDebug -n "Creating group ${_groupName}"
 
-  local _result;
-  local -i _rescode;
+  local _result
+  local -i _rescode
 
   if isEmpty "${_gid}"; then
-    _result="$(groupadd "${_groupName}" 2> /dev/null)";
-    _rescode=$?;
+    _result="$(groupadd "${_groupName}" 2>/dev/null)"
+    _rescode=$?
   else
-    _result="$(groupadd -g "${_gid}" "${_groupName}" 2> /dev/null)";
-    _rescode=$?;
+    _result="$(groupadd -g "${_gid}" "${_groupName}" 2>/dev/null)"
+    _rescode=$?
   fi
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "done"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: createUser userName
@@ -75,23 +75,23 @@ function createGroup() {
 # use:   echo "fakeuser created successfully";
 # use: fi
 function createUser() {
-  local _userName="${1}";
-  checkNotEmpty userName "${_userName}" 1;
+  local _userName="${1}"
+  checkNotEmpty userName "${_userName}" 1
 
-  logDebug -n "Creating user ${_userName}";
+  logDebug -n "Creating user ${_userName}"
 
-  local _result;
-  _result="$(useradd -M -N -l "${_userName}" 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(useradd -M -N -l "${_userName}" 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "done"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: deleteGroup groupName
@@ -103,23 +103,23 @@ function createUser() {
 # use:   echo "fakegroup deleted successfully";
 # use: fi
 function deleteGroup() {
-  local _groupName="${1}";
-  checkNotEmpty groupName "${_groupName}" 1;
+  local _groupName="${1}"
+  checkNotEmpty groupName "${_groupName}" 1
 
-  logDebug -n "Deleting group ${_groupName}";
+  logDebug -n "Deleting group ${_groupName}"
 
-  local _result;
-  _result="$(groupdel "${_groupName}" 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(groupdel "${_groupName}" 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "done"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: deleteUser userName
@@ -131,23 +131,23 @@ function deleteGroup() {
 # use:   echo "fakeuser deleted successfully";
 # use: fi
 function deleteUser() {
-  local _userName="${1}";
-  checkNotEmpty userName "${_userName}" 1;
+  local _userName="${1}"
+  checkNotEmpty userName "${_userName}" 1
 
-  logDebug -n "Deleting user ${_userName}";
+  logDebug -n "Deleting user ${_userName}"
 
-  local _result;
-  _result="$(userdel "${_userName}" 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(userdel "${_userName}" 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "done"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: gidAlreadyExists gid
@@ -159,22 +159,22 @@ function deleteUser() {
 # use:   ...;
 # use: fi
 function gidAlreadyExists() {
-  local _gid="${1}";
-  checkNotEmpty gid "${_gid}" 1;
+  local _gid="${1}"
+  checkNotEmpty gid "${_gid}" 1
 
-  logDebug -n "Checking if gid ${_gid} already exists";
-  local _result;
-  _result="$(getent group ${_gid} 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Checking if gid ${_gid} already exists"
+  local _result
+  _result="$(getent group ${_gid} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "true";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "true"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "false";
+    logDebugResult FAILURE "false"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: groupAlreadyExists group
@@ -186,22 +186,22 @@ function gidAlreadyExists() {
 # use:   ...;
 # use: fi
 function groupAlreadyExists() {
-  local _group="${1}";
-  checkNotEmpty group "${_group}" 1;
+  local _group="${1}"
+  checkNotEmpty group "${_group}" 1
 
-  logDebug -n "Checking if group ${_group} already exists";
-  local _result;
-  _result="$(getent group ${_group} 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Checking if group ${_group} already exists"
+  local _result
+  _result="$(getent group ${_group} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "true";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "true"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "false";
+    logDebugResult FAILURE "false"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: resolveCommandForUser userName command
@@ -215,20 +215,20 @@ function groupAlreadyExists() {
 # use:   local _command="${RESULT}";
 # use: fi
 function resolveCommandForUser() {
-  local _user="${1}";
-  checkNotEmpty userName "${_user}" 1;
-  local _command="${2}";
-  checkNotEmpty command "${_command}" 2;
+  local _user="${1}"
+  checkNotEmpty userName "${_user}" 1
+  local _command="${2}"
+  checkNotEmpty command "${_command}" 2
 
-  local _result;
-  _result="$(su - ${_user} -c "which ${_command}" 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(su - ${_user} -c "which ${_command}" 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveGidFromGroup group
@@ -240,22 +240,22 @@ function resolveCommandForUser() {
 # use: retrieveGidFromGroup "admin";
 # use: echo "The id of group admin is ${RESULT}";
 function retrieveGidFromGroup() {
-  local _group="${1}";
-  checkNotEmpty group "${_group}" 1;
+  local _group="${1}"
+  checkNotEmpty group "${_group}" 1
 
-  logDebug -n "Retrieving gid of group ${_group}";
-  local _result;
-  _result="$(getent group ${_group} 2> /dev/null | cut -d':' -f3 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Retrieving gid of group ${_group}"
+  local _result
+  _result="$(getent group ${_group} 2>/dev/null | cut -d':' -f3 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "${_result}";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "${_result}"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveGroupFromGid gid
@@ -268,18 +268,18 @@ function retrieveGidFromGroup() {
 # use:   echo "The name of group 1 is ${RESULT}";
 # use: fi
 function retrieveGroupFromGid() {
-  local _gid="${1}";
-  checkNotEmpty gid "${_gid}" 1;
+  local _gid="${1}"
+  checkNotEmpty gid "${_gid}" 1
 
-  local _result;
-  _result="$(getent group ${_gid} 2> /dev/null | cut -d':' -f1 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(getent group ${_gid} 2>/dev/null | cut -d':' -f1 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveOwnerGid path
@@ -293,17 +293,17 @@ function retrieveGroupFromGid() {
 # use: fi
 function retrieveOwnerGid() {
   local _file="${1}"
-  checkNotEmpty path "${_file}" 1;
+  checkNotEmpty path "${_file}" 1
 
-  local _result;
-  _result="$(stat -c '%g' "${_file}" 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(stat -c '%g' "${_file}" 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveOwnerUid path
@@ -317,17 +317,17 @@ function retrieveOwnerGid() {
 # use: fi
 function retrieveOwnerUid() {
   local _file="${1}"
-  checkNotEmpty path "${_file}" 1;
+  checkNotEmpty path "${_file}" 1
 
-  local _result;
-  _result="$(stat -c '%u' "${_file}" 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(stat -c '%u' "${_file}" 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveUidFromUser user
@@ -340,23 +340,23 @@ function retrieveOwnerUid() {
 # use:   echo "The id of user root is ${RESULT}";
 # use: fi
 function retrieveUidFromUser() {
-  local _user="${1}";
-  checkNotEmpty user "${_user}" 1;
+  local _user="${1}"
+  checkNotEmpty user "${_user}" 1
 
-  logDebug -n "Retrieving uid of user ${_user}";
+  logDebug -n "Retrieving uid of user ${_user}"
 
-  local _result;
-  _result="$(getent passwd ${_user} 2> /dev/null | cut -d':' -f3 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(getent passwd ${_user} 2>/dev/null | cut -d':' -f3 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "${_result}";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "${_result}"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveUserFromUid uid
@@ -369,18 +369,18 @@ function retrieveUidFromUser() {
 # use:   echo "The name of user 1 is ${RESULT}";
 # use: fi
 function retrieveUserFromUid() {
-  local _uid="${1}";
-  checkNotEmpty uid "${_uid}" 1;
+  local _uid="${1}"
+  checkNotEmpty uid "${_uid}" 1
 
-  local _result;
-  _result="$(getent passwd ${_uid} 2> /dev/null | cut -d':' -f1 2> /dev/null)";
-  local -i _rescode=$?;
+  local _result
+  _result="$(getent passwd ${_uid} 2>/dev/null | cut -d':' -f1 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: uidAlreadyExists uid
@@ -392,19 +392,19 @@ function retrieveUserFromUid() {
 # use:   ...;
 # use: fi
 function uidAlreadyExists() {
-  local _uid="${1}";
-  checkNotEmpty uid "${_uid}" 1;
+  local _uid="${1}"
+  checkNotEmpty uid "${_uid}" 1
 
-  logDebug -n "Checking if uid ${_uid} is already used";
-  local _result;
-  _result="$(getent passwd ${_uid} 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Checking if uid ${_uid} is already used"
+  local _result
+  _result="$(getent passwd ${_uid} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${rescode};
+  return ${rescode}
 }
 
 # fun: updateGroupGid groupName gid
@@ -417,24 +417,24 @@ function uidAlreadyExists() {
 # use:   echo "guests' gid is now 103";
 # use: fi
 function updateGroupGid() {
-  local _group="${1}";
-  checkNotEmpty groupName "${_group}" 1;
-  local _gid="${2}";
-  checkNotEmpty gid "${_gid}" 2;
+  local _group="${1}"
+  checkNotEmpty groupName "${_group}" 1
+  local _gid="${2}"
+  checkNotEmpty gid "${_gid}" 2
 
-  logDebug -n "Changing ${_group}'s gid to ${_gid}";
-  local _result;
-  _result="$(groupmod -g ${_gid} ${_group} 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Changing ${_group}'s gid to ${_gid}"
+  local _result
+  _result="$(groupmod -g ${_gid} ${_group} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "done"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateUserGid userName gid
@@ -447,24 +447,25 @@ function updateGroupGid() {
 # use:   echo "Guest's gid is now 103";
 # use: fi
 function updateUserGid() {
-  local _user="${1}";
-  checkNotEmpty userName "${_user}" 1;
-  local _gid="${2}";
-  checkNotEmpty gid "${_gid}" 2;
+  local _user="${1}"
+  checkNotEmpty userName "${_user}" 1
+  local _gid="${2}"
+  checkNotEmpty gid "${_gid}" 2
 
-  logDebug -n "Changing ${_user}'s primary group to ${_gid}";
-  local _result;
-  _result="$(usermod -g ${_gid} ${_user} 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Changing ${_user}'s primary group to ${_gid}"
+  local _result
+  _result="$(usermod -g ${_gid} ${_user} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "done"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "unneeded";
+    _rescode=${TRUE}
+    logDebugResult NEUTRAL "unneeded"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateUserUid userName uid
@@ -477,24 +478,24 @@ function updateUserGid() {
 # use:   echo "User guest's uid is now 1001";
 # use: fi
 function updateUserUid() {
-  local _user="${1}";
-  checkNotEmpty userName "${_user}" 1;
-  local _uid="${2}";
-  checkNotEmpty uid "${_uid}" 2;
+  local _user="${1}"
+  checkNotEmpty userName "${_user}" 1
+  local _uid="${2}"
+  checkNotEmpty uid "${_uid}" 2
 
-  logDebug -n "Changing ${_user}'s uid to ${_uid}";
-  local _result;
-  _result="$(usermod -u ${_uid} ${_user} 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Changing ${_user}'s uid to ${_uid}"
+  local _result
+  _result="$(usermod -u ${_uid} ${_user} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "done";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "done"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "failed";
+    logDebugResult FAILURE "failed"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: userAlreadyExists user
@@ -506,21 +507,21 @@ function updateUserUid() {
 # use:   ...;
 # use: fi
 function userAlreadyExists() {
-  local _user="${1}";
-  checkNotEmpty user "${_user}" 1;
+  local _user="${1}"
+  checkNotEmpty user "${_user}" 1
 
-  logDebug -n "Checking if user ${_user} is already used";
-  local _result;
-  _result="$(getent passwd ${_user} 2> /dev/null)";
-  local -i _rescode=$?;
+  logDebug -n "Checking if user ${_user} is already used"
+  local _result
+  _result="$(getent passwd ${_user} 2>/dev/null)"
+  local -i _rescode=$?
 
   if isTrue ${_rescode}; then
-    logDebugResult SUCCESS "true";
-    export RESULT="${_result}";
+    logDebugResult SUCCESS "true"
+    export RESULT="${_result}"
   else
-    logDebugResult FAILURE "false";
+    logDebugResult FAILURE "false"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

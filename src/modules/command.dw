@@ -18,11 +18,11 @@ function runCommand() {
 
   local -i _rescode
 
-#  getLogCategory
-#  local _previousLogCategory="${RESULT}"
-#  if ! areEqual "${_previousLogCategory}" "${_command}"; then
-#    setLogCategory "${_previousLogCategory}:(${_command})"
-#  fi
+  #  getLogCategory
+  #  local _previousLogCategory="${RESULT}"
+  #  if ! areEqual "${_previousLogCategory}" "${_command}"; then
+  #    setLogCategory "${_previousLogCategory}:(${_command})"
+  #  fi
 
   logDebug "${_command}"
   local _result
@@ -31,9 +31,9 @@ function runCommand() {
 
   export RESULT="${_result}"
 
-#  if ! areEqual "${_previousLogCategory}" "${_command}"; then
-#    setLogCategory "${_previousLogCategory}"
-#  fi
+  #  if ! areEqual "${_previousLogCategory}" "${_command}"; then
+  #    setLogCategory "${_previousLogCategory}"
+  #  fi
 
   return ${_rescode}
 }
@@ -272,7 +272,7 @@ function runCommandAsUserAndGroupUsing() {
   local _runme
   _runme="${RESULT}"
 
-  chmod a+x ${_folder}
+  chmod a+x "${_folder}"
 
   cat <<EOF >"${_runme}"
 #!/usr/bin/env bash
@@ -288,41 +288,41 @@ EOF
   chmod a+x "${_runme}"
 
   case "${_variant}" in
-    gosu)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (gosu)"
-      runScriptAsUserAndGroupUsingGosu "${_user}" "${_group}" "${_runme}"
-      _rescode=$?
-      ;;
+  gosu)
+    logDebug "Running ${_command} ${_args} as ${_user}:${_group} (gosu)"
+    runScriptAsUserAndGroupUsingGosu "${_user}" "${_group}" "${_runme}"
+    _rescode=$?
+    ;;
 
-    runuser)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (runuser)"
-      runScriptAsUserAndGroupUsingRunuser "${_user}" "${_group}" "${_runme}"
-      _rescode=$?
-      ;;
+  runuser)
+    logDebug "Running ${_command} ${_args} as ${_user}:${_group} (runuser)"
+    runScriptAsUserAndGroupUsingRunuser "${_user}" "${_group}" "${_runme}"
+    _rescode=$?
+    ;;
 
-    chpst)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (chpst)"
-      runScriptAsUserAndGroupUsingChpst "${_user}" "${_group}" "${_runme}"
-      _rescode=$?
-      ;;
+  chpst)
+    logDebug "Running ${_command} ${_args} as ${_user}:${_group} (chpst)"
+    runScriptAsUserAndGroupUsingChpst "${_user}" "${_group}" "${_runme}"
+    _rescode=$?
+    ;;
 
-    setpriv)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setpriv)"
-      runScriptAsUserAndGroupUsingSetpriv "${_user}" "${_group}" "${_runme}"
-      _rescode=$?
-      ;;
+  setpriv)
+    logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setpriv)"
+    runScriptAsUserAndGroupUsingSetpriv "${_user}" "${_group}" "${_runme}"
+    _rescode=$?
+    ;;
 
-    setuidgid)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setuidgid)"
-      runScriptAsUserAndGroupUsingSetuidgid "${_user}" "${_group}" "${_runme}"
-      _rescode=$?
-      ;;
+  setuidgid)
+    logDebug "Running ${_command} ${_args} as ${_user}:${_group} (setuidgid)"
+    runScriptAsUserAndGroupUsingSetuidgid "${_user}" "${_group}" "${_runme}"
+    _rescode=$?
+    ;;
 
-    *)
-      logDebug "Running ${_command} ${_args} as ${_user}:${_group} (su)"
-      runScriptAsUserAndGroupUsingSu "${_user}" "${_group}" "${_runme}"
-      _rescode=$?
-      ;;
+  *)
+    logDebug "Running ${_command} ${_args} as ${_user}:${_group} (su)"
+    runScriptAsUserAndGroupUsingSu "${_user}" "${_group}" "${_runme}"
+    _rescode=$?
+    ;;
   esac
 
   return ${_rescode}
@@ -554,10 +554,10 @@ function runCommandLongOutput() {
   createTempFile
   _result="${RESULT}"
 
-#  local _previousLogCategory
-#  getLogCategory
-#  _previousLogCategory="${RESULT}"
-#  setLogCategory "${_previousLogCategory}*"
+  #  local _previousLogCategory
+  #  getLogCategory
+  #  _previousLogCategory="${RESULT}"
+  #  setLogCategory "${_previousLogCategory}*"
 
   logDebug "${_command}"
 
