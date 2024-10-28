@@ -10,8 +10,8 @@
 # use: LOCALE.getModuleName;
 # use: echo "Module: ${RESULT}";
 function LOCALE.getModuleName() {
-  export RESULT="LOCALE";
-  return ${TRUE};
+  export RESULT="LOCALE"
+  return ${TRUE}
 }
 
 # fun: isLocaleSupported locale encoding
@@ -24,28 +24,20 @@ function LOCALE.getModuleName() {
 # use:   echo "en_US with UTF-8 is supported";
 # use: fi
 function isLocaleSupported() {
-  local _locale="${1}";
-  checkNotEmpty locale "${_locale}" 1;
-  local _encoding="${2}";
-  checkNotEmpty encoding "${_encoding}" 2;
+  local _locale="${1}"
+  checkNotEmpty locale "${_locale}" 1
+  local _encoding="${2}"
+  checkNotEmpty encoding "${_encoding}" 2
 
-  local -i _rescode;
+  local -i _rescode
 
-  if [ -f "${SUPPORTED_LOCALES_FOLDER}/${_locale%%_*}" ]; then
-    if isLocaleFileAvailable "${_locale}"; then
-      if isLocaleAvailableInLanguageFile "${_locale}" "${_encoding}"; then
-        _rescode=${TRUE};
-      else
-        _rescode=${FALSE};
-      fi
-    else
-      _rescode=${FALSE};
-    fi
+  if isLocaleAvailableInLanguageFile "${_locale}" "${_encoding}"; then
+    _rescode=${TRUE}
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: isLocaleFileAvailable locale
@@ -57,18 +49,18 @@ function isLocaleSupported() {
 # use:   echo "English-US is available";
 # use: fi
 function isLocaleFileAvailable() {
-  local _locale="${1}";
-  checkNotEmpty locale "${_locale}" 1;
+  local _locale="${1}"
+  checkNotEmpty locale "${_locale}" 1
 
-  local -i _rescode;
+  local -i _rescode
 
-  if [ -f "${AVAILABLE_LOCALES_FOLDER}/${_locale}" ]; then
-    _rescode=${TRUE};
+  if [ -f "${AVAILABLE_LOCALES_FOLDER}/${_locale%%_*}" ]; then
+    _rescode=${TRUE}
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: localeRequiresEncodingSuffix locale encoding
@@ -81,18 +73,83 @@ function isLocaleFileAvailable() {
 # use:   localeDefinition="${locale}.${encoding}";
 # use: fi
 function localeRequiresEncodingSuffix() {
-  local _locale="${1}";
-  checkNotEmpty locale "${_locale}" 1;
-  local _encoding="${2}";
-  checkNotEmpty encoding "${_encoding}" 2;
+  local _locale="${1}"
+  checkNotEmpty locale "${_locale}" 1
+  local _encoding="${2}"
+  checkNotEmpty encoding "${_encoding}" 2
 
-  grep "${_locale}.${_encoding} ${_encoding}" "${SUPPORTED_LOCALES_FILE}" > /dev/null 2>&1;
-  local -i _rescode=$?;
+  command grep "${_locale}.${_encoding} ${_encoding}" "${SUPPORTED_LOCALES_FILE}" >/dev/null 2>&1
+  local -i _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
-# fun isLocaleAvailableInLanguageFile locale encoding
+# fun: isLocaleDefinedInLocaleGen
+# api: public
+# txt: Checks if given locale is defined in the locale.gen file.
+# opt: locale: The locale.
+# opt: encoding: The encoding.
+# txt: Returns 0/TRUE if the locale is defined; 1/FALSE otherwise.
+# use: if isLocaleDefinedInLocaleGen "en_US" "UTF-8"; then
+# use:   echo "Locale defined";
+# use: fi
+function isLocaleDefinedInLocaleGen() {
+  local _locale="${1}"
+  checkNotEmpty locale "${_locale}" 1
+  local _encoding="${2}"
+  checkNotEmpty encoding "${_encoding}" 2
+
+  command grep "^${_locale}.${_encoding} ${_encoding}" "${LOCALE_GEN_FILE}" >/dev/null 2>&1
+  local -i _rescode=$?
+
+  return ${_rescode}
+}
+
+# fun: addLocaleToLocaleGen
+# api: public
+# txt: Adds given locale to the locale.gen file.
+# opt: locale: The locale.
+# opt: encoding: The encoding.
+# txt: Returns 0/TRUE if the locale is added; 1/FALSE otherwise.
+# use: if addLocaleToLocaleGen "en_US" "UTF-8"; then
+# use:   echo "Locale added";
+# use: fi
+function addLocaleToLocaleGen() {
+  local _locale="${1}"
+  checkNotEmpty locale "${_locale}" 1
+  local _encoding="${2}"
+  checkNotEmpty encoding "${_encoding}" 2
+
+  command echo "${_locale}.${_encoding} ${_encoding}" >>"${LOCALE_GEN_FILE}" 2>&1
+  local -i _rescode=$?
+
+  return ${_rescode}
+}
+
+# fun: removeAllLocales
+# api: public
+# txt: Removes all locales.
+# txt: Returns 0/TRUE if the locales were removed; 1/FALSE otherwise.
+# use: if removeAllLocales; then
+# use:   echo "Locales removed";
+# use: fi
+function removeAllLocales() {
+  local -i _rescode
+
+  local _output
+
+  _output="$(command rm -rf "${LOCALES_FOLDER}"/* 2>&1 || echo "ERROR.$$")"
+
+  if isNotEmpty "${_output}" && contains "${_output}" "ERROR.$$"; then
+    _rescode=${FALSE}
+  else
+    _rescode=${TRUE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: isLocaleAvailableInLanguageFile locale encoding
 # api: public
 # txt: Checks if given locale + encoding is supported.
 # opt: locale: The locale.
@@ -103,25 +160,25 @@ function localeRequiresEncodingSuffix() {
 # use:   echo "Supported English locales: ${RESULT}";
 # use: fi
 function isLocaleAvailableInLanguageFile() {
-  local _locale="$1";
-  checkNotEmpty locale "${_locale}" 1;
-  local _encoding="$2";
-  checkNotEmpty encoding "${_encoding}" 2;
+  local _locale="$1"
+  checkNotEmpty locale "${_locale}" 1
+  local _encoding="$2"
+  checkNotEmpty encoding "${_encoding}" 2
 
-  local -i _rescode;
+  local -i _rescode
 
   if isLocaleFileAvailable "${_locale}"; then
     if localeRequiresEncodingSuffix "${_locale}" "${_encoding}"; then
-      _rescode=${TRUE}; # Implicit since it greps the same file.
+      _rescode=${TRUE} # Implicit since it greps the same file.
     else
-      command grep "${_locale} ${_encoding}" "${SUPPORTED_LOCALES_FILE}" > /dev/null 2>&1;
-      _rescode=$?;
+      command grep "${_locale} ${_encoding}" "${SUPPORTED_LOCALES_FILE}" >/dev/null 2>&1
+      _rescode=$?
     fi
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: changeDefaultLocale locale encoding
@@ -132,36 +189,36 @@ function isLocaleAvailableInLanguageFile() {
 # txt: Returns 0/TRUE always.
 # use: changeDefaultLocale "en_US.UTF-8" "UTF-8";
 function changeDefaultLocale() {
-  local _locale="${1}";
-  checkNotEmpty locale "${_locale}" 1;
-  local _encoding="${2}";
-  checkNotEmpty encoding "${_encoding}" 2;
+  local _locale="${1}"
+  checkNotEmpty locale "${_locale}" 1
+  local _encoding="${2}"
+  checkNotEmpty encoding "${_encoding}" 2
 
-  logInfo -n "Checking if the ${_locale}/${_encoding} pair is valid";
+  logInfo -n "Checking if the ${_locale}/${_encoding} pair is valid"
   if isLocaleSupported "${_locale}" "${_encoding}"; then
-    logInfoResult SUCCESS "valid";
-    logInfo -n "Modifying ${DEFAULT_LOCALE_FILE}";
+    logInfoResult SUCCESS "valid"
+    logInfo -n "Modifying ${DEFAULT_LOCALE_FILE}"
     {
-      echo "LANG=\"${_locale}.${_encoding}\"";
-      echo "LANGUAGE=\"${_locale}.${_encoding}\"";
-      echo "LC_ALL=\"${_locale}.${_encoding}\"";
-    } > "${DEFAULT_LOCALE_FILE}";
-    logInfoResult SUCCESS "done";
+      command echo "LANG=\"${_locale}.${_encoding}\""
+      command echo "LANGUAGE=\"${_locale}.${_encoding}\""
+      command echo "LC_ALL=\"${_locale}.${_encoding}\""
+    } >"${DEFAULT_LOCALE_FILE}"
+    logInfoResult SUCCESS "done"
 
-    logInfo -n "Modifying ${BASHLOCALE_FILE}";
-    DW.getScriptName;
-    local _scriptName="${RESULT}";
+    logInfo -n "Modifying ${BASHLOCALE_FILE}"
+    DW.getScriptName
+    local _scriptName="${RESULT}"
     {
-      echo "# Generated by ${_scriptName} for locale ${_locale}.${_encoding}";
-      echo "export LANG=\"${_locale}.${_encoding}\"";
-      echo "export LANGUAGE=\"${_locale}.${_encoding}\"";
-      echo "export LC_ALL=\"${_locale}.${_encoding}\"";
-    } > "${BASH_LOCALE_FILE}";
-    #  echo "export LC_CTYPE=\"${_locale}.${_encoding}\"" >> "${BASH_LOCALE_FILE}";
-    logInfoResult SUCCESS "done";
+      command echo "# Generated by ${_scriptName} for locale ${_locale}.${_encoding}"
+      command echo "export LANG=\"${_locale}.${_encoding}\""
+      command echo "export LANGUAGE=\"${_locale}.${_encoding}\""
+      command echo "export LC_ALL=\"${_locale}.${_encoding}\""
+    } >"${BASH_LOCALE_FILE}"
+    #  command echo "export LC_CTYPE=\"${_locale}.${_encoding}\"" >> "${BASH_LOCALE_FILE}";
+    logInfoResult SUCCESS "done"
   else
-    logInfoResult FAILURE "invalid";
-    exitWithErrorCode LOCALE_ENCODING_PAIR_IS_NOT_SUPPORTED "${_locale}/${_encoding}";
+    logInfoResult FAILURE "invalid"
+    exitWithErrorCode LOCALE_ENCODING_PAIR_IS_NOT_SUPPORTED "${_locale}/${_encoding}"
   fi
 }
 
@@ -171,21 +228,27 @@ function changeDefaultLocale() {
 # txt: Returns 0/TRUE always.
 # use: LOCALE.resetState;
 function LOCALE.resetState() {
-  addError LOCALE_ENCODING_PAIR_IS_NOT_SUPPORTED "The provided locale-encoding pair is not supported";
+  addError LOCALE_ENCODING_PAIR_IS_NOT_SUPPORTED "The provided locale-encoding pair is not supported"
 
   # env: DEFAULT_LOCALE_FILE: The /etc/default/locale file
-  defineEnvVar DEFAULT_LOCALE_FILE MANDATORY "The /etc/default/locale file" "/etc/default/locale";
+  defineEnvVar DEFAULT_LOCALE_FILE MANDATORY "The /etc/default/locale file" "/etc/default/locale"
 
   # env: BASH_LOCALE_FILE: The /etc/bash.locale file
-  defineEnvVar BASH_LOCALE_FILE MANDATORY "The /etc/bash.locale file" "/etc/bash.locale";
+  defineEnvVar BASH_LOCALE_FILE MANDATORY "The /etc/bash.locale file" "/etc/bash.locale"
 
   # env: SUPPORTED_LOCALES_FOLDER: The folder with the supported locales
-  defineEnvVar SUPPORTED_LOCALES_FOLDER MANDATORY "The folder with the supported locales" "/var/lib/locales/supported.d";
+  defineEnvVar SUPPORTED_LOCALES_FOLDER MANDATORY "The folder with the supported locales" "/var/lib/locales/supported.d"
 
   # env: SUPPORTED_LOCALES_FILE: The file with the supported locales
-  defineEnvVar SUPPORTED_LOCALES_FILE MANDATORY "The folder with the supported locales" "/usr/share/i18n/SUPPORTED";
+  defineEnvVar SUPPORTED_LOCALES_FILE MANDATORY "The folder with the supported locales" "/usr/share/i18n/SUPPORTED"
 
   # env: AVAILABLE_LOCALES_FOLDER: The folder with the available locales
-  defineEnvVar AVAILABLE_LOCALES_FOLDER MANDATORY "The folder with the available locales" "/usr/share/i18n/locales";
+  defineEnvVar AVAILABLE_LOCALES_FOLDER MANDATORY "The folder with the available locales" "/usr/share/i18n/locales"
+
+  # env: LOCALE_GEN_FILE: The locale.gen file
+  defineEnvVar LOCALE_GEN_FILE MANDATORY "The locale.gen file" "/etc/locale.gen"
+
+  # env: LOCALES_FOLDER: The locales folder
+  defineEnvVar LOCALES_FOLDER MANDATORY "The locales folder" "/usr/lib/locale"
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
