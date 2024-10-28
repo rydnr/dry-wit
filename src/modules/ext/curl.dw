@@ -21,33 +21,36 @@
 # use:   fi
 # use: fi
 function curlGet() {
-  local _url="${1}";
-  checkNotEmpty url "${_url}" 1;
-  shift;
-  local -a _headers=("${@}");
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
+  shift
+  local -a _headers=("${@}")
 
-  local _output;
-  _output="$(command curl -s "${_headers[@]}" -w "%{http_code}" "${_url}" 2>&1)";
-  local -i _rescode=$?;
+  local _output
+  _output="$(command curl -s "${_headers[@]}" -w "%{http_code}" "${_url}" 2>&1)"
+  command echo "${_output}" | command tail -n 1 | command grep '200' >/dev/null 2>&1
+  local -i _rescode=$?
 
   if isFalse ${_rescode}; then
-    export ERROR="${_output}";
+    _rescode=${FALSE}
+    export ERROR="${_output}"
   else
-    local -i _lineCount;
-    _lineCount="$(command echo "${_output}" | command wc -l)";
-    local _result;
-    _result="$(command echo "${_output}" | command head -n $((_lineCount - 1)))";
-    export RESULT="${_result}";
-    local _status;
-    _status="$(command echo "${_output}" | command tail -n 1)";
-    export STATUS="${_status}";
+    _rescode=${TRUE}
+    local -i _lineCount
+    _lineCount="$(command echo "${_output}" | command wc -l)"
+    local _result
+    _result="$(command echo "${_output}" | command head -n $((_lineCount - 1)))"
+    export RESULT="${_result}"
+    local _status
+    _status="$(command echo "${_output}" | command tail -n 1)"
+    export STATUS="${_status}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
-checkReq curl;
-checkReq head;
-checkReq tail;
-checkReq wc;
+checkReq curl
+checkReq head
+checkReq tail
+checkReq wc
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

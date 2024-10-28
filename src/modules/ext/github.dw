@@ -12,13 +12,13 @@
 # txt: If the function returns 0/TRUE, the variable RESULT will contain the tag.
 # use: if retrieveLatestRemoteTagInGithub rydnr "nix-flake-to-graphviz"; then echo "Latest tag: ${RESULT}"; fi
 function retrieveLatestRemoteTagInGithub() {
-  local _owner="${1}";
-  checkNotEmpty owner "${_owner}" 1;
-  local _repo="${2}";
-  checkNotEmpty repo "${_repo}" 2;
-  local _token="${3}";
+  local _owner="${1}"
+  checkNotEmpty owner "${_owner}" 1
+  local _repo="${2}"
+  checkNotEmpty repo "${_repo}" 2
+  local _token="${3}"
 
-  retrieveLatestRemoteTagInGithubMatching "${_owner}" "${_repo}" '^v?[0-9]+\.[0-9]+\.[0-9]+$' "${_token}";
+  retrieveLatestRemoteTagInGithubMatching "${_owner}" "${_repo}" '^v?[0-9]+\.[0-9]+\.[0-9]+$' "${_token}"
 }
 
 # fun: retrieveLatestRemoteTagInGithubMatching owner repo regex token?
@@ -31,67 +31,72 @@ function retrieveLatestRemoteTagInGithub() {
 # txt: If the function returns 0/TRUE, the variable RESULT will contain the tag.
 # use: if retrieveLatestRemoteTagInGithubMatching rydnr "nix-flake-to-graphviz"; then echo "Latest tag: ${RESULT}"; fi
 function retrieveLatestRemoteTagInGithubMatching() {
-  local _owner="${1}";
-  checkNotEmpty owner "${_owner}" 1;
-  local _repo="${2}";
-  checkNotEmpty repo "${_repo}" 2;
-  local _regex="${3}";
-  checkNotEmpty regex "${_regex}" 3;
-  local _token="${4}";
+  local _owner="${1}"
+  checkNotEmpty owner "${_owner}" 1
+  local _repo="${2}"
+  checkNotEmpty repo "${_repo}" 2
+  local _regex="${3}"
+  checkNotEmpty regex "${_regex}" 3
+  local _token="${4}"
 
-  local -i _rescode=${FALSE};
-  local _result;
+  local -i _rescode=${FALSE}
+  local _result
 
   # GitHub API URL for fetching tags
   local _apiUrl="https://api.github.com/repos/${_owner}/${_repo}/tags"
 
   # Using GitHub API to get tags
   # The token is optional but helps to avoid rate limits
-  local _auth=();
+  local _auth=()
   if ! isEmpty "${_token}"; then
-    _auth+=("-H" "Authorization: token ${_token}");
+    _auth+=("-H" "Authorization: token ${_token}")
   fi
 
-  local _error;
-  local _tags;
-  local _tag;
+  local _error
+  local _tags
+  local _tag
   local -i _page=1
   local -i _perPage=100
   local _result=""
 
-  DW.import curl;
+  local _oldIFS="${IFS}"
+
+  DW.import curl
   # Loop through pages
   while true; do
     # Fetch a page of tags
-    curlGet "${_apiUrl}?page=${_page}&per_page=${_perPage}" "${_auth[@]}";
-    _rescode=$?;
-    local _response="${RESULT}";
-    local _responseCode="${STATUS}";
+    curlGet "${_apiUrl}?page=${_page}&per_page=${_perPage}" "${_auth[@]}"
+    _rescode=$?
+    local _response="${RESULT}"
+    local _responseCode="${STATUS}"
     if isFalse ${_rescode} || areNotEqual "${_responseCode}" "200"; then
-      _error="${ERROR}";
-      break;
+      _error="${ERROR}"
+      break
     fi
 
     _tags=$(command echo "${_response}" | command jq -r '.[].name' 2>&1)
-    _rescode=$?;
+    _rescode=$?
     if isFalse ${_rescode}; then
-      _error="${_tags}";
-      break;
+      _error="${_tags}"
+      break
     fi
 
     # Break if no tags are found
     if isEmpty "${_tags}"; then
-      break;
+      break
     fi
 
     # Check each tag
+    IFS=$'\n'
     for _tag in ${_tags}; do
+      IFS="${_oldIFS}"
       if [[ ${_tag} =~ ${_regex} ]]; then
-        _result="${_tag}";
-        _rescode=${TRUE};
+        _result="${_tag}"
+        _rescode=${TRUE}
         break
       fi
     done
+    IFS="${_oldIFS}"
 
     # Break if found
     if isTrue ${_rescode}; then
@@ -103,16 +108,16 @@ function retrieveLatestRemoteTagInGithubMatching() {
   done
 
   if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   elif ! isEmpty "${_error}"; then
-    export ERROR="${_error}";
+    export ERROR="${_error}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: checkGithubTokenValid token
@@ -125,30 +130,30 @@ function retrieveLatestRemoteTagInGithubMatching() {
 # use:   echo "${token} is valid";
 # use: fi
 function checkGithubTokenValid() {
-  local _token="${1}";
-  checkNotEmpty token "${_token}" 1;
+  local _token="${1}"
+  checkNotEmpty token "${_token}" 1
 
-  local -i _rescode=${FALSE};
+  local -i _rescode=${FALSE}
 
-  DW.import curl;
-  curlGet "https://api.github.com/user" "Authorization: token ${_token}";
-  _rescode=$?;
-  local _response="${RESULT}";
+  DW.import curl
+  curlGet "https://api.github.com/user" "Authorization: token ${_token}"
+  _rescode=$?
+  local _response="${RESULT}"
 
   if isTrue ${_rescode}; then
-    local _responseCode="${STATUS}";
+    local _responseCode="${STATUS}"
     if areNotEqual "${_responseCode}" 200; then
-      _rescode=${FALSE};
+      _rescode=${FALSE}
     fi
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_response}";
+    export RESULT="${_response}"
   else
-    export ERROR="${_response}";
+    export ERROR="${_response}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: extractOwnerFromGithubUrl url
@@ -161,24 +166,24 @@ function checkGithubTokenValid() {
 # use:   echo "owner: ${RESULT}";
 # use: fi
 function extractOwnerFromGithubUrl() {
-  local _url="${1}";
-  checkNotEmpty url "${_url}" 1;
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
 
-  local -i _rescode=${FALSE};
-  local _result;
+  local -i _rescode=${FALSE}
+  local _result
 
-  _result="$(command echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/.*|\1|p")";
-  _rescode=$?;
+  _result="$(command echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/.*|\1|p")"
+  _rescode=$?
 
   if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: extractRepoFromGithubUrl url
@@ -191,24 +196,24 @@ function extractOwnerFromGithubUrl() {
 # use:   echo "repo: ${RESULT}";
 # use: fi
 function extractRepoFromGithubUrl() {
-  local _url="${1}";
-  checkNotEmpty url "${_url}" 1;
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
 
-  local -i _rescode=${FALSE};
-  local _result;
+  local -i _rescode=${FALSE}
+  local _result
 
-  _result="$(command echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/\([^/]*\)|\2|p")";
-  _rescode=$?;
+  _result="$(command echo "${_url}" | command sed -n "s|https://github\.com/\([^/]*\)/\([^/]*\)|\2|p")"
+  _rescode=$?
 
   if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: gitAddAll repo
@@ -222,22 +227,22 @@ function extractRepoFromGithubUrl() {
 # use:   ...
 # use: fi
 function gitAddAll() {
-  local _repo="${1}";
-  checkNotEmpty repo "${_repo}" 1;
+  local _repo="${1}"
+  checkNotEmpty repo "${_repo}" 1
 
-  local -i _rescode=${FALSE};
+  local -i _rescode=${FALSE}
 
-  local _result;
-  _result="$(command git -C "${_repo}" add --all 2>&1)";
-  _rescode=$?;
+  local _result
+  _result="$(command git -C "${_repo}" add --all 2>&1)"
+  _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   else
-    export ERROR="${_result}";
+    export ERROR="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: deleteGithubRepo org owner token
@@ -252,27 +257,27 @@ function gitAddAll() {
 # use:   echo "rydnr/removeme deleted";
 # use: fi
 function deleteGithubRepo() {
-  local _owner="${1}";
-  checkNotEmpty owner "${_owner}" 1;
-  local _repo="${2}";
-  checkNotEmpty repo "${_repo}" 2;
-  local _token="${3}";
-  checkNotEmpty token "${_token}" 3;
+  local _owner="${1}"
+  checkNotEmpty owner "${_owner}" 1
+  local _repo="${2}"
+  checkNotEmpty repo "${_repo}" 2
+  local _token="${3}"
+  checkNotEmpty token "${_token}" 3
 
-  local -i _rescode;
-  local _result;
-  _result="$(command curl -s -X DELETE -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${_token}" https://api.github.com/repos/${_owner}/${_repo})";
-  _rescode=$?;
+  local -i _rescode
+  local _result
+  _result="$(command curl -s -X DELETE -H "Accept: application/vnd.github.v3+json" -H "Authorization: token ${_token}" https://api.github.com/repos/${_owner}/${_repo})"
+  _rescode=$?
   if isNotEmpty "${_result}" && contains "${_result}" "Bad credentials"; then
-    export ERROR="${_result}";
-    _rescode=${FALSE};
+    export ERROR="${_result}"
+    _rescode=${FALSE}
   fi
   echo "${_result}"
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
-checkReq curl;
-checkReq git;
-checkReq sed;
+checkReq curl
+checkReq git
+checkReq sed
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
