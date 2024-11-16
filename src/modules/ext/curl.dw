@@ -26,6 +26,9 @@ function curlGet() {
   shift
   local -a _headers=("${@}")
 
+  checkReq tail
+  checkReq grep
+
   local _output
   _output="$(command curl -s "${_headers[@]}" -w "%{http_code}" "${_url}" 2>&1)"
   command echo "${_output}" | command tail -n 1 | command grep '200' >/dev/null 2>&1
@@ -37,8 +40,10 @@ function curlGet() {
   else
     _rescode=${TRUE}
     local -i _lineCount
+    checkReq wc
     _lineCount="$(command echo "${_output}" | command wc -l)"
     local _result
+    checkReq head
     _result="$(command echo "${_output}" | command head -n $((_lineCount - 1)))"
     export RESULT="${_result}"
     local _status
@@ -49,8 +54,36 @@ function curlGet() {
   return ${_rescode}
 }
 
+# fun: curlDownload url file
+# api: public
+# txt: Downloads a file from the given url and saves it to the given file.
+# opt: url: The url to download from.
+# opt: file: The file to save the downloaded data to.
+# txt: Returns 0/TRUE if the download was successful; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR will contain information about the error.
+# use: if curlDownload "${myUrl}" "${myFile}"; then
+# use:   echo "Downloaded ${myUrl} to ${myFile}";
+# use: else
+# use:   echo "Failed to download ${myUrl} to ${myFile}: ${ERROR}";
+# use: fi
+function curlDownload() {
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
+  local _file="${2}"
+  checkNotEmpty file "${_file}" 2
+
+  local -i _rescode=${FALSE}
+  local _output
+  _output="$(command curl -s -o "${_file}" "${_url}" 2>&1 || command echo "$$.ERROR.$$")"
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    export ERROR="${_output}"
+  else
+    _rescode=${TRUE}
+  fi
+
+  return ${_rescode}
+}
+
 checkReq curl
-checkReq head
-checkReq tail
-checkReq wc
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

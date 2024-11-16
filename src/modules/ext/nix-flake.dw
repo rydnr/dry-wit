@@ -11,23 +11,23 @@
 # use:   echo "org -> ${RESULT}"
 # use: fi
 function extractOrgFromFlakeNix() {
-  local _flakeFile="${1}";
-  checkNotEmpty flakeFile "${_flakeFile}" 1;
+  local _flakeFile="${1}"
+  checkNotEmpty flakeFile "${_flakeFile}" 1
 
-  local -i _rescode;
-  local _result;
-  _result="$(grep -oP '(?<=org = ")[^"]+' "${_flakeFile}")";
-  _rescode=$?;
+  local -i _rescode
+  local _result
+  _result="$(command grep -oP '(?<=org = ")[^"]+' "${_flakeFile}")"
+  _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
-    export ERROR="";
+    export RESULT="${_result}"
+    export ERROR=""
   else
-    export RESULT="";
-    export ERROR="${_result}";
+    export RESULT=""
+    export ERROR="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: extractRepoFromFlakeNix flakeFile
@@ -40,23 +40,23 @@ function extractOrgFromFlakeNix() {
 # use:   echo "repo -> ${RESULT}"
 # use: fi
 function extractRepoFromFlakeNix() {
-  local _flakeFile="${1}";
-  checkNotEmpty flakeFile "${_flakeFile}" 1;
+  local _flakeFile="${1}"
+  checkNotEmpty flakeFile "${_flakeFile}" 1
 
-  local -i _rescode;
-  local _result;
-  _result="$(grep -oP '(?<=repo = ")[^"]+' "${_flakeFile}")";
-  _rescode=$?;
+  local -i _rescode
+  local _result
+  _result="$(command grep -oP '(?<=repo = ")[^"]+' "${_flakeFile}")"
+  _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
-    export ERROR="";
+    export RESULT="${_result}"
+    export ERROR=""
   else
-    export RESULT="";
-    export ERROR="${_result}";
+    export RESULT=""
+    export ERROR="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: extractVersionFromFlakeNix flakeFile
@@ -69,23 +69,23 @@ function extractRepoFromFlakeNix() {
 # use:   echo "version -> ${RESULT}"
 # use: fi
 function extractVersionFromFlakeNix() {
-  local _flakeFile="${1}";
-  checkNotEmpty flakeFile "${_flakeFile}" 1;
+  local _flakeFile="${1}"
+  checkNotEmpty flakeFile "${_flakeFile}" 1
 
-  local -i _rescode;
-  local _result;
-  _result="$(grep -oP '(?<=version = ")[^"]+' "${_flakeFile}")";
-  _rescode=$?;
+  local -i _rescode
+  local _result
+  _result="$(command grep -oP '(?<=version = ")[^"]+' "${_flakeFile}")"
+  _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
-    export ERROR="";
+    export RESULT="${_result}"
+    export ERROR=""
   else
-    export RESULT="";
-    export ERROR="${_result}";
+    export RESULT=""
+    export ERROR="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: fetchSha256FromUrl url rev
@@ -100,29 +100,31 @@ function extractVersionFromFlakeNix() {
 # use:   echo "sha256: ${RESULT}";
 # use: fi
 function fetchSha256FromUrl() {
-  local _url="${1}";
-  checkNotEmpty url "${_url}" 1;
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
   local _rev="${2}"
-  checkNotEmpty rev "${_rev}" 2;
+  checkNotEmpty rev "${_rev}" 2
 
-  local -i _rescode;
-  local _result;
-  _result="$(nix-prefetch-git --quiet "${_url}" --rev "${_rev}" 2>&1 | jq -r '.sha256' 2>/dev/null)";
-  _rescode=$?;
+  checkReq nix-prefetch-git
+
+  local -i _rescode
+  local _result
+  _result="$(command nix-prefetch-git --quiet "${_url}" --rev "${_rev}" 2>&1 | jq -r '.sha256' 2>/dev/null)"
+  _rescode=$?
 
   if isEmpty "${_result}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
-    export ERROR="";
+    export RESULT="${_result}"
+    export ERROR=""
   else
-    export RESULT="";
-    export ERROR="${_result}";
+    export RESULT=""
+    export ERROR="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateVersionInFlakeNix flakeFile version
@@ -134,16 +136,16 @@ function fetchSha256FromUrl() {
 # use:   echo "version updated";
 # use: fi
 function updateVersionInFlakeNix() {
-  local _flakeFile="${1}";
-  checkNotEmpty flakeFile "${_flakeFile}" 1;
-  local _version="${2}";
-  checkNotEmpty version "${_version}" 1;
+  local _flakeFile="${1}"
+  checkNotEmpty flakeFile "${_flakeFile}" 1
+  local _version="${2}"
+  checkNotEmpty version "${_version}" 1
 
-  local -i _rescode;
-  sed -i "s/version = \".*\";/version = \"${_version}\";/" "${_flakeFile}";
-  _rescode=$?;
+  local -i _rescode
+  command sed -i "s/version = \".*\";/version = \"${_version}\";/" "${_flakeFile}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateSha256InFlakeNix flakeFile version
@@ -155,16 +157,16 @@ function updateVersionInFlakeNix() {
 # use:   echo "sha256 updated";
 # use: fi
 function updateSha256InFlakeNix() {
-  local _flakeFile="${1}";
-  checkNotEmpty flakeFile "${_flakeFile}" 1;
-  local _sha256="${2}";
-  checkNotEmpty sha256 "${_sha256}" 1;
+  local _flakeFile="${1}"
+  checkNotEmpty flakeFile "${_flakeFile}" 1
+  local _sha256="${2}"
+  checkNotEmpty sha256 "${_sha256}" 1
 
-  local -i _rescode;
-  sed -i "s/sha256 = \".*\";/sha256 = \"${_sha256}\";/" "${_flakeFile}";
-  _rescode=$?;
+  local -i _rescode
+  command sed -i "s/sha256 = \".*\";/sha256 = \"${_sha256}\";/" "${_flakeFile}"
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: extractInputsFromFlakeLock flakeLockFile
@@ -177,48 +179,48 @@ function updateSha256InFlakeNix() {
 # use:   echo "inputs: ${RESULT}";
 # use: fi
 function extractInputsFromFlakeLock() {
-  local _flakeLock="${1}";
-  checkNotEmpty flakeLockFile "${_flakeLock}" 1;
+  local _flakeLock="${1}"
+  checkNotEmpty flakeLockFile "${_flakeLock}" 1
 
-  local _result="";
-  local -i _rescode=${FALSE};
+  local _result=""
+  local -i _rescode=${FALSE}
 
-  local _root;
+  local _root
   _root="$(command jq -r '.root' "${_flakeLock}")"
 
-  local _input;
-  local -i _firstTime=${TRUE};
-  local _inputs;
-  _inputs="$(command jq -r --arg root "${_root}" '.nodes[$root].inputs | to_entries[] | .value' "${_flakeLock}")";
+  local _input
+  local -i _firstTime=${TRUE}
+  local _inputs
+  _inputs="$(command jq -r --arg root "${_root}" '.nodes[$root].inputs | to_entries[] | .value' "${_flakeLock}")"
 
-  local _origIFS="${IFS}";
-  IFS="${DWIFS}";
+  local _origIFS="${IFS}"
+  IFS="${DWIFS}"
   for _input in ${_inputs}; do
-    IFS=${_origIFS};
+    IFS=${_origIFS}
     # Extract the owner, repo, and ref values for each input
-    local _owner;
-    _owner=$(jq -r --arg input "${_input}" '.nodes[$input].original.owner' "${_flakeLock}")
-    local _repo;
-    _repo=$(jq -r --arg input "${_input}" '.nodes[$input].original.repo' "${_flakeLock}")
-    local _ref;
-    _ref=$(jq -r --arg input "${_input}" '.nodes[$input].original.ref' "${_flakeLock}")
+    local _owner
+    _owner=$(command jq -r --arg input "${_input}" '.nodes[$input].original.owner' "${_flakeLock}")
+    local _repo
+    _repo=$(command jq -r --arg input "${_input}" '.nodes[$input].original.repo' "${_flakeLock}")
+    local _ref
+    _ref=$(command jq -r --arg input "${_input}" '.nodes[$input].original.ref' "${_flakeLock}")
 
     if isFalse ${_firstTime}; then
-      _result="${_result} ";
+      _result="${_result} "
     else
-      _firstTime=${FALSE};
+      _firstTime=${FALSE}
     fi
 
-    _result="${_result}${_input}:${_owner}/${_repo}/${_ref}";
-    _rescode=${TRUE};
+    _result="${_result}${_input}:${_owner}/${_repo}/${_ref}"
+    _rescode=${TRUE}
   done
-  IFS=${_origIFS};
+  IFS=${_origIFS}
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateInputsInFlakeNix  oldUrl newUrl flakeNix
@@ -232,20 +234,27 @@ function extractInputsFromFlakeLock() {
 # use:   echo "nixpks updated successfully";
 # use: fi
 function updateInputsInFlakeNix() {
-  local _oldUrl="${1}";
-  checkNotEmpty oldUrl "${_oldUrl}" 1;
-  local _newUrl="${2}";
-  checkNotEmpty newUrl "${_newUrl}" 2;
-  local _flakeNix="${3}";
-  checkNotEmpty flakeNix "${_flakeNix}" 3;
+  local _oldUrl="${1}"
+  checkNotEmpty oldUrl "${_oldUrl}" 1
+  local _newUrl="${2}"
+  checkNotEmpty newUrl "${_newUrl}" 2
+  local _flakeNix="${3}"
+  checkNotEmpty flakeNix "${_flakeNix}" 3
 
-  local -i _rescode=${FALSE};
-  local _result;
+  local -i _rescode=${FALSE}
+  local _result
 
-  command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1;
-  _rescode=$?;
+  _result="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1 || echo "$$.ERROR.$$")"
+  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
+    _rescode=${FALSE}
+    ERROR="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1)"
+    export ERROR
+  else
+    _rescode=${TRUE}
+  fi
+  _rescode=$?
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: updateFlakeLock flakeNix githubToken?
@@ -258,30 +267,32 @@ function updateInputsInFlakeNix() {
 # use:   echo "flake.lock updated successfully";
 # use: fi
 function updateFlakeLock() {
-  local _flakeNix="${1}";
-  checkNotEmpty flakeNix "${_flakeNix}" 3;
-  local _githubToken="${2}";
+  local _flakeNix="${1}"
+  checkNotEmpty flakeNix "${_flakeNix}" 3
+  local _githubToken="${2}"
 
-  local -i _rescode=${FALSE};
-  local _result;
+  local -i _rescode=${FALSE}
+  local _result
 
-  local _flakeFolder;
-  _flakeFolder="$(dirname "${_flakeNix}")";
+  local _flakeFolder
+  _flakeFolder="$(command dirname "${_flakeNix}")"
 
-  local -a _args=();
+  checkReq nix
+
+  local -a _args=()
   if ! isEmpty "${_githubToken}"; then
     _args+=("--access-tokens" "github.com=${_githubToken}")
   fi
-  _result="$(pushd "${_flakeFolder}" > /dev/null 2>&1 && command nix flake update "${_args[@]}" . 2>&1)";
-  _rescode=$?;
+  _result="$(command pushd "${_flakeFolder}" >/dev/null 2>&1 && command nix flake update "${_args[@]}" . 2>&1)"
+  _rescode=$?
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   else
-    export ERROR="${_result}";
+    export ERROR="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveLatestStableNixpkgsTag token?
@@ -292,10 +303,48 @@ function updateFlakeLock() {
 # txt: If the function returns 0/TRUE, the variable RESULT will contain the tag.
 # use: if retrieveLatestStableNixpkgsTag"; then echo "Latest nixpkgs: ${RESULT}"; fi
 function retrieveLatestStableNixpkgsTag() {
-  local _token="${1}";
+  local _token="${1}"
 
-  DW.import git;
+  DW.import git
 
-  retrieveLatestRemoteTagInGithubMatching "nixos" "nixpkgs" '^[0-9]{2}\.[0-9]{2}$' "${_token}";
+  retrieveLatestRemoteTagInGithubMatching "nixos" "nixpkgs" '^[0-9]{2}\.[0-9]{2}$' "${_token}"
 }
+
+# fun: nixBuild folder
+# api: public
+# txt: Runs "nix build" in given folder.
+# opt: folder: The folder.
+# txt: Returns 0/TRUE if the process succeeds; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, ERROR will contain the error message.
+# use: if ! nixBuild "/tmp/my-flake"; then
+# use:   echo "nix build error: ${ERROR}";
+# use: fi
+function nixBuild() {
+  local _folder="${1}"
+  checkNotEmpty folder "${_folder}" 1
+
+  local -i _rescode
+  local _result
+  _result="$(command pushd "${_folder}" >/dev/null 2>&1 && [ -e result ] && command nix build 2>&1 >/dev/null)"
+  _rescode=$?
+
+  if isEmpty "${_result}"; then
+    _rescode=${FALSE}
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}"
+    export ERROR=""
+  else
+    export RESULT=""
+    export ERROR="${_result}"
+  fi
+
+  return ${_rescode}
+}
+
+checkReq jq
+checkReq grep
+checkReq sed
+
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
