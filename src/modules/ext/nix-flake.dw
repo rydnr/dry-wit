@@ -204,6 +204,8 @@ function extractInputsFromFlakeLock() {
     _repo=$(command jq -r --arg input "${_input}" '.nodes[$input].original.repo' "${_flakeLock}")
     local _ref
     _ref=$(command jq -r --arg input "${_input}" '.nodes[$input].original.ref' "${_flakeLock}")
+    local _dir
+    _dir=$(command jq -r --arg input "${_input}" '.nodes[$input].original.dir' "${_flakeLock}")
 
     if isFalse ${_firstTime}; then
       _result="${_result} "
@@ -212,6 +214,10 @@ function extractInputsFromFlakeLock() {
     fi
 
     _result="${_result}${_input}:${_owner}/${_repo}/${_ref}"
+    if isNotEmpty "${_dir}" && ! areEqual "${_dir}" "null"; then
+      _result="${_result}?dir=${_dir}"
+    fi
+
     _rescode=${TRUE}
   done
   IFS=${_origIFS}
