@@ -1,0 +1,43 @@
+# mod: rpm
+# api: public
+# txt: RPM functions
+
+# fun: extractRpm rpmFile folder
+# api: public
+# txt: Extracts the contents of given RPM in a destination folder.
+# opt: rpmFile: The RPM file.
+# opt: folder: The destination folder.
+# txt: Returns 0/TRUE if the file could be extracted; 1/FALSE otherwise.
+# txt: If the function returns 1/FALSE, the variable ERROR contains more information.
+# use: if extractRpm libssl3.rpm /tmp; then echo "libssl3.rpm extracted successfully"; fi
+function extractRpm() {
+  local _rpmFile="${1}"
+  checkNotEmpty rpmFile "${_rpmFile}" 1
+  local _folder="${2}"
+  checkNotEmpty folder "${_folder}" 2
+
+  checkReq cpio
+  checkReq rpm2cpio
+
+  local -i _rescode=${FALSE}
+  local _output
+
+  _output="$(command pushd "${_folder}" >/dev/null 2>&1 || command echo "$$.ERROR.$$")"
+  if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+    export ERROR="Could not access ${_folder}"
+  else
+    command pushd "${_folder}" >/dev/null 2>&1
+    cp "${_rpmFile}" /tmp/my.rpm
+    _output="$(command rpm2cpio "${_rpmFile}" 2>/dev/null | command cpio -idmv 2>/dev/null || command echo "$$.ERROR.$$")"
+    if isNotEmpty "${_output}" && contains "${_output}" "$$.ERROR.$$"; then
+      _output="$(command rpm2cpio "${_rpmFile}" | command cpio -idmv)"
+      export ERROR="Could not extract ${_rpmFile} in ${_folder}:\n${_output}"
+    else
+      _rescode=${TRUE}
+    fi
+    command popd >/dev/null 2>&1
+  fi
+
+  return ${_rescode}
+}
+# vim: syntax=sh ts=2 sw=2 sts=4 sr noet

@@ -325,7 +325,7 @@ function nixBuild() {
 
   local -i _rescode
   local _result
-  _result="$(command pushd "${_folder}" >/dev/null 2>&1 && [ -e result ] && command nix build 2>&1 >/dev/null)"
+  _result="$(command pushd "${_folder}" >/dev/null 2>&1 && command nix build 2>&1 >/dev/null)"
   _rescode=$?
 
   if isEmpty "${_result}"; then

@@ -10,35 +10,35 @@
 # use: local encoded="$(urlEncode 'http://www.example.com')";
 # use: echo "URL encoded: ${encoded}";
 function urlEncode() {
-  local _text="$1";
-  checkNotEmpty url "${_text}" 1;
+  local _text="$1"
+  checkNotEmpty url "${_text}" 1
 
-    echo "${_text}"  \
-  | sed 's % %25 g'  \
-  | sed 's \+ %2B g' \
-  | sed 's| |+|g'    \
-  | sed 's \[\[BR\]\] %0D%0A g' \
-  | sed 's ! %21 g'  \
-  | sed 's \* %2A g' \
-  | sed "s ' %27 g" \
-  | sed 's ( %28 g'  \
-  | sed 's ) %29 g'  \
-  | sed 's ; %3B g'  \
-  | sed 's : %3A g'  \
-  | sed 's @ %40 g'  \
-  | sed 's & %26 g'  \
-  | sed 's = %3D g'  \
-  | sed 's \$ %24 g' \
-  | sed 's , %2C g'  \
-  | sed 's / %2F g'  \
-  | sed 's \? %3F g' \
-  | sed 's \[ %5B g' \
-  | sed 's \] %5D g';
+  echo "${_text}" |
+    sed 's % %25 g' |
+    sed 's \+ %2B g' |
+    sed 's| |+|g' |
+    sed 's \[\[BR\]\] %0D%0A g' |
+    sed 's ! %21 g' |
+    sed 's \* %2A g' |
+    sed "s ' %27 g" |
+    sed 's ( %28 g' |
+    sed 's ) %29 g' |
+    sed 's ; %3B g' |
+    sed 's : %3A g' |
+    sed 's @ %40 g' |
+    sed 's & %26 g' |
+    sed 's = %3D g' |
+    sed 's \$ %24 g' |
+    sed 's , %2C g' |
+    sed 's / %2F g' |
+    sed 's \? %3F g' |
+    sed 's \[ %5B g' |
+    sed 's \] %5D g'
 
-#  !    *    '    (    )    ;    :    @    &    =    +    $    ,    /
-#%21  %2A  %27  %28  %29  %3B  %3A  %40  %26  %3D  %2B  %24  %2C  %2F
-#  ?    %    #    [    ]
-# %3F  %25  %23  %5B  %5D
+  #  !    *    '    (    )    ;    :    @    &    =    +    $    ,    /
+  #%21  %2A  %27  %28  %29  %3B  %3A  %40  %26  %3D  %2B  %24  %2C  %2F
+  #  ?    %    #    [    ]
+  # %3F  %25  %23  %5B  %5D
 }
 
 # fun: extractPathSegmentFromUrl url index
@@ -52,23 +52,23 @@ function urlEncode() {
 # use:   echo "First segment: ${RESULT}";
 # use: fi
 function extractPathSegmentFromUrl() {
-  local _url="${1}";
-  checkNotEmpty url "${_url}" 1;
-  local _index="${2}";
-  checkNotEmpty index "${_index}" 2;
-  local -i _rescode=${FALSE};
-  local _result;
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
+  local _index="${2}"
+  checkNotEmpty index "${_index}" 2
+  local -i _rescode=${FALSE}
+  local _result
 
   if splitAndExtract "${_url}" "/" $((_index + 2)); then
-    _rescode=${TRUE};
-    _result="${RESULT}";
+    _rescode=${TRUE}
+    _result="${RESULT}"
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: urlIsUp url
@@ -80,24 +80,72 @@ function extractPathSegmentFromUrl() {
 # use:   echo "${url} is up";
 # use: fi
 function urlIsUp() {
-  local _url="${1}";
-  checkNotEmpty url "${_url}" 1;
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
 
-  local -i _rescode=${FALSE};
+  local -i _rescode=${FALSE}
 
-  which curl > /dev/null 2>&1;
+  which curl >/dev/null 2>&1
   if isTrue $?; then
-    $(which curl) -q "${_url}" > /dev/null 2>&1;
-    _rescode=$?;
+    $(which curl) -q "${_url}" >/dev/null 2>&1
+    _rescode=$?
   else
-    which wget > /dev/null 2>&1;
+    which wget >/dev/null 2>&1
     if isTrue $?; then
-      $(which wget) -q "${_url}" > /dev/null 2>&1;
-      _rescode=$?;
+      $(which wget) -q "${_url}" >/dev/null 2>&1
+      _rescode=$?
     fi
   fi
 
-  return ${_rescode};
+  return ${_rescode}
+}
+
+# fun: extractParameterFromUrl url param
+# api: public
+# txt: Extracts a given parameter from given url.
+# opt: url: The url.
+# opt: param: The name of the parameter.
+# txt: Returns 0/TRUE if the parameter was found; 1/FALSE otherwise.
+# txt: If the function returns 0/TRUE, the variable RESULT contains the parameter value.
+# use: if extractParameterFromUrl "http://acme.com/context?p=val" "p"; then
+# use:   echo "p: ${RESULT}";
+# use: fi
+function extractParameterFromUrl() {
+  local _url="${1}"
+  checkNotEmpty url "${_url}" 1
+  local _param="${2}"
+  checkNotEmpty param "${_param}" 2
+  local -i _rescode=${FALSE}
+  local _result
+
+  local _args
+  if splitAndExtract "${_url}" "?" 1; then
+    _args="${RESULT}"
+  fi
+
+  local _queryString
+  if isNotEmpty "${_args}" && splitAndExtract "${_args}" ";" 0; then
+    _queryString="${RESULT}"
+  fi
+
+  local _params
+  local _paramPair
+  if isNotEmpty "${_queryString}"; then
+    IFS='&' read -ra _params <<<"${_queryString}"
+    for _paramPair in "${_params[@]}"; do
+      if [[ "${_paramPair}" == "${_param}="* ]]; then
+        _result="${_paramPair#*=}"
+        _rescode=${TRUE}
+        break
+      fi
+    done
+  fi
+
+  if isTrue ${_rescode}; then
+    export RESULT="${_result}"
+  fi
+
+  return ${_rescode}
 }
 
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
