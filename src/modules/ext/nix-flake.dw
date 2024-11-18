@@ -253,9 +253,9 @@ function updateInputsInFlakeNix() {
   _result="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1 || echo "$$.ERROR.$$")"
   if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
-    ERROR="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1)"
-    export ERROR
+    export ERROR="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1)"
   else
+    export RESULT="${_result}"
     _rescode=${TRUE}
   fi
 
