@@ -13,30 +13,30 @@
 # use:   echo "${a[@]} contains 'other number';
 # use: fi
 function arrayContains() {
-  local _item="${1}";
-  checkNotEmpty item "${_item}" 1;
+  local _item="${1}"
+  checkNotEmpty item "${_item}" 1
 
-  shift;
-  local _array="${@}";
+  shift
+  local _array="${@}"
   # array can be empty.
 
-  local -i _rescode=${FALSE};
+  local -i _rescode=${FALSE}
 
-  local _oldIFS="${IFS}";
+  local _oldIFS="${IFS}"
 
-  IFS="${DWIFS}";
-  local _aux;
+  IFS="${DWIFS}"
+  local _aux
   for _aux in ${_array}; do
-    IFS="${_oldIFS}";
+    IFS="${_oldIFS}"
 
     if areEqual "${_aux}" "${_item}"; then
-      _rescode=${TRUE};
-      break;
+      _rescode=${TRUE}
+      break
     fi
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: arrayDoesNotContain element array
@@ -50,21 +50,21 @@ function arrayContains() {
 # use:   echo "${a[@]} does not contain 'four'";
 # use: fi
 function arrayDoesNotContain() {
-  local _item="${1}";
-  checkNotEmpty item "${_item}" 1;
-  shift;
-  local _array="${@}";
-  checkNotEmpty array "${_array}" 2;
+  local _item="${1}"
+  checkNotEmpty item "${_item}" 1
+  shift
+  local _array="${@}"
+  checkNotEmpty array "${_array}" 2
 
-  local -i _rescode;
+  local -i _rescode
 
   if arrayContains "${_item}" "${_array}"; then
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   else
-    _rescode=${TRUE};
+    _rescode=${TRUE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: getIndexOfItemInArray item array
@@ -78,36 +78,36 @@ function arrayDoesNotContain() {
 # use:   echo "Index of 'a': ${RESULT}";
 # use: fi
 function getIndexOfItemInArray() {
-  local _item="${1}";
-  checkNotEmpty item "${_item}" 1;
-  shift;
-  local _array="${@}";
-  checkNotEmpty array "${_array}" 2;
+  local _item="${1}"
+  checkNotEmpty item "${_item}" 1
+  shift
+  local _array="${@}"
+  checkNotEmpty array "${_array}" 2
 
-  local _oldIFS="${IFS}";
+  local _oldIFS="${IFS}"
 
-  local -i _rescode=${FALSE};
-  local -i _result;
+  local -i _rescode=${FALSE}
+  local -i _result
 
-  IFS="${DWIFS}";
-  local _arrayItem;
-  local -i _i=0;
+  IFS="${DWIFS}"
+  local _arrayItem
+  local -i _i=0
   for _arrayItem in ${_array[@]}; do
-    IFS="${_oldIFS}";
+    IFS="${_oldIFS}"
     if areEqual "${_item}" "${_arrayItem}"; then
-      _result=${_i};
-      _rescode=${TRUE};
-      break;
+      _result=${_i}
+      _rescode=${TRUE}
+      break
     fi
-    _i=$((_i+1));
-  done;
-  IFS="${_oldIFS}";
+    _i=$((_i + 1))
+  done
+  IFS="${_oldIFS}"
 
   if isTrue ${_rescode}; then
-    export RESULT=${_result};
+    export RESULT=${_result}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: clearAssociativeArray arrayName
@@ -117,19 +117,19 @@ function getIndexOfItemInArray() {
 # txt: Returns 0/TRUE always.
 # use: clearAssociativeArray myArray;
 function clearAssociativeArray() {
-  local _arrayName="${1}";
-  checkNotEmpty arrayName "${_arrayName}" 1;
+  local _arrayName="${1}"
+  checkNotEmpty arrayName "${_arrayName}" 1
 
-  declare -n _directArray="${_arrayName}";
+  declare -n _directArray="${_arrayName}"
 
-  local _oldIFS="${IFS}";
-  IFS="${DWIFS}";
-  local _key;
+  local _oldIFS="${IFS}"
+  IFS="${DWIFS}"
+  local _key
   for _key in "${!_directArray[@]}"; do
-    IFS="${_oldIFS}";
-    unset _directArray[${_key}];
+    IFS="${_oldIFS}"
+    unset _directArray[${_key}]
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 }
 
 # fun: flattenArray arrayName separator
@@ -143,31 +143,31 @@ function clearAssociativeArray() {
 # use: flattenArray A "x";
 # use: echo "A->${RESULT}" # axbxc
 function flattenArray() {
-  local _arrayName="${1}";
-  checkNotEmpty arrayName "${_arrayName}" 1;
-  local _separator="${2}";
-  checkNotEmpty separator "${_separator}" 2;
-  local _result="";
-  local _oldIFS="${IFS}";
+  local _arrayName="${1}"
+  checkNotEmpty arrayName "${_arrayName}" 1
+  local _separator="${2}"
+  checkNotEmpty separator "${_separator}" 2
+  local _result=""
+  local _oldIFS="${IFS}"
 
-  local _aux="$(echo "\${#${_arrayName}[@]}")";
-  local -i _len=$((-1+$(eval echo "${_aux}")));
+  local _aux="$(echo "\${#${_arrayName}[@]}")"
+  local -i _len=$((-1 + $(eval echo "${_aux}")))
 
-  IFS="${DWIFS}";
-  local -i _i;
+  IFS="${DWIFS}"
+  local -i _i
   for _i in $(seq 0 1 ${_len}); do
-    IFS="${_oldIFS}";
-    _aux="$(echo "\${${_arrayName}[${_i}]}")";
-    _item=$(eval echo "${_aux}");
-    _result="${_result}${_separator}${_item}";
+    IFS="${_oldIFS}"
+    _aux="$(echo "\${${_arrayName}[${_i}]}")"
+    _item=$(eval echo "${_aux}")
+    _result="${_result}${_separator}${_item}"
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 
-  _result="${_result#${_separator}}";
+  _result="${_result#${_separator}}"
 
-  export RESULT="${_result}";
+  export RESULT="${_result}"
 
-  return ${TRUE};
+  return ${TRUE}
 }
 
 # fun: forEachAssociativeArrayEntryDo arrayName callback
@@ -182,22 +182,22 @@ function flattenArray() {
 # use: ...
 # use: forEachAssociativeArrayEntryDo "CODE_DESCRIPTION_MAPPING" "process_code";
 function forEachAssociativeArrayEntryDo() {
-  local _arrayName="${1}";
-  checkNotEmpty arrayName "${_arrayName}" 1;
-  local _callback="${2}";
-  checkFunctionPresent callback "${_callback}" 2;
+  local _arrayName="${1}"
+  checkNotEmpty arrayName "${_arrayName}" 1
+  local _callback="${2}"
+  checkFunctionPresent callback "${_callback}" 2
 
-  local _oldIFS="${IFS}";
+  local _oldIFS="${IFS}"
 
-  declare -n _directArray="${_arrayName}";
+  declare -n _directArray="${_arrayName}"
 
-  IFS="${DWIFS}";
-  local _key;
+  IFS="${DWIFS}"
+  local _key
   for _key in "${!_directArray[@]}"; do
-    IFS="${_oldIFS}";
-    ${_callback} "${_key}" "${_directArray[${_key}]}";
+    IFS="${_oldIFS}"
+    ${_callback} "${_key}" "${_directArray[${_key}]}"
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 }
 
 # fun: isArrayEmpty arrayName
@@ -209,16 +209,16 @@ function forEachAssociativeArrayEntryDo() {
 # use:   echo "array is empty";
 # use: fi
 function isArrayEmpty() {
-  local _arrayName="${1}";
-  local -i _rescode;
+  local _arrayName="${1}"
+  local -i _rescode
 
   if isEmpty "${_arrayName}"; then
-    _rescode=${TRUE};
+    _rescode=${TRUE}
   else
-    _rescode=${FALSE};
+    _rescode=${FALSE}
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: retrieveAssociativeArrayKeys arrayName
@@ -233,27 +233,27 @@ function isArrayEmpty() {
 # use:   ...;
 # use: done
 function retrieveAssociativeArrayKeys() {
-  local _arrayName="${1}";
-  checkNotEmpty arrayName "${_arrayName}" 1;
-  local _result;
-  local _oldIFS="${IFS}";
+  local _arrayName="${1}"
+  checkNotEmpty arrayName "${_arrayName}" 1
+  local _result
+  local _oldIFS="${IFS}"
 
-  declare -n _directArray="${_arrayName}";
+  declare -n _directArray="${_arrayName}"
 
-  IFS="${DWIFS}";
-  local _key;
+  IFS="${DWIFS}"
+  local _key
   for _key in "${!_directArray[@]}"; do
-    IFS="${_oldIFS}";
+    IFS="${_oldIFS}"
     if isNotEmpty "${_result}"; then
-      _result="${_result} ";
+      _result="${_result} "
     fi
-    _result="${_result}\"${_key}\"";
+    _result="${_result}\"${_key}\""
   done
-  IFS="${_oldIFS}";
+  IFS="${_oldIFS}"
 
-  export RESULT="${_result}";
+  export RESULT="${_result}"
 
-  return ${TRUE};
+  return ${TRUE}
 }
 
 # fun: nth nth array
@@ -265,36 +265,36 @@ function retrieveAssociativeArrayKeys() {
 # txt: If the function returns 0/TRUE, the variable RESULT contains the nth element.
 # use: nth 0 myArray; echo "First element: ${RESULT}";
 function nth() {
-  local _nth="${1}";
-  checkNumber nth "${_nth}" 1;
-  local _arrayName="${2}";
-  checkNotEmpty arrayName "${_arrayName}" 2;
+  local _nth="${1}"
+  checkNumber nth "${_nth}" 1
+  local _arrayName="${2}"
+  checkNotEmpty arrayName "${_arrayName}" 2
 
-  local _result;
-  local -i _rescode=${FALSE};
+  local _result
+  local -i _rescode=${FALSE}
 
-  local -n _nthArray=${_arrayName};
+  local -n _nthArray=${_arrayName}
 
   if isLessOrEqualTo ${_nth} ${#_nthArray[@]}; then
-    _result="${_nthArray[${_nth}]}";
-    _rescode=${TRUE};
+    _result="${_nthArray[${_nth}]}"
+    _rescode=${TRUE}
     if isNotEmpty "${_result}"; then
       if removeSurrounding "${_result}" '"'; then
-        _result="${RESULT}";
+        _result="${RESULT}"
       fi
       if isNotEmpty "${_result}"; then
         if removeSuffix "${_result}" " *"; then
-          _result="${RESULT}";
+          _result="${RESULT}"
         fi
       fi
     fi
   fi
 
   if isTrue ${_rescode}; then
-    export RESULT="${_result}";
+    export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 
 # fun: modify_array value separator regex replacement
@@ -310,35 +310,35 @@ function nth() {
 # use:    export PYTHONPATH="${RESULT}";
 # use: fi
 function modify_array() {
-  local _value="${1}";
-  checkNotEmpty value "${_value}" 1;
-  local _separator="${2}";
-  checkNotEmpty separator "${_separator}" 2;
-  local _regex="${3}";
-  checkNotEmpty regex "${_regex}" 3;
-  local _replacement="${4}";
-  checkNotEmpty replacement "${_replacement}" 4;
+  local _value="${1}"
+  checkNotEmpty value "${_value}" 1
+  local _separator="${2}"
+  checkNotEmpty separator "${_separator}" 2
+  local _regex="${3}"
+  checkNotEmpty regex "${_regex}" 3
+  local _replacement="${4}"
+  checkNotEmpty replacement "${_replacement}" 4
 
-  local -i _rescode=${FALSE};
-  local _result;
-  local _array=();
+  local -i _rescode=${FALSE}
+  local _result
+  local _array=()
 
-  IFS="${_separator}" read -r -a _array <<< "${_value}"
+  IFS="${_separator}" read -r -a _array <<<"${_value}"
 
-  local _item;
+  local _item
   for _index in "${!_array[@]}"; do
     if [[ "${_array[_index]}" =~ ${_regex} ]]; then
-      _array[_index]="${_replacement}";
-      _rescode=${TRUE};
+      _array[_index]="${_replacement}"
+      _rescode=${TRUE}
     fi
   done
 
   if isTrue ${_rescode}; then
-    _result="$(printf "%s${_separator}" "${_array[@]}")";
-    _result="${_result%"${_separator}"}";
+    _result="$(printf "%s${_separator}" "${_array[@]}")"
+    _result="${_result%"${_separator}"}"
     export RESULT="${_result}"
   fi
 
-  return ${_rescode};
+  return ${_rescode}
 }
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

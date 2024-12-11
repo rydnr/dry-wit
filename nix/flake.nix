@@ -17,10 +17,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 {
-  description = "Dry-wit bash framework";
+  description = "Nix flake for github:rydnr/dry-wit";
   inputs = rec {
     flake-utils.url = "github:numtide/flake-utils/v1.0.0";
-    nixos.url = "github:NixOS/nixpkgs/24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/24.05";
   };
   outputs = inputs:
     with inputs;
@@ -35,8 +35,8 @@
         org = "rydnr";
         repo = "dry-wit";
         pname = "${org}-${repo}";
-        version = "3.0.24";
-        pkgs = import nixos { inherit system; };
+        version = "3.0.25";
+        pkgs = import nixpkgs { inherit system; };
         description = "Dry-wit bash framework";
         license = pkgs.lib.licenses.gpl3;
         homepage = "https://github.com/${org}/${repo}";
