@@ -19,7 +19,8 @@ function retrieveVersion() {
 
   local -i _rescode=${FALSE}
 
-  local _result="$(dpkg -p ${_package} 2>/dev/null | grep -e '^Version: ' | cut -d' ' -f2)"
+  local _result
+  _result="$(command dpkg -p "${_package}" 2>/dev/null | command grep -e '^Version: ' | command cut -d' ' -f2)"
   if isNotEmpty "${_result}"; then
     _rescode=${TRUE}
     export RESULT="${_result}"
@@ -41,9 +42,9 @@ function installUbuntuPackage() {
   local _package="${1}"
   checkNotEmpty package "${_package}" 1
   shift
-  local _extraArgs="${@}"
+  local _extraArgs="${*}"
 
-  runCommandLongOutput "/usr/bin/apt-get" -qq install -y ${_extraArgs} --no-install-recommends ${_package}
+  runCommandLongOutput "/usr/bin/apt-get" -qq install -y "${_extraArgs}" --no-install-recommends "${_package}"
   local -i _rescode=$?
 
   return ${_rescode}
@@ -63,7 +64,8 @@ function isAptCacheMissing() {
   local -i _aux
 
   if folderExists "${_cacheFolder}"; then
-    local -i _aux=$(ls ${_cacheFolder} >/dev/null | wc -l)
+    local -i _aux
+    _aux="$(command ls "${_cacheFolder}" >/dev/null | wc -l)"
     if isEqualTo ${_aux}; then
       _rescode=${TRUE}
     else
@@ -152,9 +154,9 @@ function cleanUbuntuSystem() {
   local _oldIFS="${IFS}"
   local _locale
   IFS="${DWIFS}"
-  for _locale in $(find /usr/share/i18n/locales/); do
+  for _locale in $(command find /usr/share/i18n/locales/); do
     IFS="${_oldIFS}"
-    if arrayDoesNotContain "$(basename ${_locale})" "${PINNED_LOCALES}"; then
+    if arrayDoesNotContain "$(command basename "${_locale}")" "${PINNED_LOCALES}"; then
       rm -f "${_locale}" 2>/dev/null
     fi
   done
@@ -175,7 +177,7 @@ function pinUbuntuPackage() {
   local _package="${1}"
   checkNotEmpty package "${_package}" 1
 
-  runCommandLongOutput /usr/bin/apt-mark hold ${_package}
+  runCommandLongOutput /usr/bin/apt-mark hold "${_package}"
   local -i _rescode=$?
 
   return ${_rescode}

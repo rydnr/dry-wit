@@ -310,9 +310,9 @@ function updateFlakeLock() {
 function retrieveLatestStableNixpkgsTag() {
   local _token="${1}"
 
-  DW.import git
+  DW.import github
 
-  retrieveLatestRemoteTagInGithubMatching "nixos" "nixpkgs" '^[0-9]{2}\.[0-9]{2}$' "${_token}"
+  retrieveLatestRemoteTagInGithubMatching "nixos" "nixpkgs" '^(release-)?[0-9]{2}\.[0-9]{2}$' "${_token}"
 }
 
 # fun: nixBuild folder
