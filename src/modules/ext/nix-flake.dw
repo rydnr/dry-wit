@@ -312,10 +312,7 @@ function retrieveLatestStableNixpkgsTag() {
 
   DW.import github
 
-  # TODO: Tempororay hack
-  # retrieveLatestRemoteTagInGithubMatching "nixos" "nixpkgs" '^(release-)?[0-9]{2}\.[0-9]{2}$' "${_token}"
-  export RESULT="release-24.11"
-  return ${TRUE}
+  retrieveLatestRemoteTagInGithubMatching "nixos" "nixpkgs" '^(release-)?[0-9]{2}\.[0-9]{2}$' "${_token}"
 }
 
 # fun: nixBuild folder
