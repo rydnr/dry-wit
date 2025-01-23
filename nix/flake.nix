@@ -20,7 +20,7 @@
   description = "Nix flake for github:rydnr/dry-wit";
   inputs = rec {
     flake-utils.url = "github:numtide/flake-utils/v1.0.0";
-    nixpkgs.url = "github:NixOS/nixpkgs/24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
   };
   outputs = inputs:
     with inputs;
@@ -84,9 +84,9 @@
         defaultPackage = packages.default;
         packages = rec {
           default = dry-wit-default;
-          dry-wit-default = dry-wit-bash5;
-          dry-wit-bash5 = dry-wit-for {
-            sh = pkgs.bash_5;
+          dry-wit-default = dry-wit-bash;
+          dry-wit-bash = dry-wit-for {
+            sh = pkgs.bash;
             sh-name = "bash";
           };
           dry-wit-zsh = dry-wit-for {
@@ -97,10 +97,10 @@
             sh = pkgs.fish;
             sh-name = "fish";
           };
-          dry-wit-test-default = dry-wit-test-bash5;
-          dry-wit-test-bash5 = dry-wit-test-for {
-            dry-wit = dry-wit-bash5;
-            sh = pkgs.bash_5;
+          dry-wit-test-default = dry-wit-test-bash;
+          dry-wit-test-bash = dry-wit-test-for {
+            dry-wit = dry-wit-bash;
+            sh = pkgs.bash;
             sh-name = "bash";
           };
           dry-wit-test-zsh = dry-wit-for {
