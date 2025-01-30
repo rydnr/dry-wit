@@ -288,7 +288,7 @@ function updateFlakeLock() {
   if ! isEmpty "${_githubToken}"; then
     _args+=("--access-tokens" "github.com=${_githubToken}")
   fi
-  _result="$(command pushd "${_flakeFolder}" >/dev/null 2>&1 && command nix flake update "${_args[@]}" . 2>&1)"
+  _result="$(command pushd "${_flakeFolder}" >/dev/null 2>&1 && command nix flake update --flake "${_args[@]}" . 2>&1)"
   _rescode=$?
 
   if isTrue ${_rescode}; then
