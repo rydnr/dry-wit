@@ -35,7 +35,7 @@
         org = "rydnr";
         repo = "dry-wit";
         pname = "${org}-${repo}";
-        version = "3.0.30";
+        version = "3.0.31";
         pkgs = import nixpkgs { inherit system; };
         description = "Dry-wit bash framework";
         license = pkgs.lib.licenses.gpl3;

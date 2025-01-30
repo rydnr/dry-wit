@@ -250,7 +250,7 @@ function updateInputsInFlakeNix() {
   local -i _rescode=${FALSE}
   local _result
 
-  _result="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1 || echo "$$.ERROR.$$")"
+  _result="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1 || command echo "$$.ERROR.$$")"
   if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
     _rescode=${FALSE}
     export ERROR="$(command sed -i "s ${_oldUrl} ${_newUrl} g" "${_flakeNix}" 2>&1)"
@@ -288,7 +288,7 @@ function updateFlakeLock() {
   if ! isEmpty "${_githubToken}"; then
     _args+=("--access-tokens" "github.com=${_githubToken}")
   fi
-  _result="$(command pushd "${_flakeFolder}" >/dev/null 2>&1 && command nix flake update --flake "${_args[@]}" . 2>&1)"
+  _result="$(command pushd "${_flakeFolder}" >/dev/null 2>&1 && command nix flake update --flake . "${_args[@]}" 2>&1)"
   _rescode=$?
 
   if isTrue ${_rescode}; then
