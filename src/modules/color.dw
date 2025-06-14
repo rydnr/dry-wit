@@ -261,6 +261,29 @@ function COLOR.setCachedAllowsColors() {
   DW.setGlobalInt "${RESULT}" CACHED_ALLOWS_COLORS ${_flag};
 }
 
+# fun: COLOR.getColorValue symbol
+# api: private
+# txt: Retrieves the ANSI escape sequence for a color symbol.
+# opt: symbol: The color symbol.
+# txt: Returns 0/TRUE if the symbol is defined; 1/FALSE otherwise.
+# txt: The variable RESULT contains the escape sequence.
+# use: if COLOR.getColorValue RED; then
+# use:   echo "red: ${RESULT}";
+# use: fi
+function COLOR.getColorValue() {
+  local _symbol="${1}";
+  checkNotEmpty symbol "${_symbol}" 1;
+
+  local _value="${!_symbol}";
+
+  if isEmpty "${_value}"; then
+    return ${FALSE};
+  fi
+
+  export RESULT="${_value}";
+  return ${TRUE};
+}
+
 # fun: getColorEscapeCode name defaultColor?
 # api: public
 # txt: Retrieves the color for given name.
@@ -283,10 +306,10 @@ function getColorEscapeCode() {
 
   if allowsColors; then
     if    isNotEmpty "${_colorSymbol}" \
-       && evalConstant "${_colorSymbol}"; then
+       && COLOR.getColorValue "${_colorSymbol}"; then
        _result="${RESULT}";
     elif   isNotEmpty "${_defaultColorSymbol}" \
-        && evalConstant "${_defaultColorSymbol}"; then
+        && COLOR.getColorValue "${_defaultColorSymbol}"; then
       _result="${RESULT}";
 #    else
 #      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol} (variable: ${_colorVariableName}) (default: ${_defaultColorVariableName})";
