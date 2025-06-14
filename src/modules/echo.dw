@@ -11,40 +11,43 @@
 # txt: Returns 0/TRUE always.
 # use: echoColorizeText "done" SUCCESS;
 function echoColorizedText() {
-  local _text="${1}";
-  checkNotEmpty text "${_text}" 1;
-  local _keyword="${2}";
-  local _defaultColorName="${3}";
+  local _text="${1}"
+  checkNotEmpty text "${_text}" 1
+  local _keyword="${2}"
+  local _defaultColorName="${3}"
   if isEmpty "${_defaultColorName}"; then
-    getNoColor;
-    _defaultColorName="${RESULT}";
+    getNoColor
+    _defaultColorName="${RESULT}"
   fi
 
   if allowsColors; then
 
-    local _color;
+    local _color
 
-    getSuccessColor;
-    local _successColor="${RESULT}";
-    getFailureColor;
-    local _failureColor="${RESULT}";
+    getSuccessColor
+    local _successColor="${RESULT}"
+    getFailureColor
+    local _failureColor="${RESULT}"
     case ${_keyword} in
-      ${SUCCESS}) _color="${_successColor}";
-                  ;;
-      ${FAILURE}) _color="${_failureColor}";
-                  ;;
-      *) if isSuccessKeyword "${_text}"; then
-           _color="${_successColor}";
-         elif isFailureKeyword "${_text}"; then
-           _color="${_failureColor}";
-         else
-           _color="${_defaultColorName}";
-         fi
-         ;;
+    ${SUCCESS})
+      _color="${_successColor}"
+      ;;
+    ${FAILURE})
+      _color="${_failureColor}"
+      ;;
+    *)
+      if isSuccessKeyword "${_text}"; then
+        _color="${_successColor}"
+      elif isFailureKeyword "${_text}"; then
+        _color="${_failureColor}"
+      else
+        _color="${_defaultColorName}"
+      fi
+      ;;
     esac
-    echoColorizedTextWithColor -n "${_color}" "${_text}";
+    echoColorizedTextWithColor -n "${_color}" "${_text}"
   else
-    echo -n "${_text}";
+    echo -n "${_text}"
   fi
 }
 
@@ -57,32 +60,32 @@ function echoColorizedText() {
 # txt: Returns 0/TRUE always.
 # use: echoColorizeTextWithColor WHITE "done";
 function echoColorizedTextWithColor() {
-  local -i _flagMinusN;
+  local -i _flagMinusN
   if [ "${1}" == "-n" ]; then
-    _flagMinusN=${TRUE};
-    shift;
+    _flagMinusN=${TRUE}
+    shift
   else
-    _flagMinusN=${FALSE};
+    _flagMinusN=${FALSE}
   fi
-  local _colorName="${1}";
-  checkNotEmpty colorName "${_colorName}" 1;
-  local _text="${2}";
-  checkNotEmpty text "${_text}" 2;
+  local _colorName="${1}"
+  checkNotEmpty colorName "${_colorName}" 1
+  local _text="${2}"
+  checkNotEmpty text "${_text}" 2
 
-  allowsColors;
-  local -i _allowsColors=$?;
+  allowsColors
+  local -i _allowsColors=$?
 
   if isTrue ${_allowsColors}; then
     if isTrue ${_flagMinusN}; then
-      echoInColor -n "${_colorName}" "${_text}";
+      echoInColor -n "${_colorName}" "${_text}"
     else
-      echoInColor "${_colorName}" "${_text}";
+      echoInColor "${_colorName}" "${_text}"
     fi
-    resetColor;
+    resetColor
   elif isTrue ${_flagMinusN}; then
-    echo -n "${_text}";
+    echo -n "${_text}"
   else
-    echo "${_text}";
+    echo "${_text}"
   fi
 }
 
@@ -95,41 +98,42 @@ function echoColorizedTextWithColor() {
 # txt: Returns 0/TRUE always.
 # use: echoInColor -n RED "Work in progress";
 function echoInColor() {
-  local _flagMinusN;
+  local _flagMinusN
   if [ "${1}" == "-n" ]; then
-    _flagMinusN=${TRUE};
-    shift;
+    _flagMinusN=${TRUE}
+    shift
   else
-    _flagMinusN=${FALSE};
+    _flagMinusN=${FALSE}
   fi
-  local _color="${1}";
-  checkNotEmpty colorName "${_color}" 1;
+  local _color="${1}"
+  checkNotEmpty colorName "${_color}" 1
 
-  local _text="${2}";
-  checkNotEmpty text "${_text}" 2;
+  local _text="${2}"
+  checkNotEmpty text "${_text}" 2
 
-  local _colorAux="";
-  local -i _inColor=${FALSE};
-  local _noColor;
+  local _colorAux=""
+  local -i _inColor=${FALSE}
+  local _noColor
   if allowsColors; then
-    _inColor=${TRUE};
-    getColorEscapeCode "${_color}";
-    _colorAux="${RESULT}";
-    getNoColor;
-    _noColor="${!RESULT:-}";
+    _inColor=${TRUE}
+    getColorValue "${_color}"
+    _colorAux="${RESULT}"
+    getNoColor
+    getColorValue "${RESULT}"
+    _noColor="${RESULT}"
   fi
 
   if isTrue ${_flagMinusN}; then
     if isTrue ${_inColor}; then
-      echo -en "${_colorAux}${_text}${_noColor}";
+      echo -en "${_colorAux}${_text}${_noColor}"
     else
-      echo -n "${_text}";
+      echo -n "${_text}"
     fi
   else
     if isTrue ${_inColor}; then
-      echo -e "${_colorAux}${_text}${_noColor}";
+      echo -e "${_colorAux}${_text}${_noColor}"
     else
-      echo "${_text}";
+      echo "${_text}"
     fi
   fi
 }
