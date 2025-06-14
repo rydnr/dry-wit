@@ -2283,6 +2283,15 @@ function LOGGING.isInternal() {
     _rescode=${TRUE}
   fi
 
+  if isFalse ${_rescode}; then
+    LOGGING.getInvalidLogCategoriesVariableName
+    local -n _invalidLogCategories="${RESULT}"
+
+    if arrayContains "${_category}" "${_invalidLogCategories[@]}"; then
+      _rescode=${TRUE}
+    fi
+  fi
+
   return ${_rescode}
 
 }
