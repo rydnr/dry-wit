@@ -6,9 +6,15 @@ adding new scripts.
 
 ## Coding style
 
+- All scripts in `src/` are Bash scripts.
+- Functions must be declared using `function name() {` syntax.
 - **Indentation**: Use two spaces for each indentation level. No hard tabs.
-  This matches `.editorconfig` which defines `indent_style = space` and
-  `indent_size = 2` for `*.{dw,sh}` files.
+- Each `.dw` module begins with metadata comments:
+  - `# mod: <module>`
+  - `# api: public|private`
+  - `# txt: <description>`
+- Document functions with comment blocks before the definition using the same
+  style (`# fun:`, `# api:`, `# txt:`, `# opt:` and `# use:` lines).
 - **File footer**: Most source files end with the following Vim modeline. Keep
   this line as the last line in all `.dw` and `.sh` files:
   ```bash
@@ -23,7 +29,13 @@ adding new scripts.
     # body indented two spaces
   }
   ```
+- Use `TRUE` (0) and `FALSE` (1) constants and store command results in the
+  `RESULT` variable, unless an error is detected. In that case, don't use `RESULT`,
+  and use `ERROR` to give details about the error.
 - **Trailing newline**: Ensure every file ends with a newline character.
 
 These guidelines apply to all code within the `src` directory and its
 subdirectories.
+
+## Testing
+- Run `bash test/test-all.sh` before committing changes to ensure all tests pass.
