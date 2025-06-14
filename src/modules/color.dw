@@ -276,20 +276,17 @@ function getColorEscapeCode() {
   local _defaultColorSymbol="${2}";
   if isEmpty "${_defaultColorSymbol}"; then
     getNoColor;
-   _defaultColorSymbol="${RESULT}";
+    _defaultColorSymbol="${RESULT}";
   fi
-  local _result;
+
+  local _result="";
   local -i _rescode;
 
   if allowsColors; then
-    if    isNotEmpty "${_colorSymbol}" \
-       && evalConstant "${_colorSymbol}"; then
-       _result="${RESULT}";
-    elif   isNotEmpty "${_defaultColorSymbol}" \
-        && evalConstant "${_defaultColorSymbol}"; then
-      _result="${RESULT}";
-#    else
-#      exitWithErrorCode INTERNAL_ERROR "Error getting color ${_colorSymbol} (variable: ${_colorVariableName}) (default: ${_defaultColorVariableName})";
+    if isNotEmpty "${_colorSymbol}" && isNotEmpty "${!_colorSymbol:-}"; then
+      _result="${!_colorSymbol}";
+    elif isNotEmpty "${_defaultColorSymbol}" && isNotEmpty "${!_defaultColorSymbol:-}"; then
+      _result="${!_defaultColorSymbol}";
     fi
   fi
 

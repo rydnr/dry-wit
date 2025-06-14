@@ -116,8 +116,7 @@ function echoInColor() {
     getColorEscapeCode "${_color}";
     _colorAux="${RESULT}";
     getNoColor;
-    getColorEscapeCode "${RESULT}";
-    _noColor="${RESULT}";
+    _noColor="${!RESULT:-}";
   fi
 
   if isTrue ${_flagMinusN}; then
