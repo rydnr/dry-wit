@@ -21,23 +21,46 @@ function test_tearDown() {
 DW.import git;
 
 function retrieveRemoteHead_works_for_drywit_test() {
-  local -i rescode;
-  local _result;
-  retrieveRemoteHead ${PWD} master;
-  _rescode=$?;
-  _result="${RESULT}";
-  Assert.isTrue ${_rescode} "retrieveRemoteHead . master failed";
-  Assert.isNotEmpty "${_result}" "'retrieveRemoteHead . master' returned nothing";
+  local tmp
+  tmp=$(mktemp -d)
+  PATH="${tmp}:$PATH"
+  cat >"${tmp}/git" <<'EOS'
+#!/usr/bin/env bash
+if [[ $1 == "-C" ]]; then shift 2; fi
+if [[ $1 == "ls-remote" ]]; then
+  echo "abcdef refs/remotes/origin/master"
+else
+  exit 1
+fi
+EOS
+  chmod +x "${tmp}/git"
+  retrieveRemoteHead "${PWD}" master
+  local res=$?
+  local result="${RESULT}"
+  rm -rf "${tmp}"
+  Assert.isTrue ${res} "retrieveRemoteHead . master failed"
+  Assert.areEqual "abcdef" "${result}" "Unexpected hash"
 }
 
 function retrieveRemoteHeadFromURL_works_for_drywit_test() {
-  local -i rescode;
-  local _result;
-  retrieveRemoteHeadFromURL https://github.com/rydnr/dry-wit master;
-  _rescode=$?;
-  _result="${RESULT}";
-  Assert.isTrue ${_rescode} "'retrieveRemoteHeadFromURL https://github.com/rydnr/dry-wit master' failed";
-  Assert.isNotEmpty "${_result}" "'retrieveRemoteHeadFromURL https://github.com/rydnr/dry-wit master' returned nothing";
+  local tmp
+  tmp=$(mktemp -d)
+  PATH="${tmp}:$PATH"
+  cat >"${tmp}/git" <<'EOS'
+#!/usr/bin/env bash
+if [[ $1 == "ls-remote" ]]; then
+  printf '123456\trefs/heads/master\n'
+else
+  exit 1
+fi
+EOS
+  chmod +x "${tmp}/git"
+  retrieveRemoteHeadFromURL https://example.com master
+  local res=$?
+  local result="${RESULT}"
+  rm -rf "${tmp}"
+  Assert.isTrue ${res} "retrieveRemoteHeadFromURL failed"
+  Assert.areEqual "123456" "${result}" "Unexpected hash"
 }
 
 setScriptDescription "Runs all tests implemented for git.dw";

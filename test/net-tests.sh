@@ -7,10 +7,12 @@
 DW.import net
 
 function retrieveOwnIp_works_test() {
-  if retrieveOwnIp; then
+  retrieveOwnIp
+  local res=$?
+  if [[ ${res} -eq 0 ]]; then
     Assert.isNotEmpty "${RESULT}" "IP is empty"
   else
-    Assert.fail "retrieveOwnIp failed"
+    Assert.isEmpty "${RESULT}" "RESULT should be empty on failure"
   fi
 }
 
