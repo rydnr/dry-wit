@@ -6,7 +6,9 @@ TEST_HOME="$(mktemp -d /tmp/dry-wit-test-home.XXXXXX)"
 trap 'rm -rf "${TEST_HOME}"' EXIT
 
 mkdir -p "${TEST_HOME}/.dry-wit/src/modules"
+mkdir -p "${TEST_HOME}/.dry-wit/src/modules/ext"
 cp "${REPO_DIR}"/src/modules/*.dw "${TEST_HOME}/.dry-wit/src/modules/" 2>/dev/null
+cp "${REPO_DIR}"/src/modules/ext/*.dw "${TEST_HOME}/.dry-wit/src/modules/ext/" 2>/dev/null
 cp "${REPO_DIR}"/src/dry-wit* "${TEST_HOME}/.dry-wit/src/" 2>/dev/null
 
 export HOME="${TEST_HOME}"

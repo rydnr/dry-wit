@@ -114,9 +114,9 @@ function retrieveRemoteHead() {
 
   createTempFile;
   local _outputFile="${RESULT}";
-  command git -C "${_repo}" ls-remote 2> /dev/null | command grep "${_branch}" | command grep 'refs/remotes' | command awk '{print $1;}' > "${_outputFile}";
+  command git -C "${_repo}" ls-remote origin "refs/heads/${_branch}" > "${_outputFile}" 2> /dev/null;
   _rescode=$?;
-  _result="$(<"${_outputFile}")";
+  _result="$(command awk 'NR == 1 { print $1; }' "${_outputFile}")";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
@@ -151,10 +151,10 @@ function retrieveRemoteHeadFromURL() {
 
   createTempFile;
   local _outputFile="${RESULT}";
-  command git ls-remote "${_url}" 2> /dev/null | command grep "${_branch}" | command head -n 1 | command cut -f 1 > "${_outputFile}";
+  command git ls-remote "${_url}" "refs/heads/${_branch}" > "${_outputFile}" 2> /dev/null;
   _rescode=$?;
 
-  _result="$(<"${_outputFile}")";
+  _result="$(command awk 'NR == 1 { print $1; }' "${_outputFile}")";
 
   if isEmpty "${_result}"; then
     _rescode=${FALSE};
