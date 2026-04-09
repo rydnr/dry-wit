@@ -7,11 +7,30 @@
 DW.import net
 
 function retrieveOwnIp_works_test() {
+  local _originalRetrieveIfaces
+  _originalRetrieveIfaces="$(typeset -f retrieveIfaces)"
+  local _originalRetrieveIp
+  _originalRetrieveIp="$(typeset -f retrieveIp)"
+  local _expectedIp="192.0.2.10"
+
+  function retrieveIfaces() {
+    export RESULT="eth0"
+    return ${TRUE}
+  }
+
+  function retrieveIp() {
+    export RESULT="${_expectedIp}"
+    return ${TRUE}
+  }
+
   if retrieveOwnIp; then
-    Assert.isNotEmpty "${RESULT}" "IP is empty"
+    Assert.areEqual "${_expectedIp}" "${RESULT}" "Unexpected IP"
   else
     Assert.fail "retrieveOwnIp failed"
   fi
+
+  eval "${_originalRetrieveIfaces}"
+  eval "${_originalRetrieveIp}"
 }
 
 setScriptDescription "Runs all tests implemented for net.dw"

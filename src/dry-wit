@@ -1021,8 +1021,8 @@ function findModule() {
 
   local _dryWitPath="${HOME}/.dry-wit"
 
-  local _scriptFolder
-  _scriptFolder=$(command dirname "${_scriptPath}")
+  DW.getScriptFolder
+  local _scriptFolder="${RESULT}"
   local _oldIFS="${IFS}"
 
   IFS="${DWIFS}"
@@ -1150,21 +1150,26 @@ function BOOTSTRAP.isNested() {
 # txt: Returns 0/TRUE always.
 # use: DW.initScriptName $*;
 function DW.initScriptName() {
+  local _scriptReference
   local _scriptName
   local _scriptPath
   local _scriptFolder
   if [ "$1" == "" ]; then
-    _scriptName="$(basename "${0}" 2>&1)"
-    _scriptPath="${0}"
-    _scriptFolder="$(dirname "${0}" 2>&1)"
+    _scriptReference="${0}"
   else
-    _scriptName="$(basename "${1}" 2>&1)"
-    _scriptPath="${1}"
-    _scriptFolder="$(dirname "${1}" 2>&1)"
-    shift
+    _scriptReference="${1}"
   fi
-  if [ "${_scriptFolder}" == "." ]; then
+
+  _scriptName="${_scriptReference##*/}"
+  _scriptPath="${_scriptReference}"
+  _scriptFolder="${_scriptReference%/*}"
+
+  if [ "${_scriptFolder}" == "${_scriptReference}" ]; then
     _scriptFolder="${PWD}"
+  elif [ "${_scriptFolder}" == "." ]; then
+    _scriptFolder="${PWD}"
+  elif [ -z "${_scriptFolder}" ]; then
+    _scriptFolder="/"
   fi
 
   BOOTSTRAP.setScriptName "${_scriptName}"

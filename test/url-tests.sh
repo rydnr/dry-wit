@@ -32,9 +32,19 @@ function extractPathSegmentFromUrl_works_test() {
 }
 
 function urlIsUp_works_test() {
-  local _url="https://www.google.com"
+  DW.import url
+  local _file
+  _file="$(mktemp /tmp/url-tests.XXXXXX)"
+  local _url="file://${_file}"
+  local -i _rescode=${FALSE}
+
+  echo "ok" > "${_file}"
+
   urlIsUp "${_url}"
-  local -i _rescode=$?
+  _rescode=$?
+
+  rm -f "${_file}"
+
   Assert.isTrue ${_rescode} "urlIsUp failed for ${_url}"
 }
 

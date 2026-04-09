@@ -87,12 +87,12 @@ function urlIsUp() {
 
   which curl >/dev/null 2>&1
   if isTrue $?; then
-    $(which curl) -q "${_url}" >/dev/null 2>&1
+    curl -fsSL -o /dev/null "${_url}" >/dev/null 2>&1
     _rescode=$?
   else
     which wget >/dev/null 2>&1
     if isTrue $?; then
-      $(which wget) -q "${_url}" >/dev/null 2>&1
+      wget -q --spider "${_url}" >/dev/null 2>&1
       _rescode=$?
     fi
   fi
