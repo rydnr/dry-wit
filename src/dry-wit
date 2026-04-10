@@ -762,7 +762,7 @@ function BOOTSTRAP.isFunctionDefined() {
   local _function="${1}"
   BOOTSTRAP.checkNotEmpty name "${_function}" 1
 
-  command type "${_function}" 2>/dev/null | command grep -q 'function'
+  declare -F -- "${_function}" >/dev/null 2>&1
   local -i _rescode=$?
 
   return ${_rescode}
