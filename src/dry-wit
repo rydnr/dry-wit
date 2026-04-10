@@ -808,7 +808,7 @@ function BOOTSTRAP.toUpper() {
   local _text="${1}"
   BOOTSTRAP.checkNotEmpty text "${_text}" 1
 
-  local _result=$(echo "${_text}" | awk '{print toupper($0);}')
+  local _result="${_text^^}"
   export RESULT="${_result}"
 }
 
@@ -823,7 +823,7 @@ function BOOTSTRAP.toLower() {
   local _text="${1}"
   BOOTSTRAP.checkNotEmpty text "${_text}" 1
 
-  local _result=$(echo "${_text}" | awk '{print tolower($0);}')
+  local _result="${_text,,}"
   export RESULT="${_result}"
 }
 
