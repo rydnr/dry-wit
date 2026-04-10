@@ -40,3 +40,16 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   average `1.549400s`, minimum `1.504000s`, maximum `1.583000s`
 - Notes:
   Future maintenance cycles should only commit when their benchmark result is lower than this entry's recorded average and the full test suite remains green.
+
+## 2026-04-10 Cycle 3
+
+- Scope: Simplified module loading by removing an unused script-path lookup and invalid `BASH_SOURCE[0]`-based module probes from `findModule()`.
+- Test command: `bash test/test-all.sh`
+- Test result: `168/168` passed, `0` failed
+- Benchmark target: minimal dry-wit startup for a no-op script
+- Benchmark harness:
+  `TIMEFORMAT=%R; for i in $(seq 1 20); do { time env PATH="/home/chous/github/rydnr/dry-wit/src:$PATH" /tmp/drywit-noop.eboqyx.sh >/dev/null; } 2>>/tmp/drywit-cycle-module-after.times; done`
+- Execution time:
+  average `1.396350s`, minimum `1.361000s`, maximum `1.421000s`
+- Notes:
+  This cycle improved the previous logged gate of `1.549400s` while keeping the full suite green.

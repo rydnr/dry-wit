@@ -1014,11 +1014,6 @@ function findModule() {
   getModulePath
   local _modulePath="${RESULT}"
 
-  DW.getScriptPath
-  local _scriptPath="${RESULT}"
-
-  local _localPath="${BASH_SOURCE[0]}"
-
   local _dryWitPath="${HOME}/.dry-wit"
 
   DW.getScriptFolder
@@ -1035,11 +1030,7 @@ function findModule() {
     "${_scriptFolder}/${_module}.dw" \
     "${_scriptFolder}/.dw/${_module}.dw" \
     "${_scriptFolder}/.${_module}/${_module}.dw" \
-    "${_scriptFolder}/.${_module}/.dw/${_module}.dw" \
-    "${_localPath}/${_module}.dw" \
-    "${_localPath}/.dw/${_module}.dw" \
-    "${_localPath}/${_module}/${_module}.dw" \
-    "${_localPath}/${_module}/.dw/${_module}.dw"; do
+    "${_scriptFolder}/.${_module}/.dw/${_module}.dw"; do
     IFS="${_oldIFS}"
     BOOTSTRAP.logTrace -n "Checking if ${_result} exists"
     if [[ -e "${_result}" ]]; then
