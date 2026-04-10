@@ -68,3 +68,23 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   plain average `6.156909s`, color average `7.293668s`, right-aligned average `11.121831s`
 - Notes:
   This establishes the first committed logging benchmark for future logging-focused maintenance cycles. The harness lives in `test/logging-benchmark.sh` and `test/logging-benchmark-target.sh`.
+
+## 2026-04-10 Logging Research Cycle
+
+- Scope: Researched alternative logging approaches, replaced per-call `date` command substitution with Bash builtin time formatting, and prototyped timestamp/category-prefix caching in the current logger.
+- Test command: `bash test/test-all.sh`
+- Test result: `168/168` passed, `0` failed
+- Benchmark target: repeated logging to a captured output file for three scenarios: plain `logInfo`, color-enabled `logInfo`, and right-aligned `logInfo -n` + `logInfoResult`
+- Benchmark harness:
+  `bash test/logging-benchmark.sh 5 10`
+- Execution time before the change:
+  plain average `6.156909s`, color average `7.293668s`, right-aligned average `11.121831s`
+- Execution time after the change:
+  plain average `5.165392s`, color average `6.360054s`, right-aligned average `11.164379s`
+- Research findings:
+  Bash command substitution runs in a subshell, so `$(date ...)` in the hot path is more expensive than builtin formatting.
+  Bash builtin `printf` supports `-v` and `%(datefmt)T`, which can replace external `date` for log timestamps.
+  `tput` is terminfo-backed and portable, but it should stay out of hot logging loops.
+  xterm-compatible terminals accept standard SGR color sequences directly, so an ANSI-fast optional backend is feasible.
+- Notes:
+  This cycle is recorded as research rather than a commit gate win because plain and color logging improved, but the long-run right-aligned scenario regressed slightly. The most promising next step is a user-selectable simple logger mode with a fixed prefix and without `FUNCNAME`-based category derivation.

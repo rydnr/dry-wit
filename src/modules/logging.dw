@@ -2306,6 +2306,22 @@ function LOGGING.buildLogCategoryPrefix() {
   local _separator="${1}"
   checkNotEmpty separator "${_separator}" 1
 
+  LOGGING.getModuleName
+  local _moduleName="${RESULT}"
+  local _funcnameKey="${FUNCNAME[*]}"
+
+  DW.getGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX_FUNCNAMES
+  local _cachedFuncnames="${RESULT}"
+  DW.getGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX_SEPARATOR
+  local _cachedSeparator="${RESULT}"
+  if areEqual "${_cachedFuncnames}" "${_funcnameKey}" &&
+    areEqual "${_cachedSeparator}" "${_separator}"; then
+    DW.getGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX
+    if isNotEmpty "${RESULT}"; then
+      return ${TRUE}
+    fi
+  fi
+
   local _result=""
   local _oldIFS="${IFS}"
 
@@ -2332,6 +2348,9 @@ function LOGGING.buildLogCategoryPrefix() {
     _result="${RESULT}"
   fi
 
+  DW.setGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX_FUNCNAMES "${_funcnameKey}"
+  DW.setGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX_SEPARATOR "${_separator}"
+  DW.setGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX "${_result}"
   export RESULT="${_result}"
 
   return ${TRUE}
@@ -2456,7 +2475,33 @@ function LOGGING.retrieveLogTimestamp() {
   if isEmpty "${_format}"; then
     _format="+%Y/%m/%d %H:%M:%S"
   fi
-  export RESULT="$(date "${_format}")"
+
+  if startsWith "${_format}" "+"; then
+    _format="${_format:1}"
+  fi
+
+  local _moduleName
+  LOGGING.getModuleName
+  _moduleName="${RESULT}"
+
+  local _currentEpoch
+  printf -v _currentEpoch "%(%s)T" -1
+
+  DW.getGlobalInt "${_moduleName}" CACHED_LOG_TIMESTAMP_EPOCH -1
+  local _cachedEpoch="${RESULT}"
+
+  if areEqual "${_cachedEpoch}" "${_currentEpoch}"; then
+    DW.getGlobalString "${_moduleName}" CACHED_LOG_TIMESTAMP
+    if isNotEmpty "${RESULT}"; then
+      return ${TRUE}
+    fi
+  fi
+
+  local _result
+  printf -v _result "%(${_format})T" "${_currentEpoch}"
+  DW.setGlobalInt "${_moduleName}" CACHED_LOG_TIMESTAMP_EPOCH "${_currentEpoch}"
+  DW.setGlobalString "${_moduleName}" CACHED_LOG_TIMESTAMP "${_result}"
+  export RESULT="${_result}"
 }
 
 # fun: LOGGING.getOutcomeTextPositionInLogOutcome
@@ -3275,6 +3320,21 @@ function LOGGING.resetState() {
 
   # env: LOG_FILES: The files to write logging to.
   DW.declareGlobalArray "${_moduleName}" LOG_FILES
+
+  # env: CACHED_LOG_TIMESTAMP_EPOCH: The last epoch second used to build the timestamp.
+  DW.declareGlobalInt "${_moduleName}" CACHED_LOG_TIMESTAMP_EPOCH -1
+
+  # env: CACHED_LOG_TIMESTAMP: The cached formatted log timestamp.
+  DW.declareGlobalString "${_moduleName}" CACHED_LOG_TIMESTAMP
+
+  # env: CACHED_LOG_CATEGORY_PREFIX_FUNCNAMES: The FUNCNAME stack associated to the cached category prefix.
+  DW.declareGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX_FUNCNAMES
+
+  # env: CACHED_LOG_CATEGORY_PREFIX_SEPARATOR: The separator associated to the cached category prefix.
+  DW.declareGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX_SEPARATOR
+
+  # env: CACHED_LOG_CATEGORY_PREFIX: The cached formatted log category prefix.
+  DW.declareGlobalString "${_moduleName}" CACHED_LOG_CATEGORY_PREFIX
 
   # env: NESTED_TASK_IN_PROGRESS_MARKER: The symbols used to represent nested tasks in progress.
   setNestedTaskInProgressMarker "...."
