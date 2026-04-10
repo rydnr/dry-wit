@@ -40,6 +40,284 @@ function LOGGING.retrieveCurrentLogCategory() {
   return ${TRUE}
 }
 
+# fun: LOGGING.retrieveBackend
+# api: private
+# txt: Retrieves the logging backend.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the backend name.
+# use: LOGGING.retrieveBackend;
+function LOGGING.retrieveBackend() {
+  local _result="${LOGGING_BACKEND}"
+
+  if isEmpty "${_result}"; then
+    _result="standard"
+  fi
+
+  export RESULT="${_result}"
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.usesCompactBackend
+# api: private
+# txt: Checks whether the logging backend uses the compact renderer.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.usesCompactBackend; then
+# use:   echo "compact";
+# use: fi
+function LOGGING.usesCompactBackend() {
+  LOGGING.retrieveBackend
+
+  if areEqual "${RESULT}" "simple" || areEqual "${RESULT}" "ansi-fast"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.usesAnsiFastBackend
+# api: private
+# txt: Checks whether the logging backend uses the fast ANSI renderer.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.usesAnsiFastBackend; then
+# use:   echo "ansi-fast";
+# use: fi
+function LOGGING.usesAnsiFastBackend() {
+  LOGGING.retrieveBackend
+
+  if areEqual "${RESULT}" "ansi-fast"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.allowsAnsiFastColors
+# api: private
+# txt: Checks whether fast ANSI colors can be used.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.allowsAnsiFastColors; then
+# use:   echo "fast colors";
+# use: fi
+function LOGGING.allowsAnsiFastColors() {
+  local -i _rescode=${FALSE}
+
+  if LOGGING.usesAnsiFastBackend &&
+    isTrue "${ENABLE_COLOR}" &&
+    isNotEmpty "${TERM}" &&
+    ! areEqual "${TERM}" "dumb"; then
+    _rescode=${TRUE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: LOGGING.retrieveLevelLabel level?
+# api: private
+# txt: Retrieves the label used in compact log prefixes.
+# opt: level: The log level. Optional.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.retrieveLevelLabel INFO;
+function LOGGING.retrieveLevelLabel() {
+  local _level="${1}"
+
+  if isEmpty "${_level}"; then
+    getLastLogLevel
+    _level="${RESULT}"
+  fi
+
+  if isEmpty "${_level}"; then
+    _level="INFO"
+  fi
+
+  export RESULT="${_level}"
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.retrieveLevelColorName level
+# api: private
+# txt: Retrieves the color associated to a log level.
+# opt: level: The log level.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.retrieveLevelColorName INFO;
+function LOGGING.retrieveLevelColorName() {
+  local _level="${1}"
+  checkNotEmpty level "${_level}" 1
+
+  local _result="GRAY"
+
+  case "${_level}" in
+    TRACE)
+      _result="BLUE"
+      ;;
+    DEBUG)
+      _result="MAGENTA"
+      ;;
+    INFO)
+      _result="CYAN"
+      ;;
+    WARN)
+      _result="YELLOW"
+      ;;
+    ERROR)
+      _result="RED"
+      ;;
+    *)
+      ;;
+  esac
+
+  export RESULT="${_result}"
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.retrieveOutcomeColorName keyword
+# api: private
+# txt: Retrieves the color associated to an outcome keyword.
+# opt: keyword: The outcome keyword.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.retrieveOutcomeColorName SUCCESS;
+function LOGGING.retrieveOutcomeColorName() {
+  local _keyword="${1}"
+  checkNotEmpty keyword "${_keyword}" 1
+
+  local _result="GRAY"
+
+  case "${_keyword}" in
+    SUCCESS)
+      _result="GREEN"
+      ;;
+    FAILURE)
+      _result="RED"
+      ;;
+    NEUTRAL)
+      _result="YELLOW"
+      ;;
+    IN_PROGRESS)
+      _result="BLUE"
+      ;;
+    *)
+      ;;
+  esac
+
+  export RESULT="${_result}"
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.echoAnsiFastText colorName text
+# api: private
+# txt: Prints given text with fast ANSI colors when enabled.
+# opt: colorName: The color name.
+# opt: text: The text to print.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.echoAnsiFastText CYAN "INFO";
+function LOGGING.echoAnsiFastText() {
+  local _colorName="${1}"
+  checkNotEmpty colorName "${_colorName}" 1
+  local _text="${2}"
+  checkNotEmpty text "${_text}" 2
+
+  if LOGGING.allowsAnsiFastColors; then
+    getColorValue "${_colorName}"
+    local _colorValue="${RESULT}"
+    getNoColor
+    getColorValue "${RESULT}"
+    local _noColorValue="${RESULT}"
+    printf "%s%s%s" "${_colorValue}" "${_text}" "${_noColorValue}"
+  else
+    printf "%s" "${_text}"
+  fi
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.buildSimpleLogPrefix
+# api: private
+# txt: Builds the compact log prefix.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the compact prefix.
+# use: LOGGING.buildSimpleLogPrefix;
+function LOGGING.buildSimpleLogPrefix() {
+  LOGGING.retrieveLogTimestamp
+  local _timestamp="${RESULT}"
+  LOGGING.retrieveLevelLabel
+  local _level="${RESULT}"
+
+  export RESULT="[${_timestamp} ${_level}] "
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.echoSimpleLogPrefix
+# api: private
+# txt: Prints the compact log prefix.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.echoSimpleLogPrefix;
+function LOGGING.echoSimpleLogPrefix() {
+  LOGGING.retrieveLogTimestamp
+  local _timestamp="${RESULT}"
+  LOGGING.retrieveLevelLabel
+  local _level="${RESULT}"
+  local _plainPrefix="[${_timestamp} ${_level}] "
+
+  if LOGGING.usesAnsiFastBackend; then
+    printf "[%s " "${_timestamp}"
+    LOGGING.retrieveLevelColorName "${_level}"
+    LOGGING.echoAnsiFastText "${RESULT}" "${_level}"
+    printf "] "
+  else
+    printf "%s" "${_plainPrefix}"
+  fi
+
+  LOGGING.logToFiles "${_plainPrefix}"
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.echoSimpleLogOutcome keyword text
+# api: private
+# txt: Prints the compact log outcome.
+# opt: keyword: The outcome keyword.
+# opt: text: The outcome text.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.echoSimpleLogOutcome SUCCESS "done";
+function LOGGING.echoSimpleLogOutcome() {
+  local _keyword="${1}"
+  checkNotEmpty keyword "${_keyword}" 1
+  shift
+  local _text="${@}"
+  checkNotEmpty text "${_text}" 2
+
+  LOGGING.peekLog
+  local _inProgressMessage="${RESULT}"
+
+  LOGGING.buildSimpleLogPrefix
+  local _logPrefix="${RESULT}"
+
+  if rightJustificationEnabled; then
+    LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}"
+  else
+    printf " ... "
+  fi
+
+  local _plainOutcome="[${_text}]"
+
+  if LOGGING.usesAnsiFastBackend; then
+    printf "["
+    LOGGING.retrieveOutcomeColorName "${_keyword}"
+    LOGGING.echoAnsiFastText "${RESULT}" "${_text}"
+    printf "]"
+  else
+    printf "%s" "${_plainOutcome}"
+  fi
+
+  LOGGING.logToFiles "${_plainOutcome}"
+
+  return ${TRUE}
+}
+
 # fun: LOGGING.buildDefaultLogCategory
 # api: private
 # txt: Builds the default log category.
@@ -1120,6 +1398,11 @@ function LOGGING.buildLogPrefix() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.echoLogPrefix;
 function LOGGING.echoLogPrefix() {
+  if LOGGING.usesCompactBackend; then
+    LOGGING.echoSimpleLogPrefix
+    return ${TRUE}
+  fi
+
   allowsColors
   local -i _allowsColors=$?
 
@@ -1160,6 +1443,11 @@ function LOGGING.echoLogOutcome() {
   shift
   local _text="${@}"
   checkNotEmpty text "${_text}" 2
+
+  if LOGGING.usesCompactBackend; then
+    LOGGING.echoSimpleLogOutcome "${_keyword}" "${_text}"
+    return ${TRUE}
+  fi
 
   local -n _logOutcomeColors
   allowsColors
@@ -1586,10 +1874,15 @@ function LOGGING.logInProgressNested() {
   LOGGING.echoLogPrefix
   LOGGING.peekLog
   local _actualMessage="${RESULT}"
-  getDefaultLogPrefixColor
-  local _defaultLogPrefixColor="${RESULT}"
   LOGGING.setLastLogLevel "${_level}"
-  echoColorizedText "${_actualMessage}" "" "${_defaultLogPrefixColor}"
+
+  if LOGGING.usesCompactBackend; then
+    printf "%s" "${_actualMessage}"
+  else
+    getDefaultLogPrefixColor
+    local _defaultLogPrefixColor="${RESULT}"
+    echoColorizedText "${_actualMessage}" "" "${_defaultLogPrefixColor}"
+  fi
   LOGGING.logToFiles "${_actualMessage}"
   LOGGING.logToFilesAnEmptyLine
 }
@@ -1657,10 +1950,13 @@ function LOGGING.logInProgressNoNested() {
   LOGGING.pushLog "${_message}"
   LOGGING.echoLogPrefix
 
-  getDefaultLogPrefixColor
-  local _defaultLogPrefixColor="${RESULT}"
-
-  echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}"
+  if LOGGING.usesCompactBackend; then
+    printf "%s" "${_message}"
+  else
+    getDefaultLogPrefixColor
+    local _defaultLogPrefixColor="${RESULT}"
+    echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}"
+  fi
   LOGGING.logToFiles "${_message}"
   LOGGING.logToFilesAnEmptyLine
 }
@@ -3420,4 +3716,6 @@ function LOGGING.resetState() {
 }
 # env: ENABLE_RIGHT_JUSTIFIED_LOGGING: Whether to justify text to the right when printing outcomes in log messages. Defaults to ${FALSE};
 defineEnvVar ENABLE_RIGHT_JUSTIFIED_LOGGING MANDATORY "Whether to justify text to the right when printing outcomes in log messages" ${FALSE}
+# env: LOGGING_BACKEND: The logging backend to use (standard, simple, ansi-fast). Defaults to standard;
+defineEnvVar LOGGING_BACKEND MANDATORY "The logging backend to use (standard, simple, ansi-fast)" standard
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

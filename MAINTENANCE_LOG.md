@@ -86,5 +86,32 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   Bash builtin `printf` supports `-v` and `%(datefmt)T`, which can replace external `date` for log timestamps.
   `tput` is terminfo-backed and portable, but it should stay out of hot logging loops.
   xterm-compatible terminals accept standard SGR color sequences directly, so an ANSI-fast optional backend is feasible.
+- Research links:
+  Bash command substitution: <https://www.gnu.org/software/bash/manual/bash.html?from=20421>
+  Bash builtins including `printf -v` and `%(datefmt)T`: <https://www.gnu.org/s/bash/manual/html_node/Bash-Builtins.html>
+  `tput` and terminfo capabilities: <https://invisible-island.net/ncurses/man/tput.1.html>
+  xterm SGR control sequences: <https://www.xfree86.org/current/ctlseqs.html>
 - Notes:
   This cycle is recorded as research rather than a commit gate win because plain and color logging improved, but the long-run right-aligned scenario regressed slightly. The most promising next step is a user-selectable simple logger mode with a fixed prefix and without `FUNCNAME`-based category derivation.
+
+## 2026-04-10 Logging Cycle 2
+
+- Scope: Added user-selectable `standard`, `simple`, and `ansi-fast` logging backends while keeping the public logging API unchanged. Also kept the timestamp and category-prefix caches in the standard backend.
+- Test command: `bash test/test-all.sh`
+- Test result: `168/168` passed, `0` failed
+- Benchmark target: repeated logging to a captured output file for three scenarios: plain `logInfo`, color-enabled `logInfo`, and right-aligned `logInfo -n` + `logInfoResult`
+- Benchmark harness:
+  `bash test/logging-benchmark.sh 5 10`
+- Standard backend:
+  plain average `5.165392s`, color average `6.360054s`, right-aligned average `11.164379s`
+- Simple backend:
+  plain average `4.616885s`, color average `4.664706s`, right-aligned average `12.386227s`
+- ANSI-fast backend:
+  plain average `4.620926s`, color average `4.754460s`, right-aligned average `12.412064s`
+- Research links:
+  Bash command substitution: <https://www.gnu.org/software/bash/manual/bash.html?from=20421>
+  Bash builtins including `printf -v` and `%(datefmt)T`: <https://www.gnu.org/s/bash/manual/html_node/Bash-Builtins.html>
+  `tput` and terminfo capabilities: <https://invisible-island.net/ncurses/man/tput.1.html>
+  xterm SGR control sequences: <https://www.xfree86.org/current/ctlseqs.html>
+- Notes:
+  `simple` and `ansi-fast` are clear wins for plain and color logging because they skip namespace/category derivation and the standard token renderer. They are not wins for right-aligned logging, where spacing and completion handling still dominate. `ansi-fast` is slightly faster than the standard color path but not meaningfully faster than `simple`, so the main value of `ansi-fast` is colored compact output rather than extra speed over `simple`.
