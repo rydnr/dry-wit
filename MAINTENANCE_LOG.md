@@ -53,3 +53,18 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   average `1.396350s`, minimum `1.361000s`, maximum `1.421000s`
 - Notes:
   This cycle improved the previous logged gate of `1.549400s` while keeping the full suite green.
+
+## 2026-04-10 Logging Cycle 1
+
+- Scope: Added a repeatable logging benchmark harness and removed a redundant `LOGGING.buildLogPrefix` call from `LOGGING.logInProgressNoNested()`.
+- Test command: `bash test/test-all.sh`
+- Test result: `168/168` passed, `0` failed
+- Benchmark target: repeated logging to a captured output file for three scenarios: plain `logInfo`, color-enabled `logInfo`, and right-aligned `logInfo -n` + `logInfoResult`
+- Benchmark harness:
+  `bash test/logging-benchmark.sh 5 10`
+- Execution time before the change:
+  plain average `8.198988s`, color average `9.335230s`, right-aligned average `13.226121s`
+- Execution time after the change:
+  plain average `6.156909s`, color average `7.293668s`, right-aligned average `11.121831s`
+- Notes:
+  This establishes the first committed logging benchmark for future logging-focused maintenance cycles. The harness lives in `test/logging-benchmark.sh` and `test/logging-benchmark-target.sh`.
