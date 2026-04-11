@@ -175,3 +175,16 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   plain average `6.416510s`, stddev `0.094627s`, color average `7.802931s`, stddev `0.008118s`, right-aligned average `13.317580s`, stddev `0.029331s`
 - Notes:
   Suppressing hot-path checks is a real but modest lever in the current implementation. It improves all three measured scenarios, but only slightly. This is useful as an optional fast mode, not as a complete answer to logging performance by itself.
+
+## 2026-04-11 Logging Cycle 7
+
+- Scope: Added a PTY-based terminal benchmark to evaluate `bashsimplecurses` as an optional console-rendering backend candidate instead of reasoning from file-redirection benchmarks.
+- Test command: `bash test/test-all.sh`
+- Test result: `176/176` passed, `0` failed
+- Benchmark target: repeated terminal rendering inside a real PTY for current `dry-wit` logging and for a minimal `bashsimplecurses` window that displays one left-aligned message.
+- Benchmark harness:
+  `bash test/terminal-logging-benchmark.sh 3 20`
+- Results:
+  `dry-wit-plain` average `10.613666s`, stddev `0.057547s`; `dry-wit-right-aligned` average `24.469097s`, stddev `0.067114s`; `bashsimplecurses-scroll` average `1.008100s`, stddev `0.014107s`; `bashsimplecurses-dashboard` average `1.035450s`, stddev `0.011838s`
+- Notes:
+  This does not prove `bashsimplecurses` is a drop-in logging replacement. The evaluated `bashsimplecurses` case is a minimal window redraw, not a full reproduction of `dry-wit` timestamp/category/outcome formatting. But it does prove the important first point: a curses-style optional dependency does not inherently degrade console throughput here. Source inspection also explains why it is better treated as a rendering helper than a logging library: it manages a screen buffer, uses `tput` for cursor/state control, and is designed around repeated window redraws. So the next useful step is not to replace `logInfo()` wholesale, but to prototype a narrow optional backend for the specific console-heavy paths that benefit from alternate rendering.
