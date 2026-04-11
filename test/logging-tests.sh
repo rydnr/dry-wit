@@ -88,5 +88,21 @@ function LOGGING.retrieveRightAlignmentMode_keeps_supported_values_test() {
   Assert.areEqual "cursor" "${RESULT}" "LOGGING.retrieveRightAlignmentMode should keep supported values";
 }
 
+function LOGGING.areHotPathChecksEnabled_is_enabled_by_default_test() {
+  unset ENABLE_LOGGING_HOT_PATH_CHECKS;
+
+  LOGGING.areHotPathChecksEnabled;
+
+  Assert.isTrue $? "Hot-path checks should be enabled by default";
+}
+
+function LOGGING.areHotPathChecksEnabled_can_be_disabled_test() {
+  export ENABLE_LOGGING_HOT_PATH_CHECKS=${FALSE};
+
+  LOGGING.areHotPathChecksEnabled;
+
+  Assert.isFalse $? "Hot-path checks should be disabled when requested";
+}
+
 setScriptDescription "Runs all tests implemented for logging.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

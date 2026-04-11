@@ -160,3 +160,18 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   `LOGGING_RIGHT_ALIGNMENT_MODE=cursor` on a TTY rendered the outcome with cursor positioning instead of padding and preserved the visible layout.
 - Notes:
   The benchmark still redirects output to a file, so it continues to measure the padding path rather than the new cursor path. That means it now tells us two different things: the variance for the existing file-safe benchmark path, and the availability of a faster console-specific alignment mode when stdout is an interactive terminal. The plain and color shifts are within a few standard deviations and should not be interpreted as meaningful on their own.
+
+## 2026-04-11 Logging Cycle 6
+
+- Scope: Added `ENABLE_LOGGING_HOT_PATH_CHECKS` so the repeated runtime validations in hot logging paths can be suppressed without removing the checks from the source code.
+- Test command: `bash test/test-all.sh`
+- Test result: `176/176` passed, `0` failed
+- Benchmark target: repeated logging to a captured output file for three scenarios: plain `logInfo`, color-enabled `logInfo`, and right-aligned `logInfo -n` + `logInfoResult`
+- Benchmark harness:
+  `bash test/logging-benchmark.sh 5 10`
+- Checks enabled:
+  plain average `6.422429s`, stddev `0.086244s`, color average `7.826778s`, stddev `0.053458s`, right-aligned average `13.343820s`, stddev `0.040899s`
+- Checks disabled:
+  plain average `6.416510s`, stddev `0.094627s`, color average `7.802931s`, stddev `0.008118s`, right-aligned average `13.317580s`, stddev `0.029331s`
+- Notes:
+  Suppressing hot-path checks is a real but modest lever in the current implementation. It improves all three measured scenarios, but only slightly. This is useful as an optional fast mode, not as a complete answer to logging performance by itself.

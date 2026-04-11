@@ -118,6 +118,118 @@ function LOGGING.isSupportedRightAlignmentMode() {
   return ${FALSE}
 }
 
+# fun: LOGGING.areHotPathChecksEnabled
+# api: private
+# txt: Checks whether hot-path logging validations are enabled.
+# txt: Returns 0/TRUE if enabled; 1/FALSE otherwise.
+# use: if LOGGING.areHotPathChecksEnabled; then
+# use:   echo "checks on";
+# use: fi
+function LOGGING.areHotPathChecksEnabled() {
+  local -i _rescode=${TRUE}
+
+  if isNotEmpty "${ENABLE_LOGGING_HOT_PATH_CHECKS}" &&
+    isFalse "${ENABLE_LOGGING_HOT_PATH_CHECKS}"; then
+    _rescode=${FALSE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: LOGGING.checkHotPathNotEmpty paramName paramValue paramIndex
+# api: private
+# txt: Optionally validates a non-empty parameter in hot logging paths.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.checkHotPathNotEmpty message "${msg}" 1;
+function LOGGING.checkHotPathNotEmpty() {
+  local _name="${1}"
+  local _value="${2}"
+  local _index="${3}"
+
+  if LOGGING.areHotPathChecksEnabled; then
+    checkNotEmpty "${_name}" "${_value}" "${_index}"
+  fi
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.checkHotPathNumber paramName paramValue paramIndex
+# api: private
+# txt: Optionally validates a numeric parameter in hot logging paths.
+# opt: paramName: The parameter name.
+# opt: paramValue: The parameter value.
+# opt: paramIndex: The parameter index.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.checkHotPathNumber width "${width}" 1;
+function LOGGING.checkHotPathNumber() {
+  local _name="${1}"
+  local _value="${2}"
+  local _index="${3}"
+
+  if LOGGING.areHotPathChecksEnabled; then
+    checkNumber "${_name}" "${_value}" "${_index}"
+  fi
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.checkHotPathLevel level index
+# api: private
+# txt: Optionally validates a log level in hot logging paths.
+# opt: level: The log level.
+# opt: index: The parameter index.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.checkHotPathLevel INFO 1;
+function LOGGING.checkHotPathLevel() {
+  local _level="${1}"
+  local _index="${2}"
+
+  if LOGGING.areHotPathChecksEnabled; then
+    LOGGING.checkTraceDebugInfoWarnOrError "${_level}" "${_index}"
+  fi
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.checkHotPathOutcome outcome index
+# api: private
+# txt: Optionally validates an outcome keyword in hot logging paths.
+# opt: outcome: The outcome.
+# opt: index: The parameter index.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.checkHotPathOutcome SUCCESS 1;
+function LOGGING.checkHotPathOutcome() {
+  local _outcome="${1}"
+  local _index="${2}"
+
+  if LOGGING.areHotPathChecksEnabled; then
+    LOGGING.checkSuccessFailureNeutralOrInProgress "${_outcome}" "${_index}"
+  fi
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.checkHotPathResultOutcome outcome index
+# api: private
+# txt: Optionally validates a result outcome in hot logging paths.
+# opt: outcome: The outcome.
+# opt: index: The parameter index.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.checkHotPathResultOutcome SUCCESS 1;
+function LOGGING.checkHotPathResultOutcome() {
+  local _outcome="${1}"
+  local _index="${2}"
+
+  if LOGGING.areHotPathChecksEnabled; then
+    LOGGING.checkSuccessFailureOrNeutral "${_outcome}" "${_index}"
+  fi
+
+  return ${TRUE}
+}
+
 # fun: LOGGING.usesCompactBackend
 # api: private
 # txt: Checks whether the logging backend uses the compact renderer.
@@ -1233,9 +1345,9 @@ function addInvalidLogCategory() {
 # use: LOGGING.alignRight "Finishing work" "done";
 function LOGGING.alignRight() {
   local _logLineMessage="${1}"
-  checkNotEmpty message "${_logLineMessage}" 1
+  LOGGING.checkHotPathNotEmpty message "${_logLineMessage}" 1
   local _outcome="${2}"
-  checkNotEmpty outcome "${_outcome}" 2
+  LOGGING.checkHotPathNotEmpty outcome "${_outcome}" 2
 
   if getTermWidth; then
     local -i _termWidth=${RESULT}
@@ -1270,9 +1382,9 @@ function LOGGING.alignRight() {
 # use: fi
 function LOGGING.canUseCursorRightAlignment() {
   local _logMessage="${1}"
-  checkNotEmpty message "${_logMessage}" 1
+  LOGGING.checkHotPathNotEmpty message "${_logMessage}" 1
   local _termWidth="${2}"
-  checkNumber termWidth "${_termWidth}" 2
+  LOGGING.checkHotPathNumber termWidth "${_termWidth}" 2
 
   local -i _rescode=${FALSE}
 
@@ -1301,9 +1413,9 @@ function LOGGING.canUseCursorRightAlignment() {
 # use: LOGGING.alignRightUsingCursor "message" 80;
 function LOGGING.alignRightUsingCursor() {
   local _logMessage="${1}"
-  checkNotEmpty message "${_logMessage}" 1
+  LOGGING.checkHotPathNotEmpty message "${_logMessage}" 1
   local _termWidth="${2}"
-  checkNumber termWidth "${_termWidth}" 2
+  LOGGING.checkHotPathNumber termWidth "${_termWidth}" 2
 
   LOGGING.logOutcomeTokensLength
   local -i _logOutcomeTokensLength=${RESULT}
@@ -1351,9 +1463,9 @@ function LOGGING.logOutcomeTokensLength() {
 # use: echo "offset: ${RESULT}";
 function LOGGING.alignRightForWidth() {
   local _logMessage="${1}"
-  checkNotEmpty message "${_logMessage}" 1
+  LOGGING.checkHotPathNotEmpty message "${_logMessage}" 1
   local _termWidth="${2}"
-  checkNumber termWidth "${_termWidth}" 2
+  LOGGING.checkHotPathNumber termWidth "${_termWidth}" 2
 
   LOGGING.logOutcomeTokensLength
   local -i _logOutcomeTokensLength=${RESULT}
@@ -1550,11 +1662,11 @@ function rightJustificationEnabled() {
 # use: LOGGING.echoLogOutcome SUCCESS "sample";
 function LOGGING.echoLogOutcome() {
   local _keyword="${1}"
-  checkNotEmpty keyword "${_keyword}" 1
-  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 1
+  LOGGING.checkHotPathNotEmpty keyword "${_keyword}" 1
+  LOGGING.checkHotPathOutcome "${_keyword}" 1
   shift
   local _text="${@}"
-  checkNotEmpty text "${_text}" 2
+  LOGGING.checkHotPathNotEmpty text "${_text}" 2
 
   if LOGGING.usesCompactBackend; then
     LOGGING.echoSimpleLogOutcome "${_keyword}" "${_text}"
@@ -1664,15 +1776,15 @@ function setLogNestedIndentation() {
 # use: LOGGING.echoLogOutcome DEBUG SUCCESS "sample"
 function LOGGING.echoLogOutcomeNested() {
   local _level="${1}"
-  checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
-  LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1
+  LOGGING.checkHotPathNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
+  LOGGING.checkHotPathLevel "${_level}" 1
   shift
   local _keyword="${1}"
-  checkNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 2
-  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 2
+  LOGGING.checkHotPathNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 2
+  LOGGING.checkHotPathOutcome "${_keyword}" 2
   shift
   local _text="${@}"
-  checkNotEmpty text "${_text}" 3
+  LOGGING.checkHotPathNotEmpty text "${_text}" 3
 
   LOGGING.popLog
   local _inProgressMessage="${RESULT}"
@@ -1869,15 +1981,15 @@ function LOGGING.checkSuccessFailureNeutralOrInProgress() {
 # use: LOGGING.logCompletedNestedNoPop SUCCESS "done";
 function LOGGING.logCompletedNestedNoPop() {
   local _level="${1}"
-  checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
-  LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1
+  LOGGING.checkHotPathNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
+  LOGGING.checkHotPathLevel "${_level}" 1
   shift
   local _keyword="${1}"
-  checkNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 2
-  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 2
+  LOGGING.checkHotPathNotEmpty "SUCCESS|FAILURE|NEUTRAL|IN_PROGRESS" "${_keyword}" 2
+  LOGGING.checkHotPathOutcome "${_keyword}" 2
   shift
   local _message="$@"
-  checkNotEmpty message "${_message}" 3
+  LOGGING.checkHotPathNotEmpty message "${_message}" 3
 
   LOGGING.echoLogOutcomeNested "${_level}" "${_keyword}" "${_message}"
 }
@@ -1891,13 +2003,13 @@ function LOGGING.logCompletedNestedNoPop() {
 # use: LOGGING.logCompletedNoNested SUCCESS "done";
 function LOGGING.logCompletedNoNested() {
   local _keyword="${1}"
-  checkNotEmpty keyword "${_keyword}" 1
-  LOGGING.checkSuccessFailureNeutralOrInProgress "${_keyword}" 1
+  LOGGING.checkHotPathNotEmpty keyword "${_keyword}" 1
+  LOGGING.checkHotPathOutcome "${_keyword}" 1
   shift
 
   local _text
   _text="${@}"
-  checkNotEmpty outcome "${_text}" 2
+  LOGGING.checkHotPathNotEmpty outcome "${_text}" 2
 
   LOGGING.echoLogOutcome "${_keyword}" "${_text}"
   LOGGING.popLog
@@ -1915,12 +2027,12 @@ function LOGGING.logCompletedNoNested() {
 # use: LOGGING.logInProgress INFO "Calculating ...";
 function LOGGING.logInProgress() {
   local _level="${1}"
-  checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
-  LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1
+  LOGGING.checkHotPathNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
+  LOGGING.checkHotPathLevel "${_level}" 1
   shift
 
   local _message="$@"
-  checkNotEmpty message "${_message}" 2
+  LOGGING.checkHotPathNotEmpty message "${_message}" 2
 
   LOGGING.setLastLogLevel "${_level}"
   LOGGING.saveLogLevel
@@ -1967,7 +2079,7 @@ function setNestedTaskInProgressMarker() {
 # use: LOGGING.logInProgressNested "Calculating ...";
 function LOGGING.logInProgressNested() {
   local _message="$@"
-  checkNotEmpty message "${_message}" 1
+  LOGGING.checkHotPathNotEmpty message "${_message}" 1
 
   LOGGING.pushLog "${_message}"
   LOGGING.peekLogLevel
@@ -2057,7 +2169,7 @@ function setDefaultLogOutcomeColor() {
 # use: LOGGING.logProgressNoNested "Calculating ...";
 function LOGGING.logInProgressNoNested() {
   local _message="$@"
-  checkNotEmpty message "${_message}" 1
+  LOGGING.checkHotPathNotEmpty message "${_message}" 1
 
   LOGGING.pushLog "${_message}"
   LOGGING.echoLogPrefix
@@ -2082,11 +2194,11 @@ function LOGGING.logInProgressNoNested() {
 # use: LOGGING.logMessage INFO "A message to log";
 function LOGGING.logMessage() {
   local _level="${1}"
-  checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
-  LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1
+  LOGGING.checkHotPathNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
+  LOGGING.checkHotPathLevel "${_level}" 1
   shift
   local _message="$@"
-  checkNotEmpty "message" "${_message}" 2
+  LOGGING.checkHotPathNotEmpty "message" "${_message}" 2
 
   LOGGING.logInProgress "${_level}" "${_message}"
   echo
@@ -2103,8 +2215,8 @@ function LOGGING.logMessage() {
 # use: LOGGING.logStuff INFO -n "Operation in progress";
 function LOGGING.logStuff() {
   local _level="${1}"
-  checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
-  LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1
+  LOGGING.checkHotPathNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
+  LOGGING.checkHotPathLevel "${_level}" 1
   shift
   local _secondArg="${1}"
   local -i _minusN=${FALSE}
@@ -2164,8 +2276,8 @@ function LOGGING.isEmptyLogCategory() {
 # use: LOGGING.setLastLogLevel INFO;
 function LOGGING.setLastLogLevel() {
   local _level="${1}"
-  checkNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
-  LOGGING.checkTraceDebugInfoWarnOrError "${_level}" 1
+  LOGGING.checkHotPathNotEmpty "TRACE|DEBUG|INFO|WARN|ERROR" "${_level}" 1
+  LOGGING.checkHotPathLevel "${_level}" 1
 
   LOGGING.getModuleName
   DW.setGlobalString "${RESULT}" LAST_LOG_LEVEL "${_level}"
@@ -2196,14 +2308,14 @@ function getLastLogLevel() {
 # use: LOGGING.logStuffResult SUCCESS "done";
 function LOGGING.logStuffResult() {
   local _outcome="${1}"
-  checkNotEmpty outcome "${_outcome}" 1
-  LOGGING.checkSuccessFailureOrNeutral "${_outcome}" 1
+  LOGGING.checkHotPathNotEmpty outcome "${_outcome}" 1
+  LOGGING.checkHotPathResultOutcome "${_outcome}" 1
   shift
-  checkNotEmpty text "${@}" 2
+  LOGGING.checkHotPathNotEmpty text "${@}" 2
 
   LOGGING.numberOfNestedInProgressTasks
   local -i _nestedTasks=$?
-  if isZero ${_nestedTasks}; then
+  if LOGGING.areHotPathChecksEnabled && isZero ${_nestedTasks}; then
     exitWithErrorCode UNACCEPTABLE_API_CALL "No ongoing process to print the outcome for. Review ${FUNCNAME[2]}"
   fi
   LOGGING.logCompleted "${_outcome}" "$@"
@@ -3808,6 +3920,8 @@ function LOGGING.resetState() {
 }
 # env: ENABLE_RIGHT_JUSTIFIED_LOGGING: Whether to justify text to the right when printing outcomes in log messages. Defaults to ${FALSE};
 defineEnvVar ENABLE_RIGHT_JUSTIFIED_LOGGING MANDATORY "Whether to justify text to the right when printing outcomes in log messages" ${FALSE}
+# env: ENABLE_LOGGING_HOT_PATH_CHECKS: Whether to keep runtime validations in hot logging paths. Defaults to ${TRUE};
+defineEnvVar ENABLE_LOGGING_HOT_PATH_CHECKS MANDATORY "Whether to keep runtime validations in hot logging paths" ${TRUE}
 # env: LOGGING_RIGHT_ALIGNMENT_MODE: The right alignment mode to use (auto, padding, cursor). Defaults to auto;
 defineEnvVar LOGGING_RIGHT_ALIGNMENT_MODE MANDATORY "The right alignment mode to use (auto, padding, cursor)" auto
 # env: LOGGING_BACKEND: The logging backend to use (standard, simple, ansi-fast). Defaults to standard;
