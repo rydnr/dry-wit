@@ -95,6 +95,23 @@ function isEnvVarDefined_detects_existing_envvars_test() {
   Assert.isFalse $? "MY_VAR_4_$$ is detected and it shouldn't";
 }
 
+function evalVar_reads_existing_environment_variables_test() {
+  local _expected="envvar-value";
+  export MY_ENVVAR_EVAL_TEST="${_expected}";
+
+  evalVar MY_ENVVAR_EVAL_TEST;
+
+  Assert.isTrue $? "evalVar failed for MY_ENVVAR_EVAL_TEST";
+  Assert.areEqual "${_expected}" "${RESULT}" "evalVar did not retrieve the expected value";
+}
+
+function evalVar_rejects_invalid_variable_names_test() {
+  evalVar "MY-INVALID-VAR";
+
+  Assert.isFalse $? "evalVar should reject invalid variable names";
+  Assert.isNotEmpty "${ERROR}" "evalVar should explain invalid variable names";
+}
+
 function empty_vars_are_not_included_as_environment_variables_test() {
   local -i i;
   defineEnvVar "MY_VAR" MANDATORY "My env var" "foo" "date";

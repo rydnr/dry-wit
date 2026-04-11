@@ -49,13 +49,34 @@ function LOGGING.retrieveCurrentLogCategory() {
 function LOGGING.retrieveBackend() {
   local _result="${LOGGING_BACKEND}"
 
-  if isEmpty "${_result}"; then
+  if isEmpty "${_result}" || ! LOGGING.isSupportedBackend "${_result}"; then
     _result="standard"
   fi
 
   export RESULT="${_result}"
 
   return ${TRUE}
+}
+
+# fun: LOGGING.isSupportedBackend backend
+# api: private
+# txt: Checks whether given backend is supported.
+# opt: backend: The backend name.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.isSupportedBackend "simple"; then
+# use:   echo "supported";
+# use: fi
+function LOGGING.isSupportedBackend() {
+  local _backend="${1}"
+  checkNotEmpty backend "${_backend}" 1
+
+  if areEqual "${_backend}" "standard" ||
+    areEqual "${_backend}" "simple" ||
+    areEqual "${_backend}" "ansi-fast"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
 }
 
 # fun: LOGGING.usesCompactBackend

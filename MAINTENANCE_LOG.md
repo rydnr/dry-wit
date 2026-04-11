@@ -115,3 +115,18 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   xterm SGR control sequences: <https://www.xfree86.org/current/ctlseqs.html>
 - Notes:
   `simple` and `ansi-fast` are clear wins for plain and color logging because they skip namespace/category derivation and the standard token renderer. They are not wins for right-aligned logging, where spacing and completion handling still dominate. `ansi-fast` is slightly faster than the standard color path but not meaningfully faster than `simple`, so the main value of `ansi-fast` is colored compact output rather than extra speed over `simple`.
+
+## 2026-04-10 Logging Cycle 3
+
+- Scope: Added a safe fallback to the `standard` logging backend when `LOGGING_BACKEND` is empty or unsupported, and replaced `evalVar()` shelling-out with Bash-native indirect expansion plus variable-name validation.
+- Test command: `bash test/test-all.sh`
+- Test result: `172/172` passed, `0` failed
+- Benchmark target: repeated logging to a captured output file for three scenarios: plain `logInfo`, color-enabled `logInfo`, and right-aligned `logInfo -n` + `logInfoResult`
+- Benchmark harness:
+  `bash test/logging-benchmark.sh 5 10`
+- Standard backend before the change:
+  plain average `5.165392s`, color average `6.360054s`, right-aligned average `11.164379s`
+- Standard backend after the change:
+  plain average `5.118526s`, color average `6.336259s`, right-aligned average `11.126722s`
+- Notes:
+  This cycle focuses on correctness and hot-path cleanup rather than a backend redesign. Unsupported `LOGGING_BACKEND` values now resolve deterministically to `standard`, so users always get a known implementation. The environment-variable lookup path no longer forks `sh` for indirect resolution, which removes avoidable process overhead from backend selection and any other `evalVar()` callers. The gains are modest but consistently non-regressive across all three standard logging scenarios.

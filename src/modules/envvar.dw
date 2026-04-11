@@ -215,19 +215,33 @@ function evalVar() {
   local _varName="${1}";
   checkNotEmpty varName "${_varName}" 1;
 
-  local -i _rescode;
-
-  local _result
-  _result="$(set noglob; export DOLLAR='$'; export DQUOTE="\""; echo "echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}" | sh 2> /dev/null || echo "$$.ERROR.$$")";
-  if isNotEmpty "${_result}" && contains "${_result}" "$$.ERROR.$$"; then
-    _rescode=${FALSE};
-    export ERROR="set noglob; export DOLLAR='$'; export DQUOTE=\"\\\"\"; echo \"echo ${DQUOTE}${DOLLAR}{$(echo "${_varName}")}${DQUOTE}\" | sh;\n${_result}";
-  else
-    _rescode=${TRUE};
-    export RESULT="${_result}";
+  if ! ENVVAR.isValidVariableName "${_varName}"; then
+    export ERROR="Invalid variable name: ${_varName}";
+    return ${FALSE};
   fi
 
-  return ${_rescode};
+  export RESULT="${!_varName}";
+
+  return ${TRUE};
+}
+
+# fun: ENVVAR.isValidVariableName varName
+# api: private
+# txt: Checks whether given text is a valid Bash variable name.
+# opt: varName: The variable name.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if ENVVAR.isValidVariableName "MY_VAR"; then
+# use:   echo "valid";
+# use: fi
+function ENVVAR.isValidVariableName() {
+  local _varName="${1}";
+  checkNotEmpty varName "${_varName}" 1;
+
+  if [[ "${_varName}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+    return ${TRUE};
+  fi
+
+  return ${FALSE};
 }
 
 # fun: isEnvVarDefined varName

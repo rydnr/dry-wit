@@ -56,5 +56,21 @@ function LOGGING.alignRightForWidth_finds_the_correct_offset_in_nested_logging_t
   Assert.areEqual ${_expected} ${_actual} "LOGGING.alignRightForWidth doesn't find the correct offset in nested logging";
 }
 
+function LOGGING.retrieveBackend_falls_back_to_standard_for_unknown_values_test() {
+  export LOGGING_BACKEND="unsupported-backend";
+
+  LOGGING.retrieveBackend;
+
+  Assert.areEqual "standard" "${RESULT}" "LOGGING.retrieveBackend should fall back to standard";
+}
+
+function LOGGING.retrieveBackend_keeps_supported_values_test() {
+  export LOGGING_BACKEND="simple";
+
+  LOGGING.retrieveBackend;
+
+  Assert.areEqual "simple" "${RESULT}" "LOGGING.retrieveBackend should keep supported values";
+}
+
 setScriptDescription "Runs all tests implemented for logging.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
