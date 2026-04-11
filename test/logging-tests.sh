@@ -104,5 +104,22 @@ function LOGGING.areHotPathChecksEnabled_can_be_disabled_test() {
   Assert.isFalse $? "Hot-path checks should be disabled when requested";
 }
 
+function LOGGING.captureCurrentLogLineLength_uses_cached_prefix_length_test() {
+  LOGGING.setLastLogPrefixLength 7;
+
+  LOGGING.captureCurrentLogLineLength "hello";
+  LOGGING.getCurrentLogLineLength;
+
+  Assert.areEqual 12 "${RESULT}" "LOGGING.captureCurrentLogLineLength should add message length to prefix length";
+}
+
+function LOGGING.retrieveActiveLogLineLength_prefers_cached_length_test() {
+  LOGGING.setCurrentLogLineLength 33;
+
+  LOGGING.retrieveActiveLogLineLength;
+
+  Assert.areEqual 33 "${RESULT}" "LOGGING.retrieveActiveLogLineLength should reuse cached line length";
+}
+
 setScriptDescription "Runs all tests implemented for logging.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

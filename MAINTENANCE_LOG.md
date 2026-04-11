@@ -188,3 +188,19 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   `dry-wit-plain` average `10.613666s`, stddev `0.057547s`; `dry-wit-right-aligned` average `24.469097s`, stddev `0.067114s`; `bashsimplecurses-scroll` average `1.008100s`, stddev `0.014107s`; `bashsimplecurses-dashboard` average `1.035450s`, stddev `0.011838s`
 - Notes:
   This does not prove `bashsimplecurses` is a drop-in logging replacement. The evaluated `bashsimplecurses` case is a minimal window redraw, not a full reproduction of `dry-wit` timestamp/category/outcome formatting. But it does prove the important first point: a curses-style optional dependency does not inherently degrade console throughput here. Source inspection also explains why it is better treated as a rendering helper than a logging library: it manages a screen buffer, uses `tput` for cursor/state control, and is designed around repeated window redraws. So the next useful step is not to replace `logInfo()` wholesale, but to prototype a narrow optional backend for the specific console-heavy paths that benefit from alternate rendering.
+
+## 2026-04-11 Logging Cycle 8
+
+- Scope: Cached the visible prefix length and current open-line length so right-aligned outcome rendering can reuse already-emitted line state instead of rebuilding prefix/category state on completion.
+- Test command: `bash test/test-all.sh`
+- Test result: `178/178` passed, `0` failed
+- File benchmark harness:
+  `bash test/logging-benchmark.sh 5 10`
+- File benchmark result:
+  plain average `6.750529s`, stddev `0.081615s`, color average `8.172138s`, stddev `0.012825s`, right-aligned average `10.368310s`, stddev `0.159414s`
+- PTY benchmark harness:
+  `bash test/terminal-logging-benchmark.sh 3 20`
+- PTY benchmark result:
+  `dry-wit-plain` average `11.225932s`, stddev `0.120831s`; `dry-wit-right-aligned` average `19.632802s`, stddev `0.016581s`; `bashsimplecurses-scroll` average `1.012715s`, stddev `0.002405s`; `bashsimplecurses-dashboard` average `1.035450s`, stddev `0.010669s`
+- Notes:
+  The meaningful win here is the PTY right-aligned case: the previous PTY probe in Cycle 7 measured `dry-wit-right-aligned` at `24.469097s`, so this cache-based change cuts that to `19.632802s` while preserving the existing API and keeping the old reconstruction path as fallback. Plain and color still move around enough that they should not be over-interpreted from a single cycle. This is a better fit than trying to force `bashsimplecurses` into the logging API, because it removes avoidable work inside the current design rather than introducing a dashboard library where a line renderer is needed.

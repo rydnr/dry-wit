@@ -136,6 +136,104 @@ function LOGGING.areHotPathChecksEnabled() {
   return ${_rescode}
 }
 
+# fun: LOGGING.setLastLogPrefixLength length
+# api: private
+# txt: Caches the visible length of the last emitted log prefix.
+# opt: length: The visible prefix length.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.setLastLogPrefixLength 10;
+function LOGGING.setLastLogPrefixLength() {
+  local -i _length="${1}"
+  LOGGING.checkHotPathNumber length "${_length}" 1
+
+  LOGGING.getModuleName
+  DW.setGlobalInt "${RESULT}" LAST_LOG_PREFIX_LENGTH ${_length}
+}
+
+# fun: LOGGING.getLastLogPrefixLength
+# api: private
+# txt: Retrieves the visible length of the last emitted log prefix.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains the cached length.
+# use: LOGGING.getLastLogPrefixLength;
+function LOGGING.getLastLogPrefixLength() {
+  LOGGING.getModuleName
+  DW.getGlobalInt "${RESULT}" LAST_LOG_PREFIX_LENGTH
+}
+
+# fun: LOGGING.setCurrentLogLineLength length
+# api: private
+# txt: Caches the visible length of the current open log line.
+# opt: length: The visible line length.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.setCurrentLogLineLength 20;
+function LOGGING.setCurrentLogLineLength() {
+  local -i _length="${1}"
+  LOGGING.checkHotPathNumber length "${_length}" 1
+
+  LOGGING.getModuleName
+  DW.setGlobalInt "${RESULT}" CURRENT_LOG_LINE_LENGTH ${_length}
+}
+
+# fun: LOGGING.getCurrentLogLineLength
+# api: private
+# txt: Retrieves the visible length of the current open log line.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains the cached line length.
+# use: LOGGING.getCurrentLogLineLength;
+function LOGGING.getCurrentLogLineLength() {
+  LOGGING.getModuleName
+  DW.getGlobalInt "${RESULT}" CURRENT_LOG_LINE_LENGTH
+}
+
+# fun: LOGGING.captureCurrentLogLineLength message
+# api: private
+# txt: Stores the visible length of the currently open log line.
+# opt: message: The current log line message.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.captureCurrentLogLineLength "Working";
+function LOGGING.captureCurrentLogLineLength() {
+  local _message="${1}"
+  LOGGING.checkHotPathNotEmpty message "${_message}" 1
+
+  LOGGING.getLastLogPrefixLength
+  local -i _prefixLength=${RESULT}
+  local -i _lineLength=$((${_prefixLength} + ${#_message}))
+
+  LOGGING.setCurrentLogLineLength ${_lineLength}
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.retrieveActiveLogLineLength
+# api: private
+# txt: Retrieves the visible length of the line whose outcome is about to be printed.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains the visible line length.
+# use: LOGGING.retrieveActiveLogLineLength;
+function LOGGING.retrieveActiveLogLineLength() {
+  LOGGING.getCurrentLogLineLength
+  local -i _currentLogLineLength=${RESULT}
+
+  if isGreaterThan ${_currentLogLineLength} 0; then
+    return ${TRUE}
+  fi
+
+  LOGGING.peekLog
+  local _inProgressMessage="${RESULT}"
+
+  if LOGGING.usesCompactBackend; then
+    LOGGING.buildSimpleLogPrefix
+  else
+    LOGGING.buildLogPrefix ${FALSE}
+  fi
+
+  local -i _result=$((${#RESULT} + ${#_inProgressMessage}))
+  export RESULT=${_result}
+
+  return ${TRUE}
+}
+
 # fun: LOGGING.checkHotPathNotEmpty paramName paramValue paramIndex
 # api: private
 # txt: Optionally validates a non-empty parameter in hot logging paths.
@@ -418,6 +516,7 @@ function LOGGING.buildSimpleLogPrefix() {
   local _level="${RESULT}"
 
   export RESULT="[${_timestamp} ${_level}] "
+  LOGGING.setLastLogPrefixLength ${#RESULT}
 
   return ${TRUE}
 }
@@ -1417,10 +1516,16 @@ function LOGGING.alignRightUsingCursor() {
   local _termWidth="${2}"
   LOGGING.checkHotPathNumber termWidth "${_termWidth}" 2
 
+  local -i _currentColumn
+  if isNumber "${_logMessage}"; then
+    _currentColumn=$(((_logMessage % _termWidth) + 1))
+  else
+    _currentColumn=$(((${#_logMessage} % ${_termWidth}) + 1))
+  fi
+
   LOGGING.logOutcomeTokensLength
   local -i _logOutcomeTokensLength=${RESULT}
   local -i _targetColumn=$((${_termWidth} - ${_logOutcomeTokensLength} + 1))
-  local -i _currentColumn=$(((${#_logMessage} % ${_termWidth}) + 1))
 
   if isGreaterThan "${_currentColumn}" "${_targetColumn}"; then
     echo
@@ -1469,8 +1574,14 @@ function LOGGING.alignRightForWidth() {
 
   LOGGING.logOutcomeTokensLength
   local -i _logOutcomeTokensLength=${RESULT}
+  local -i _currentLineLength
+  if isNumber "${_logMessage}"; then
+    _currentLineLength=${_logMessage}
+  else
+    _currentLineLength=${#_logMessage}
+  fi
 
-  local -i _result=$((${_termWidth} - (${#_logMessage} + ${_logOutcomeTokensLength}) % ${_termWidth} + 1))
+  local -i _result=$((${_termWidth} - (${_currentLineLength} + ${_logOutcomeTokensLength}) % ${_termWidth} + 1))
 
   export RESULT=${_result}
 
@@ -1591,6 +1702,7 @@ function LOGGING.buildLogPrefix() {
   fi
 
   local -i _len=$((${#_logPrefixTokens[@]} - 1))
+  local -i _plainLength=0
 
   local _oldIFS="${IFS}"
   IFS="${DWIFS}"
@@ -1598,6 +1710,7 @@ function LOGGING.buildLogPrefix() {
   for _i in $(seq 0 1 ${_len}); do
     IFS="${_oldIFS}"
     local _token="${_logPrefixTokens[${_i}]}"
+    _plainLength=$((${_plainLength} + ${#_token}))
     if isTrue ${_allowsColors}; then
       _result="${_result}$(echoInColor -n "${_logPrefixColors[${_i}]}" "${_token}")"
     else
@@ -1610,6 +1723,7 @@ function LOGGING.buildLogPrefix() {
     resetColor
   fi
   _result="${_result} "
+  LOGGING.setLastLogPrefixLength $((${_plainLength} + 1))
 
   export RESULT="${_result}"
 
@@ -1683,18 +1797,13 @@ function LOGGING.echoLogOutcome() {
     _logOutcomeColors=${RESULT}
   fi
 
-  LOGGING.peekLog
-  local _inProgressMessage="${RESULT}"
-
-  LOGGING.buildLogPrefix ${FALSE}
-  local _logPrefix="${RESULT}"
-
   LOGGING.processLogOutcomeTokens "${_text}"
   LOGGING.getLogOutcomeTokensVariableName
   local -n _logOutcomeTokens=${RESULT}
 
   if rightJustificationEnabled; then
-    LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}"
+    LOGGING.retrieveActiveLogLineLength
+    LOGGING.alignRight "${RESULT}" "${_text}"
   else
     echo -n " ... "
   fi
@@ -2109,6 +2218,7 @@ function LOGGING.logInProgressNested() {
   fi
   LOGGING.logToFiles "${_actualMessage}"
   LOGGING.logToFilesAnEmptyLine
+  LOGGING.captureCurrentLogLineLength "${_actualMessage}"
 }
 
 # fun: getDefaultLogPrefixColor
@@ -2183,6 +2293,7 @@ function LOGGING.logInProgressNoNested() {
   fi
   LOGGING.logToFiles "${_message}"
   LOGGING.logToFilesAnEmptyLine
+  LOGGING.captureCurrentLogLineLength "${_message}"
 }
 
 # fun: LOGGING.logMessage TRACE|DEBUG|INFO|WARN|ERROR message
