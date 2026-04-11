@@ -38,6 +38,8 @@ function benchmark_scenario() {
   local -i _min=0
   local -i _max=0
   local -i _sample
+  local _samplesFile="${OUTPUT_DIR}/${_scenario}.samples"
+  : > "${_samplesFile}"
 
   for ((_sample = 1; _sample <= SAMPLES; _sample++)); do
     local _outputFile="${OUTPUT_DIR}/${_scenario}.${_sample}.log"
@@ -63,6 +65,7 @@ function benchmark_scenario() {
 
     _elapsed=$((_finishedAt - _startedAt))
     _sum=$((_sum + _elapsed))
+    echo "${_elapsed}" >> "${_samplesFile}"
 
     if [ ${_sample} -eq 1 ] || [ ${_elapsed} -lt ${_min} ]; then
       _min=${_elapsed}
@@ -75,8 +78,30 @@ function benchmark_scenario() {
 
   local -i _avg=$((_sum / SAMPLES))
   local -i _avgPerIteration=$((_avg / ITERATIONS))
+  local -i _stddev=0
+  local -i _stddevPerIteration=0
 
-  echo "scenario=${_scenario} samples=${SAMPLES} iterations=${ITERATIONS} avg=$(format_ns "${_avg}")s min=$(format_ns "${_min}")s max=$(format_ns "${_max}")s avg_per_iteration=$(format_us "${_avgPerIteration}")us"
+  _stddev=$(awk '
+    {
+      values[NR] = $1
+      sum += $1
+    }
+    END {
+      if (NR < 2) {
+        printf "%.0f", 0
+        exit
+      }
+      mean = sum / NR
+      for (i = 1; i <= NR; i++) {
+        delta = values[i] - mean
+        sq += delta * delta
+      }
+      printf "%.0f", sqrt(sq / NR)
+    }
+  ' "${_samplesFile}")
+  _stddevPerIteration=$((_stddev / ITERATIONS))
+
+  echo "scenario=${_scenario} samples=${SAMPLES} iterations=${ITERATIONS} avg=$(format_ns "${_avg}")s stddev=$(format_ns "${_stddev}")s min=$(format_ns "${_min}")s max=$(format_ns "${_max}")s avg_per_iteration=$(format_us "${_avgPerIteration}")us stddev_per_iteration=$(format_us "${_stddevPerIteration}")us"
 }
 
 benchmark_scenario plain

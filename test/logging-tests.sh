@@ -72,5 +72,21 @@ function LOGGING.retrieveBackend_keeps_supported_values_test() {
   Assert.areEqual "simple" "${RESULT}" "LOGGING.retrieveBackend should keep supported values";
 }
 
+function LOGGING.retrieveRightAlignmentMode_falls_back_to_auto_for_unknown_values_test() {
+  export LOGGING_RIGHT_ALIGNMENT_MODE="unsupported-mode";
+
+  LOGGING.retrieveRightAlignmentMode;
+
+  Assert.areEqual "auto" "${RESULT}" "LOGGING.retrieveRightAlignmentMode should fall back to auto";
+}
+
+function LOGGING.retrieveRightAlignmentMode_keeps_supported_values_test() {
+  export LOGGING_RIGHT_ALIGNMENT_MODE="cursor";
+
+  LOGGING.retrieveRightAlignmentMode;
+
+  Assert.areEqual "cursor" "${RESULT}" "LOGGING.retrieveRightAlignmentMode should keep supported values";
+}
+
 setScriptDescription "Runs all tests implemented for logging.dw";
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

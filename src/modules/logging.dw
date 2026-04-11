@@ -58,6 +58,24 @@ function LOGGING.retrieveBackend() {
   return ${TRUE}
 }
 
+# fun: LOGGING.retrieveRightAlignmentMode
+# api: private
+# txt: Retrieves the right alignment mode.
+# txt: Returns 0/TRUE always.
+# txt: The variable RESULT contains the mode.
+# use: LOGGING.retrieveRightAlignmentMode;
+function LOGGING.retrieveRightAlignmentMode() {
+  local _result="${LOGGING_RIGHT_ALIGNMENT_MODE}"
+
+  if isEmpty "${_result}" || ! LOGGING.isSupportedRightAlignmentMode "${_result}"; then
+    _result="auto"
+  fi
+
+  export RESULT="${_result}"
+
+  return ${TRUE}
+}
+
 # fun: LOGGING.isSupportedBackend backend
 # api: private
 # txt: Checks whether given backend is supported.
@@ -73,6 +91,27 @@ function LOGGING.isSupportedBackend() {
   if areEqual "${_backend}" "standard" ||
     areEqual "${_backend}" "simple" ||
     areEqual "${_backend}" "ansi-fast"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.isSupportedRightAlignmentMode mode
+# api: private
+# txt: Checks whether given right alignment mode is supported.
+# opt: mode: The mode name.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.isSupportedRightAlignmentMode "auto"; then
+# use:   echo "supported";
+# use: fi
+function LOGGING.isSupportedRightAlignmentMode() {
+  local _mode="${1}"
+  checkNotEmpty mode "${_mode}" 1
+
+  if areEqual "${_mode}" "auto" ||
+    areEqual "${_mode}" "padding" ||
+    areEqual "${_mode}" "cursor"; then
     return ${TRUE}
   fi
 
@@ -1204,16 +1243,80 @@ function LOGGING.alignRight() {
     if LOGGING.alignRightForWidth "${_logLineMessage}" "${_termWidth}"; then
       local -i _offset=${RESULT}
 
-      getLogOutcomeSeparator
-      local _logOutcomeSeparator="${RESULT}"
-      local _separatorSpace=""
-      printf -v _separatorSpace "%*s" "${_offset}" ""
-      if ! areEqual "${_logOutcomeSeparator}" " "; then
-        _separatorSpace="${_separatorSpace// /${_logOutcomeSeparator}}"
+      if LOGGING.canUseCursorRightAlignment "${_logLineMessage}" "${_termWidth}"; then
+        LOGGING.alignRightUsingCursor "${_logLineMessage}" "${_termWidth}"
+      else
+        getLogOutcomeSeparator
+        local _logOutcomeSeparator="${RESULT}"
+        local _separatorSpace=""
+        printf -v _separatorSpace "%*s" "${_offset}" ""
+        if ! areEqual "${_logOutcomeSeparator}" " "; then
+          _separatorSpace="${_separatorSpace// /${_logOutcomeSeparator}}"
+        fi
+        echo -n "${_separatorSpace}"
       fi
-      echo -n "${_separatorSpace}"
     fi
   fi
+}
+
+# fun: LOGGING.canUseCursorRightAlignment message termWidth
+# api: private
+# txt: Checks whether right alignment can use cursor positioning.
+# opt: message: The log-line message.
+# opt: termWidth: The terminal width.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.canUseCursorRightAlignment "message" 80; then
+# use:   echo "cursor";
+# use: fi
+function LOGGING.canUseCursorRightAlignment() {
+  local _logMessage="${1}"
+  checkNotEmpty message "${_logMessage}" 1
+  local _termWidth="${2}"
+  checkNumber termWidth "${_termWidth}" 2
+
+  local -i _rescode=${FALSE}
+
+  LOGGING.retrieveRightAlignmentMode
+  local _mode="${RESULT}"
+  getLogOutcomeSeparator
+  local _separator="${RESULT}"
+
+  if ! areEqual "${_mode}" "padding" &&
+    [[ -t 1 ]] &&
+    isNotEmpty "${TERM}" &&
+    ! areEqual "${TERM}" "dumb" &&
+    areEqual "${_separator}" " "; then
+    _rescode=${TRUE}
+  fi
+
+  return ${_rescode}
+}
+
+# fun: LOGGING.alignRightUsingCursor message termWidth
+# api: private
+# txt: Aligns the outcome using terminal cursor positioning.
+# opt: message: The log-line message.
+# opt: termWidth: The terminal width.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.alignRightUsingCursor "message" 80;
+function LOGGING.alignRightUsingCursor() {
+  local _logMessage="${1}"
+  checkNotEmpty message "${_logMessage}" 1
+  local _termWidth="${2}"
+  checkNumber termWidth "${_termWidth}" 2
+
+  LOGGING.logOutcomeTokensLength
+  local -i _logOutcomeTokensLength=${RESULT}
+  local -i _targetColumn=$((${_termWidth} - ${_logOutcomeTokensLength} + 1))
+  local -i _currentColumn=$(((${#_logMessage} % ${_termWidth}) + 1))
+
+  if isGreaterThan "${_currentColumn}" "${_targetColumn}"; then
+    echo
+  fi
+
+  printf "\033[%dG" "${_targetColumn}"
+
+  return ${TRUE}
 }
 
 # fun: LOGGING.logOutcomeTokensLength
@@ -3705,6 +3808,8 @@ function LOGGING.resetState() {
 }
 # env: ENABLE_RIGHT_JUSTIFIED_LOGGING: Whether to justify text to the right when printing outcomes in log messages. Defaults to ${FALSE};
 defineEnvVar ENABLE_RIGHT_JUSTIFIED_LOGGING MANDATORY "Whether to justify text to the right when printing outcomes in log messages" ${FALSE}
+# env: LOGGING_RIGHT_ALIGNMENT_MODE: The right alignment mode to use (auto, padding, cursor). Defaults to auto;
+defineEnvVar LOGGING_RIGHT_ALIGNMENT_MODE MANDATORY "The right alignment mode to use (auto, padding, cursor)" auto
 # env: LOGGING_BACKEND: The logging backend to use (standard, simple, ansi-fast). Defaults to standard;
 defineEnvVar LOGGING_BACKEND MANDATORY "The logging backend to use (standard, simple, ansi-fast)" standard
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
