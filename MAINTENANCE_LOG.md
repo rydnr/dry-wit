@@ -130,3 +130,18 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   plain average `5.118526s`, color average `6.336259s`, right-aligned average `11.126722s`
 - Notes:
   This cycle focuses on correctness and hot-path cleanup rather than a backend redesign. Unsupported `LOGGING_BACKEND` values now resolve deterministically to `standard`, so users always get a known implementation. The environment-variable lookup path no longer forks `sh` for indirect resolution, which removes avoidable process overhead from backend selection and any other `evalVar()` callers. The gains are modest but consistently non-regressive across all three standard logging scenarios.
+
+## 2026-04-11 Logging Cycle 4
+
+- Scope: Focused on the right-aligned completion path by removing string concatenation from outcome-length calculation, deleting no-op token/color loops, and replacing separator construction in `LOGGING.alignRight()` with a single `printf`-based path.
+- Test command: `bash test/test-all.sh`
+- Test result: `172/172` passed, `0` failed
+- Benchmark target: repeated logging to a captured output file for three scenarios: plain `logInfo`, color-enabled `logInfo`, and right-aligned `logInfo -n` + `logInfoResult`
+- Benchmark harness:
+  `bash test/logging-benchmark.sh 5 10`
+- Standard backend before the change:
+  plain average `5.118526s`, color average `6.336259s`, right-aligned average `11.126722s`
+- Standard backend after the change:
+  plain average `5.300272s`, color average `6.397214s`, right-aligned average `10.379365s`
+- Notes:
+  This cycle intentionally targeted the right-aligned path rather than overall logger throughput. The completion path improved materially by about `0.747357s` over the previous standard-backend baseline. Plain and color runs measured slightly slower in this sample set, so future cycles should treat this as a specialization win for right-aligned logging, not a general logging improvement.

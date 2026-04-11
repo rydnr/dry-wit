@@ -1206,17 +1206,11 @@ function LOGGING.alignRight() {
 
       getLogOutcomeSeparator
       local _logOutcomeSeparator="${RESULT}"
-
-      local _oldIFS="${IFS}"
-      IFS="${DWIFS}"
-      local -i _index=0
       local _separatorSpace=""
-      while isGreaterThan $((${_offset} - ${_index} + 1)) 0; do
-        IFS="${_oldIFS}"
-        _index=$((${_index} + 1))
-        _separatorSpace="${_separatorSpace}${_logOutcomeSeparator}"
-      done
-      IFS="${_oldIFS}"
+      printf -v _separatorSpace "%*s" "${_offset}" ""
+      if ! areEqual "${_logOutcomeSeparator}" " "; then
+        _separatorSpace="${_separatorSpace// /${_logOutcomeSeparator}}"
+      fi
       echo -n "${_separatorSpace}"
     fi
   fi
@@ -1230,21 +1224,15 @@ function LOGGING.alignRight() {
 # use: LOGGING.logOutcomeTokensLength;
 # use: echo "length: ${RESULT}";
 function LOGGING.logOutcomeTokensLength() {
-  local _result=""
-
   LOGGING.getLogOutcomeTokensVariableName
   local -n _logOutcomeTokens=${RESULT}
-
-  local _oldIFS="${IFS}"
-  IFS="${DWIFS}"
+  local -i _result=0
   local _token
   for _token in "${_logOutcomeTokens[@]}"; do
-    IFS="${_oldIFS}"
-    _result="${_result}${_token}"
+    _result=$((${_result} + ${#_token}))
   done
-  IFS="${_oldIFS}"
 
-  export RESULT=${#_result}
+  export RESULT=${_result}
 
   return ${TRUE}
 }
@@ -2481,16 +2469,6 @@ function LOGGING.processLogOutcomeColors() {
 
   LOGGING.getLogOutcomeColorsVariableName
   local -n _logOutcomeColors=${RESULT}
-  local -i _len=$((${#_logOutcomeColors[@]} - 1))
-
-  local _oldIFS="${IFS}"
-  IFS="${DWIFS}"
-  local -i _i
-  for _i in $(seq 0 1 ${_len}); do
-    IFS="${_oldIFS}"
-    _logOutcomeColors[${_i}]="${_logOutcomeColors[${_i}]}"
-  done
-  IFS="${_oldIFS}"
 
   LOGGING.getOutcomeTextPositionInLogOutcome
   local -i _outcomeTextPosition=${RESULT}
@@ -2509,16 +2487,6 @@ function LOGGING.processLogOutcomeTokens() {
 
   LOGGING.getLogOutcomeTokensVariableName
   local -n _logOutcomeTokens=${RESULT}
-  local -i _len=$((${#_logOutcomeTokens[@]} - 1))
-
-  local _oldIFS="${IFS}"
-  IFS="${DWIFS}"
-  local -i _i
-  for _i in $(seq 0 1 ${_len}); do
-    IFS="${_oldIFS}"
-    _logOutcomeTokens[${_i}]="${_logOutcomeTokens[${_i}]}"
-  done
-  IFS="${_oldIFS}"
 
   LOGGING.getOutcomeTextPositionInLogOutcome
   local -i _outcomeTextPosition=${RESULT}
