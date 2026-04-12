@@ -220,3 +220,19 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   `standard` `dry-wit-plain` average `11.479710s`, stddev `0.077332s`; `dry-wit-right-aligned` average `19.556455s`, stddev `0.036974s`; `native-c` `dry-wit-plain` average `10.608589s`, stddev `0.034454s`; `dry-wit-right-aligned` average `17.018550s`, stddev `0.035341s`
 - Notes:
   This is the first optional dependency path that clearly outperforms the current Bash renderer while preserving the existing shell API. The improvement is meaningful in both file-capture and PTY measurements, especially for color and right-aligned output. The architectural caveat still holds: this backend spawns one helper process per log call, so it is not the ceiling for native performance. A persistent helper or linked extension would be the next lever if more throughput is needed.
+
+## 2026-04-12 Logging Cycle 10
+
+- Scope: Added a persistent daemon transport for the `native-c` backend using a Bash coprocess plus a daemon mode in `dry-wit-native-logger`, while keeping `spawn` available through `DW_NATIVE_LOGGER_TRANSPORT=spawn`. The default `auto` transport now prefers the daemon path.
+- Test command: `bash test/test-all.sh`
+- Test result: `182/182` passed, `0` failed
+- File benchmark harness:
+  `DW_NATIVE_LOGGER_BIN=/tmp/dry-wit-native-logger LOGGING_BACKEND=native-c DW_NATIVE_LOGGER_TRANSPORT=<transport> bash test/logging-benchmark.sh 5 10`
+- File benchmark result:
+  `spawn` plain average `6.522489s`, stddev `0.039949s`, color average `6.610332s`, stddev `0.024698s`, right-aligned average `9.751608s`, stddev `0.037490s`; `daemon` plain average `6.511833s`, stddev `0.018294s`, color average `6.558424s`, stddev `0.058312s`, right-aligned average `9.718647s`, stddev `0.031176s`
+- PTY benchmark harness:
+  `DW_NATIVE_LOGGER_BIN=/tmp/dry-wit-native-logger LOGGING_BACKEND=native-c DW_NATIVE_LOGGER_TRANSPORT=<transport> bash test/terminal-logging-benchmark.sh 3 20`
+- PTY benchmark result:
+  `spawn` `dry-wit-plain` average `10.056994s`, stddev `0.037590s`; `dry-wit-right-aligned` average `16.059921s`, stddev `0.052751s`; `daemon` `dry-wit-plain` average `10.044515s`, stddev `0.029569s`; `dry-wit-right-aligned` average `16.130426s`, stddev `0.004506s`
+- Notes:
+  The daemon transport works and slightly improves the file-capture benchmark, which confirms that repeated helper spawns were part of the overhead. But the PTY results are effectively flat and even slightly worse for right-aligned output in this sample set. The practical conclusion is that the process boundary is no longer the main bottleneck once rendering is native. The next significant wins will likely come from reducing terminal writes, alignment work, or protocol overhead rather than from transport changes alone.

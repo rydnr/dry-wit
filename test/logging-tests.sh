@@ -96,6 +96,22 @@ function LOGGING.retrieveBackend_keeps_native_backend_when_helper_is_available_t
   Assert.areEqual "native-c" "${_actual}" "LOGGING.retrieveBackend should keep native-c when helper exists";
 }
 
+function LOGGING.retrieveNativeLoggerTransport_falls_back_to_auto_for_unknown_values_test() {
+  export DW_NATIVE_LOGGER_TRANSPORT="unsupported-transport";
+
+  LOGGING.retrieveNativeLoggerTransport;
+
+  Assert.areEqual "auto" "${RESULT}" "LOGGING.retrieveNativeLoggerTransport should fall back to auto";
+}
+
+function LOGGING.retrieveNativeLoggerTransport_keeps_supported_values_test() {
+  export DW_NATIVE_LOGGER_TRANSPORT="spawn";
+
+  LOGGING.retrieveNativeLoggerTransport;
+
+  Assert.areEqual "spawn" "${RESULT}" "LOGGING.retrieveNativeLoggerTransport should keep supported values";
+}
+
 function LOGGING.retrieveRightAlignmentMode_falls_back_to_auto_for_unknown_values_test() {
   export LOGGING_RIGHT_ALIGNMENT_MODE="unsupported-mode";
 

@@ -4,6 +4,11 @@
 
 # set -o xtrace
 
+declare -gi LOGGING_NATIVE_DAEMON_PID=0
+declare -g LOGGING_NATIVE_DAEMON_IN_FD=""
+declare -g LOGGING_NATIVE_DAEMON_OUT_FD=""
+declare -g LOGGING_NATIVE_LOGGER_OUTPUT_FD=""
+
 # fun: LOGGING.getModuleName
 # api: private
 # txt: Retrieves the name of the module.
@@ -410,6 +415,107 @@ function LOGGING.nativeBackendIsAvailable() {
   return ${FALSE}
 }
 
+# fun: LOGGING.retrieveNativeLoggerTransport
+# api: private
+# txt: Retrieves the transport used by the native logger backend.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains auto, spawn or daemon.
+# use: LOGGING.retrieveNativeLoggerTransport;
+function LOGGING.retrieveNativeLoggerTransport() {
+  local _result="${DW_NATIVE_LOGGER_TRANSPORT}"
+
+  if ! areEqual "${_result}" "spawn" &&
+    ! areEqual "${_result}" "daemon"; then
+    _result="auto"
+  fi
+
+  export RESULT="${_result}"
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.prefersNativeLoggerDaemon
+# api: private
+# txt: Checks whether the native logger should use a persistent daemon transport.
+# txt: Returns 0/TRUE if the daemon transport should be used.
+# use: if LOGGING.prefersNativeLoggerDaemon; then echo daemon; fi
+function LOGGING.prefersNativeLoggerDaemon() {
+  LOGGING.retrieveNativeLoggerTransport
+
+  if ! areEqual "${RESULT}" "spawn"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.nativeLoggerDaemonIsRunning
+# api: private
+# txt: Checks whether the native logger daemon is currently running.
+# txt: Returns 0/TRUE if running; 1/FALSE otherwise.
+# use: if LOGGING.nativeLoggerDaemonIsRunning; then echo running; fi
+function LOGGING.nativeLoggerDaemonIsRunning() {
+  if isNotEmpty "${LOGGING_NATIVE_DAEMON_PID}" &&
+    [ "${LOGGING_NATIVE_DAEMON_PID}" -gt 0 ] &&
+    kill -0 "${LOGGING_NATIVE_DAEMON_PID}" 2>/dev/null; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.startNativeLoggerDaemon
+# api: private
+# txt: Starts the persistent native logger daemon when necessary.
+# txt: Returns 0/TRUE if the daemon is ready; 1/FALSE otherwise.
+# use: LOGGING.startNativeLoggerDaemon;
+function LOGGING.startNativeLoggerDaemon() {
+  if LOGGING.nativeLoggerDaemonIsRunning; then
+    return ${TRUE}
+  fi
+
+  LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
+  local _nativeLogger="${RESULT}"
+
+  if isEmpty "${LOGGING_NATIVE_LOGGER_OUTPUT_FD}"; then
+    exec {LOGGING_NATIVE_LOGGER_OUTPUT_FD}>&1
+  fi
+
+  coproc LOGGING_NATIVE_DAEMON_COPROC {
+    DW_NATIVE_LOGGER_OUTPUT_FD="${LOGGING_NATIVE_LOGGER_OUTPUT_FD}" "${_nativeLogger}" daemon
+  }
+  local -i _rescode=$?
+
+  if isTrue ${_rescode}; then
+    LOGGING_NATIVE_DAEMON_PID=${LOGGING_NATIVE_DAEMON_COPROC_PID}
+    LOGGING_NATIVE_DAEMON_IN_FD=${LOGGING_NATIVE_DAEMON_COPROC[1]}
+    LOGGING_NATIVE_DAEMON_OUT_FD=${LOGGING_NATIVE_DAEMON_COPROC[0]}
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.nativeLoggerDaemonSucceeded
+# api: private
+# txt: Reads the daemon status for the last request.
+# txt: Returns 0/TRUE on success; 1/FALSE otherwise.
+# use: if LOGGING.nativeLoggerDaemonSucceeded; then echo ok; fi
+function LOGGING.nativeLoggerDaemonSucceeded() {
+  local _status=""
+
+  if isEmpty "${LOGGING_NATIVE_DAEMON_OUT_FD}" ||
+    ! IFS= read -r -u "${LOGGING_NATIVE_DAEMON_OUT_FD}" _status; then
+    return ${FALSE}
+  fi
+
+  if areEqual "${_status}" "0"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
 # fun: LOGGING.usesAnsiFastBackend
 # api: private
 # txt: Checks whether the logging backend uses the fast ANSI renderer.
@@ -637,9 +743,6 @@ function LOGGING.echoNativeLogMessage() {
   local _message="${1}"
   checkNotEmpty message "${_message}" 1
 
-  LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
-  local _nativeLogger="${RESULT}"
-
   LOGGING.retrieveLogTimestamp
   local _timestamp="${RESULT}"
   LOGGING.retrieveLevelLabel
@@ -651,8 +754,27 @@ function LOGGING.echoNativeLogMessage() {
   fi
 
   LOGGING.setLastLogPrefixLength ${#_plainPrefix}
-  "${_nativeLogger}" message "${_timestamp}" "${_level}" "${_message}" "${_colors}"
-  local -i _rescode=$?
+
+  local -i _rescode=${FALSE}
+
+  if LOGGING.prefersNativeLoggerDaemon &&
+    LOGGING.startNativeLoggerDaemon; then
+    printf "message\n%s\n%s\n%d\n%d\n%s\n" \
+      "${_timestamp}" \
+      "${_level}" \
+      "${#_message}" \
+      ${_colors} \
+      "${_message}" \
+      >&"${LOGGING_NATIVE_DAEMON_IN_FD}"
+    LOGGING.nativeLoggerDaemonSucceeded
+    _rescode=$?
+  else
+    LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
+    local _nativeLogger="${RESULT}"
+    "${_nativeLogger}" message "${_timestamp}" "${_level}" "${_message}" "${_colors}"
+    _rescode=$?
+  fi
+
   if isTrue ${_rescode}; then
     LOGGING.logToFiles "${_plainPrefix}${_message}"
   fi
@@ -721,8 +843,6 @@ function LOGGING.echoNativeLogOutcome() {
   local _text="${@}"
   checkNotEmpty text "${_text}" 2
 
-  LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
-  local _nativeLogger="${RESULT}"
   local -i _lineLength=0
   local -i _termWidth=0
   local _alignmentMode="none"
@@ -742,6 +862,26 @@ function LOGGING.echoNativeLogOutcome() {
   if LOGGING.nativeColorsEnabled; then
     _colors=${TRUE}
   fi
+
+  if LOGGING.prefersNativeLoggerDaemon &&
+    LOGGING.startNativeLoggerDaemon; then
+    printf "outcome\n%d\n%d\n%s\n%s\n%d\n%s\n%d\n%s\n%d\n" \
+      ${_lineLength} \
+      ${_termWidth} \
+      "${_alignmentMode}" \
+      "${_keyword}" \
+      "${#_separator}" \
+      "${_separator}" \
+      "${#_text}" \
+      "${_text}" \
+      ${_colors} \
+      >&"${LOGGING_NATIVE_DAEMON_IN_FD}"
+    LOGGING.nativeLoggerDaemonSucceeded
+    return $?
+  fi
+
+  LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
+  local _nativeLogger="${RESULT}"
 
   "${_nativeLogger}" outcome "${_lineLength}" "${_termWidth}" "${_alignmentMode}" "${_separator}" "${_keyword}" "${_text}" "${_colors}"
 }
@@ -4211,6 +4351,8 @@ defineEnvVar ENABLE_LOGGING_HOT_PATH_CHECKS MANDATORY "Whether to keep runtime v
 defineEnvVar LOGGING_RIGHT_ALIGNMENT_MODE MANDATORY "The right alignment mode to use (auto, padding, cursor)" auto
 # env: DW_NATIVE_LOGGER_BIN: Optional path to the native logger helper executable. Empty by default;
 defineEnvVar DW_NATIVE_LOGGER_BIN OPTIONAL "Optional path to the native logger helper executable"
+# env: DW_NATIVE_LOGGER_TRANSPORT: The transport used by the native logger backend (auto, daemon, spawn). Defaults to auto;
+defineEnvVar DW_NATIVE_LOGGER_TRANSPORT OPTIONAL "The transport used by the native logger backend (auto, daemon, spawn)" auto
 # env: LOGGING_BACKEND: The logging backend to use (standard, simple, ansi-fast, native-c). Defaults to standard;
 defineEnvVar LOGGING_BACKEND MANDATORY "The logging backend to use (standard, simple, ansi-fast, native-c)" standard
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
