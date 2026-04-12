@@ -144,6 +144,22 @@ function LOGGING.areHotPathChecksEnabled_can_be_disabled_test() {
   Assert.isFalse $? "Hot-path checks should be disabled when requested";
 }
 
+function LOGGING.areSpansEnabled_is_disabled_by_default_test() {
+  unset ENABLE_LOGGING_SPANS;
+
+  LOGGING.areSpansEnabled;
+
+  Assert.isFalse $? "Span profiling should be disabled by default";
+}
+
+function LOGGING.areSpansEnabled_can_be_enabled_test() {
+  export ENABLE_LOGGING_SPANS=${TRUE};
+
+  LOGGING.areSpansEnabled;
+
+  Assert.isTrue $? "Span profiling should be enabled when requested";
+}
+
 function LOGGING.captureCurrentLogLineLength_uses_cached_prefix_length_test() {
   LOGGING.setLastLogPrefixLength 7;
 

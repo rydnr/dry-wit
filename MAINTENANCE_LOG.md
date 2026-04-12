@@ -236,3 +236,17 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   `spawn` `dry-wit-plain` average `10.056994s`, stddev `0.037590s`; `dry-wit-right-aligned` average `16.059921s`, stddev `0.052751s`; `daemon` `dry-wit-plain` average `10.044515s`, stddev `0.029569s`; `dry-wit-right-aligned` average `16.130426s`, stddev `0.004506s`
 - Notes:
   The daemon transport works and slightly improves the file-capture benchmark, which confirms that repeated helper spawns were part of the overhead. But the PTY results are effectively flat and even slightly worse for right-aligned output in this sample set. The practical conclusion is that the process boundary is no longer the main bottleneck once rendering is native. The next significant wins will likely come from reducing terminal writes, alignment work, or protocol overhead rather than from transport changes alone.
+
+## 2026-04-12 Logging Cycle 11
+
+- Scope: Added opt-in logging profiling spans under `ENABLE_LOGGING_SPANS`, with aggregated totals and counts plus `LOGGING.printSpanReport`, so the hot logging stages can be ranked directly instead of inferred from whole-benchmark timings.
+- Test command: `bash test/test-all.sh`
+- Test result: `184/184` passed, `0` failed
+- Span runs:
+  `ENABLE_LOGGING_SPANS=0 DW_LOGGING_SPANS_FILE=<file> LOGGING_BACKEND=native-c DW_NATIVE_LOGGER_TRANSPORT=spawn test/logging-benchmark-target.sh`
+- Plain scenario report, `20` iterations:
+  `native.message` total `3031406us`, avg `151570us`; `retrieveLogTimestamp` total `582563us`, avg `29128us`; `logToFiles` total `517619us`, avg `25880us`
+- Right-aligned scenario report, `20` iterations:
+  `echoSimpleLogOutcome` total `4610528us`, avg `230526us`; `native.message` total `3012404us`, avg `150620us`; `native.outcome` total `2242473us`, avg `112123us`; `logToFiles` total `1018012us`, avg `25450us`; `retrieveActiveLogLineLength` total `672946us`, avg `33647us`; `retrieveLogTimestamp` total `555369us`, avg `27768us`
+- Notes:
+  The dominant plain-logging span is the native message path itself. For right-aligned logging, the main bottleneck is the outcome phase, not prefix/timestamp work. That means the next meaningful optimization pass should focus first on the right-aligned outcome renderer and second on reducing the native message/outcome protocol cost. The span instrumentation is behind an opt-in flag because it is materially slower than the normal path.

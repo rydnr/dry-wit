@@ -61,6 +61,10 @@ function main() {
       return 1
       ;;
   esac
+
+  if isTrue "${ENABLE_LOGGING_SPANS}"; then
+    LOGGING.printSpanReport
+  fi
 }
 
 setScriptDescription "Runs logging performance benchmark scenarios"

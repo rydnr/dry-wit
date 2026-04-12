@@ -8,6 +8,8 @@ declare -gi LOGGING_NATIVE_DAEMON_PID=0
 declare -g LOGGING_NATIVE_DAEMON_IN_FD=""
 declare -g LOGGING_NATIVE_DAEMON_OUT_FD=""
 declare -g LOGGING_NATIVE_LOGGER_OUTPUT_FD=""
+declare -Ag LOGGING_SPAN_TOTAL_US=()
+declare -Ag LOGGING_SPAN_COUNT=()
 
 # fun: LOGGING.getModuleName
 # api: private
@@ -145,6 +147,148 @@ function LOGGING.areHotPathChecksEnabled() {
   return ${_rescode}
 }
 
+# fun: LOGGING.areSpansEnabled
+# api: private
+# txt: Checks whether logging span profiling is enabled.
+# txt: Returns 0/TRUE if enabled; 1/FALSE otherwise.
+# use: if LOGGING.areSpansEnabled; then echo spans; fi
+function LOGGING.areSpansEnabled() {
+  if isNotEmpty "${ENABLE_LOGGING_SPANS}" &&
+    isTrue "${ENABLE_LOGGING_SPANS}"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.retrieveSpanClockMicros
+# api: private
+# txt: Retrieves the current clock in microseconds for span profiling.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains the current time in microseconds.
+# use: LOGGING.retrieveSpanClockMicros;
+function LOGGING.retrieveSpanClockMicros() {
+  local _now="${EPOCHREALTIME}"
+  local -i _result=0
+
+  if isNotEmpty "${_now}"; then
+    local _seconds="${_now%.*}"
+    local _fraction="${_now#*.}"
+    _fraction="${_fraction}000000"
+    _fraction="${_fraction:0:6}"
+    _result=$((_seconds * 1000000 + 10#${_fraction}))
+  fi
+
+  export RESULT=${_result}
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.startSpan name
+# api: private
+# txt: Starts a logging profiling span.
+# opt: name: The span name.
+# txt: Returns 0/TRUE always.
+# txt: RESULT contains the start time in microseconds, or 0 when disabled.
+# use: LOGGING.startSpan logToFiles;
+function LOGGING.startSpan() {
+  local _name="${1}"
+  checkNotEmpty name "${_name}" 1
+
+  if LOGGING.areSpansEnabled; then
+    LOGGING.retrieveSpanClockMicros
+  else
+    export RESULT=0
+  fi
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.finishSpan name startedAt
+# api: private
+# txt: Finishes a logging profiling span and accumulates its metrics.
+# opt: name: The span name.
+# opt: startedAt: The span start time in microseconds.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.finishSpan logToFiles 123;
+function LOGGING.finishSpan() {
+  local _name="${1}"
+  checkNotEmpty name "${_name}" 1
+  local -i _startedAt="${2}"
+  local _previousResult="${RESULT}"
+
+  if LOGGING.areSpansEnabled &&
+    isGreaterThan ${_startedAt} 0; then
+    LOGGING.retrieveSpanClockMicros
+    local -i _elapsed=$((${RESULT} - _startedAt))
+    if isLessThan ${_elapsed} 0; then
+      _elapsed=0
+    fi
+
+    local -i _total=${LOGGING_SPAN_TOTAL_US["${_name}"]}
+    local -i _count=${LOGGING_SPAN_COUNT["${_name}"]}
+    LOGGING_SPAN_TOTAL_US["${_name}"]=$((_total + _elapsed))
+    LOGGING_SPAN_COUNT["${_name}"]=$((_count + 1))
+  fi
+
+  export RESULT="${_previousResult}"
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.resetSpans
+# api: public
+# txt: Resets the collected logging profiling spans.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.resetSpans;
+function LOGGING.resetSpans() {
+  LOGGING_SPAN_TOTAL_US=()
+  LOGGING_SPAN_COUNT=()
+
+  return ${TRUE}
+}
+
+# fun: LOGGING.printSpanReport
+# api: public
+# txt: Prints the collected logging profiling spans sorted by total time.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.printSpanReport;
+function LOGGING.printSpanReport() {
+  local _output="${DW_LOGGING_SPANS_FILE}"
+
+  if ! LOGGING.areSpansEnabled; then
+    return ${TRUE}
+  fi
+
+  if isEmpty "${_output}"; then
+    _output="/dev/stderr"
+  fi
+
+  {
+    echo "logging-span-report"
+    if [ ${#LOGGING_SPAN_TOTAL_US[@]} -eq 0 ]; then
+      echo "no spans recorded"
+    else
+      local _tmpFile
+      _tmpFile="$(mktemp /tmp/dry-wit-logging-spans.XXXXXX)"
+      local _name
+      for _name in "${!LOGGING_SPAN_TOTAL_US[@]}"; do
+        local -i _total=${LOGGING_SPAN_TOTAL_US["${_name}"]}
+        local -i _count=${LOGGING_SPAN_COUNT["${_name}"]}
+        local -i _avg=0
+        if isGreaterThan ${_count} 0; then
+          _avg=$((_total / _count))
+        fi
+        printf "%012d %s count=%d total_us=%d avg_us=%d\n" "${_total}" "${_name}" "${_count}" "${_total}" "${_avg}" >> "${_tmpFile}"
+      done
+      sort -nr "${_tmpFile}" | cut -d' ' -f2-
+      rm -f "${_tmpFile}"
+    fi
+  } >> "${_output}"
+
+  return ${TRUE}
+}
+
 # fun: LOGGING.setLastLogPrefixLength length
 # api: private
 # txt: Caches the visible length of the last emitted log prefix.
@@ -221,10 +365,13 @@ function LOGGING.captureCurrentLogLineLength() {
 # txt: RESULT contains the visible line length.
 # use: LOGGING.retrieveActiveLogLineLength;
 function LOGGING.retrieveActiveLogLineLength() {
+  LOGGING.startSpan "retrieveActiveLogLineLength"
+  local -i _spanStartedAt=${RESULT}
   LOGGING.getCurrentLogLineLength
   local -i _currentLogLineLength=${RESULT}
 
   if isGreaterThan ${_currentLogLineLength} 0; then
+    LOGGING.finishSpan "retrieveActiveLogLineLength" ${_spanStartedAt}
     return ${TRUE}
   fi
 
@@ -239,6 +386,7 @@ function LOGGING.retrieveActiveLogLineLength() {
 
   local -i _result=$((${#RESULT} + ${#_inProgressMessage}))
   export RESULT=${_result}
+  LOGGING.finishSpan "retrieveActiveLogLineLength" ${_spanStartedAt}
 
   return ${TRUE}
 }
@@ -740,6 +888,8 @@ function LOGGING.nativeColorsEnabled() {
 # txt: Returns 0/TRUE if the helper succeeds; 1/FALSE otherwise.
 # use: LOGGING.echoNativeLogMessage "Working";
 function LOGGING.echoNativeLogMessage() {
+  LOGGING.startSpan "native.message"
+  local -i _spanStartedAt=${RESULT}
   local _message="${1}"
   checkNotEmpty message "${_message}" 1
 
@@ -778,6 +928,7 @@ function LOGGING.echoNativeLogMessage() {
   if isTrue ${_rescode}; then
     LOGGING.logToFiles "${_plainPrefix}${_message}"
   fi
+  LOGGING.finishSpan "native.message" ${_spanStartedAt}
 
   return ${_rescode}
 }
@@ -790,6 +941,8 @@ function LOGGING.echoNativeLogMessage() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.echoSimpleLogOutcome SUCCESS "done";
 function LOGGING.echoSimpleLogOutcome() {
+  LOGGING.startSpan "echoSimpleLogOutcome"
+  local -i _spanStartedAt=${RESULT}
   local _keyword="${1}"
   checkNotEmpty keyword "${_keyword}" 1
   shift
@@ -803,6 +956,7 @@ function LOGGING.echoSimpleLogOutcome() {
 
   if LOGGING.usesNativeBackend && LOGGING.echoNativeLogOutcome "${_keyword}" "${_text}"; then
     LOGGING.logToFiles "${_plainOutcome}"
+    LOGGING.finishSpan "echoSimpleLogOutcome" ${_spanStartedAt}
     return ${TRUE}
   fi
 
@@ -825,6 +979,7 @@ function LOGGING.echoSimpleLogOutcome() {
   fi
 
   LOGGING.logToFiles "${_plainOutcome}"
+  LOGGING.finishSpan "echoSimpleLogOutcome" ${_spanStartedAt}
 
   return ${TRUE}
 }
@@ -837,6 +992,8 @@ function LOGGING.echoSimpleLogOutcome() {
 # txt: Returns 0/TRUE if the helper succeeds; 1/FALSE otherwise.
 # use: LOGGING.echoNativeLogOutcome SUCCESS "done";
 function LOGGING.echoNativeLogOutcome() {
+  LOGGING.startSpan "native.outcome"
+  local -i _spanStartedAt=${RESULT}
   local _keyword="${1}"
   checkNotEmpty keyword "${_keyword}" 1
   shift
@@ -877,13 +1034,18 @@ function LOGGING.echoNativeLogOutcome() {
       ${_colors} \
       >&"${LOGGING_NATIVE_DAEMON_IN_FD}"
     LOGGING.nativeLoggerDaemonSucceeded
-    return $?
+    local -i _rescode=$?
+    LOGGING.finishSpan "native.outcome" ${_spanStartedAt}
+    return ${_rescode}
   fi
 
   LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
   local _nativeLogger="${RESULT}"
 
   "${_nativeLogger}" outcome "${_lineLength}" "${_termWidth}" "${_alignmentMode}" "${_separator}" "${_keyword}" "${_text}" "${_colors}"
+  local -i _rescode=$?
+  LOGGING.finishSpan "native.outcome" ${_spanStartedAt}
+  return ${_rescode}
 }
 
 # fun: LOGGING.buildDefaultLogCategory
@@ -1740,6 +1902,8 @@ function addInvalidLogCategory() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.alignRight "Finishing work" "done";
 function LOGGING.alignRight() {
+  LOGGING.startSpan "alignRight"
+  local -i _spanStartedAt=${RESULT}
   local _logLineMessage="${1}"
   LOGGING.checkHotPathNotEmpty message "${_logLineMessage}" 1
   local _outcome="${2}"
@@ -1765,6 +1929,8 @@ function LOGGING.alignRight() {
       fi
     fi
   fi
+
+  LOGGING.finishSpan "alignRight" ${_spanStartedAt}
 }
 
 # fun: LOGGING.canUseCursorRightAlignment message termWidth
@@ -1981,6 +2147,8 @@ function setLogOutcomeColors() {
 # use: LOGGING.buildLogPrefix ${FALSE};
 # use: echo -n "${RESULT}";
 function LOGGING.buildLogPrefix() {
+  LOGGING.startSpan "buildLogPrefix"
+  local -i _spanStartedAt=${RESULT}
   local -i _allowsColors=${FALSE}
   if isGreaterThan $# 0; then
     _allowsColors=${1}
@@ -2023,6 +2191,7 @@ function LOGGING.buildLogPrefix() {
   LOGGING.setLastLogPrefixLength $((${_plainLength} + 1))
 
   export RESULT="${_result}"
+  LOGGING.finishSpan "buildLogPrefix" ${_spanStartedAt}
 
   return ${TRUE}
 }
@@ -2033,8 +2202,11 @@ function LOGGING.buildLogPrefix() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.echoLogPrefix;
 function LOGGING.echoLogPrefix() {
+  LOGGING.startSpan "echoLogPrefix"
+  local -i _spanStartedAt=${RESULT}
   if LOGGING.usesCompactBackend; then
     LOGGING.echoSimpleLogPrefix
+    LOGGING.finishSpan "echoLogPrefix" ${_spanStartedAt}
     return ${TRUE}
   fi
 
@@ -2045,6 +2217,7 @@ function LOGGING.echoLogPrefix() {
   local _result="${RESULT}"
   echo -n "${_result}"
   LOGGING.logToFiles "${_result}"
+  LOGGING.finishSpan "echoLogPrefix" ${_spanStartedAt}
 }
 
 # fun: rightJustificationEnabled
@@ -3395,6 +3568,8 @@ function setLogTimestampFormat() {
 # use: LOGGING.retrieveLogTimestamp;
 # use: echo "The log timestamp is ${RESULT}";
 function LOGGING.retrieveLogTimestamp() {
+  LOGGING.startSpan "retrieveLogTimestamp"
+  local -i _spanStartedAt=${RESULT}
   getLogTimestampFormat
   local _format="${RESULT}"
   if isEmpty "${_format}"; then
@@ -3418,6 +3593,7 @@ function LOGGING.retrieveLogTimestamp() {
   if areEqual "${_cachedEpoch}" "${_currentEpoch}"; then
     DW.getGlobalString "${_moduleName}" CACHED_LOG_TIMESTAMP
     if isNotEmpty "${RESULT}"; then
+      LOGGING.finishSpan "retrieveLogTimestamp" ${_spanStartedAt}
       return ${TRUE}
     fi
   fi
@@ -3427,6 +3603,7 @@ function LOGGING.retrieveLogTimestamp() {
   DW.setGlobalInt "${_moduleName}" CACHED_LOG_TIMESTAMP_EPOCH "${_currentEpoch}"
   DW.setGlobalString "${_moduleName}" CACHED_LOG_TIMESTAMP "${_result}"
   export RESULT="${_result}"
+  LOGGING.finishSpan "retrieveLogTimestamp" ${_spanStartedAt}
 }
 
 # fun: LOGGING.getOutcomeTextPositionInLogOutcome
@@ -3844,6 +4021,8 @@ function LOGGING.getLogFilesVariableName() {
 # txt: Returns 0/TRUE always.
 # use: LOGGING.logToFiles "Logging sample";
 function LOGGING.logToFiles() {
+  LOGGING.startSpan "logToFiles"
+  local -i _spanStartedAt=${RESULT}
   local _msg="${@}"
   checkNotEmpty msg "${_msg}" 1
 
@@ -3861,6 +4040,7 @@ function LOGGING.logToFiles() {
     done
     IFS="${_oldIFS}"
   fi
+  LOGGING.finishSpan "logToFiles" ${_spanStartedAt}
 
   return ${TRUE}
 }
@@ -4347,12 +4527,16 @@ function LOGGING.resetState() {
 defineEnvVar ENABLE_RIGHT_JUSTIFIED_LOGGING MANDATORY "Whether to justify text to the right when printing outcomes in log messages" ${FALSE}
 # env: ENABLE_LOGGING_HOT_PATH_CHECKS: Whether to keep runtime validations in hot logging paths. Defaults to ${TRUE};
 defineEnvVar ENABLE_LOGGING_HOT_PATH_CHECKS MANDATORY "Whether to keep runtime validations in hot logging paths" ${TRUE}
+# env: ENABLE_LOGGING_SPANS: Whether to collect logging profiling spans. Defaults to ${FALSE};
+defineEnvVar ENABLE_LOGGING_SPANS MANDATORY "Whether to collect logging profiling spans" ${FALSE}
 # env: LOGGING_RIGHT_ALIGNMENT_MODE: The right alignment mode to use (auto, padding, cursor). Defaults to auto;
 defineEnvVar LOGGING_RIGHT_ALIGNMENT_MODE MANDATORY "The right alignment mode to use (auto, padding, cursor)" auto
 # env: DW_NATIVE_LOGGER_BIN: Optional path to the native logger helper executable. Empty by default;
 defineEnvVar DW_NATIVE_LOGGER_BIN OPTIONAL "Optional path to the native logger helper executable"
 # env: DW_NATIVE_LOGGER_TRANSPORT: The transport used by the native logger backend (auto, daemon, spawn). Defaults to auto;
 defineEnvVar DW_NATIVE_LOGGER_TRANSPORT OPTIONAL "The transport used by the native logger backend (auto, daemon, spawn)" auto
+# env: DW_LOGGING_SPANS_FILE: Optional path to store logging span reports. Empty by default;
+defineEnvVar DW_LOGGING_SPANS_FILE OPTIONAL "Optional path to store logging span reports"
 # env: LOGGING_BACKEND: The logging backend to use (standard, simple, ansi-fast, native-c). Defaults to standard;
 defineEnvVar LOGGING_BACKEND MANDATORY "The logging backend to use (standard, simple, ansi-fast, native-c)" standard
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet
