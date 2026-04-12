@@ -51,6 +51,9 @@ function LOGGING.retrieveBackend() {
 
   if isEmpty "${_result}" || ! LOGGING.isSupportedBackend "${_result}"; then
     _result="standard"
+  elif areEqual "${_result}" "native-c" &&
+    ! LOGGING.nativeBackendIsAvailable; then
+    _result="standard"
   fi
 
   export RESULT="${_result}"
@@ -90,7 +93,8 @@ function LOGGING.isSupportedBackend() {
 
   if areEqual "${_backend}" "standard" ||
     areEqual "${_backend}" "simple" ||
-    areEqual "${_backend}" "ansi-fast"; then
+    areEqual "${_backend}" "ansi-fast" ||
+    areEqual "${_backend}" "native-c"; then
     return ${TRUE}
   fi
 
@@ -338,7 +342,68 @@ function LOGGING.checkHotPathResultOutcome() {
 function LOGGING.usesCompactBackend() {
   LOGGING.retrieveBackend
 
-  if areEqual "${RESULT}" "simple" || areEqual "${RESULT}" "ansi-fast"; then
+  if areEqual "${RESULT}" "simple" ||
+    areEqual "${RESULT}" "ansi-fast" ||
+    areEqual "${RESULT}" "native-c"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.usesNativeBackend
+# api: private
+# txt: Checks whether the logging backend uses the native C helper.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.usesNativeBackend; then echo native; fi
+function LOGGING.usesNativeBackend() {
+  LOGGING.retrieveBackend
+
+  if areEqual "${RESULT}" "native-c"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.retrieveNativeLoggerExecutable
+# api: private
+# txt: Retrieves the optional native logger helper executable.
+# txt: Returns 0/TRUE if found; 1/FALSE otherwise.
+# txt: RESULT contains the executable path.
+# use: if LOGGING.retrieveNativeLoggerExecutable; then echo "${RESULT}"; fi
+function LOGGING.retrieveNativeLoggerExecutable() {
+  local _result="${DW_NATIVE_LOGGER_BIN}"
+
+  if isEmpty "${_result}"; then
+    DW.getScriptFolder
+    local _scriptFolder="${RESULT}"
+    local _candidate="${_scriptFolder}/dry-wit-native-logger"
+    if fileExists "${_candidate}" && [ -x "${_candidate}" ]; then
+      _result="${_candidate}"
+    fi
+  fi
+
+  if isEmpty "${_result}"; then
+    _result="$(command -v dry-wit-native-logger 2>/dev/null)"
+  fi
+
+  if isNotEmpty "${_result}" && fileExists "${_result}" && [ -x "${_result}" ]; then
+    export RESULT="${_result}"
+    return ${TRUE}
+  fi
+
+  export RESULT=""
+  return ${FALSE}
+}
+
+# fun: LOGGING.nativeBackendIsAvailable
+# api: private
+# txt: Checks whether the optional native backend helper is available.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.nativeBackendIsAvailable; then echo available; fi
+function LOGGING.nativeBackendIsAvailable() {
+  if LOGGING.retrieveNativeLoggerExecutable; then
     return ${TRUE}
   fi
 
@@ -547,6 +612,54 @@ function LOGGING.echoSimpleLogPrefix() {
   return ${TRUE}
 }
 
+# fun: LOGGING.nativeColorsEnabled
+# api: private
+# txt: Checks whether the native logger should emit ANSI colors.
+# txt: Returns 0/TRUE in such case; 1/FALSE otherwise.
+# use: if LOGGING.nativeColorsEnabled; then echo colors; fi
+function LOGGING.nativeColorsEnabled() {
+  if isTrue "${ENABLE_COLOR}" &&
+    isNotEmpty "${TERM}" &&
+    ! areEqual "${TERM}" "dumb"; then
+    return ${TRUE}
+  fi
+
+  return ${FALSE}
+}
+
+# fun: LOGGING.echoNativeLogMessage message
+# api: private
+# txt: Prints a compact log message using the optional native helper.
+# opt: message: The message to print.
+# txt: Returns 0/TRUE if the helper succeeds; 1/FALSE otherwise.
+# use: LOGGING.echoNativeLogMessage "Working";
+function LOGGING.echoNativeLogMessage() {
+  local _message="${1}"
+  checkNotEmpty message "${_message}" 1
+
+  LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
+  local _nativeLogger="${RESULT}"
+
+  LOGGING.retrieveLogTimestamp
+  local _timestamp="${RESULT}"
+  LOGGING.retrieveLevelLabel
+  local _level="${RESULT}"
+  local _plainPrefix="[${_timestamp} ${_level}] "
+  local -i _colors=${FALSE}
+  if LOGGING.nativeColorsEnabled; then
+    _colors=${TRUE}
+  fi
+
+  LOGGING.setLastLogPrefixLength ${#_plainPrefix}
+  "${_nativeLogger}" message "${_timestamp}" "${_level}" "${_message}" "${_colors}"
+  local -i _rescode=$?
+  if isTrue ${_rescode}; then
+    LOGGING.logToFiles "${_plainPrefix}${_message}"
+  fi
+
+  return ${_rescode}
+}
+
 # fun: LOGGING.echoSimpleLogOutcome keyword text
 # api: private
 # txt: Prints the compact log outcome.
@@ -564,6 +677,13 @@ function LOGGING.echoSimpleLogOutcome() {
   LOGGING.peekLog
   local _inProgressMessage="${RESULT}"
 
+  local _plainOutcome="[${_text}]"
+
+  if LOGGING.usesNativeBackend && LOGGING.echoNativeLogOutcome "${_keyword}" "${_text}"; then
+    LOGGING.logToFiles "${_plainOutcome}"
+    return ${TRUE}
+  fi
+
   LOGGING.buildSimpleLogPrefix
   local _logPrefix="${RESULT}"
 
@@ -572,8 +692,6 @@ function LOGGING.echoSimpleLogOutcome() {
   else
     printf " ... "
   fi
-
-  local _plainOutcome="[${_text}]"
 
   if LOGGING.usesAnsiFastBackend; then
     printf "["
@@ -587,6 +705,45 @@ function LOGGING.echoSimpleLogOutcome() {
   LOGGING.logToFiles "${_plainOutcome}"
 
   return ${TRUE}
+}
+
+# fun: LOGGING.echoNativeLogOutcome keyword text
+# api: private
+# txt: Prints a compact log outcome using the optional native helper.
+# opt: keyword: The outcome keyword.
+# opt: text: The outcome text.
+# txt: Returns 0/TRUE if the helper succeeds; 1/FALSE otherwise.
+# use: LOGGING.echoNativeLogOutcome SUCCESS "done";
+function LOGGING.echoNativeLogOutcome() {
+  local _keyword="${1}"
+  checkNotEmpty keyword "${_keyword}" 1
+  shift
+  local _text="${@}"
+  checkNotEmpty text "${_text}" 2
+
+  LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
+  local _nativeLogger="${RESULT}"
+  local -i _lineLength=0
+  local -i _termWidth=0
+  local _alignmentMode="none"
+  local _separator=" "
+  local -i _colors=${FALSE}
+
+  if rightJustificationEnabled && getTermWidth; then
+    _termWidth=${RESULT}
+    LOGGING.retrieveRightAlignmentMode
+    _alignmentMode="${RESULT}"
+    getLogOutcomeSeparator
+    _separator="${RESULT}"
+    LOGGING.retrieveActiveLogLineLength
+    _lineLength=${RESULT}
+  fi
+
+  if LOGGING.nativeColorsEnabled; then
+    _colors=${TRUE}
+  fi
+
+  "${_nativeLogger}" outcome "${_lineLength}" "${_termWidth}" "${_alignmentMode}" "${_separator}" "${_keyword}" "${_text}" "${_colors}"
 }
 
 # fun: LOGGING.buildDefaultLogCategory
@@ -2204,19 +2361,28 @@ function LOGGING.logInProgressNested() {
   echo
   LOGGING.logToFilesAnEmptyLine
 
-  LOGGING.echoLogPrefix
   LOGGING.peekLog
   local _actualMessage="${RESULT}"
   LOGGING.setLastLogLevel "${_level}"
 
-  if LOGGING.usesCompactBackend; then
+  if LOGGING.usesNativeBackend && LOGGING.echoNativeLogMessage "${_actualMessage}"; then
+    :
+  else
+    LOGGING.echoLogPrefix
+  fi
+
+  if LOGGING.usesNativeBackend; then
+    :
+  elif LOGGING.usesCompactBackend; then
     printf "%s" "${_actualMessage}"
   else
     getDefaultLogPrefixColor
     local _defaultLogPrefixColor="${RESULT}"
     echoColorizedText "${_actualMessage}" "" "${_defaultLogPrefixColor}"
   fi
-  LOGGING.logToFiles "${_actualMessage}"
+  if ! LOGGING.usesNativeBackend; then
+    LOGGING.logToFiles "${_actualMessage}"
+  fi
   LOGGING.logToFilesAnEmptyLine
   LOGGING.captureCurrentLogLineLength "${_actualMessage}"
 }
@@ -2282,16 +2448,24 @@ function LOGGING.logInProgressNoNested() {
   LOGGING.checkHotPathNotEmpty message "${_message}" 1
 
   LOGGING.pushLog "${_message}"
-  LOGGING.echoLogPrefix
+  if LOGGING.usesNativeBackend && LOGGING.echoNativeLogMessage "${_message}"; then
+    :
+  else
+    LOGGING.echoLogPrefix
+  fi
 
-  if LOGGING.usesCompactBackend; then
+  if LOGGING.usesNativeBackend; then
+    :
+  elif LOGGING.usesCompactBackend; then
     printf "%s" "${_message}"
   else
     getDefaultLogPrefixColor
     local _defaultLogPrefixColor="${RESULT}"
     echoColorizedText "${_message}" "" "${_defaultLogPrefixColor}"
   fi
-  LOGGING.logToFiles "${_message}"
+  if ! LOGGING.usesNativeBackend; then
+    LOGGING.logToFiles "${_message}"
+  fi
   LOGGING.logToFilesAnEmptyLine
   LOGGING.captureCurrentLogLineLength "${_message}"
 }
@@ -4035,6 +4209,8 @@ defineEnvVar ENABLE_RIGHT_JUSTIFIED_LOGGING MANDATORY "Whether to justify text t
 defineEnvVar ENABLE_LOGGING_HOT_PATH_CHECKS MANDATORY "Whether to keep runtime validations in hot logging paths" ${TRUE}
 # env: LOGGING_RIGHT_ALIGNMENT_MODE: The right alignment mode to use (auto, padding, cursor). Defaults to auto;
 defineEnvVar LOGGING_RIGHT_ALIGNMENT_MODE MANDATORY "The right alignment mode to use (auto, padding, cursor)" auto
-# env: LOGGING_BACKEND: The logging backend to use (standard, simple, ansi-fast). Defaults to standard;
-defineEnvVar LOGGING_BACKEND MANDATORY "The logging backend to use (standard, simple, ansi-fast)" standard
+# env: DW_NATIVE_LOGGER_BIN: Optional path to the native logger helper executable. Empty by default;
+defineEnvVar DW_NATIVE_LOGGER_BIN OPTIONAL "Optional path to the native logger helper executable"
+# env: LOGGING_BACKEND: The logging backend to use (standard, simple, ansi-fast, native-c). Defaults to standard;
+defineEnvVar LOGGING_BACKEND MANDATORY "The logging backend to use (standard, simple, ansi-fast, native-c)" standard
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

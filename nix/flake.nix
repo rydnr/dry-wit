@@ -45,13 +45,14 @@
           pkgs.stdenv.mkDerivation rec {
             inherit pname version;
             src = ../.;
-            buildInputs = [ sh ];
+            buildInputs = [ sh pkgs.gcc ];
             phases = [ "unpackPhase" "installPhase" ];
 
             installPhase = ''
               mkdir -p $out
               cp -r src/* $out
               rm -f src/dry-wit-test
+              ${pkgs.gcc}/bin/gcc -O2 -Wall -Wextra -o $out/dry-wit-native-logger native/dry-wit-native-logger.c
               cp README.md LICENSE $out/
               substituteInPlace $out/dry-wit \
                 --replace "#!/usr/bin/env bash" "#!/usr/bin/env ${sh}/bin/${sh-name}"

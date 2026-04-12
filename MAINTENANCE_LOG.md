@@ -204,3 +204,19 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   `dry-wit-plain` average `11.225932s`, stddev `0.120831s`; `dry-wit-right-aligned` average `19.632802s`, stddev `0.016581s`; `bashsimplecurses-scroll` average `1.012715s`, stddev `0.002405s`; `bashsimplecurses-dashboard` average `1.035450s`, stddev `0.010669s`
 - Notes:
   The meaningful win here is the PTY right-aligned case: the previous PTY probe in Cycle 7 measured `dry-wit-right-aligned` at `24.469097s`, so this cache-based change cuts that to `19.632802s` while preserving the existing API and keeping the old reconstruction path as fallback. Plain and color still move around enough that they should not be over-interpreted from a single cycle. This is a better fit than trying to force `bashsimplecurses` into the logging API, because it removes avoidable work inside the current design rather than introducing a dashboard library where a line renderer is needed.
+
+## 2026-04-11 Logging Cycle 9
+
+- Scope: Prototyped an optional drop-in native logging backend selected with `LOGGING_BACKEND=native-c`, added helper auto-discovery with fallback to `standard`, packaged the helper build in `nix/flake.nix`, and added availability/fallback coverage in `test/logging-tests.sh`.
+- Test command: `bash test/test-all.sh`
+- Test result: `180/180` passed, `0` failed
+- File benchmark harness:
+  `DW_NATIVE_LOGGER_BIN=/tmp/dry-wit-native-logger LOGGING_BACKEND=<backend> bash test/logging-benchmark.sh 5 10`
+- File benchmark result:
+  `standard` plain average `6.822419s`, stddev `0.124191s`, color average `7.894678s`, stddev `0.036420s`, right-aligned average `9.989359s`, stddev `0.211094s`; `native-c` plain average `6.308193s`, stddev `0.095679s`, color average `6.241957s`, stddev `0.041911s`, right-aligned average `9.288115s`, stddev `0.072938s`
+- PTY benchmark harness:
+  `DW_NATIVE_LOGGER_BIN=/tmp/dry-wit-native-logger LOGGING_BACKEND=<backend> bash test/terminal-logging-benchmark.sh 3 20`
+- PTY benchmark result:
+  `standard` `dry-wit-plain` average `11.479710s`, stddev `0.077332s`; `dry-wit-right-aligned` average `19.556455s`, stddev `0.036974s`; `native-c` `dry-wit-plain` average `10.608589s`, stddev `0.034454s`; `dry-wit-right-aligned` average `17.018550s`, stddev `0.035341s`
+- Notes:
+  This is the first optional dependency path that clearly outperforms the current Bash renderer while preserving the existing shell API. The improvement is meaningful in both file-capture and PTY measurements, especially for color and right-aligned output. The architectural caveat still holds: this backend spawns one helper process per log call, so it is not the ceiling for native performance. A persistent helper or linked extension would be the next lever if more throughput is needed.

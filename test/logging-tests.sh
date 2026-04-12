@@ -72,6 +72,30 @@ function LOGGING.retrieveBackend_keeps_supported_values_test() {
   Assert.areEqual "simple" "${RESULT}" "LOGGING.retrieveBackend should keep supported values";
 }
 
+function LOGGING.retrieveBackend_falls_back_to_standard_when_native_helper_is_missing_test() {
+  export LOGGING_BACKEND="native-c";
+  unset DW_NATIVE_LOGGER_BIN;
+
+  LOGGING.retrieveBackend;
+
+  Assert.areEqual "standard" "${RESULT}" "LOGGING.retrieveBackend should fall back when native helper is unavailable";
+}
+
+function LOGGING.retrieveBackend_keeps_native_backend_when_helper_is_available_test() {
+  export LOGGING_BACKEND="native-c";
+  export DW_NATIVE_LOGGER_BIN="$(mktemp /tmp/dry-wit-native-logger-test.XXXXXX)";
+  printf '#!/usr/bin/env bash\nexit 0\n' > "${DW_NATIVE_LOGGER_BIN}";
+  chmod +x "${DW_NATIVE_LOGGER_BIN}";
+
+  LOGGING.retrieveBackend;
+  local _actual="${RESULT}";
+
+  rm -f "${DW_NATIVE_LOGGER_BIN}";
+  unset DW_NATIVE_LOGGER_BIN;
+
+  Assert.areEqual "native-c" "${_actual}" "LOGGING.retrieveBackend should keep native-c when helper exists";
+}
+
 function LOGGING.retrieveRightAlignmentMode_falls_back_to_auto_for_unknown_values_test() {
   export LOGGING_RIGHT_ALIGNMENT_MODE="unsupported-mode";
 
