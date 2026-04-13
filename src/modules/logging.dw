@@ -963,24 +963,39 @@ function LOGGING.echoSimpleLogOutcome() {
 
   local _plainOutcome="[${_text}]"
 
+  LOGGING.startSpan "echoSimpleLogOutcome.native"
+  local -i _nativeSpanStartedAt=${RESULT}
   if LOGGING.usesNativeBackend && LOGGING.echoNativeLogOutcome "${_keyword}" "${_text}"; then
+    LOGGING.finishSpan "echoSimpleLogOutcome.native" ${_nativeSpanStartedAt}
+    LOGGING.startSpan "echoSimpleLogOutcome.files"
+    local -i _filesSpanStartedAt=${RESULT}
     LOGGING.logToFiles "${_plainOutcome}"
+    LOGGING.finishSpan "echoSimpleLogOutcome.files" ${_filesSpanStartedAt}
     LOGGING.finishSpan "echoSimpleLogOutcome" ${_spanStartedAt}
     return ${TRUE}
   fi
+  LOGGING.finishSpan "echoSimpleLogOutcome.native" ${_nativeSpanStartedAt}
 
+  LOGGING.startSpan "echoSimpleLogOutcome.state"
+  local -i _stateSpanStartedAt=${RESULT}
   LOGGING.peekLog
   local _inProgressMessage="${RESULT}"
 
   LOGGING.buildSimpleLogPrefix
   local _logPrefix="${RESULT}"
+  LOGGING.finishSpan "echoSimpleLogOutcome.state" ${_stateSpanStartedAt}
 
+  LOGGING.startSpan "echoSimpleLogOutcome.align"
+  local -i _alignSpanStartedAt=${RESULT}
   if rightJustificationEnabled; then
     LOGGING.alignRight "${_logPrefix}${_inProgressMessage}" "${_text}"
   else
     printf " ... "
   fi
+  LOGGING.finishSpan "echoSimpleLogOutcome.align" ${_alignSpanStartedAt}
 
+  LOGGING.startSpan "echoSimpleLogOutcome.render"
+  local -i _renderSpanStartedAt=${RESULT}
   if LOGGING.usesAnsiFastBackend; then
     printf "["
     LOGGING.retrieveOutcomeColorName "${_keyword}"
@@ -989,8 +1004,12 @@ function LOGGING.echoSimpleLogOutcome() {
   else
     printf "%s" "${_plainOutcome}"
   fi
+  LOGGING.finishSpan "echoSimpleLogOutcome.render" ${_renderSpanStartedAt}
 
+  LOGGING.startSpan "echoSimpleLogOutcome.files"
+  local -i _filesSpanStartedAt=${RESULT}
   LOGGING.logToFiles "${_plainOutcome}"
+  LOGGING.finishSpan "echoSimpleLogOutcome.files" ${_filesSpanStartedAt}
   LOGGING.finishSpan "echoSimpleLogOutcome" ${_spanStartedAt}
 
   return ${TRUE}

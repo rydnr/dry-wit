@@ -266,3 +266,17 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   `echoSimpleLogOutcome` total `2256060us`, avg `225606us`; `native.message` total `1551932us`, avg `155193us`; `native.outcome` total `1135342us`, avg `113534us`; `logToFiles` total `521497us`, avg `26074us`; `retrieveActiveLogLineLength` total `336478us`, avg `33647us`; `retrieveLogTimestamp` total `277484us`, avg `27748us`
 - Notes:
   The explicit `message-only` control confirms that `echoSimpleLogOutcome` work is isolated from plain log-call measurements. Removing the daemon acknowledgement does not materially change `message-only`, which means the helper transport is no longer the main bottleneck there. It does help the daemon path stay at least slightly ahead on the right-aligned scenario, but the span report still shows the dominant cost is `echoSimpleLogOutcome` first and `native.outcome` second. The next cycle should optimize the outcome path itself rather than the daemon handshake again.
+
+## 2026-04-13 Logging Cycle 13
+
+- Scope: Added finer-grained spans inside `LOGGING.echoSimpleLogOutcome` so the outcome path can be broken down into native delegation, local state retrieval, alignment, rendering, and file logging instead of treating the whole function as one opaque hot span.
+- Test command:
+  `PATH="$(pwd)/src:$PATH" test/logging-tests.sh`
+- Test result:
+  logging tests passed
+- Span run:
+  `ENABLE_LOGGING_SPANS=0 DW_LOGGING_SPANS_FILE=<file> DW_NATIVE_LOGGER_BIN=/tmp/dry-wit-native-logger LOGGING_BACKEND=native-c DW_NATIVE_LOGGER_TRANSPORT=daemon DW_BENCH_SCENARIO=right-aligned DW_BENCH_ITERATIONS=10 test/logging-benchmark-target.sh`
+- Right-aligned scenario report, `10` iterations:
+  `echoSimpleLogOutcome` total `3319788us`, avg `331978us`; `echoSimpleLogOutcome.native` total `1772271us`, avg `177227us`; `native.message` total `1521631us`, avg `152163us`; `native.outcome` total `1163967us`, avg `116396us`; `echoSimpleLogOutcome.files` total `777383us`, avg `77738us`; `logToFiles` total `506098us`, avg `25304us`; `retrieveActiveLogLineLength` total `349822us`, avg `34982us`; `retrieveLogTimestamp` total `272363us`, avg `27236us`
+- Notes:
+  The new sub-spans show that the slowest part inside `echoSimpleLogOutcome` is the native branch itself, not local alignment or local outcome rendering. The next largest part inside the function is the file-logging side. This changes the optimization order: the highest-value next experiments are either reducing what the native outcome path sends/does, or deciding whether the outcome-side `logToFiles` write can be made cheaper or optional in hot runs. Local alignment helpers are still worth keeping simple, but they are not the top bottleneck inside the function anymore.
