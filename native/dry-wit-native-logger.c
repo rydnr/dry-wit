@@ -183,8 +183,6 @@ static int daemon_loop(void) {
   }
 
   while (read_line(stdin, command, sizeof(command))) {
-    int result = 1;
-
     if (strcmp(command, "message") == 0) {
       char *message = NULL;
 
@@ -204,7 +202,10 @@ static int daemon_loop(void) {
         return 1;
       }
 
-      result = print_message(timestamp, level, message, atoi(value));
+      if (print_message(timestamp, level, message, atoi(value)) != 0) {
+        free(message);
+        return 1;
+      }
       free(message);
     } else if (strcmp(command, "outcome") == 0) {
       char separator_length_text[64];
@@ -253,14 +254,18 @@ static int daemon_loop(void) {
       }
       colors_enabled = atoi(value);
 
-      result = print_outcome(
+      if (print_outcome(
         line_length,
         term_width,
         alignment_mode,
         separator,
         keyword,
         text,
-        colors_enabled);
+        colors_enabled) != 0) {
+        free(separator);
+        free(text);
+        return 1;
+      }
 
       free(separator);
       free(text);
@@ -269,8 +274,6 @@ static int daemon_loop(void) {
     }
 
     fflush(output_stream);
-    fprintf(stdout, "%d\n", result);
-    fflush(stdout);
   }
 
   return 0;

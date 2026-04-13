@@ -104,7 +104,7 @@ function benchmark_scenario() {
   echo "scenario=${_scenario} samples=${SAMPLES} iterations=${ITERATIONS} avg=$(format_ns "${_avg}")s stddev=$(format_ns "${_stddev}")s min=$(format_ns "${_min}")s max=$(format_ns "${_max}")s avg_per_iteration=$(format_us "${_avgPerIteration}")us stddev_per_iteration=$(format_us "${_stddevPerIteration}")us"
 }
 
-benchmark_scenario plain
+benchmark_scenario message-only
 benchmark_scenario color
 benchmark_scenario right-aligned
 # vim: syntax=sh ts=2 sw=2 sts=4 sr noet

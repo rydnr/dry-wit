@@ -2,7 +2,7 @@
 # Copyright 2016-today Automated Computing Machinery S.L.
 # Distributed under the terms of the GNU General Public License v3
 
-function run_plain_benchmark() {
+function run_message_only_benchmark() {
   local -i _iterations="${1}"
   local -i _i
 
@@ -47,8 +47,11 @@ function main() {
   setQuietMode ${FALSE}
 
   case "${_scenario}" in
+    message-only)
+      run_message_only_benchmark "${_iterations}"
+      ;;
     plain)
-      run_plain_benchmark "${_iterations}"
+      run_message_only_benchmark "${_iterations}"
       ;;
     color)
       run_color_benchmark "${_iterations}"

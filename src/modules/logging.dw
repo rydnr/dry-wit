@@ -644,24 +644,36 @@ function LOGGING.startNativeLoggerDaemon() {
   return ${FALSE}
 }
 
-# fun: LOGGING.nativeLoggerDaemonSucceeded
+# fun: LOGGING.resetNativeLoggerDaemon
 # api: private
-# txt: Reads the daemon status for the last request.
-# txt: Returns 0/TRUE on success; 1/FALSE otherwise.
-# use: if LOGGING.nativeLoggerDaemonSucceeded; then echo ok; fi
-function LOGGING.nativeLoggerDaemonSucceeded() {
-  local _status=""
+# txt: Resets the cached native logger daemon state after a transport failure.
+# txt: Returns 0/TRUE always.
+# use: LOGGING.resetNativeLoggerDaemon;
+function LOGGING.resetNativeLoggerDaemon() {
+  LOGGING_NATIVE_DAEMON_PID=0
+  LOGGING_NATIVE_DAEMON_IN_FD=""
+  LOGGING_NATIVE_DAEMON_OUT_FD=""
 
-  if isEmpty "${LOGGING_NATIVE_DAEMON_OUT_FD}" ||
-    ! IFS= read -r -u "${LOGGING_NATIVE_DAEMON_OUT_FD}" _status; then
+  return ${TRUE}
+}
+
+# fun: LOGGING.sendNativeLoggerDaemonRequest request
+# api: private
+# txt: Sends a request to the persistent native logger daemon.
+# opt: request: The serialized request payload.
+# txt: Returns 0/TRUE on success; 1/FALSE otherwise.
+# use: if LOGGING.sendNativeLoggerDaemonRequest "message\n..."; then echo ok; fi
+function LOGGING.sendNativeLoggerDaemonRequest() {
+  local _request="${1}"
+  checkNotEmpty request "${_request}" 1
+
+  if isEmpty "${LOGGING_NATIVE_DAEMON_IN_FD}" ||
+    ! printf "%b" "${_request}" >&"${LOGGING_NATIVE_DAEMON_IN_FD}"; then
+    LOGGING.resetNativeLoggerDaemon
     return ${FALSE}
   fi
 
-  if areEqual "${_status}" "0"; then
-    return ${TRUE}
-  fi
-
-  return ${FALSE}
+  return ${TRUE}
 }
 
 # fun: LOGGING.usesAnsiFastBackend
@@ -909,14 +921,14 @@ function LOGGING.echoNativeLogMessage() {
 
   if LOGGING.prefersNativeLoggerDaemon &&
     LOGGING.startNativeLoggerDaemon; then
-    printf "message\n%s\n%s\n%d\n%d\n%s\n" \
+    local _request=""
+    printf -v _request "message\n%s\n%s\n%d\n%d\n%s\n" \
       "${_timestamp}" \
       "${_level}" \
       "${#_message}" \
       ${_colors} \
-      "${_message}" \
-      >&"${LOGGING_NATIVE_DAEMON_IN_FD}"
-    LOGGING.nativeLoggerDaemonSucceeded
+      "${_message}"
+    LOGGING.sendNativeLoggerDaemonRequest "${_request}"
     _rescode=$?
   else
     LOGGING.retrieveNativeLoggerExecutable || return ${FALSE}
@@ -949,9 +961,6 @@ function LOGGING.echoSimpleLogOutcome() {
   local _text="${@}"
   checkNotEmpty text "${_text}" 2
 
-  LOGGING.peekLog
-  local _inProgressMessage="${RESULT}"
-
   local _plainOutcome="[${_text}]"
 
   if LOGGING.usesNativeBackend && LOGGING.echoNativeLogOutcome "${_keyword}" "${_text}"; then
@@ -959,6 +968,9 @@ function LOGGING.echoSimpleLogOutcome() {
     LOGGING.finishSpan "echoSimpleLogOutcome" ${_spanStartedAt}
     return ${TRUE}
   fi
+
+  LOGGING.peekLog
+  local _inProgressMessage="${RESULT}"
 
   LOGGING.buildSimpleLogPrefix
   local _logPrefix="${RESULT}"
@@ -1022,7 +1034,8 @@ function LOGGING.echoNativeLogOutcome() {
 
   if LOGGING.prefersNativeLoggerDaemon &&
     LOGGING.startNativeLoggerDaemon; then
-    printf "outcome\n%d\n%d\n%s\n%s\n%d\n%s\n%d\n%s\n%d\n" \
+    local _request=""
+    printf -v _request "outcome\n%d\n%d\n%s\n%s\n%d\n%s\n%d\n%s\n%d\n" \
       ${_lineLength} \
       ${_termWidth} \
       "${_alignmentMode}" \
@@ -1031,9 +1044,8 @@ function LOGGING.echoNativeLogOutcome() {
       "${_separator}" \
       "${#_text}" \
       "${_text}" \
-      ${_colors} \
-      >&"${LOGGING_NATIVE_DAEMON_IN_FD}"
-    LOGGING.nativeLoggerDaemonSucceeded
+      ${_colors}
+    LOGGING.sendNativeLoggerDaemonRequest "${_request}"
     local -i _rescode=$?
     LOGGING.finishSpan "native.outcome" ${_spanStartedAt}
     return ${_rescode}

@@ -250,3 +250,19 @@ This log records the baseline metrics used to decide whether a maintenance cycle
   `echoSimpleLogOutcome` total `4610528us`, avg `230526us`; `native.message` total `3012404us`, avg `150620us`; `native.outcome` total `2242473us`, avg `112123us`; `logToFiles` total `1018012us`, avg `25450us`; `retrieveActiveLogLineLength` total `672946us`, avg `33647us`; `retrieveLogTimestamp` total `555369us`, avg `27768us`
 - Notes:
   The dominant plain-logging span is the native message path itself. For right-aligned logging, the main bottleneck is the outcome phase, not prefix/timestamp work. That means the next meaningful optimization pass should focus first on the right-aligned outcome renderer and second on reducing the native message/outcome protocol cost. The span instrumentation is behind an opt-in flag because it is materially slower than the normal path.
+
+## 2026-04-12 Logging Cycle 12
+
+- Scope: Split the benchmark control case into an explicit `message-only` scenario that only calls `logInfo`, and removed the daemon request/response acknowledgement from the `native-c` helper so the persistent transport becomes a one-way write path with broken-pipe detection.
+- Benchmark harness:
+  `DW_NATIVE_LOGGER_BIN=/tmp/dry-wit-native-logger LOGGING_BACKEND=native-c DW_NATIVE_LOGGER_TRANSPORT=<transport> bash test/logging-benchmark.sh 2 10`
+- Benchmark result:
+  `spawn` `message-only` average `6.981805s`, stddev `0.324381s`, color average `7.481625s`, stddev `0.005533s`, right-aligned average `11.284701s`, stddev `0.039904s`; `daemon` `message-only` average `7.021869s`, stddev `0.259315s`, color average `7.422718s`, stddev `0.012287s`, right-aligned average `11.249351s`, stddev `0.025453s`
+- Span runs:
+  `ENABLE_LOGGING_SPANS=0 DW_LOGGING_SPANS_FILE=<file> DW_NATIVE_LOGGER_BIN=/tmp/dry-wit-native-logger LOGGING_BACKEND=native-c DW_NATIVE_LOGGER_TRANSPORT=daemon test/logging-benchmark-target.sh`
+- `message-only` scenario report, `10` iterations:
+  `native.message` total `1459657us`, avg `145965us`; `retrieveLogTimestamp` total `295608us`, avg `29560us`; `logToFiles` total `255132us`, avg `25513us`
+- Right-aligned scenario report, `10` iterations:
+  `echoSimpleLogOutcome` total `2256060us`, avg `225606us`; `native.message` total `1551932us`, avg `155193us`; `native.outcome` total `1135342us`, avg `113534us`; `logToFiles` total `521497us`, avg `26074us`; `retrieveActiveLogLineLength` total `336478us`, avg `33647us`; `retrieveLogTimestamp` total `277484us`, avg `27748us`
+- Notes:
+  The explicit `message-only` control confirms that `echoSimpleLogOutcome` work is isolated from plain log-call measurements. Removing the daemon acknowledgement does not materially change `message-only`, which means the helper transport is no longer the main bottleneck there. It does help the daemon path stay at least slightly ahead on the right-aligned scenario, but the span report still shows the dominant cost is `echoSimpleLogOutcome` first and `native.outcome` second. The next cycle should optimize the outcome path itself rather than the daemon handshake again.
